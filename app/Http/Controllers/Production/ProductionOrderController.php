@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\ProductionCost;
 use App\Models\ProductionOrder;
+use App\Notifications\Production\ProductionOrderCompletedNotification;
 use Illuminate\Http\Request;
 
 class ProductionOrderController extends Controller
@@ -88,6 +89,12 @@ class ProductionOrderController extends Controller
             'status'          => 'completed',
             'completion_date' => now(),
         ]);
+
+        $productionManagers = \App\Models\User::role('Production Manager')->whereNotNull('whatsapp_number')->get();
+        \Illuminate\Support\Facades\Notification::send(
+            $productionManagers,
+            new ProductionOrderCompletedNotification($productionOrder)
+        );
 
         return redirect()->back()->with('success', 'Production order marked as completed.');
     }
