@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Item;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
+use App\Notifications\Sales\SalesOrderConfirmedNotification;
 use Illuminate\Http\Request;
 
 class SalesOrderController extends Controller
@@ -100,6 +101,10 @@ class SalesOrderController extends Controller
     public function confirm(SalesOrder $salesOrder)
     {
         $salesOrder->update(['status' => 'confirmed']);
+
+        if ($salesOrder->customer && $salesOrder->customer->whatsapp_number) {
+            $salesOrder->customer->notify(new SalesOrderConfirmedNotification($salesOrder));
+        }
 
         return redirect()->back()->with('success', 'Sales order confirmed.');
     }
