@@ -40,14 +40,15 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'        => 'required|string|max:255',
-            'credit_days' => 'nullable|integer|min:0',
+            'name'             => 'required|string|max:255',
+            'credit_days'      => 'nullable|integer|min:0',
+            'whatsapp_number'  => ['nullable', 'string', 'max:20'],
         ]);
 
         Supplier::create(array_merge(
             $request->only([
                 'supplier_code', 'name', 'category', 'contact_person',
-                'email', 'secondary_email', 'phone', 'phone2', 'whatsapp',
+                'email', 'secondary_email', 'phone', 'phone2', 'whatsapp', 'whatsapp_number',
                 'address', 'website', 'tax_number', 'credit_terms', 'credit_days', 'remarks',
             ]),
             ['is_active' => (bool) $request->input('is_active', 1)]
@@ -69,15 +70,16 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier)
     {
         $request->validate([
-            'name'        => 'required|string|max:255',
-            'credit_days' => 'nullable|integer|min:0',
-            'is_active'   => 'nullable',
+            'name'             => 'required|string|max:255',
+            'credit_days'      => 'nullable|integer|min:0',
+            'is_active'        => 'nullable',
+            'whatsapp_number'  => ['nullable', 'string', 'max:20'],
         ]);
 
         $supplier->update(array_merge(
             $request->only([
                 'supplier_code', 'name', 'category', 'contact_person',
-                'email', 'secondary_email', 'phone', 'phone2', 'whatsapp',
+                'email', 'secondary_email', 'phone', 'phone2', 'whatsapp', 'whatsapp_number',
                 'address', 'website', 'tax_number', 'credit_terms', 'credit_days', 'remarks',
             ]),
             ['is_active' => (bool) $request->input('is_active', 0)]

@@ -45,6 +45,15 @@
             </div>
 
             <div>
+                <label class="form-label">WhatsApp Number</label>
+                <input type="text" name="whatsapp_number"
+                    value="{{ old('whatsapp_number', $supplier->whatsapp_number ?? '') }}"
+                    placeholder="+971501234567"
+                    class="form-input">
+                <p style="font-size:12px;color:#6b7280;margin-top:4px;">International format. Used for WhatsApp notifications.</p>
+            </div>
+
+            <div>
                 <label class="form-label">Tax Number</label>
                 <input type="text" name="tax_number" value="{{ old('tax_number', $supplier->tax_number) }}" class="form-input">
             </div>
