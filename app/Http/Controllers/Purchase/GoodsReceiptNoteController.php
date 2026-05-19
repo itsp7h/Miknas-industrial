@@ -9,6 +9,7 @@ use App\Models\PurchaseOrder;
 use App\Models\StockLevel;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Notifications\Purchase\GoodsReceiptConfirmedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -144,6 +145,9 @@ class GoodsReceiptNoteController extends Controller
                 $po->update(['status' => 'received']);
             }
         });
+
+        $storeManagers = \App\Models\User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
+        \Illuminate\Support\Facades\Notification::send($storeManagers, new GoodsReceiptConfirmedNotification($grn));
 
         return redirect()->back()->with('success', 'GRN confirmed and stock updated.');
     }
