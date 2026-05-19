@@ -27,7 +27,7 @@
                     <p style="font-size:14px;font-weight:500;color:#374151;margin:0 0 2px;">Enable WhatsApp Notifications</p>
                     <p style="font-size:12px;color:#6b7280;margin:0;">When disabled, no messages will be sent.</p>
                 </div>
-                <label style="position:relative;display:inline-flex;align-items:center;cursor:pointer;">
+                <div style="position:relative;display:inline-flex;align-items:center;cursor:pointer;">
                     <input type="hidden" name="enabled" value="0">
                     <input type="checkbox" name="enabled" value="1"
                         {{ $settings['enabled'] ? 'checked' : '' }}
@@ -46,7 +46,7 @@
                             transition:left .2s;
                         "></div>
                     </div>
-                </label>
+                </div>
             </div>
 
             <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px;">
@@ -175,7 +175,11 @@ document.getElementById('btn-test-connection').addEventListener('click', functio
     statusEl.style.fontWeight = '400';
 
     fetch('{{ route('settings.integrations.test-whatsapp') }}', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {
