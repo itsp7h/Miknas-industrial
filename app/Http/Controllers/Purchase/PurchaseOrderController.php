@@ -8,6 +8,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
 use App\Models\Supplier;
+use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
 use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
@@ -60,6 +61,10 @@ class PurchaseOrderController extends Controller
                 'rate'              => $item['rate'],
                 'amount'            => $item['quantity'] * $item['rate'],
             ]);
+        }
+
+        if ($order->supplier && $order->supplier->whatsapp_number) {
+            $order->supplier->notify(new PurchaseOrderConfirmedNotification($order));
         }
 
         return redirect()->route('purchase.orders.show', $order)->with('success', 'Purchase order created successfully.');
