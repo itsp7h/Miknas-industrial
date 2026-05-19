@@ -22,6 +22,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'whatsapp_number',
         'password',
     ];
 
@@ -40,6 +41,11 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
+    public function routeNotificationFor(string $channel, mixed $notification = null): ?string
+    {
+        return $this->whatsapp_number;
+    }
+
     protected function casts(): array
     {
         return [

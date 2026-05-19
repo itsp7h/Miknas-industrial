@@ -12,13 +12,18 @@ class Supplier extends Model
     protected $fillable = [
         'supplier_code', 'name', 'category',
         'contact_person', 'email', 'secondary_email',
-        'phone', 'phone2', 'whatsapp',
+        'phone', 'phone2', 'whatsapp', 'whatsapp_number',
         'address', 'website',
         'tax_number', 'credit_terms', 'credit_days',
         'is_active', 'remarks',
     ];
 
     protected $casts = ['is_active' => 'boolean'];
+
+    public function routeNotificationFor(string $channel, mixed $notification = null): ?string
+    {
+        return $this->whatsapp_number;
+    }
 
     public function purchaseOrders()
     {
