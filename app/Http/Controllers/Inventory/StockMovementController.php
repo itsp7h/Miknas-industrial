@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\StockLevel;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Notifications\Inventory\LowStockAlertNotification;
 use Illuminate\Http\Request;
 
 class StockMovementController extends Controller
@@ -57,6 +58,16 @@ class StockMovementController extends Controller
             'notes'         => $request->notes,
             'created_by'    => auth()->id(),
         ]);
+
+        $stockLevel->refresh();
+        $item = Item::find($request->item_id);
+        if ($item && $item->minimum_stock_level && $stockLevel->quantity <= $item->minimum_stock_level) {
+            $storeManagers = \App\Models\User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
+            \Illuminate\Support\Facades\Notification::send(
+                $storeManagers,
+                new LowStockAlertNotification($item, $stockLevel)
+            );
+        }
 
         return redirect()->route('inventory.movements.index')->with('success', 'Stock movement recorded successfully.');
     }
