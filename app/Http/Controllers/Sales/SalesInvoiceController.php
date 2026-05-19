@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\SalesOrder;
+use App\Notifications\Sales\InvoiceCreatedNotification;
 use Illuminate\Http\Request;
 
 class SalesInvoiceController extends Controller
@@ -39,7 +40,7 @@ class SalesInvoiceController extends Controller
 
         $invoiceNumber = 'INV-' . str_pad(SalesInvoice::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
-        SalesInvoice::create(array_merge($request->all(), [
+        $invoice = SalesInvoice::create(array_merge($request->all(), [
             'invoice_number' => $invoiceNumber,
             'status'         => 'unpaid',
             'paid_amount'    => 0,
@@ -47,6 +48,10 @@ class SalesInvoiceController extends Controller
         ]));
 
         SalesOrder::where('id', $request->sales_order_id)->update(['status' => 'invoiced']);
+
+        if ($invoice->customer && $invoice->customer->whatsapp_number) {
+            $invoice->customer->notify(new InvoiceCreatedNotification($invoice));
+        }
 
         return redirect()->route('sales.invoices.index')->with('success', 'Invoice created successfully.');
     }
