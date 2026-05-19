@@ -146,8 +146,10 @@ class DeliveryNoteController extends Controller
             }
         });
 
-        if ($deliveryNote->customer && $deliveryNote->customer->whatsapp_number) {
-            $deliveryNote->customer->notify(new DeliveryDispatchedNotification($deliveryNote));
+        $deliveryNote->loadMissing('salesOrder.customer');
+        $customer = $deliveryNote->salesOrder?->customer;
+        if ($customer && $customer->whatsapp_number) {
+            $customer->notify(new DeliveryDispatchedNotification($deliveryNote));
         }
 
         return redirect()->back()->with('success', 'Delivery note dispatched and stock decremented.');
