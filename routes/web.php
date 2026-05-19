@@ -26,6 +26,7 @@ use App\Http\Controllers\Sales\DeliveryNoteController;
 use App\Http\Controllers\Sales\PaymentReceiptController;
 use App\Http\Controllers\Sales\SalesInvoiceController;
 use App\Http\Controllers\Sales\SalesOrderController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -112,6 +113,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('delivery-notes/{note}/dispatch', [DeliveryNoteController::class, 'dispatch'])->name('delivery-notes.dispatch');
         Route::resource('invoices', SalesInvoiceController::class);
         Route::resource('payments', PaymentReceiptController::class);
+    });
+
+    // Settings (Admin only)
+    Route::middleware('role:Admin')->group(function () {
+        Route::get('settings/integrations', [SettingsController::class, 'integrations'])->name('settings.integrations');
+        Route::post('settings/integrations/whatsapp', [SettingsController::class, 'updateWhatsapp'])->name('settings.integrations.whatsapp');
+        Route::get('settings/integrations/test-whatsapp', [SettingsController::class, 'testWhatsappConnection'])->name('settings.integrations.test-whatsapp');
     });
 });
 
