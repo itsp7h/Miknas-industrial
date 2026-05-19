@@ -1,0 +1,127 @@
+<h2>How should the purchase pipeline tracker look?</h2>
+<p class="subtitle">Each purchase moves through stages like a delivery. Which style fits your team best?</p>
+
+<div class="cards">
+
+  <!-- Option A: Horizontal progress bar (package tracking style) -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:18px;background:#f8fafc;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">PO-2024-001 · Steel Pipes · BD 4,200</div>
+      <div style="display:flex;align-items:center;gap:0;position:relative;margin-bottom:8px;">
+        <!-- Steps -->
+        <div style="display:flex;align-items:center;width:100%;">
+          <div style="text-align:center;flex:1;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#2563eb;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">✓</div>
+            <div style="font-size:9px;color:#2563eb;font-weight:600;">Request</div>
+          </div>
+          <div style="flex:1;height:2px;background:#2563eb;margin-bottom:16px;"></div>
+          <div style="text-align:center;flex:1;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#2563eb;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">✓</div>
+            <div style="font-size:9px;color:#2563eb;font-weight:600;">GM Sign</div>
+          </div>
+          <div style="flex:1;height:2px;background:#2563eb;margin-bottom:16px;"></div>
+          <div style="text-align:center;flex:1;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#2563eb;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">✓</div>
+            <div style="font-size:9px;color:#2563eb;font-weight:600;">Suppliers</div>
+          </div>
+          <div style="flex:1;height:2px;background:#f59e0b;margin-bottom:16px;"></div>
+          <div style="text-align:center;flex:1;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">4</div>
+            <div style="font-size:9px;color:#f59e0b;font-weight:700;">Quotes ◄</div>
+          </div>
+          <div style="flex:1;height:2px;background:#e2e8f0;margin-bottom:16px;"></div>
+          <div style="text-align:center;flex:1;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">5</div>
+            <div style="font-size:9px;color:#94a3b8;">LPO</div>
+          </div>
+          <div style="flex:1;height:2px;background:#e2e8f0;margin-bottom:16px;"></div>
+          <div style="text-align:center;flex:1;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">6</div>
+            <div style="font-size:9px;color:#94a3b8;">Receive</div>
+          </div>
+          <div style="flex:1;height:2px;background:#e2e8f0;margin-bottom:16px;"></div>
+          <div style="text-align:center;flex:1;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">7</div>
+            <div style="font-size:9px;color:#94a3b8;">Payment</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 10px;font-size:11px;color:#92400e;font-weight:600;">
+        ⏳ Waiting for supplier quotes — 2 of 3 received
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Horizontal Pipeline</h3>
+      <p>Steps across the top like a progress bar. Current stage highlighted, done steps checked. Great for seeing the full journey at a glance on the list page.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Vertical timeline (delivery tracking style) -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:18px;background:#f8fafc;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">PO-2024-001 · Steel Pipes</div>
+      <div style="position:relative;padding-left:28px;">
+        <!-- vertical line -->
+        <div style="position:absolute;left:10px;top:4px;bottom:4px;width:2px;background:linear-gradient(to bottom,#2563eb 45%,#e2e8f0 45%);border-radius:2px;"></div>
+        <div style="margin-bottom:10px;position:relative;">
+          <div style="position:absolute;left:-22px;width:14px;height:14px;border-radius:50%;background:#2563eb;border:2px solid #fff;box-shadow:0 0 0 2px #2563eb;"></div>
+          <div style="font-size:11px;font-weight:700;color:#2563eb;">Request Created</div>
+          <div style="font-size:10px;color:#94a3b8;">May 12 · Operations Team</div>
+        </div>
+        <div style="margin-bottom:10px;position:relative;">
+          <div style="position:absolute;left:-22px;width:14px;height:14px;border-radius:50%;background:#2563eb;border:2px solid #fff;box-shadow:0 0 0 2px #2563eb;"></div>
+          <div style="font-size:11px;font-weight:700;color:#2563eb;">GM Approved</div>
+          <div style="font-size:10px;color:#94a3b8;">May 13 · Ahmed Al-Rashid</div>
+        </div>
+        <div style="margin-bottom:10px;position:relative;">
+          <div style="position:absolute;left:-22px;width:14px;height:14px;border-radius:50%;background:#f59e0b;border:2px solid #fff;box-shadow:0 0 0 2px #f59e0b;"></div>
+          <div style="font-size:11px;font-weight:700;color:#f59e0b;">Awaiting Quotes (2/3)</div>
+          <div style="font-size:10px;color:#94a3b8;">Sent to 3 suppliers · May 14</div>
+        </div>
+        <div style="margin-bottom:10px;position:relative;opacity:.45;">
+          <div style="position:absolute;left:-22px;width:14px;height:14px;border-radius:50%;background:#e2e8f0;border:2px solid #fff;"></div>
+          <div style="font-size:11px;font-weight:600;color:#64748b;">Quote Comparison</div>
+        </div>
+        <div style="position:relative;opacity:.45;">
+          <div style="position:absolute;left:-22px;width:14px;height:14px;border-radius:50%;background:#e2e8f0;border:2px solid #fff;"></div>
+          <div style="font-size:11px;font-weight:600;color:#64748b;">Issue LPO → Receive → Pay</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Vertical Timeline</h3>
+      <p>Like a courier tracking page — each step logged with date and actor. Best for the detail view of a single purchase. Shows history clearly.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Both combined -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:18px;background:#f8fafc;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">PO-2024-001 · Steel Pipes · BD 4,200</div>
+      <!-- Compact horizontal on list -->
+      <div style="display:flex;gap:3px;margin-bottom:10px;">
+        <div style="flex:1;height:6px;border-radius:3px;background:#2563eb;"></div>
+        <div style="flex:1;height:6px;border-radius:3px;background:#2563eb;"></div>
+        <div style="flex:1;height:6px;border-radius:3px;background:#2563eb;"></div>
+        <div style="flex:1;height:6px;border-radius:3px;background:#f59e0b;animation:pulse 1.5s infinite;"></div>
+        <div style="flex:1;height:6px;border-radius:3px;background:#e2e8f0;"></div>
+        <div style="flex:1;height:6px;border-radius:3px;background:#e2e8f0;"></div>
+        <div style="flex:1;height:6px;border-radius:3px;background:#e2e8f0;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:#94a3b8;margin-bottom:10px;">
+        <span>Request</span><span>GM</span><span>RFQ</span><span style="color:#f59e0b;font-weight:700;">Quotes▲</span><span>LPO</span><span>Receive</span><span>Pay</span>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:11px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="color:#f59e0b;font-weight:600;">⏳ Quotes: 2 of 3 received</span>
+        <span style="color:#2563eb;font-weight:600;cursor:pointer;">Open →</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Combined (Recommended)</h3>
+      <p>Compact coloured bar on the list page, full vertical timeline inside the detail view. Best of both worlds — scan many purchases quickly, then drill in for full history.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Click a card to select, then reply in the terminal.</p>

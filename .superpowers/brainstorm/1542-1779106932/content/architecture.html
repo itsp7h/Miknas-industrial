@@ -1,0 +1,169 @@
+<h2>Purchase Pipeline — Architecture</h2>
+<p class="subtitle">7 stages, 3 new tables, everything else reuses existing models</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px;">
+
+  <!-- Left: Stage map -->
+  <div>
+    <div class="label" style="margin-bottom:12px;">The 7 Stages</div>
+
+    <div style="display:flex;flex-direction:column;gap:0;">
+
+      <!-- Stage 1 -->
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+          <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0;"></div>
+        </div>
+        <div style="padding-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;">Purchase Request</div>
+          <div style="font-size:11px;color:#64748b;">Operations team fills in items needed</div>
+          <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#eff6ff;color:#2563eb;">EXISTING · purchase_requests</div>
+        </div>
+      </div>
+
+      <!-- Stage 2 -->
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#7c3aed;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+          <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0;"></div>
+        </div>
+        <div style="padding-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;">GM Digital Signature</div>
+          <div style="font-size:11px;color:#64748b;">GM draws signature on canvas, saved as image</div>
+          <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#f5f3ff;color:#7c3aed;">NEW · purchase_signatures</div>
+        </div>
+      </div>
+
+      <!-- Stage 3+4 -->
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#0ea5e9;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+          <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0;"></div>
+        </div>
+        <div style="padding-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;">Select Suppliers → Send RFQ Links</div>
+          <div style="font-size:11px;color:#64748b;">Pick suppliers from list, system sends unique links via WhatsApp/Email</div>
+          <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#f0f9ff;color:#0ea5e9;">NEW · rfq_invitations</div>
+        </div>
+      </div>
+
+      <!-- Stage 4 -->
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#f59e0b;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+          <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0;"></div>
+        </div>
+        <div style="padding-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;">Suppliers Submit Quotes</div>
+          <div style="font-size:11px;color:#64748b;">Each supplier opens their private link, fills price + terms, submits</div>
+          <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#fffbeb;color:#b45309;">NEW · supplier_quotes + quote_items</div>
+        </div>
+      </div>
+
+      <!-- Stage 5 -->
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#f59e0b;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">5</div>
+          <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0;"></div>
+        </div>
+        <div style="padding-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;">Quote Comparison & Award</div>
+          <div style="font-size:11px;color:#64748b;">Side-by-side table, team picks winner, records decision reason</div>
+          <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#fffbeb;color:#b45309;">NEW · supplier_quotes (awarded flag)</div>
+        </div>
+      </div>
+
+      <!-- Stage 6 -->
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#16a34a;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">6</div>
+          <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0;"></div>
+        </div>
+        <div style="padding-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;">Issue LPO</div>
+          <div style="font-size:11px;color:#64748b;">Create & send Local Purchase Order to winning supplier</div>
+          <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#f0fdf4;color:#16a34a;">EXISTING · purchase_orders (LPO)</div>
+        </div>
+      </div>
+
+      <!-- Stage 7 -->
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#16a34a;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">7</div>
+          <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0;"></div>
+        </div>
+        <div style="padding-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;">Receive Materials at Site</div>
+          <div style="font-size:11px;color:#64748b;">GRN created — each item flagged Inventory or Consumable</div>
+          <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#f0fdf4;color:#16a34a;">EXISTING · goods_receipt_notes + grn_items</div>
+        </div>
+      </div>
+
+      <!-- Stage 8 -->
+      <div style="display:flex;align-items:stretch;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#0f172a;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">8</div>
+        </div>
+        <div style="padding-bottom:4px;">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;">Issue Payment / Cheque</div>
+          <div style="font-size:11px;color:#64748b;">Record cheque number, bank, amount, payment date</div>
+          <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#f1f5f9;color:#475569;">EXISTING · supplier_payments</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Right: New tables + public portal -->
+  <div>
+    <div class="label" style="margin-bottom:12px;">3 New Database Tables</div>
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:8px;">purchase_signatures</div>
+      <div style="font-size:11px;color:#475569;font-family:monospace;line-height:1.8;">
+        id<br>purchase_request_id → FK<br>signed_by → FK users<br>signature_image → base64 png<br>signed_at → timestamp<br>ip_address
+      </div>
+    </div>
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:#0ea5e9;margin-bottom:8px;">rfq_invitations</div>
+      <div style="font-size:11px;color:#475569;font-family:monospace;line-height:1.8;">
+        id<br>purchase_request_id → FK<br>supplier_id → FK<br>token → unique 64-char hex<br>channel → email|whatsapp|both<br>sent_at, opened_at, expires_at<br>status → pending|opened|submitted|declined
+      </div>
+    </div>
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:8px;">supplier_quotes + supplier_quote_items</div>
+      <div style="font-size:11px;color:#475569;font-family:monospace;line-height:1.8;">
+        id<br>rfq_invitation_id → FK<br>submitted_at<br>lead_time_days<br>payment_terms<br>notes<br>total_amount<br>is_awarded → boolean<br>award_reason<br>── items ──<br>description, unit, qty, unit_price, total
+      </div>
+    </div>
+
+    <div class="label" style="margin-bottom:8px;">Public Portal (no auth)</div>
+    <div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:6px;">🔗 /rfq/{token}</div>
+      <div style="font-size:11px;color:#78350f;line-height:1.7;">
+        • Outside auth middleware — no login needed<br>
+        • Token validated on every request<br>
+        • Expires 7 days after sending<br>
+        • Can only be submitted once<br>
+        • Shows your company name + item list<br>
+        • Supplier fills price/terms, submits<br>
+        • Confirmation screen shown after submit
+      </div>
+    </div>
+
+    <div style="margin-top:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">Existing models — minor additions only</div>
+      <div style="font-size:11px;color:#166534;line-height:1.7;">
+        purchase_requests → add <strong>stage</strong> column<br>
+        grn_items → add <strong>type</strong> (inventory|consumable)<br>
+        purchase_orders → relabel as LPO in UI only
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Does this architecture look right? Reply in the terminal.</p>
