@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "410e0c46740d0acdc1c7049ae3f0e698",
+    "content-hash": "2e7e9aaaedaec1e83a6d6b3e82228dda",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -3277,6 +3277,59 @@
                 }
             ],
             "time": "2025-12-27T19:41:33+00:00"
+        },
+        {
+            "name": "promoseven/ultra-message",
+            "version": "dev-master",
+            "dist": {
+                "type": "path",
+                "url": "../ultra-message",
+                "reference": "36323902378c10fffd7c2f795360f06072b2fd51"
+            },
+            "require": {
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/notifications": "^11.0|^12.0",
+                "illuminate/routing": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^10.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "PromoSeven\\UltraMessage\\UltraMessageServiceProvider"
+                    ],
+                    "aliases": {
+                        "UltraMessage": "PromoSeven\\UltraMessage\\Facades\\UltraMessage"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "PromoSeven\\UltraMessage\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "PromoSeven\\UltraMessage\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "vendor/bin/phpunit"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Laravel WhatsApp integration via UltraMSG API",
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "psr/clock",
@@ -9435,7 +9488,7 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
