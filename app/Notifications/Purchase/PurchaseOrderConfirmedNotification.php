@@ -23,7 +23,7 @@ class PurchaseOrderConfirmedNotification extends Notification implements ShouldQ
     public function toUltraMessage(mixed $notifiable): UltraMessageMessage
     {
         return UltraMessageMessage::text(
-            "Dear {$notifiable->name},\n\nPurchase Order *#{$this->order->po_number}* has been confirmed.\n\nTotal Amount: {$this->order->total_amount}\nExpected Delivery: {$this->order->expected_delivery_date}\n\nThank you."
+            "Dear {$notifiable->name},\n\nPurchase Order *#{$this->order->po_number}* has been placed.\n\nTotal Amount: {$this->order->total_amount}\nExpected Delivery: {$this->order->expected_delivery_date}\n\nThank you."
         );
     }
 }

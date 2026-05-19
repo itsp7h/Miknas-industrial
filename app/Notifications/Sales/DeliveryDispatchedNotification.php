@@ -23,7 +23,7 @@ class DeliveryDispatchedNotification extends Notification implements ShouldQueue
     public function toUltraMessage(mixed $notifiable): UltraMessageMessage
     {
         return UltraMessageMessage::text(
-            "Dear {$notifiable->name},\n\nYour delivery *#{$this->delivery->delivery_number}* has been dispatched and is on its way.\n\nOrder Reference: {$this->delivery->salesOrder->order_number}\nDispatch Date: {$this->delivery->delivery_date}\n\nThank you for your business."
+            "Dear {$notifiable->name},\n\nYour delivery *#{$this->delivery->delivery_number}* has been dispatched and is on its way.\n\nOrder Reference: {$this->delivery->salesOrder?->order_number ?? 'N/A'}\nDispatch Date: {$this->delivery->delivery_date->format('d M Y')}\n\nThank you for your business."
         );
     }
 }
