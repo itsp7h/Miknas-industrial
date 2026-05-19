@@ -11,6 +11,7 @@ use App\Models\SalesOrderItem;
 use App\Models\StockLevel;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Notifications\Sales\DeliveryDispatchedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -144,6 +145,10 @@ class DeliveryNoteController extends Controller
                 $salesOrder->update(['status' => 'dispatched']);
             }
         });
+
+        if ($deliveryNote->customer && $deliveryNote->customer->whatsapp_number) {
+            $deliveryNote->customer->notify(new DeliveryDispatchedNotification($deliveryNote));
+        }
 
         return redirect()->back()->with('success', 'Delivery note dispatched and stock decremented.');
     }
