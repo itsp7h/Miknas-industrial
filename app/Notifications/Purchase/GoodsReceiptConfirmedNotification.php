@@ -23,7 +23,7 @@ class GoodsReceiptConfirmedNotification extends Notification implements ShouldQu
     public function toUltraMessage(mixed $notifiable): UltraMessageMessage
     {
         return UltraMessageMessage::text(
-            "GRN *#{$this->grn->grn_number}* has been confirmed and goods received.\n\nPO Reference: {$this->grn->purchaseOrder->po_number}\nDate: {$this->grn->received_date}"
+            "GRN *#{$this->grn->grn_number}* has been confirmed and goods received.\n\nPO Reference: {$this->grn->purchaseOrder->po_number}\nDate: {$this->grn->received_date->format('d M Y')}"
         );
     }
 }

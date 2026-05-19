@@ -23,7 +23,7 @@ class ProductionOrderCompletedNotification extends Notification implements Shoul
     public function toUltraMessage(mixed $notifiable): UltraMessageMessage
     {
         return UltraMessageMessage::text(
-            "✅ *Production Complete*\n\nProduction Order *#{$this->order->order_number}* has been completed.\n\nProduct: {$this->order->product->item_name}\nQuantity: {$this->order->quantity_to_produce}\nCompleted: " . now()->format('d M Y')
+            "✅ *Production Complete*\n\nProduction Order *#{$this->order->order_number}* has been completed.\n\nProduct: {$this->order->product->item_name}\nQuantity: {$this->order->quantity_to_produce}\nCompleted: {$this->order->completion_date->format('d M Y')}"
         );
     }
 }

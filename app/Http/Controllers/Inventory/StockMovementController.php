@@ -61,7 +61,7 @@ class StockMovementController extends Controller
 
         $stockLevel->refresh();
         $item = Item::find($request->item_id);
-        if ($item && $item->minimum_stock_level && $stockLevel->quantity <= $item->minimum_stock_level) {
+        if ($request->type === 'out' && $item && $item->minimum_stock_level && $stockLevel->quantity <= $item->minimum_stock_level) {
             $storeManagers = \App\Models\User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
             \Illuminate\Support\Facades\Notification::send(
                 $storeManagers,
