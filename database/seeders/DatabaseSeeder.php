@@ -31,5 +31,7 @@ class DatabaseSeeder extends Seeder
         foreach ($warehouses as $wh) {
             Warehouse::firstOrCreate(['code' => $wh['code']], $wh);
         }
+
+        $this->call(UrgencyLevelSeeder::class);
     }
 }
