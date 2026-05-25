@@ -27,6 +27,8 @@ use App\Http\Controllers\Sales\PaymentReceiptController;
 use App\Http\Controllers\Sales\SalesInvoiceController;
 use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\Settings\ProjectSettingController;
+use App\Models\Settings\Location;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -120,6 +122,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('settings/integrations', [SettingsController::class, 'integrations'])->name('settings.integrations');
         Route::post('settings/integrations/whatsapp', [SettingsController::class, 'updateWhatsapp'])->name('settings.integrations.whatsapp');
         Route::post('settings/integrations/test-whatsapp', [SettingsController::class, 'testWhatsappConnection'])->name('settings.integrations.test-whatsapp');
+
+        // Projects settings
+        Route::get('settings/projects', [ProjectSettingController::class, 'index'])->name('settings.projects.index');
+        Route::post('settings/projects', [ProjectSettingController::class, 'store'])->name('settings.projects.store');
+        Route::patch('settings/projects/{project}', [ProjectSettingController::class, 'update'])->name('settings.projects.update');
+        Route::delete('settings/projects/{project}', [ProjectSettingController::class, 'destroy'])->name('settings.projects.destroy');
+        Route::post('settings/projects/{project}/locations', [ProjectSettingController::class, 'storeLocation'])->name('settings.projects.locations.store');
+        Route::patch('settings/projects/{project}/locations/{location}', [ProjectSettingController::class, 'updateLocation'])->name('settings.projects.locations.update');
+        Route::delete('settings/projects/{project}/locations/{location}', [ProjectSettingController::class, 'destroyLocation'])->name('settings.projects.locations.destroy');
     });
 });
 

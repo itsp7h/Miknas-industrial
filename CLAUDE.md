@@ -360,3 +360,12 @@ To trigger a toast from JavaScript (e.g. after an in-page action), call:
 showToast('Message text', 'success'); // types: success | error | info | warn
 ```
 **Never** add inline `@if(session('success'))` banner divs to individual views — the layout handles all of them. The toast appears bottom-right, auto-dismisses after 4 s, has a shrinking progress bar, and can be clicked or ×-closed early.
+
+### 10. Purchase Request creation — always use `<x-purchase.request-modal />`
+The create form lives in `resources/views/components/purchase/request-modal.blade.php` as a reusable Blade component. Wherever a "New Purchase Request" trigger is needed, drop in the component tag — it renders the button and the full modal itself:
+```blade
+<x-purchase.request-modal />
+```
+- **Never** link to `route('purchase.requests.create')` for creating new requests — the component replaces that flow entirely.
+- The component is self-contained: it owns the trigger button, the Alpine.js open/close state, the full MPR form (POSTing to `purchase.requests.store`), dynamic item rows, and validation-error auto-reopen logic.
+- The `/purchase/requests/create` page and route remain as a fallback but should not be referenced in new UI.

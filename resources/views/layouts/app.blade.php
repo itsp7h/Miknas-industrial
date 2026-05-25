@@ -175,11 +175,22 @@
                     System
                 </span>
             </div>
+            <a href="{{ route('settings.projects.index') }}" style="
+                display:flex; align-items:center; gap:8px;
+                padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
+                font-size:13px; text-decoration:none;
+                {{ request()->routeIs('settings.projects.*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+            " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                Projects
+            </a>
             <a href="{{ route('settings.integrations') }}" style="
                 display:flex; align-items:center; gap:8px;
                 padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
                 font-size:13px; text-decoration:none;
-                {{ request()->routeIs('settings.*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+                {{ request()->routeIs('settings.integrations*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
             " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0;">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -412,8 +423,9 @@ function confirmDelete(form, title, body) {
     var modal = document.getElementById('global-delete-modal');
     modal.style.display = 'flex';
     document.getElementById('gdm-confirm-btn').onclick = function() {
+        var form = _gdmForm;
         closeGlobalDeleteModal();
-        _gdmForm.submit();
+        form.submit();
     };
 }
 

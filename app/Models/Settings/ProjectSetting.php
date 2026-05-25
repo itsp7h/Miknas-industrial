@@ -16,4 +16,9 @@ class ProjectSetting extends Model
     {
         return $query->where('is_active', true);
     }
+
+    public function locations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Settings\Location::class, 'project_id');
+    }
 }
