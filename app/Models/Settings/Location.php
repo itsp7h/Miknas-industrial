@@ -8,9 +8,9 @@ class Location extends Model
 {
     protected $table = 'settings_locations';
 
-    protected $fillable = ['name', 'project_id', 'is_active'];
+    protected $fillable = ['name', 'project_id', 'is_active', 'address', 'latitude', 'longitude'];
 
-    protected $casts = ['is_active' => 'boolean'];
+    protected $casts = ['is_active' => 'boolean', 'latitude' => 'float', 'longitude' => 'float'];
 
     public function scopeActive($query)
     {

@@ -12,9 +12,7 @@ class PurchaseRequestController extends Controller
 {
     public function index()
     {
-        $requests = PurchaseRequest::with(['requestedBy', 'items'])->latest()->paginate(15);
-
-        return view('purchase.requests.index', compact('requests'));
+        return redirect()->route('purchase.pipeline.index');
     }
 
     public function create()

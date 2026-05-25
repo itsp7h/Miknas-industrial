@@ -369,3 +369,30 @@ The create form lives in `resources/views/components/purchase/request-modal.blad
 - **Never** link to `route('purchase.requests.create')` for creating new requests — the component replaces that flow entirely.
 - The component is self-contained: it owns the trigger button, the Alpine.js open/close state, the full MPR form (POSTing to `purchase.requests.store`), dynamic item rows, and validation-error auto-reopen logic.
 - The `/purchase/requests/create` page and route remain as a fallback but should not be referenced in new UI.
+
+### 11. Data entry pages — AJAX only, no page refreshes
+All settings and management pages where users create, edit, or delete records MUST use `fetch()` AJAX. No `<form>` submissions, no page reloads, no redirects after data entry.
+
+**Controller:** return `response()->json(...)` for all create/update/delete endpoints. Laravel auto-returns 422 JSON on validation failure when `Accept: application/json` is set.
+
+**Frontend fetch helper pattern:**
+```javascript
+var CSRF = document.querySelector('meta[name="csrf-token"]').content;
+function api(url, method, data) {
+    var opts = { method: method, headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' } };
+    if (data) opts.body = JSON.stringify(data);
+    return fetch(url, opts).then(function(r) {
+        return r.json().then(function(body) {
+            if (!r.ok) return Promise.reject(body);
+            return body;
+        });
+    });
+}
+```
+
+**After each operation:**
+- On success: update the DOM in-place (append row, update text, remove element), then call `showToast('Done.', 'success')`
+- On error: call `showToast(err.message || 'Error', 'error')`
+- For deletes: use `confirmAction(title, body, onConfirm)` (not `confirm()`) before calling the API
+
+**Never** use `<form method="POST">` for inline data entry on settings/management pages. `<form>` submissions that navigate away from the page are banned for these flows.

@@ -12,7 +12,7 @@
         <a href="{{ route('purchase.requests.print', $purchaseRequest) }}" target="_blank"
            class="btn-primary">Print MPR Form</a>
         @if($purchaseRequest->status === 'pending')
-            <a href="{{ route('purchase.requests.edit', $purchaseRequest) }}" class="btn-secondary">Edit</a>
+            <x-purchase.edit-request-modal :purchaseRequest="$purchaseRequest" />
             <form action="{{ route('purchase.requests.approve', $purchaseRequest) }}" method="POST">
                 @csrf @method('PATCH')
                 <button type="submit" class="btn-success">Approve</button>

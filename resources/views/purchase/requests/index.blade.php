@@ -8,9 +8,7 @@
         <h1 class="page-title">Purchase Requests</h1>
         <p class="page-subtitle">Manage internal purchase requests</p>
     </div>
-    <a href="{{ route('purchase.requests.create') }}" class="btn-primary">
-        + New Request
-    </a>
+    <x-purchase.request-modal />
 </div>
 
 <div class="table-wrapper overflow-x-auto">
@@ -20,8 +18,8 @@
                 <th>Request #</th>
                 <th>Date</th>
                 <th>Department</th>
-                <th>Item</th>
-                <th>Quantity</th>
+                <th>First Item</th>
+                <th>Qty / Items</th>
                 <th>Status</th>
                 <th>Requested By</th>
                 <th>Actions</th>
@@ -30,11 +28,13 @@
         <tbody>
             @forelse($requests as $request)
             <tr>
-                <td class="font-mono text-gray-700">{{ $request->request_number ?? '#' . $request->id }}</td>
+                <td class="font-mono text-gray-700">
+                    <a href="{{ route('purchase.requests.show', $request) }}" class="text-blue-600 hover:underline">{{ $request->request_number ?? '#' . $request->id }}</a>
+                </td>
                 <td>{{ $request->date ? $request->date->format('d M Y') : '' }}</td>
                 <td>{{ $request->department }}</td>
-                <td class="text-gray-800">{{ $request->item->item_name ?? $request->item_name }}</td>
-                <td>{{ $request->quantity }} {{ $request->unit_of_measure }}</td>
+                <td class="text-gray-800">{{ $request->items->first()->description ?? '—' }}</td>
+                <td>{{ $request->items->count() > 1 ? $request->items->count() . ' items' : ($request->items->first() ? number_format($request->items->first()->quantity_required, 2) . ' ' . $request->items->first()->unit : '—') }}</td>
                 <td>
                     @php
                         $badgeClass = match($request->status) {
@@ -62,7 +62,7 @@
                                 <button type="submit" class="btn-danger btn-sm">Reject</button>
                             </form>
                         @endif
-                        <a href="{{ route('purchase.requests.edit', $request) }}" class="btn-secondary btn-sm">Edit</a>
+                        <x-purchase.edit-request-modal :purchaseRequest="$request" />
                         <form action="{{ route('purchase.requests.destroy', $request) }}" method="POST"
                               onsubmit="confirmDelete(this,'Delete this purchase request?','This request will be permanently removed.'); return false;">
                             @csrf

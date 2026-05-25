@@ -51,9 +51,29 @@
           {{ $pr->date ? \Carbon\Carbon::parse($pr->date)->format('d M Y') : '—' }}
         </td>
         <td style="padding:14px 18px;">
-          <svg width="16" height="16" fill="none" stroke="#cbd5e1" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-          </svg>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <form method="POST" action="{{ route('purchase.requests.destroy', $pr) }}"
+                  id="del-pr-{{ $pr->id }}" style="display:none;">
+              @csrf @method('DELETE')
+            </form>
+            <button type="button"
+              onclick="event.stopPropagation(); confirmWithInput(
+                'Delete {{ addslashes($pr->request_number) }}?',
+                'This will permanently remove the purchase request and all related data.',
+                '{{ addslashes($pr->request_number) }}',
+                function(){ document.getElementById('del-pr-{{ $pr->id }}').submit(); }
+              )"
+              style="width:30px;height:30px;border-radius:7px;border:1px solid #fecaca;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .12s;"
+              onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'"
+              title="Delete">
+              <svg width="14" height="14" fill="none" stroke="#ef4444" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V4a1 1 0 011-1h6a1 1 0 011 1v3"/>
+              </svg>
+            </button>
+            <svg width="16" height="16" fill="none" stroke="#cbd5e1" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
         </td>
       </tr>
       @endforeach

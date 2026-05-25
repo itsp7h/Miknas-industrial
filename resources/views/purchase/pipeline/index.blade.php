@@ -14,10 +14,7 @@
     <h1 style="font-size:22px;font-weight:700;color:#0f172a;">Purchase Pipeline</h1>
     <p style="font-size:13px;color:#64748b;margin-top:3px;">Track every purchase from request to payment</p>
   </div>
-  <a href="{{ route('purchase.requests.create') }}"
-     style="padding:10px 22px;background:#2563eb;color:#fff;border-radius:9px;font-size:13px;font-weight:700;text-decoration:none;">
-    + New Request
-  </a>
+  <x-purchase.request-modal />
 </div>
 
 {{-- Tabs --}}

@@ -44,4 +44,17 @@
             </x-primary-button>
         </div>
     </form>
+
+    {{-- Dev credentials hint --}}
+    @if(app()->isLocal())
+    <div style="margin-top:1.5rem; padding:0.75rem 1rem; background:#f0f9ff; border:1px solid #bae6fd; border-radius:0.5rem; font-size:0.8rem; color:#0369a1;">
+        <div style="font-weight:600; margin-bottom:0.25rem;">Dev Credentials</div>
+        <div>Email: <span style="font-family:monospace; font-weight:600;">admin@erp.com</span></div>
+        <div>Password: <span style="font-family:monospace; font-weight:600;">password</span></div>
+        <button type="button" onclick="document.getElementById('email').value='admin@erp.com'; document.getElementById('password').value='password';"
+            style="margin-top:0.5rem; padding:0.25rem 0.75rem; background:#0ea5e9; color:#fff; border:none; border-radius:0.375rem; cursor:pointer; font-size:0.75rem;">
+            Fill in
+        </button>
+    </div>
+    @endif
 </x-guest-layout>

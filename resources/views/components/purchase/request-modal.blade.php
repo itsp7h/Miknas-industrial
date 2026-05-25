@@ -1,6 +1,18 @@
 @php
-$hasErrors = $errors->any();
-$mprProjects = \App\Models\Settings\ProjectSetting::active()->with(['locations' => function($q){ $q->where('is_active', true)->orderBy('name'); }])->orderBy('name')->get();
+$hasErrors   = $errors->any();
+$mprProjects = \App\Models\Settings\ProjectSetting::active()
+    ->with(['locations' => function ($q) { $q->where('is_active', true)->orderBy('name'); }])
+    ->orderBy('name')
+    ->get();
+$mprProjectsJson = $mprProjects->map(function ($p) {
+    return [
+        'id'        => $p->id,
+        'name'      => $p->name,
+        'locations' => $p->locations->map(function ($l) {
+            return ['name' => $l->name];
+        })->values(),
+    ];
+})->values();
 @endphp
 
 {{-- Trigger button --}}
@@ -242,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function () { mprModalOpen(); });
 })();
 
 // Cascading project → location dropdown
-var mprProjectsData = @json($mprProjects->map(fn($p) => ['id' => $p->id, 'name' => $p->name, 'locations' => $p->locations->map(fn($l) => ['name' => $l->name])->values()])->values());
+var mprProjectsData = @json($mprProjectsJson);
 var mprOldLocation = "{{ old('location') }}";
 var mprOldProjectName = "{{ old('project_name') }}";
 

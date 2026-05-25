@@ -82,7 +82,6 @@
             </a>
             @foreach([
                 ['purchase.suppliers.index',  'Suppliers'],
-                ['purchase.requests.index',   'Purchase Requests'],
                 ['purchase.orders.index',     'Purchase Orders'],
                 ['purchase.grns.index',       'Goods Receipt (GRN)'],
                 ['purchase.invoices.index',   'Supplier Invoices'],
@@ -396,6 +395,13 @@ function dismissToast(el) {
                 <div style="font-size:13px;color:#64748b;line-height:1.5;" id="gdm-body">This action cannot be undone.</div>
             </div>
         </div>
+        <div id="gdm-input-wrap" style="display:none;padding:0 22px 12px;">
+            <label id="gdm-input-label" style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;"></label>
+            <input id="gdm-input" type="text" autocomplete="off" spellcheck="false"
+                   oninput="gdmCheckInput()"
+                   style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-weight:600;color:#0f172a;outline:none;letter-spacing:.02em;"
+                   onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#e2e8f0'">
+        </div>
         <div style="padding:16px 22px 20px;display:flex;gap:8px;justify-content:flex-end;">
             <button onclick="closeGlobalDeleteModal()"
                     style="padding:9px 18px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;
@@ -429,8 +435,53 @@ function confirmDelete(form, title, body) {
     };
 }
 
+// Callback-based version for AJAX delete flows
+function confirmAction(title, body, onConfirm) {
+    document.getElementById('gdm-title').textContent = title || 'Are you sure?';
+    document.getElementById('gdm-body').textContent  = body  || 'This action cannot be undone.';
+    var modal = document.getElementById('global-delete-modal');
+    modal.style.display = 'flex';
+    document.getElementById('gdm-confirm-btn').onclick = function() {
+        closeGlobalDeleteModal();
+        onConfirm();
+    };
+}
+
+// Type-to-confirm version
+var _gdmExpected = null;
+function confirmWithInput(title, body, expectedText, onConfirm) {
+    document.getElementById('gdm-title').textContent = title || 'Are you sure?';
+    document.getElementById('gdm-body').textContent  = body  || 'This action cannot be undone.';
+    _gdmExpected = expectedText;
+    var wrap  = document.getElementById('gdm-input-wrap');
+    var input = document.getElementById('gdm-input');
+    var btn   = document.getElementById('gdm-confirm-btn');
+    document.getElementById('gdm-input-label').textContent = 'Type "' + expectedText + '" to confirm:';
+    input.value = '';
+    btn.disabled = true;
+    btn.style.opacity = '.4';
+    btn.style.cursor  = 'not-allowed';
+    btn.style.boxShadow = 'none';
+    wrap.style.display = 'block';
+    document.getElementById('global-delete-modal').style.display = 'flex';
+    btn.onclick = function() { closeGlobalDeleteModal(); onConfirm(); };
+    setTimeout(function(){ input.focus(); }, 80);
+}
+function gdmCheckInput() {
+    var val = document.getElementById('gdm-input').value;
+    var btn = document.getElementById('gdm-confirm-btn');
+    var ok  = _gdmExpected && val === _gdmExpected;
+    btn.disabled    = !ok;
+    btn.style.opacity    = ok ? '1'           : '.4';
+    btn.style.cursor     = ok ? 'pointer'     : 'not-allowed';
+    btn.style.boxShadow  = ok ? '0 3px 10px rgba(220,38,38,.35)' : 'none';
+}
+
 function closeGlobalDeleteModal() {
     document.getElementById('global-delete-modal').style.display = 'none';
+    document.getElementById('gdm-input-wrap').style.display = 'none';
+    document.getElementById('gdm-input').value = '';
+    _gdmExpected = null;
     _gdmForm = null;
 }
 
