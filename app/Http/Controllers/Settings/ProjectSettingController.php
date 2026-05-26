@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\Settings\Department;
 use App\Models\Settings\Location;
 use App\Models\Settings\ProjectSetting;
 use Illuminate\Http\Request;
@@ -11,15 +12,17 @@ class ProjectSettingController extends Controller
 {
     public function index()
     {
-        $projects = ProjectSetting::with(['locations' => function ($q) {
-            $q->orderBy('name');
-        }])->orderBy('name')->get();
+        $projects = ProjectSetting::with([
+            'locations'   => fn ($q) => $q->orderBy('name'),
+            'departments' => fn ($q) => $q->orderBy('name'),
+        ])->orderBy('name')->get();
 
         $stats = [
-            'total_projects'   => $projects->count(),
-            'active_projects'  => $projects->where('is_active', true)->count(),
-            'total_locations'  => $projects->sum(fn ($p) => $p->locations->count()),
-            'active_locations' => $projects->sum(fn ($p) => $p->locations->where('is_active', true)->count()),
+            'total_projects'     => $projects->count(),
+            'active_projects'    => $projects->where('is_active', true)->count(),
+            'total_locations'    => $projects->sum(fn ($p) => $p->locations->count()),
+            'active_locations'   => $projects->sum(fn ($p) => $p->locations->where('is_active', true)->count()),
+            'total_departments'  => $projects->sum(fn ($p) => $p->departments->count()),
         ];
 
         return view('settings.projects.index', compact('projects', 'stats'));
@@ -111,6 +114,26 @@ class ProjectSettingController extends Controller
     public function destroyLocation(ProjectSetting $project, Location $location)
     {
         $location->delete();
+        return response()->json(['ok' => true]);
+    }
+
+    public function storeDepartment(Request $request, ProjectSetting $project)
+    {
+        $validated = $request->validate(['name' => 'required|string|max:255']);
+        $dept = $project->departments()->create(['name' => $validated['name'], 'is_active' => true]);
+        return response()->json(['department' => ['id' => $dept->id, 'name' => $dept->name, 'is_active' => $dept->is_active]]);
+    }
+
+    public function updateDepartment(Request $request, ProjectSetting $project, Department $department)
+    {
+        $validated = $request->validate(['name' => 'required|string|max:255']);
+        $department->update(['name' => $validated['name'], 'is_active' => $request->boolean('is_active', true)]);
+        return response()->json(['department' => ['id' => $department->id, 'name' => $department->name, 'is_active' => $department->is_active]]);
+    }
+
+    public function destroyDepartment(ProjectSetting $project, Department $department)
+    {
+        $department->delete();
         return response()->json(['ok' => true]);
     }
 }

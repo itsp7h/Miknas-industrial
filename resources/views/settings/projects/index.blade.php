@@ -8,7 +8,15 @@
     .proj-card { border:1px solid #e2e8f0; border-radius:0.875rem; overflow:hidden; margin-bottom:0.75rem; background:white; }
     .proj-header { display:flex; align-items:center; justify-content:space-between; padding:0.875rem 1.25rem; background:white; }
     .proj-body { display:block; border-top:1px solid #e2e8f0; }
-    .loc-row { display:flex; align-items:flex-start; justify-content:space-between; padding:0.75rem 1.25rem 0.75rem 2.5rem; border-bottom:1px solid #f1f5f9; }
+    .proj-body-inner { display:grid; grid-template-columns:1fr 1fr; }
+    .proj-section { border-right:1px solid #e2e8f0; }
+    .proj-section:last-child { border-right:none; }
+    .proj-section-header { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 1.25rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; }
+    .proj-section-title { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; }
+    .loc-row { display:flex; align-items:flex-start; justify-content:space-between; padding:0.65rem 1rem 0.65rem 1.25rem; border-bottom:1px solid #f1f5f9; }
+    .dept-row { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 1rem 0.6rem 1.25rem; border-bottom:1px solid #f1f5f9; }
+    .dept-edit-row { display:none; padding:0.5rem 1rem; background:#f0f9ff; border-bottom:1px solid #bae6fd; gap:6px; align-items:center; }
+    .dept-edit-row.open { display:flex; }
     .proj-edit-wrap { display:none; padding:0.75rem 1.25rem; background:#f0f9ff; border-bottom:1px solid #bae6fd; align-items:center; gap:8px; }
     .proj-edit-wrap.open { display:flex; }
     .badge-inactive { display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; font-weight:600; background:#fee2e2; color:#dc2626; margin-left:6px; }
@@ -25,13 +33,13 @@
 {{-- Page header --}}
 <div class="mb-5" style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px;">
     <div>
-        <h1 class="page-title">Projects &amp; Locations</h1>
-        <p class="page-subtitle">Manage projects and their physical sub-locations with addresses and GPS coordinates.</p>
+        <h1 class="page-title">Projects, Locations &amp; Departments</h1>
+        <p class="page-subtitle">Manage projects with their sub-locations and departments.</p>
     </div>
 </div>
 
 {{-- Stat boxes --}}
-<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px;">
+<div style="display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:28px;">
     <div class="stat-card" style="border-top:3px solid #3b82f6;">
         <div style="display:flex; align-items:center; gap:12px;">
             <div style="width:40px;height:40px;background:#eff6ff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -65,6 +73,17 @@
             </div>
         </div>
     </div>
+    <div class="stat-card" style="border-top:3px solid #06b6d4;">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:40px;height:40px;background:#ecfeff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="18" height="18" fill="none" stroke="#06b6d4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+            <div>
+                <div style="font-size:28px;font-weight:700;color:#1e293b;line-height:1;">{{ $stats['total_departments'] }}</div>
+                <div style="font-size:12px;color:#64748b;margin-top:3px;">Departments</div>
+            </div>
+        </div>
+    </div>
     <div class="stat-card" style="border-top:3px solid #f59e0b;">
         <div style="display:flex; align-items:center; gap:12px;">
             <div style="width:40px;height:40px;background:#fffbeb;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -93,9 +112,10 @@
     </div>
 </div>
 
-{{-- Build location data map for safe JS passing --}}
+{{-- Build location + department data maps for safe JS passing --}}
 @php
-$allLocsData = [];
+$allLocsData  = [];
+$allDeptsData = [];
 foreach ($projects as $proj) {
     foreach ($proj->locations as $loc) {
         $allLocsData[$loc->id] = [
@@ -107,8 +127,16 @@ foreach ($projects as $proj) {
             'is_active' => $loc->is_active,
         ];
     }
+    foreach ($proj->departments as $dept) {
+        $allDeptsData[$dept->id] = [
+            'id'        => $dept->id,
+            'name'      => $dept->name,
+            'is_active' => $dept->is_active,
+        ];
+    }
 }
-$allLocsJson = json_encode($allLocsData);
+$allLocsJson  = json_encode($allLocsData);
+$allDeptsJson = json_encode($allDeptsData);
 @endphp
 
 {{-- Projects accordion --}}
@@ -151,53 +179,115 @@ $allLocsJson = json_encode($allLocsData);
 
         {{-- Body --}}
         <div class="proj-body" id="proj-body-{{ $project->id }}">
+        <div class="proj-body-inner">
 
-            {{-- Location rows (sorted alphabetically by server) --}}
-            <div id="loc-list-{{ $project->id }}">
-                @forelse($project->locations as $location)
-                <div id="loc-wrap-{{ $location->id }}">
-                    <div class="loc-row" id="loc-row-{{ $location->id }}">
-                        <div style="display:flex; align-items:flex-start; gap:10px; flex:1; min-width:0;">
-                            <svg width="14" height="14" fill="none" stroke="{{ $location->is_active ? '#22c55e' : '#9ca3af' }}" viewBox="0 0 24 24" id="loc-icon-{{ $location->id }}" style="flex-shrink:0; margin-top:3px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                            <div style="flex:1; min-width:0;">
-                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                                    <span id="loc-name-{{ $location->id }}" style="font-size:13px; font-weight:600; color:#1e293b;">{{ $location->name }}</span>
-                                    <span id="loc-inactive-{{ $location->id }}" class="badge-inactive" style="{{ $location->is_active ? 'display:none' : '' }}">Inactive</span>
-                                </div>
-                                <div id="loc-address-{{ $location->id }}" style="font-size:12px; color:#64748b; margin-top:2px;{{ $location->address ? '' : 'display:none;' }}">{{ $location->address }}</div>
-                                <div id="loc-gps-{{ $location->id }}" style="font-size:11px; color:#94a3b8; margin-top:1px; font-family:monospace;{{ ($location->latitude && $location->longitude) ? '' : 'display:none;' }}">
-                                    @if($location->latitude && $location->longitude)
-                                    {{ number_format((float)$location->latitude, 6) }}°,&nbsp;{{ number_format((float)$location->longitude, 6) }}°
-                                    @endif
+            {{-- ── Locations column ── --}}
+            <div class="proj-section">
+                <div class="proj-section-header">
+                    <span class="proj-section-title">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Locations
+                    </span>
+                    <button type="button" onclick="openLocModal(null, {{ $project->id }})"
+                        class="btn-primary" style="padding:3px 10px; font-size:11px;">+ Add</button>
+                </div>
+                <div id="loc-list-{{ $project->id }}">
+                    @forelse($project->locations as $location)
+                    <div id="loc-wrap-{{ $location->id }}">
+                        <div class="loc-row" id="loc-row-{{ $location->id }}">
+                            <div style="display:flex; align-items:flex-start; gap:8px; flex:1; min-width:0;">
+                                <svg width="13" height="13" fill="none" stroke="{{ $location->is_active ? '#22c55e' : '#9ca3af' }}" viewBox="0 0 24 24" id="loc-icon-{{ $location->id }}" style="flex-shrink:0; margin-top:3px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                <div style="flex:1; min-width:0;">
+                                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                        <span id="loc-name-{{ $location->id }}" style="font-size:13px; font-weight:600; color:#1e293b;">{{ $location->name }}</span>
+                                        <span id="loc-inactive-{{ $location->id }}" class="badge-inactive" style="{{ $location->is_active ? 'display:none' : '' }}">Inactive</span>
+                                    </div>
+                                    <div id="loc-address-{{ $location->id }}" style="font-size:12px; color:#64748b; margin-top:2px;{{ $location->address ? '' : 'display:none;' }}">{{ $location->address }}</div>
+                                    <div id="loc-gps-{{ $location->id }}" style="font-size:11px; color:#94a3b8; margin-top:1px; font-family:monospace;{{ ($location->latitude && $location->longitude) ? '' : 'display:none;' }}">
+                                        @if($location->latitude && $location->longitude)
+                                        {{ number_format((float)$location->latitude, 6) }}°,&nbsp;{{ number_format((float)$location->longitude, 6) }}°
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div style="display:flex; gap:4px; flex-shrink:0; margin-top:1px;">
-                            <button type="button" onclick="openLocModal({{ $location->id }}, {{ $project->id }})"
-                                class="btn-secondary btn-sm" style="padding:3px 8px; font-size:12px;">Edit</button>
-                            <button type="button" onclick="deleteLoc({{ $project->id }}, {{ $location->id }}, '{{ addslashes($location->name) }}')"
-                                class="btn-danger btn-sm" style="padding:3px 8px; font-size:12px;">Delete</button>
+                            <div style="display:flex; gap:4px; flex-shrink:0; margin-top:1px;">
+                                <button type="button" onclick="openLocModal({{ $location->id }}, {{ $project->id }})"
+                                    class="btn-secondary btn-sm" style="padding:3px 8px; font-size:12px;">Edit</button>
+                                <button type="button" onclick="deleteLoc({{ $project->id }}, {{ $location->id }}, '{{ addslashes($location->name) }}')"
+                                    class="btn-danger btn-sm" style="padding:3px 8px; font-size:12px;">Delete</button>
+                            </div>
                         </div>
                     </div>
+                    @empty
+                    <div id="loc-empty-{{ $project->id }}" style="padding:14px 1.25rem; color:#9ca3af; font-size:13px;">
+                        No locations yet.
+                    </div>
+                    @endforelse
                 </div>
-                @empty
-                <div id="loc-empty-{{ $project->id }}" style="padding:14px 1.25rem 14px 2.5rem; color:#9ca3af; font-size:13px; border-bottom:1px solid #f1f5f9;">
-                    No locations yet — add the first one below.
-                </div>
-                @endforelse
             </div>
 
-            {{-- Add Location button --}}
-            <div style="padding:0.875rem 1.25rem; background:#f8fafc; border-top:1px solid #e2e8f0;">
-                <button type="button" onclick="openLocModal(null, {{ $project->id }})"
-                    class="btn-primary" style="padding:0.4rem 1rem; font-size:13px;">
-                    + Add Location to {{ $project->name }}
-                </button>
+            {{-- ── Departments column ── --}}
+            <div class="proj-section">
+                <div class="proj-section-header">
+                    <span class="proj-section-title">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Departments
+                    </span>
+                    <button type="button" onclick="openAddDept({{ $project->id }})"
+                        class="btn-primary" style="padding:3px 10px; font-size:11px;">+ Add</button>
+                </div>
+
+                {{-- Inline add row --}}
+                <div class="dept-edit-row" id="dept-add-row-{{ $project->id }}">
+                    <input id="dept-add-name-{{ $project->id }}" type="text" class="form-input" style="flex:1; font-size:12px;" placeholder="Department name…"
+                        onkeydown="if(event.key==='Enter') saveDeptAdd({{ $project->id }}); if(event.key==='Escape') closeAddDept({{ $project->id }})">
+                    <button type="button" onclick="saveDeptAdd({{ $project->id }})" class="btn-primary" style="padding:4px 12px; font-size:12px; white-space:nowrap;">Save</button>
+                    <button type="button" onclick="closeAddDept({{ $project->id }})" class="btn-secondary btn-sm">✕</button>
+                </div>
+
+                <div id="dept-list-{{ $project->id }}">
+                    @forelse($project->departments as $dept)
+                    <div id="dept-wrap-{{ $dept->id }}">
+                        {{-- View row --}}
+                        <div class="dept-row" id="dept-row-{{ $dept->id }}">
+                            <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                                <svg width="13" height="13" fill="none" stroke="{{ $dept->is_active ? '#06b6d4' : '#9ca3af' }}" viewBox="0 0 24 24" id="dept-icon-{{ $dept->id }}" style="flex-shrink:0;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                <span id="dept-name-{{ $dept->id }}" style="font-size:13px; font-weight:600; color:#1e293b;">{{ $dept->name }}</span>
+                                <span id="dept-inactive-{{ $dept->id }}" class="badge-inactive" style="{{ $dept->is_active ? 'display:none' : '' }}">Inactive</span>
+                            </div>
+                            <div style="display:flex; gap:4px; flex-shrink:0;">
+                                <button type="button" onclick="openEditDept({{ $dept->id }}, {{ $project->id }}, '{{ addslashes($dept->name) }}', {{ $dept->is_active ? 'true' : 'false' }})"
+                                    class="btn-secondary btn-sm" style="padding:3px 8px; font-size:12px;">Edit</button>
+                                <button type="button" onclick="deleteDept({{ $project->id }}, {{ $dept->id }}, '{{ addslashes($dept->name) }}')"
+                                    class="btn-danger btn-sm" style="padding:3px 8px; font-size:12px;">Delete</button>
+                            </div>
+                        </div>
+                        {{-- Inline edit row --}}
+                        <div class="dept-edit-row" id="dept-edit-row-{{ $dept->id }}">
+                            <input id="dept-edit-name-{{ $dept->id }}" type="text" class="form-input" style="flex:1; font-size:12px;"
+                                onkeydown="if(event.key==='Enter') saveDeptEdit({{ $dept->id }}, {{ $project->id }}); if(event.key==='Escape') closeEditDept({{ $dept->id }})">
+                            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;white-space:nowrap;cursor:pointer;">
+                                <input type="checkbox" id="dept-edit-active-{{ $dept->id }}" {{ $dept->is_active ? 'checked' : '' }} style="width:13px;height:13px;">
+                                Active
+                            </label>
+                            <button type="button" onclick="saveDeptEdit({{ $dept->id }}, {{ $project->id }})" class="btn-primary" style="padding:4px 12px; font-size:12px; white-space:nowrap;">Save</button>
+                            <button type="button" onclick="closeEditDept({{ $dept->id }})" class="btn-secondary btn-sm">✕</button>
+                        </div>
+                    </div>
+                    @empty
+                    <div id="dept-empty-{{ $project->id }}" style="padding:14px 1.25rem; color:#9ca3af; font-size:13px;">
+                        No departments yet.
+                    </div>
+                    @endforelse
+                </div>
             </div>
 
+        </div>{{-- end proj-body-inner --}}
         </div>{{-- end proj-body --}}
     </div>{{-- end proj-card --}}
 
@@ -305,7 +395,8 @@ var CSRF = document.querySelector('meta[name="csrf-token"]').content;
 var BASE = '{{ url("settings/projects") }}';
 
 // Location data store (keyed by loc ID) — avoids inline JSON in onclick attributes
-var LOC_DATA = {!! $allLocsJson !!};
+var LOC_DATA  = {!! $allLocsJson !!};
+var DEPT_DATA = {!! $allDeptsJson !!};
 
 // ── Core fetch helper ────────────────────────────────────────────────────────
 function api(url, method, data) {
@@ -645,12 +736,147 @@ function buildProjectCard(p) {
         +   '<p id="edit-proj-error-' + p.id + '" class="field-error" style="margin:0;"></p>'
         + '</div>'
         + '<div class="proj-body" id="proj-body-' + p.id + '" style="display:block;">'
-        +   '<div id="loc-list-' + p.id + '">'
-        +     '<div id="loc-empty-' + p.id + '" style="padding:14px 1.25rem 14px 2.5rem;color:#9ca3af;font-size:13px;border-bottom:1px solid #f1f5f9;">No locations yet — add the first one below.</div>'
+        +   '<div class="proj-body-inner">'
+        +     '<div class="proj-section">'
+        +       '<div class="proj-section-header"><span class="proj-section-title">Locations</span>'
+        +       '<button type="button" onclick="openLocModal(null,' + p.id + ')" class="btn-primary" style="padding:3px 10px;font-size:11px;">+ Add</button></div>'
+        +       '<div id="loc-list-' + p.id + '"><div id="loc-empty-' + p.id + '" style="padding:14px 1.25rem;color:#9ca3af;font-size:13px;">No locations yet.</div></div>'
+        +     '</div>'
+        +     '<div class="proj-section">'
+        +       '<div class="proj-section-header"><span class="proj-section-title">Departments</span>'
+        +       '<button type="button" onclick="openAddDept(' + p.id + ')" class="btn-primary" style="padding:3px 10px;font-size:11px;">+ Add</button></div>'
+        +       '<div class="dept-edit-row" id="dept-add-row-' + p.id + '">'
+        +         '<input id="dept-add-name-' + p.id + '" type="text" class="form-input" style="flex:1;font-size:12px;" placeholder="Department name…" onkeydown="if(event.key===\'Enter\') saveDeptAdd(' + p.id + '); if(event.key===\'Escape\') closeAddDept(' + p.id + ')">'
+        +         '<button type="button" onclick="saveDeptAdd(' + p.id + ')" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>'
+        +         '<button type="button" onclick="closeAddDept(' + p.id + ')" class="btn-secondary btn-sm">✕</button>'
+        +       '</div>'
+        +       '<div id="dept-list-' + p.id + '"><div id="dept-empty-' + p.id + '" style="padding:14px 1.25rem;color:#9ca3af;font-size:13px;">No departments yet.</div></div>'
+        +     '</div>'
         +   '</div>'
-        +   '<div style="padding:0.875rem 1.25rem;background:#f8fafc;border-top:1px solid #e2e8f0;">'
-        +     '<button type="button" onclick="openLocModal(null, ' + p.id + ')" class="btn-primary" style="padding:0.4rem 1rem;font-size:13px;">+ Add Location to ' + pName + '</button>'
+        + '</div>'
+        + '</div>';
+}
+
+// ── Department CRUD ───────────────────────────────────────────────────────────
+function openAddDept(projectId) {
+    var row = document.getElementById('dept-add-row-' + projectId);
+    row.classList.add('open');
+    document.getElementById('dept-add-name-' + projectId).value = '';
+    document.getElementById('dept-add-name-' + projectId).focus();
+}
+function closeAddDept(projectId) {
+    document.getElementById('dept-add-row-' + projectId).classList.remove('open');
+}
+function saveDeptAdd(projectId) {
+    var input = document.getElementById('dept-add-name-' + projectId);
+    var name  = input.value.trim();
+    if (!name) { showToast('Department name is required.', 'warn'); return; }
+    api(BASE + '/' + projectId + '/departments', 'POST', { name: name })
+        .then(function(data) {
+            var dept = data.department;
+            DEPT_DATA[dept.id] = dept;
+            closeAddDept(projectId);
+            var emptyEl = document.getElementById('dept-empty-' + projectId);
+            if (emptyEl) emptyEl.remove();
+            var list = document.getElementById('dept-list-' + projectId);
+            var div  = document.createElement('div');
+            div.innerHTML = buildDeptRow(projectId, dept);
+            insertDeptInOrder(projectId, div.firstElementChild);
+            updateDeptCount(projectId);
+            showToast('Department "' + esc(dept.name) + '" added.', 'success');
+        })
+        .catch(function(e) { showToast(firstError(e), 'error'); });
+}
+
+function openEditDept(deptId, projectId, name, isActive) {
+    document.getElementById('dept-row-' + deptId).style.display = 'none';
+    var row = document.getElementById('dept-edit-row-' + deptId);
+    row.classList.add('open');
+    document.getElementById('dept-edit-name-' + deptId).value   = name;
+    document.getElementById('dept-edit-active-' + deptId).checked = isActive;
+    document.getElementById('dept-edit-name-' + deptId).focus();
+}
+function closeEditDept(deptId) {
+    document.getElementById('dept-edit-row-' + deptId).classList.remove('open');
+    document.getElementById('dept-row-' + deptId).style.display = '';
+}
+function saveDeptEdit(deptId, projectId) {
+    var name     = document.getElementById('dept-edit-name-' + deptId).value.trim();
+    var isActive = document.getElementById('dept-edit-active-' + deptId).checked;
+    if (!name) { showToast('Department name is required.', 'warn'); return; }
+    api(BASE + '/' + projectId + '/departments/' + deptId, 'PATCH', { name: name, is_active: isActive ? 1 : 0 })
+        .then(function(data) {
+            var dept = data.department;
+            DEPT_DATA[dept.id] = dept;
+            closeEditDept(deptId);
+            document.getElementById('dept-name-' + deptId).textContent = dept.name;
+            var badge = document.getElementById('dept-inactive-' + deptId);
+            if (badge) badge.style.display = dept.is_active ? 'none' : '';
+            var icon = document.getElementById('dept-icon-' + deptId);
+            if (icon) icon.setAttribute('stroke', dept.is_active ? '#06b6d4' : '#9ca3af');
+            showToast('Department updated.', 'success');
+        })
+        .catch(function(e) { showToast(firstError(e), 'error'); });
+}
+function deleteDept(projectId, deptId, name) {
+    confirmAction('Delete Department', 'Delete "' + name + '"?', function() {
+        api(BASE + '/' + projectId + '/departments/' + deptId, 'DELETE')
+            .then(function() {
+                delete DEPT_DATA[deptId];
+                var wrap = document.getElementById('dept-wrap-' + deptId);
+                if (wrap) wrap.remove();
+                updateDeptCount(projectId);
+                var list = document.getElementById('dept-list-' + projectId);
+                if (list && !list.querySelector('[id^="dept-wrap-"]')) {
+                    list.innerHTML = '<div id="dept-empty-' + projectId + '" style="padding:14px 1.25rem;color:#9ca3af;font-size:13px;">No departments yet.</div>';
+                }
+                showToast('Department "' + esc(name) + '" deleted.', 'success');
+            })
+            .catch(function(e) { showToast(firstError(e), 'error'); });
+    });
+}
+
+function updateDeptCount(projectId) {
+    var list  = document.getElementById('dept-list-' + projectId);
+    var count = list ? list.querySelectorAll('[id^="dept-wrap-"]').length : 0;
+    var el    = document.getElementById('proj-dept-count-' + projectId);
+    if (el) el.textContent = count + ' ' + (count === 1 ? 'dept' : 'depts');
+}
+
+function insertDeptInOrder(projectId, newWrapEl) {
+    var list    = document.getElementById('dept-list-' + projectId);
+    var newName = (newWrapEl.querySelector('[id^="dept-name-"]').textContent || '').trim().toLowerCase();
+    var wraps   = list.querySelectorAll('[id^="dept-wrap-"]');
+    var inserted = false;
+    for (var i = 0; i < wraps.length; i++) {
+        var nameEl = wraps[i].querySelector('[id^="dept-name-"]');
+        if (nameEl && newName < nameEl.textContent.trim().toLowerCase()) {
+            list.insertBefore(newWrapEl, wraps[i]);
+            inserted = true; break;
+        }
+    }
+    if (!inserted) list.appendChild(newWrapEl);
+}
+
+function buildDeptRow(projectId, dept) {
+    var safeName = (dept.name || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div id="dept-wrap-' + dept.id + '">'
+        + '<div class="dept-row" id="dept-row-' + dept.id + '">'
+        +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
+        +     '<svg width="13" height="13" fill="none" stroke="#06b6d4" viewBox="0 0 24 24" id="dept-icon-' + dept.id + '" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>'
+        +     '<span id="dept-name-' + dept.id + '" style="font-size:13px;font-weight:600;color:#1e293b;">' + esc(dept.name) + '</span>'
+        +     '<span id="dept-inactive-' + dept.id + '" class="badge-inactive" style="display:none;">Inactive</span>'
         +   '</div>'
+        +   '<div style="display:flex;gap:4px;flex-shrink:0;">'
+        +     '<button type="button" onclick="openEditDept(' + dept.id + ',' + projectId + ',\'' + safeName + '\',true)" class="btn-secondary btn-sm" style="padding:3px 8px;font-size:12px;">Edit</button>'
+        +     '<button type="button" onclick="deleteDept(' + projectId + ',' + dept.id + ',\'' + safeName + '\')" class="btn-danger btn-sm" style="padding:3px 8px;font-size:12px;">Delete</button>'
+        +   '</div>'
+        + '</div>'
+        + '<div class="dept-edit-row" id="dept-edit-row-' + dept.id + '">'
+        +   '<input id="dept-edit-name-' + dept.id + '" type="text" class="form-input" style="flex:1;font-size:12px;" onkeydown="if(event.key===\'Enter\') saveDeptEdit(' + dept.id + ',' + projectId + '); if(event.key===\'Escape\') closeEditDept(' + dept.id + ')">'
+        +   '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="dept-edit-active-' + dept.id + '" checked style="width:13px;height:13px;"> Active</label>'
+        +   '<button type="button" onclick="saveDeptEdit(' + dept.id + ',' + projectId + ')" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>'
+        +   '<button type="button" onclick="closeEditDept(' + dept.id + ')" class="btn-secondary btn-sm">✕</button>'
         + '</div>'
         + '</div>';
 }
