@@ -13,13 +13,15 @@
     {{-- Pill tabs --}}
     <div style="display:flex;gap:8px;margin-bottom:20px;">
         <button type="button" @click="tab='whatsapp'"
-            :style="tab==='whatsapp' ? 'background:#1e293b;color:#fff;border:1px solid transparent;' : 'background:#fff;color:#374151;border:1px solid #d1d5db;'"
-            style="padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
+            :style="tab==='whatsapp'
+                ? 'padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#1e293b;color:#fff;border:1px solid transparent;'
+                : 'padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:#374151;border:1px solid #d1d5db;'">
             💬 WhatsApp
         </button>
         <button type="button" @click="tab='email'; loadMailAccounts()"
-            :style="tab==='email' ? 'background:#1e293b;color:#fff;border:1px solid transparent;' : 'background:#fff;color:#374151;border:1px solid #d1d5db;'"
-            style="padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
+            :style="tab==='email'
+                ? 'padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#1e293b;color:#fff;border:1px solid transparent;'
+                : 'padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:#374151;border:1px solid #d1d5db;'">
             ✉️ Email
         </button>
     </div>
