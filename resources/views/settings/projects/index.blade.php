@@ -213,6 +213,11 @@ $allDeptsJson = json_encode($allDeptsData);
             {{-- Project edit strip --}}
             <div class="proj-edit-wrap" id="proj-edit-{{ $project->id }}">
                 <input id="edit-proj-name-{{ $project->id }}" type="text" class="form-input" style="flex:1;font-size:13px;">
+                <select id="edit-proj-company-{{ $project->id }}" class="form-input" style="font-size:13px;width:auto;min-width:130px;">
+                    @foreach($companies as $c)
+                    <option value="{{ $c->id }}" {{ $project->company_id == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                    @endforeach
+                </select>
                 <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;white-space:nowrap;cursor:pointer;">
                     <input type="checkbox" id="edit-proj-active-{{ $project->id }}" {{ $project->is_active ? 'checked' : '' }} style="width:14px;height:14px;">
                     Active
@@ -411,6 +416,7 @@ $allDeptsJson = json_encode($allDeptsData);
 <script>
 var CSRF = document.querySelector('meta[name="csrf-token"]').content;
 var BASE = '{{ url("settings/projects") }}';
+var COMPANIES = {!! json_encode($companies->map(fn($c) => ['id' => $c->id, 'name' => $c->name])->values()) !!};
 
 // Location data store (keyed by loc ID) — avoids inline JSON in onclick attributes
 var LOC_DATA  = {!! $allLocsJson !!};
@@ -735,12 +741,16 @@ function openEditProject(id, name, isActive) {
 function closeEditProject(id) { document.getElementById('proj-edit-' + id).classList.remove('open'); }
 
 function saveProject(id) {
-    var name     = document.getElementById('edit-proj-name-' + id).value.trim();
-    var isActive = document.getElementById('edit-proj-active-' + id).checked;
-    var errEl    = document.getElementById('edit-proj-error-' + id);
+    var name      = document.getElementById('edit-proj-name-' + id).value.trim();
+    var isActive  = document.getElementById('edit-proj-active-' + id).checked;
+    var companyEl = document.getElementById('edit-proj-company-' + id);
+    var companyId = companyEl ? parseInt(companyEl.value) : null;
+    var errEl     = document.getElementById('edit-proj-error-' + id);
     errEl.style.display = 'none';
     if (!name) { errEl.textContent = 'Name is required.'; errEl.style.display = 'block'; return; }
-    api(BASE + '/' + id, 'PATCH', { name: name, is_active: isActive ? 1 : 0 })
+    var payload = { name: name, is_active: isActive ? 1 : 0 };
+    if (companyId) payload.company_id = companyId;
+    api(BASE + '/' + id, 'PATCH', payload)
         .then(function(data) {
             var p = data.project;
             closeEditProject(id);
@@ -749,6 +759,26 @@ function saveProject(id) {
             if (badge) badge.style.display = p.is_active ? 'none' : '';
             var icon = document.getElementById('proj-icon-' + id);
             if (icon) icon.setAttribute('stroke', p.is_active ? '#2563eb' : '#9ca3af');
+
+            // Move card to new company if company changed
+            var card     = document.getElementById('proj-card-' + id);
+            var oldList  = card ? card.closest('[id^="proj-list-"]') : null;
+            var oldCoId  = oldList ? parseInt(oldList.id.replace('proj-list-', '')) : null;
+            if (card && p.company_id && p.company_id !== oldCoId) {
+                var newList = document.getElementById('proj-list-' + p.company_id);
+                if (newList) {
+                    var noMsg = document.getElementById('no-proj-msg-' + p.company_id);
+                    if (noMsg) noMsg.remove();
+                    newList.appendChild(card);
+                    if (oldList && !oldList.querySelector('[id^="proj-card-"]')) {
+                        oldList.innerHTML = '<div id="no-proj-msg-' + oldCoId + '" style="padding:1.5rem;text-align:center;color:#9ca3af;font-size:13px;">No projects yet — click &quot;+ Add Project&quot; above.</div>';
+                    }
+                    if (oldCoId) updateCompanyProjCount(oldCoId);
+                    updateCompanyProjCount(p.company_id);
+                    // Update the select to reflect new company
+                    if (companyEl) companyEl.value = p.company_id;
+                }
+            }
             showToast('Project updated.', 'success');
         })
         .catch(function(e) { errEl.textContent = firstError(e); errEl.style.display = 'block'; });
@@ -831,6 +861,9 @@ function buildCompanyCard(c) {
 function buildProjectCard(p, companyId) {
     var pName   = esc(p.name);
     var rawName = (p.name || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var selectHtml = '<select id="edit-proj-company-' + p.id + '" class="form-input" style="font-size:13px;width:auto;min-width:130px;">';
+    COMPANIES.forEach(function(c) { selectHtml += '<option value="' + c.id + '"' + (c.id == companyId ? ' selected' : '') + '>' + esc(c.name) + '</option>'; });
+    selectHtml += '</select>';
     return '<div id="proj-card-' + p.id + '" style="border-bottom:1px solid #e2e8f0;">'
         + '<div class="proj-header" style="background:#fafafa;border-bottom:1px solid #f1f5f9;">'
         +   '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">'
@@ -845,6 +878,7 @@ function buildProjectCard(p, companyId) {
         + '</div>'
         + '<div class="proj-edit-wrap" id="proj-edit-' + p.id + '">'
         +   '<input id="edit-proj-name-' + p.id + '" type="text" class="form-input" style="flex:1;font-size:13px;">'
+        +   selectHtml
         +   '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="edit-proj-active-' + p.id + '" checked style="width:14px;height:14px;"> Active</label>'
         +   '<button type="button" onclick="saveProject(' + p.id + ')" class="btn-primary" style="padding:5px 14px;font-size:12px;white-space:nowrap;">Save</button>'
         +   '<button type="button" onclick="closeEditProject(' + p.id + ')" class="btn-secondary btn-sm">Cancel</button>'

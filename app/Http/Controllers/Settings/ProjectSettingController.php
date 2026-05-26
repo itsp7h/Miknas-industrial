@@ -70,16 +70,19 @@ class ProjectSettingController extends Controller
     public function update(Request $request, ProjectSetting $project)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:settings_projects,name,' . $project->id,
+            'name'       => 'required|string|max:255|unique:settings_projects,name,' . $project->id,
+            'company_id' => 'nullable|exists:settings_companies,id',
         ]);
         $project->update([
-            'name'      => $validated['name'],
-            'is_active' => $request->boolean('is_active', true),
+            'name'       => $validated['name'],
+            'company_id' => $validated['company_id'] ?? $project->company_id,
+            'is_active'  => $request->boolean('is_active', true),
         ]);
         return response()->json(['project' => [
-            'id'        => $project->id,
-            'name'      => $project->name,
-            'is_active' => $project->is_active,
+            'id'         => $project->id,
+            'name'       => $project->name,
+            'is_active'  => $project->is_active,
+            'company_id' => $project->company_id,
         ]]);
     }
 
