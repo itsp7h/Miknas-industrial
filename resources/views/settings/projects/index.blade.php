@@ -117,6 +117,14 @@
 $allLocsData  = [];
 $allDeptsData = [];
 foreach ($companies as $company) {
+    foreach ($company->departments as $dept) {
+        $allDeptsData[$dept->id] = [
+            'id'         => $dept->id,
+            'name'       => $dept->name,
+            'is_active'  => $dept->is_active,
+            'company_id' => $dept->company_id,
+        ];
+    }
     foreach ($company->projects as $proj) {
         foreach ($proj->locations as $loc) {
             $allLocsData[$loc->id] = [
@@ -126,13 +134,6 @@ foreach ($companies as $company) {
                 'latitude'  => $loc->latitude,
                 'longitude' => $loc->longitude,
                 'is_active' => $loc->is_active,
-            ];
-        }
-        foreach ($proj->departments as $dept) {
-            $allDeptsData[$dept->id] = [
-                'id'        => $dept->id,
-                'name'      => $dept->name,
-                'is_active' => $dept->is_active,
             ];
         }
     }
@@ -154,10 +155,13 @@ $allDeptsJson = json_encode($allDeptsData);
             <span id="company-name-{{ $company->id }}" style="font-size:15px;font-weight:700;color:#3730a3;">{{ $company->name }}</span>
             <span id="company-inactive-{{ $company->id }}" class="badge-inactive" style="{{ $company->is_active ? 'display:none' : '' }}">Inactive</span>
             <span id="company-proj-count-{{ $company->id }}" style="font-size:12px;color:#6366f1;opacity:.7;">{{ $company->projects->count() }} {{ Str::plural('project', $company->projects->count()) }}</span>
+            <span id="company-dept-count-{{ $company->id }}" style="font-size:12px;color:#7c3aed;opacity:.7;">· {{ $company->departments->count() }} {{ Str::plural('dept', $company->departments->count()) }}</span>
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
+            <button type="button" onclick="openAddCoDept({{ $company->id }})"
+                class="btn-secondary btn-sm" style="border-color:#a78bfa;color:#6d28d9;">+ Dept</button>
             <button type="button" onclick="openAddProject({{ $company->id }})"
-                class="btn-primary" style="padding:4px 12px;font-size:12px;">+ Add Project</button>
+                class="btn-primary" style="padding:4px 12px;font-size:12px;">+ Project</button>
             <button type="button" onclick="openEditCompany({{ $company->id }}, '{{ addslashes($company->name) }}', {{ $company->is_active ? 'true' : 'false' }})"
                 class="btn-secondary btn-sm">Edit</button>
             <button type="button" onclick="deleteCompany({{ $company->id }}, '{{ addslashes($company->name) }}')"
@@ -184,6 +188,49 @@ $allDeptsJson = json_encode($allDeptsData);
         <button type="button" onclick="saveAddProject({{ $company->id }})" class="btn-primary" style="padding:5px 14px;font-size:12px;white-space:nowrap;">Save</button>
         <button type="button" onclick="closeAddProject({{ $company->id }})" class="btn-secondary btn-sm">Cancel</button>
         <p id="add-proj-error-{{ $company->id }}" class="field-error" style="margin:0;"></p>
+    </div>
+
+    {{-- Departments section --}}
+    <div style="border:1px solid #c7d2fe;border-top:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 1.25rem;background:#f5f3ff;border-bottom:1px solid #ede9fe;">
+            <span style="font-size:11px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:.05em;">Departments</span>
+        </div>
+        {{-- Add dept inline row --}}
+        <div class="dept-edit-row" id="co-dept-add-row-{{ $company->id }}">
+            <input id="co-dept-add-name-{{ $company->id }}" type="text" class="form-input" style="flex:1;font-size:12px;" placeholder="Department name…"
+                onkeydown="if(event.key==='Enter') saveCoDeptAdd({{ $company->id }}); if(event.key==='Escape') closeAddCoDept({{ $company->id }})">
+            <button type="button" onclick="saveCoDeptAdd({{ $company->id }})" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>
+            <button type="button" onclick="closeAddCoDept({{ $company->id }})" class="btn-secondary btn-sm">✕</button>
+        </div>
+        <div id="co-dept-list-{{ $company->id }}">
+            @forelse($company->departments as $dept)
+            <div id="co-dept-wrap-{{ $dept->id }}">
+                <div class="dept-row" id="co-dept-row-{{ $dept->id }}">
+                    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                        <svg width="13" height="13" fill="none" stroke="{{ $dept->is_active ? '#7c3aed' : '#9ca3af' }}" viewBox="0 0 24 24" id="co-dept-icon-{{ $dept->id }}" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span id="co-dept-name-{{ $dept->id }}" style="font-size:13px;font-weight:600;color:#1e293b;">{{ $dept->name }}</span>
+                        <span id="co-dept-inactive-{{ $dept->id }}" class="badge-inactive" style="{{ $dept->is_active ? 'display:none' : '' }}">Inactive</span>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-shrink:0;">
+                        <button type="button" onclick="openEditCoDept({{ $dept->id }}, {{ $company->id }}, '{{ addslashes($dept->name) }}', {{ $dept->is_active ? 'true' : 'false' }})" class="btn-secondary btn-sm" style="padding:3px 8px;font-size:12px;">Edit</button>
+                        <button type="button" onclick="deleteCoDept({{ $company->id }}, {{ $dept->id }}, '{{ addslashes($dept->name) }}')" class="btn-danger btn-sm" style="padding:3px 8px;font-size:12px;">Delete</button>
+                    </div>
+                </div>
+                <div class="dept-edit-row" id="co-dept-edit-row-{{ $dept->id }}">
+                    <input id="co-dept-edit-name-{{ $dept->id }}" type="text" class="form-input" style="flex:1;font-size:12px;"
+                        onkeydown="if(event.key==='Enter') saveEditCoDept({{ $dept->id }}, {{ $company->id }}); if(event.key==='Escape') closeEditCoDept({{ $dept->id }})">
+                    <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;white-space:nowrap;cursor:pointer;">
+                        <input type="checkbox" id="co-dept-edit-active-{{ $dept->id }}" {{ $dept->is_active ? 'checked' : '' }} style="width:13px;height:13px;">
+                        Active
+                    </label>
+                    <button type="button" onclick="saveEditCoDept({{ $dept->id }}, {{ $company->id }})" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>
+                    <button type="button" onclick="closeEditCoDept({{ $dept->id }})" class="btn-secondary btn-sm">✕</button>
+                </div>
+            </div>
+            @empty
+            <div id="co-dept-empty-{{ $company->id }}" style="padding:10px 1.25rem;color:#9ca3af;font-size:13px;">No departments yet.</div>
+            @endforelse
+        </div>
     </div>
 
     {{-- Projects container --}}
@@ -227,11 +274,9 @@ $allDeptsJson = json_encode($allDeptsData);
                 <p id="edit-proj-error-{{ $project->id }}" class="field-error" style="margin:0;"></p>
             </div>
 
-            {{-- Project body: Locations + Departments --}}
+            {{-- Project body: Locations --}}
             <div class="proj-body" id="proj-body-{{ $project->id }}">
-            <div class="proj-body-inner">
-                {{-- Locations --}}
-                <div class="proj-section">
+                <div class="proj-section" style="border-right:none;">
                     <div class="proj-section-header">
                         <span class="proj-section-title">Locations</span>
                         <button type="button" onclick="openLocModal(null, {{ $project->id }})" class="btn-primary" style="padding:3px 10px;font-size:11px;">+ Add</button>
@@ -264,49 +309,6 @@ $allDeptsJson = json_encode($allDeptsData);
                         @endforelse
                     </div>
                 </div>
-                {{-- Departments --}}
-                <div class="proj-section">
-                    <div class="proj-section-header">
-                        <span class="proj-section-title">Departments</span>
-                        <button type="button" onclick="openAddDept({{ $project->id }})" class="btn-primary" style="padding:3px 10px;font-size:11px;">+ Add</button>
-                    </div>
-                    <div class="dept-edit-row" id="dept-add-row-{{ $project->id }}">
-                        <input id="dept-add-name-{{ $project->id }}" type="text" class="form-input" style="flex:1;font-size:12px;" placeholder="Department name…"
-                            onkeydown="if(event.key==='Enter') saveDeptAdd({{ $project->id }}); if(event.key==='Escape') closeAddDept({{ $project->id }})">
-                        <button type="button" onclick="saveDeptAdd({{ $project->id }})" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>
-                        <button type="button" onclick="closeAddDept({{ $project->id }})" class="btn-secondary btn-sm">✕</button>
-                    </div>
-                    <div id="dept-list-{{ $project->id }}">
-                        @forelse($project->departments as $dept)
-                        <div id="dept-wrap-{{ $dept->id }}">
-                            <div class="dept-row" id="dept-row-{{ $dept->id }}">
-                                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-                                    <svg width="13" height="13" fill="none" stroke="{{ $dept->is_active ? '#06b6d4' : '#9ca3af' }}" viewBox="0 0 24 24" id="dept-icon-{{ $dept->id }}" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    <span id="dept-name-{{ $dept->id }}" style="font-size:13px;font-weight:600;color:#1e293b;">{{ $dept->name }}</span>
-                                    <span id="dept-inactive-{{ $dept->id }}" class="badge-inactive" style="{{ $dept->is_active ? 'display:none' : '' }}">Inactive</span>
-                                </div>
-                                <div style="display:flex;gap:4px;flex-shrink:0;">
-                                    <button type="button" onclick="openEditDept({{ $dept->id }}, {{ $project->id }}, '{{ addslashes($dept->name) }}', {{ $dept->is_active ? 'true' : 'false' }})" class="btn-secondary btn-sm" style="padding:3px 8px;font-size:12px;">Edit</button>
-                                    <button type="button" onclick="deleteDept({{ $project->id }}, {{ $dept->id }}, '{{ addslashes($dept->name) }}')" class="btn-danger btn-sm" style="padding:3px 8px;font-size:12px;">Delete</button>
-                                </div>
-                            </div>
-                            <div class="dept-edit-row" id="dept-edit-row-{{ $dept->id }}">
-                                <input id="dept-edit-name-{{ $dept->id }}" type="text" class="form-input" style="flex:1;font-size:12px;"
-                                    onkeydown="if(event.key==='Enter') saveDeptEdit({{ $dept->id }}, {{ $project->id }}); if(event.key==='Escape') closeEditDept({{ $dept->id }})">
-                                <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;white-space:nowrap;cursor:pointer;">
-                                    <input type="checkbox" id="dept-edit-active-{{ $dept->id }}" {{ $dept->is_active ? 'checked' : '' }} style="width:13px;height:13px;">
-                                    Active
-                                </label>
-                                <button type="button" onclick="saveDeptEdit({{ $dept->id }}, {{ $project->id }})" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>
-                                <button type="button" onclick="closeEditDept({{ $dept->id }})" class="btn-secondary btn-sm">✕</button>
-                            </div>
-                        </div>
-                        @empty
-                        <div id="dept-empty-{{ $project->id }}" style="padding:12px 1.25rem;color:#9ca3af;font-size:13px;">No departments yet.</div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>{{-- end proj-body-inner --}}
             </div>{{-- end proj-body --}}
         </div>{{-- end proj-card --}}
         @empty
@@ -832,9 +834,11 @@ function buildCompanyCard(c) {
         +     '<span id="company-name-' + c.id + '" style="font-size:15px;font-weight:700;color:#3730a3;">' + cName + '</span>'
         +     '<span id="company-inactive-' + c.id + '" class="badge-inactive" style="display:none;">Inactive</span>'
         +     '<span id="company-proj-count-' + c.id + '" style="font-size:12px;color:#6366f1;opacity:.7;">0 projects</span>'
+        +     '<span id="company-dept-count-' + c.id + '" style="font-size:12px;color:#7c3aed;opacity:.7;">· 0 depts</span>'
         +   '</div>'
         +   '<div style="display:flex;gap:6px;align-items:center;">'
-        +     '<button type="button" onclick="openAddProject(' + c.id + ')" class="btn-primary" style="padding:4px 12px;font-size:12px;">+ Add Project</button>'
+        +     '<button type="button" onclick="openAddCoDept(' + c.id + ')" class="btn-secondary btn-sm" style="border-color:#a78bfa;color:#6d28d9;">+ Dept</button>'
+        +     '<button type="button" onclick="openAddProject(' + c.id + ')" class="btn-primary" style="padding:4px 12px;font-size:12px;">+ Project</button>'
         +     '<button type="button" onclick="openEditCompany(' + c.id + ', \'' + rawName + '\', true)" class="btn-secondary btn-sm">Edit</button>'
         +     '<button type="button" onclick="deleteCompany(' + c.id + ', \'' + rawName + '\')" class="btn-danger btn-sm">Delete</button>'
         +   '</div>'
@@ -845,6 +849,17 @@ function buildCompanyCard(c) {
         +   '<button type="button" onclick="saveCompany(' + c.id + ')" class="btn-primary" style="padding:5px 14px;font-size:12px;white-space:nowrap;">Save</button>'
         +   '<button type="button" onclick="closeEditCompany(' + c.id + ')" class="btn-secondary btn-sm">Cancel</button>'
         +   '<p id="edit-company-error-' + c.id + '" class="field-error" style="margin:0;"></p>'
+        + '</div>'
+        + '<div style="border:1px solid #c7d2fe;border-top:none;">'
+        +   '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 1.25rem;background:#f5f3ff;border-bottom:1px solid #ede9fe;">'
+        +     '<span style="font-size:11px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:.05em;">Departments</span>'
+        +   '</div>'
+        +   '<div class="dept-edit-row" id="co-dept-add-row-' + c.id + '">'
+        +     '<input id="co-dept-add-name-' + c.id + '" type="text" class="form-input" style="flex:1;font-size:12px;" placeholder="Department name…" onkeydown="if(event.key===\'Enter\') saveCoDeptAdd(' + c.id + '); if(event.key===\'Escape\') closeAddCoDept(' + c.id + ')">'
+        +     '<button type="button" onclick="saveCoDeptAdd(' + c.id + ')" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>'
+        +     '<button type="button" onclick="closeAddCoDept(' + c.id + ')" class="btn-secondary btn-sm">✕</button>'
+        +   '</div>'
+        +   '<div id="co-dept-list-' + c.id + '"><div id="co-dept-empty-' + c.id + '" style="padding:10px 1.25rem;color:#9ca3af;font-size:13px;">No departments yet.</div></div>'
         + '</div>'
         + '<div class="proj-edit-wrap" id="add-proj-strip-' + c.id + '" style="border-radius:0;border-left:1px solid #c7d2fe;border-right:1px solid #c7d2fe;background:#f0fdf4;border-color:#bbf7d0;">'
         +   '<input id="add-proj-name-' + c.id + '" type="text" class="form-input" style="flex:1;font-size:13px;" placeholder="New project name…" onkeydown="if(event.key===\'Enter\') saveAddProject(' + c.id + '); if(event.key===\'Escape\') closeAddProject(' + c.id + ')">'
@@ -885,22 +900,10 @@ function buildProjectCard(p, companyId) {
         +   '<p id="edit-proj-error-' + p.id + '" class="field-error" style="margin:0;"></p>'
         + '</div>'
         + '<div class="proj-body" id="proj-body-' + p.id + '">'
-        +   '<div class="proj-body-inner">'
-        +     '<div class="proj-section">'
-        +       '<div class="proj-section-header"><span class="proj-section-title">Locations</span>'
-        +       '<button type="button" onclick="openLocModal(null,' + p.id + ')" class="btn-primary" style="padding:3px 10px;font-size:11px;">+ Add</button></div>'
-        +       '<div id="loc-list-' + p.id + '"><div id="loc-empty-' + p.id + '" style="padding:12px 1.25rem;color:#9ca3af;font-size:13px;">No locations yet.</div></div>'
-        +     '</div>'
-        +     '<div class="proj-section">'
-        +       '<div class="proj-section-header"><span class="proj-section-title">Departments</span>'
-        +       '<button type="button" onclick="openAddDept(' + p.id + ')" class="btn-primary" style="padding:3px 10px;font-size:11px;">+ Add</button></div>'
-        +       '<div class="dept-edit-row" id="dept-add-row-' + p.id + '">'
-        +         '<input id="dept-add-name-' + p.id + '" type="text" class="form-input" style="flex:1;font-size:12px;" placeholder="Department name…" onkeydown="if(event.key===\'Enter\') saveDeptAdd(' + p.id + '); if(event.key===\'Escape\') closeAddDept(' + p.id + ')">'
-        +         '<button type="button" onclick="saveDeptAdd(' + p.id + ')" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>'
-        +         '<button type="button" onclick="closeAddDept(' + p.id + ')" class="btn-secondary btn-sm">✕</button>'
-        +       '</div>'
-        +       '<div id="dept-list-' + p.id + '"><div id="dept-empty-' + p.id + '" style="padding:12px 1.25rem;color:#9ca3af;font-size:13px;">No departments yet.</div></div>'
-        +     '</div>'
+        +   '<div class="proj-section" style="border-right:none;">'
+        +     '<div class="proj-section-header"><span class="proj-section-title">Locations</span>'
+        +     '<button type="button" onclick="openLocModal(null,' + p.id + ')" class="btn-primary" style="padding:3px 10px;font-size:11px;">+ Add</button></div>'
+        +     '<div id="loc-list-' + p.id + '"><div id="loc-empty-' + p.id + '" style="padding:12px 1.25rem;color:#9ca3af;font-size:13px;">No locations yet.</div></div>'
         +   '</div>'
         + '</div>'
         + '</div>';
@@ -949,78 +952,80 @@ function insertLocInOrder(projectId, newWrapEl) {
     if (!inserted) list.appendChild(newWrapEl);
 }
 
-// ── Department CRUD ───────────────────────────────────────────────────────────
-function openAddDept(projectId) {
-    var row = document.getElementById('dept-add-row-' + projectId);
+// ── Company Department CRUD ───────────────────────────────────────────────────
+var CO_DEPT_BASE = BASE + '/companies';
+
+function openAddCoDept(companyId) {
+    var row = document.getElementById('co-dept-add-row-' + companyId);
     row.classList.add('open');
-    document.getElementById('dept-add-name-' + projectId).value = '';
-    document.getElementById('dept-add-name-' + projectId).focus();
+    document.getElementById('co-dept-add-name-' + companyId).value = '';
+    document.getElementById('co-dept-add-name-' + companyId).focus();
 }
-function closeAddDept(projectId) {
-    document.getElementById('dept-add-row-' + projectId).classList.remove('open');
+function closeAddCoDept(companyId) {
+    document.getElementById('co-dept-add-row-' + companyId).classList.remove('open');
 }
-function saveDeptAdd(projectId) {
-    var input = document.getElementById('dept-add-name-' + projectId);
+function saveCoDeptAdd(companyId) {
+    var input = document.getElementById('co-dept-add-name-' + companyId);
     var name  = input.value.trim();
     if (!name) { showToast('Department name is required.', 'warn'); return; }
-    api(BASE + '/' + projectId + '/departments', 'POST', { name: name })
+    api(CO_DEPT_BASE + '/' + companyId + '/departments', 'POST', { name: name })
         .then(function(data) {
             var dept = data.department;
             DEPT_DATA[dept.id] = dept;
-            closeAddDept(projectId);
-            var emptyEl = document.getElementById('dept-empty-' + projectId);
+            closeAddCoDept(companyId);
+            var emptyEl = document.getElementById('co-dept-empty-' + companyId);
             if (emptyEl) emptyEl.remove();
-            var list = document.getElementById('dept-list-' + projectId);
+            var list = document.getElementById('co-dept-list-' + companyId);
             var div  = document.createElement('div');
-            div.innerHTML = buildDeptRow(projectId, dept);
-            insertDeptInOrder(projectId, div.firstElementChild);
-            updateDeptCount(projectId);
+            div.innerHTML = buildCoDeptRow(companyId, dept);
+            insertCoDeptInOrder(companyId, div.firstElementChild);
+            updateCoDeptCount(companyId);
             showToast('Department "' + esc(dept.name) + '" added.', 'success');
         })
         .catch(function(e) { showToast(firstError(e), 'error'); });
 }
 
-function openEditDept(deptId, projectId, name, isActive) {
-    document.getElementById('dept-row-' + deptId).style.display = 'none';
-    var row = document.getElementById('dept-edit-row-' + deptId);
+function openEditCoDept(deptId, companyId, name, isActive) {
+    document.getElementById('co-dept-row-' + deptId).style.display = 'none';
+    var row = document.getElementById('co-dept-edit-row-' + deptId);
     row.classList.add('open');
-    document.getElementById('dept-edit-name-' + deptId).value   = name;
-    document.getElementById('dept-edit-active-' + deptId).checked = isActive;
-    document.getElementById('dept-edit-name-' + deptId).focus();
+    document.getElementById('co-dept-edit-name-' + deptId).value    = name;
+    document.getElementById('co-dept-edit-active-' + deptId).checked = isActive;
+    document.getElementById('co-dept-edit-name-' + deptId).focus();
 }
-function closeEditDept(deptId) {
-    document.getElementById('dept-edit-row-' + deptId).classList.remove('open');
-    document.getElementById('dept-row-' + deptId).style.display = '';
+function closeEditCoDept(deptId) {
+    document.getElementById('co-dept-edit-row-' + deptId).classList.remove('open');
+    document.getElementById('co-dept-row-' + deptId).style.display = '';
 }
-function saveDeptEdit(deptId, projectId) {
-    var name     = document.getElementById('dept-edit-name-' + deptId).value.trim();
-    var isActive = document.getElementById('dept-edit-active-' + deptId).checked;
+function saveEditCoDept(deptId, companyId) {
+    var name     = document.getElementById('co-dept-edit-name-' + deptId).value.trim();
+    var isActive = document.getElementById('co-dept-edit-active-' + deptId).checked;
     if (!name) { showToast('Department name is required.', 'warn'); return; }
-    api(BASE + '/' + projectId + '/departments/' + deptId, 'PATCH', { name: name, is_active: isActive ? 1 : 0 })
+    api(CO_DEPT_BASE + '/' + companyId + '/departments/' + deptId, 'PATCH', { name: name, is_active: isActive ? 1 : 0 })
         .then(function(data) {
             var dept = data.department;
             DEPT_DATA[dept.id] = dept;
-            closeEditDept(deptId);
-            document.getElementById('dept-name-' + deptId).textContent = dept.name;
-            var badge = document.getElementById('dept-inactive-' + deptId);
+            closeEditCoDept(deptId);
+            document.getElementById('co-dept-name-' + deptId).textContent = dept.name;
+            var badge = document.getElementById('co-dept-inactive-' + deptId);
             if (badge) badge.style.display = dept.is_active ? 'none' : '';
-            var icon = document.getElementById('dept-icon-' + deptId);
-            if (icon) icon.setAttribute('stroke', dept.is_active ? '#06b6d4' : '#9ca3af');
+            var icon = document.getElementById('co-dept-icon-' + deptId);
+            if (icon) icon.setAttribute('stroke', dept.is_active ? '#7c3aed' : '#9ca3af');
             showToast('Department updated.', 'success');
         })
         .catch(function(e) { showToast(firstError(e), 'error'); });
 }
-function deleteDept(projectId, deptId, name) {
+function deleteCoDept(companyId, deptId, name) {
     confirmAction('Delete Department', 'Delete "' + name + '"?', function() {
-        api(BASE + '/' + projectId + '/departments/' + deptId, 'DELETE')
+        api(CO_DEPT_BASE + '/' + companyId + '/departments/' + deptId, 'DELETE')
             .then(function() {
                 delete DEPT_DATA[deptId];
-                var wrap = document.getElementById('dept-wrap-' + deptId);
+                var wrap = document.getElementById('co-dept-wrap-' + deptId);
                 if (wrap) wrap.remove();
-                updateDeptCount(projectId);
-                var list = document.getElementById('dept-list-' + projectId);
-                if (list && !list.querySelector('[id^="dept-wrap-"]')) {
-                    list.innerHTML = '<div id="dept-empty-' + projectId + '" style="padding:14px 1.25rem;color:#9ca3af;font-size:13px;">No departments yet.</div>';
+                updateCoDeptCount(companyId);
+                var list = document.getElementById('co-dept-list-' + companyId);
+                if (list && !list.querySelector('[id^="co-dept-wrap-"]')) {
+                    list.innerHTML = '<div id="co-dept-empty-' + companyId + '" style="padding:10px 1.25rem;color:#9ca3af;font-size:13px;">No departments yet.</div>';
                 }
                 showToast('Department "' + esc(name) + '" deleted.', 'success');
             })
@@ -1028,20 +1033,20 @@ function deleteDept(projectId, deptId, name) {
     });
 }
 
-function updateDeptCount(projectId) {
-    var list  = document.getElementById('dept-list-' + projectId);
-    var count = list ? list.querySelectorAll('[id^="dept-wrap-"]').length : 0;
-    var el    = document.getElementById('proj-dept-count-' + projectId);
-    if (el) el.textContent = count + ' ' + (count === 1 ? 'dept' : 'depts');
+function updateCoDeptCount(companyId) {
+    var list  = document.getElementById('co-dept-list-' + companyId);
+    var count = list ? list.querySelectorAll('[id^="co-dept-wrap-"]').length : 0;
+    var el    = document.getElementById('company-dept-count-' + companyId);
+    if (el) el.textContent = '· ' + count + ' ' + (count === 1 ? 'dept' : 'depts');
 }
 
-function insertDeptInOrder(projectId, newWrapEl) {
-    var list    = document.getElementById('dept-list-' + projectId);
-    var newName = (newWrapEl.querySelector('[id^="dept-name-"]').textContent || '').trim().toLowerCase();
-    var wraps   = list.querySelectorAll('[id^="dept-wrap-"]');
+function insertCoDeptInOrder(companyId, newWrapEl) {
+    var list    = document.getElementById('co-dept-list-' + companyId);
+    var newName = (newWrapEl.querySelector('[id^="co-dept-name-"]').textContent || '').trim().toLowerCase();
+    var wraps   = list.querySelectorAll('[id^="co-dept-wrap-"]');
     var inserted = false;
     for (var i = 0; i < wraps.length; i++) {
-        var nameEl = wraps[i].querySelector('[id^="dept-name-"]');
+        var nameEl = wraps[i].querySelector('[id^="co-dept-name-"]');
         if (nameEl && newName < nameEl.textContent.trim().toLowerCase()) {
             list.insertBefore(newWrapEl, wraps[i]);
             inserted = true; break;
@@ -1050,25 +1055,25 @@ function insertDeptInOrder(projectId, newWrapEl) {
     if (!inserted) list.appendChild(newWrapEl);
 }
 
-function buildDeptRow(projectId, dept) {
+function buildCoDeptRow(companyId, dept) {
     var safeName = (dept.name || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return '<div id="dept-wrap-' + dept.id + '">'
-        + '<div class="dept-row" id="dept-row-' + dept.id + '">'
+    return '<div id="co-dept-wrap-' + dept.id + '">'
+        + '<div class="dept-row" id="co-dept-row-' + dept.id + '">'
         +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
-        +     '<svg width="13" height="13" fill="none" stroke="#06b6d4" viewBox="0 0 24 24" id="dept-icon-' + dept.id + '" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>'
-        +     '<span id="dept-name-' + dept.id + '" style="font-size:13px;font-weight:600;color:#1e293b;">' + esc(dept.name) + '</span>'
-        +     '<span id="dept-inactive-' + dept.id + '" class="badge-inactive" style="display:none;">Inactive</span>'
+        +     '<svg width="13" height="13" fill="none" stroke="#7c3aed" viewBox="0 0 24 24" id="co-dept-icon-' + dept.id + '" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>'
+        +     '<span id="co-dept-name-' + dept.id + '" style="font-size:13px;font-weight:600;color:#1e293b;">' + esc(dept.name) + '</span>'
+        +     '<span id="co-dept-inactive-' + dept.id + '" class="badge-inactive" style="display:none;">Inactive</span>'
         +   '</div>'
         +   '<div style="display:flex;gap:4px;flex-shrink:0;">'
-        +     '<button type="button" onclick="openEditDept(' + dept.id + ',' + projectId + ',\'' + safeName + '\',true)" class="btn-secondary btn-sm" style="padding:3px 8px;font-size:12px;">Edit</button>'
-        +     '<button type="button" onclick="deleteDept(' + projectId + ',' + dept.id + ',\'' + safeName + '\')" class="btn-danger btn-sm" style="padding:3px 8px;font-size:12px;">Delete</button>'
+        +     '<button type="button" onclick="openEditCoDept(' + dept.id + ',' + companyId + ',\'' + safeName + '\',true)" class="btn-secondary btn-sm" style="padding:3px 8px;font-size:12px;">Edit</button>'
+        +     '<button type="button" onclick="deleteCoDept(' + companyId + ',' + dept.id + ',\'' + safeName + '\')" class="btn-danger btn-sm" style="padding:3px 8px;font-size:12px;">Delete</button>'
         +   '</div>'
         + '</div>'
-        + '<div class="dept-edit-row" id="dept-edit-row-' + dept.id + '">'
-        +   '<input id="dept-edit-name-' + dept.id + '" type="text" class="form-input" style="flex:1;font-size:12px;" onkeydown="if(event.key===\'Enter\') saveDeptEdit(' + dept.id + ',' + projectId + '); if(event.key===\'Escape\') closeEditDept(' + dept.id + ')">'
-        +   '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="dept-edit-active-' + dept.id + '" checked style="width:13px;height:13px;"> Active</label>'
-        +   '<button type="button" onclick="saveDeptEdit(' + dept.id + ',' + projectId + ')" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>'
-        +   '<button type="button" onclick="closeEditDept(' + dept.id + ')" class="btn-secondary btn-sm">✕</button>'
+        + '<div class="dept-edit-row" id="co-dept-edit-row-' + dept.id + '">'
+        +   '<input id="co-dept-edit-name-' + dept.id + '" type="text" class="form-input" style="flex:1;font-size:12px;" onkeydown="if(event.key===\'Enter\') saveEditCoDept(' + dept.id + ',' + companyId + '); if(event.key===\'Escape\') closeEditCoDept(' + dept.id + ')">'
+        +   '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="co-dept-edit-active-' + dept.id + '" checked style="width:13px;height:13px;"> Active</label>'
+        +   '<button type="button" onclick="saveEditCoDept(' + dept.id + ',' + companyId + ')" class="btn-primary" style="padding:4px 12px;font-size:12px;white-space:nowrap;">Save</button>'
+        +   '<button type="button" onclick="closeEditCoDept(' + dept.id + ')" class="btn-secondary btn-sm">✕</button>'
         + '</div>'
         + '</div>';
 }

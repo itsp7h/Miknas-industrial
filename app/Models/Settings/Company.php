@@ -16,4 +16,9 @@ class Company extends Model
     {
         return $this->hasMany(ProjectSetting::class, 'company_id');
     }
+
+    public function departments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Department::class, 'company_id');
+    }
 }

@@ -144,9 +144,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/projects/{project}/locations', [ProjectSettingController::class, 'storeLocation'])->name('settings.projects.locations.store');
         Route::patch('settings/projects/{project}/locations/{location}', [ProjectSettingController::class, 'updateLocation'])->name('settings.projects.locations.update');
         Route::delete('settings/projects/{project}/locations/{location}', [ProjectSettingController::class, 'destroyLocation'])->name('settings.projects.locations.destroy');
-        Route::post('settings/projects/{project}/departments', [ProjectSettingController::class, 'storeDepartment'])->name('settings.projects.departments.store');
-        Route::patch('settings/projects/{project}/departments/{department}', [ProjectSettingController::class, 'updateDepartment'])->name('settings.projects.departments.update');
-        Route::delete('settings/projects/{project}/departments/{department}', [ProjectSettingController::class, 'destroyDepartment'])->name('settings.projects.departments.destroy');
+        Route::post('settings/projects/companies/{company}/departments', [ProjectSettingController::class, 'storeDepartment'])->name('settings.projects.companies.departments.store');
+        Route::patch('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'updateDepartment'])->name('settings.projects.companies.departments.update');
+        Route::delete('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'destroyDepartment'])->name('settings.projects.companies.departments.destroy');
     });
 });
 

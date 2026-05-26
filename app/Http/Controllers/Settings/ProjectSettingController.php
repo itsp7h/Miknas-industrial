@@ -14,8 +14,8 @@ class ProjectSettingController extends Controller
     public function index()
     {
         $companies = Company::with([
-            'projects.locations'   => fn ($q) => $q->orderBy('name'),
-            'projects.departments' => fn ($q) => $q->orderBy('name'),
+            'projects.locations' => fn ($q) => $q->orderBy('name'),
+            'departments'        => fn ($q) => $q->orderBy('name'),
         ])->orderBy('name')->get();
 
         $allProjects = $companies->flatMap(fn ($c) => $c->projects);
@@ -25,7 +25,7 @@ class ProjectSettingController extends Controller
             'total_projects'     => $allProjects->count(),
             'active_projects'    => $allProjects->where('is_active', true)->count(),
             'total_locations'    => $allProjects->sum(fn ($p) => $p->locations->count()),
-            'total_departments'  => $allProjects->sum(fn ($p) => $p->departments->count()),
+            'total_departments'  => $companies->sum(fn ($c) => $c->departments->count()),
         ];
 
         return view('settings.projects.index', compact('companies', 'stats'));
@@ -148,21 +148,21 @@ class ProjectSettingController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function storeDepartment(Request $request, ProjectSetting $project)
+    public function storeDepartment(Request $request, Company $company)
     {
         $validated = $request->validate(['name' => 'required|string|max:255']);
-        $dept = $project->departments()->create(['name' => $validated['name'], 'is_active' => true]);
+        $dept = $company->departments()->create(['name' => $validated['name'], 'is_active' => true]);
         return response()->json(['department' => ['id' => $dept->id, 'name' => $dept->name, 'is_active' => $dept->is_active]]);
     }
 
-    public function updateDepartment(Request $request, ProjectSetting $project, Department $department)
+    public function updateDepartment(Request $request, Company $company, Department $department)
     {
         $validated = $request->validate(['name' => 'required|string|max:255']);
         $department->update(['name' => $validated['name'], 'is_active' => $request->boolean('is_active', true)]);
         return response()->json(['department' => ['id' => $department->id, 'name' => $department->name, 'is_active' => $department->is_active]]);
     }
 
-    public function destroyDepartment(ProjectSetting $project, Department $department)
+    public function destroyDepartment(Company $company, Department $department)
     {
         $department->delete();
         return response()->json(['ok' => true]);
