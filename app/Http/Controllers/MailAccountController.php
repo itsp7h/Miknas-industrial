@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MailAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use PromoSeven\AzureMailer\Graph\TokenManager;
 
 class MailAccountController extends Controller
@@ -58,6 +59,24 @@ class MailAccountController extends Controller
                 }
                 fclose($socket);
             }
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function sendTestEmail(Request $request, MailAccount $mailAccount): JsonResponse
+    {
+        $request->validate(['to' => ['required', 'email', 'max:255']]);
+        try {
+            Mail::mailer($mailAccount->name)->raw(
+                'This is a test email from SteelERP. Your mail account "' . $mailAccount->label . '" is working correctly.',
+                function ($message) use ($request, $mailAccount) {
+                    $message->to($request->to)
+                            ->from($mailAccount->from_address, $mailAccount->from_name ?: 'SteelERP')
+                            ->subject('Test Email from SteelERP');
+                }
+            );
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
