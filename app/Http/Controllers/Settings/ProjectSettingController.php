@@ -7,7 +7,14 @@ use App\Models\Settings\Company;
 use App\Models\Settings\Department;
 use App\Models\Settings\Location;
 use App\Models\Settings\ProjectSetting;
+use App\Services\ProjectImportService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ProjectSettingController extends Controller
 {
@@ -166,5 +173,101 @@ class ProjectSettingController extends Controller
     {
         $department->delete();
         return response()->json(['ok' => true]);
+    }
+
+    // ── Import ────────────────────────────────────────────────────────────────
+    public function import(Request $request): JsonResponse
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls|max:10240']);
+
+        try {
+            $stats = app(ProjectImportService::class)->import(
+                $request->file('file')->getPathname()
+            );
+
+            $parts = [];
+            if ($stats['projects_created'])    $parts[] = "{$stats['projects_created']} project(s)";
+            if ($stats['departments_created']) $parts[] = "{$stats['departments_created']} department(s)";
+            if ($stats['companies_created'])   $parts[] = "{$stats['companies_created']} new company(s)";
+
+            $message = $parts
+                ? 'Imported: ' . implode(', ', $parts) . ($stats['skipped'] ? " — {$stats['skipped']} row(s) skipped" : '')
+                : 'Nothing new to import' . ($stats['skipped'] ? " ({$stats['skipped']} rows already exist)" : '');
+
+            return response()->json(['success' => true, 'message' => $message, 'stats' => $stats]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function downloadTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $path = storage_path('app/projects_template.xlsx');
+        $this->buildTemplate($path);
+        return response()->download($path, 'projects_template.xlsx');
+    }
+
+    private function buildTemplate(string $path): void
+    {
+        $spreadsheet = new Spreadsheet();
+
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => '1e293b']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DBEAFE']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
+        ];
+        $noteStyle = [
+            'font' => ['italic' => true, 'color' => ['rgb' => '64748b'], 'size' => 10],
+        ];
+
+        // ── Sheet 1: Projects ──────────────────────────────────────────────
+        $s1 = $spreadsheet->getActiveSheet()->setTitle('Projects');
+        $s1->setCellValue('A1', 'Company Name')
+           ->setCellValue('B1', 'Project Name');
+        $s1->getStyle('A1:B1')->applyFromArray($headerStyle);
+
+        // Sample rows
+        $samples = [
+            ['Miknas Industrial', 'New Warehouse'],
+            ['Steel tech', 'Factory Extension'],
+            ['Steel tech', 'New Office Block'],
+        ];
+        foreach ($samples as $i => $row) {
+            $s1->setCellValue('A' . ($i + 2), $row[0]);
+            $s1->setCellValue('B' . ($i + 2), $row[1]);
+        }
+
+        $s1->setCellValue('A6', '* Delete sample rows before importing. Company will be created if it does not exist.');
+        $s1->getStyle('A6')->applyFromArray($noteStyle);
+        $s1->mergeCells('A6:B6');
+
+        $s1->getColumnDimension('A')->setWidth(32);
+        $s1->getColumnDimension('B')->setWidth(32);
+
+        // ── Sheet 2: Departments ───────────────────────────────────────────
+        $s2 = new Worksheet($spreadsheet, 'Departments');
+        $spreadsheet->addSheet($s2);
+        $s2->setCellValue('A1', 'Company Name')
+           ->setCellValue('B1', 'Department Name');
+        $s2->getStyle('A1:B1')->applyFromArray($headerStyle);
+
+        $deptSamples = [
+            ['Miknas Industrial', 'Finance'],
+            ['Miknas Industrial', 'Operations'],
+            ['Steel tech', 'Production'],
+        ];
+        foreach ($deptSamples as $i => $row) {
+            $s2->setCellValue('A' . ($i + 2), $row[0]);
+            $s2->setCellValue('B' . ($i + 2), $row[1]);
+        }
+
+        $s2->setCellValue('A6', '* Delete sample rows before importing. Company will be created if it does not exist.');
+        $s2->getStyle('A6')->applyFromArray($noteStyle);
+        $s2->mergeCells('A6:B6');
+
+        $s2->getColumnDimension('A')->setWidth(32);
+        $s2->getColumnDimension('B')->setWidth(32);
+
+        (new Xlsx($spreadsheet))->save($path);
     }
 }

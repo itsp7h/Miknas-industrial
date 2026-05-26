@@ -136,6 +136,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Projects settings
         Route::get('settings/projects', [ProjectSettingController::class, 'index'])->name('settings.projects.index');
         Route::post('settings/projects', [ProjectSettingController::class, 'store'])->name('settings.projects.store');
+        Route::post('settings/projects/import', [ProjectSettingController::class, 'import'])->name('settings.projects.import');
+        Route::get('settings/projects/template', [ProjectSettingController::class, 'downloadTemplate'])->name('settings.projects.template');
         Route::post('settings/projects/companies', [ProjectSettingController::class, 'storeCompany'])->name('settings.projects.companies.store');
         Route::patch('settings/projects/companies/{company}', [ProjectSettingController::class, 'updateCompany'])->name('settings.projects.companies.update');
         Route::delete('settings/projects/companies/{company}', [ProjectSettingController::class, 'destroyCompany'])->name('settings.projects.companies.destroy');

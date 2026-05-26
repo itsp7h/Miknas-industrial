@@ -36,6 +36,16 @@
         <h1 class="page-title">Projects, Locations &amp; Departments</h1>
         <p class="page-subtitle">Manage projects with their sub-locations and departments.</p>
     </div>
+    <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+        <a href="{{ route('settings.projects.template') }}" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Template
+        </a>
+        <button type="button" onclick="openImportModal()" class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
+            Import Excel
+        </button>
+    </div>
 </div>
 
 {{-- Stat boxes --}}
@@ -326,6 +336,68 @@ $allDeptsJson = json_encode($allDeptsData);
 @endforelse
 </div>{{-- end companies-list --}}
 
+{{-- ═══════════════ Import Modal ═══════════════ --}}
+<div id="import-modal-overlay" onclick="if(event.target===this)closeImportModal()"
+     style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:9998;align-items:center;justify-content:center;">
+<div style="background:white;border-radius:1rem;width:520px;max-width:96vw;box-shadow:0 25px 60px rgba(0,0,0,0.22);overflow:hidden;">
+
+    {{-- Header --}}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+        <div>
+            <h2 style="font-size:16px;font-weight:700;color:#0f172a;margin:0;">Import from Excel</h2>
+            <p style="font-size:12px;color:#64748b;margin:3px 0 0;">Companies, projects and departments from .xlsx / .xls</p>
+        </div>
+        <button type="button" onclick="closeImportModal()" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:4px;line-height:0;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
+
+    {{-- Drop zone --}}
+    <div style="padding:1.25rem 1.5rem;">
+        <div id="import-dz"
+             ondragover="event.preventDefault();this.classList.add('dz-active')"
+             ondragleave="this.classList.remove('dz-active')"
+             ondrop="importHandleDrop(event)"
+             onclick="document.getElementById('import-file-input').click()"
+             style="border:2px dashed #cbd5e1;border-radius:0.75rem;padding:2rem;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#f8fafc;">
+            <svg id="import-dz-icon" width="32" height="32" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
+            <p id="import-dz-text" style="font-size:14px;color:#475569;margin:0;font-weight:500;">Drop your Excel file here, or click to browse</p>
+            <p id="import-dz-sub" style="font-size:12px;color:#94a3b8;margin:4px 0 0;">.xlsx or .xls — max 10 MB</p>
+        </div>
+        <input type="file" id="import-file-input" accept=".xlsx,.xls" style="display:none;" onchange="importFileSelected(this)">
+
+        {{-- Info box --}}
+        <div style="margin-top:1rem;background:#f0f9ff;border:1px solid #bae6fd;border-radius:0.5rem;padding:0.75rem 1rem;">
+            <p style="font-size:12px;color:#0369a1;margin:0;line-height:1.7;">
+                <strong>Expected format (2 tabs):</strong><br>
+                <strong>Projects</strong> tab — columns: <em>Company Name</em> | <em>Project Name</em><br>
+                <strong>Departments</strong> tab — columns: <em>Company Name</em> | <em>Department Name</em><br>
+                Companies are created automatically if they don't exist. Duplicates are skipped.
+            </p>
+        </div>
+    </div>
+
+    {{-- Footer --}}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.875rem 1.5rem;border-top:1px solid #e2e8f0;background:#f8fafc;">
+        <a href="{{ route('settings.projects.template') }}" style="font-size:13px;color:#3b82f6;text-decoration:none;display:flex;align-items:center;gap:5px;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download template
+        </a>
+        <div style="display:flex;gap:8px;">
+            <button type="button" onclick="closeImportModal()" class="btn-secondary">Cancel</button>
+            <button type="button" id="import-submit-btn" onclick="submitImport()" class="btn-primary" disabled
+                    style="min-width:100px;opacity:.5;cursor:not-allowed;">
+                Import
+            </button>
+        </div>
+    </div>
+</div>
+</div>
+<style>
+    #import-dz.dz-active { border-color:#6366f1; background:#eef2ff; }
+    #import-dz.dz-has-file { border-color:#22c55e; background:#f0fdf4; border-style:solid; }
+</style>
+
 {{-- ═══════════════ Location Map Modal ═══════════════ --}}
 <div id="loc-modal-overlay" onclick="if(event.target===this)closeLocModal()">
     <div id="loc-modal-box">
@@ -416,9 +488,100 @@ $allDeptsJson = json_encode($allDeptsData);
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLc=" crossorigin=""></script>
 <script>
-var CSRF = document.querySelector('meta[name="csrf-token"]').content;
-var BASE = '{{ url("settings/projects") }}';
+var CSRF      = document.querySelector('meta[name="csrf-token"]').content;
+var BASE      = '{{ url("settings/projects") }}';
+var IMPORT_URL = '{{ route("settings.projects.import") }}';
 var COMPANIES = {!! json_encode($companies->map(fn($c) => ['id' => $c->id, 'name' => $c->name])->values()) !!};
+
+// ── Import Modal ──────────────────────────────────────────────────────────────
+var importFile = null;
+
+function openImportModal() {
+    importFile = null;
+    document.getElementById('import-file-input').value = '';
+    resetImportDz();
+    var overlay = document.getElementById('import-modal-overlay');
+    overlay.style.display = 'flex';
+}
+
+function closeImportModal() {
+    document.getElementById('import-modal-overlay').style.display = 'none';
+}
+
+function resetImportDz() {
+    var dz   = document.getElementById('import-dz');
+    var btn  = document.getElementById('import-submit-btn');
+    dz.classList.remove('dz-has-file', 'dz-active');
+    document.getElementById('import-dz-text').textContent = 'Drop your Excel file here, or click to browse';
+    document.getElementById('import-dz-sub').textContent  = '.xlsx or .xls — max 10 MB';
+    document.getElementById('import-dz-icon').setAttribute('stroke', '#94a3b8');
+    btn.disabled = true;
+    btn.style.opacity = '.5';
+    btn.style.cursor  = 'not-allowed';
+}
+
+function applyImportFile(file) {
+    if (!file) return;
+    importFile = file;
+    var dz  = document.getElementById('import-dz');
+    var btn = document.getElementById('import-submit-btn');
+    dz.classList.remove('dz-active');
+    dz.classList.add('dz-has-file');
+    document.getElementById('import-dz-text').textContent = file.name;
+    document.getElementById('import-dz-sub').textContent  = (file.size / 1024).toFixed(1) + ' KB — ready to import';
+    document.getElementById('import-dz-icon').setAttribute('stroke', '#22c55e');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor  = 'pointer';
+}
+
+function importFileSelected(input) {
+    if (input.files && input.files[0]) applyImportFile(input.files[0]);
+}
+
+function importHandleDrop(event) {
+    event.preventDefault();
+    document.getElementById('import-dz').classList.remove('dz-active');
+    var file = event.dataTransfer.files[0];
+    if (file) {
+        document.getElementById('import-file-input').files = event.dataTransfer.files;
+        applyImportFile(file);
+    }
+}
+
+function submitImport() {
+    if (!importFile) return;
+    var btn = document.getElementById('import-submit-btn');
+    btn.textContent = 'Importing…';
+    btn.disabled    = true;
+    btn.style.opacity = '.7';
+
+    var formData = new FormData();
+    formData.append('file', importFile);
+    formData.append('_token', CSRF);
+
+    fetch(IMPORT_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: formData })
+        .then(function(r) { return r.json().then(function(body) { return { ok: r.ok, body: body }; }); })
+        .then(function(res) {
+            btn.textContent  = 'Import';
+            btn.disabled     = false;
+            btn.style.opacity = '1';
+            if (res.ok && res.body.success) {
+                closeImportModal();
+                showToast(res.body.message, 'success');
+                // Reload the page after a short delay so new companies/projects appear
+                setTimeout(function() { window.location.reload(); }, 1200);
+            } else {
+                showToast(res.body.message || 'Import failed.', 'error');
+            }
+        })
+        .catch(function() {
+            btn.textContent  = 'Import';
+            btn.disabled     = false;
+            btn.style.opacity = '1';
+            showToast('Upload failed. Check your connection.', 'error');
+        });
+}
 
 // Location data store (keyed by loc ID) — avoids inline JSON in onclick attributes
 var LOC_DATA  = {!! $allLocsJson !!};
