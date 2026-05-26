@@ -122,6 +122,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('settings/integrations', [SettingsController::class, 'integrations'])->name('settings.integrations');
         Route::post('settings/integrations/whatsapp', [SettingsController::class, 'updateWhatsapp'])->name('settings.integrations.whatsapp');
         Route::post('settings/integrations/test-whatsapp', [SettingsController::class, 'testWhatsappConnection'])->name('settings.integrations.test-whatsapp');
+        Route::post('settings/integrations/send-test-message', [SettingsController::class, 'sendTestMessage'])->name('settings.integrations.send-test-message');
+        Route::post('settings/integrations/azure-mail', [SettingsController::class, 'updateAzureMail'])->name('settings.integrations.azure-mail');
+        Route::post('settings/integrations/test-azure-mail', [SettingsController::class, 'testAzureMailConnection'])->name('settings.integrations.test-azure-mail');
+        Route::post('settings/integrations/send-test-email', [SettingsController::class, 'sendTestEmail'])->name('settings.integrations.send-test-email');
 
         // Projects settings
         Route::get('settings/projects', [ProjectSettingController::class, 'index'])->name('settings.projects.index');
