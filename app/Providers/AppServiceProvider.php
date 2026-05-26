@@ -2,23 +2,16 @@
 
 namespace App\Providers;
 
+use App\Models\MailAccount;
 use App\Models\Setting;
+use Illuminate\Mail\MailManager;
 use Illuminate\Support\ServiceProvider;
 use PromoSeven\UltraMessage\Facades\UltraMessage;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        //
-    }
+    public function register(): void {}
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         UltraMessage::configUsing(function () {
@@ -30,6 +23,16 @@ class AppServiceProvider extends ServiceProvider
                 'timeout'        => config('ultra-message.timeout', 30),
                 'enabled'        => (bool) Setting::get('ultramsg_enabled', config('ultra-message.enabled', true)),
             ];
+        });
+
+        $this->callAfterResolving(MailManager::class, function (MailManager $manager) {
+            try {
+                foreach (MailAccount::all() as $account) {
+                    $manager->extend($account->name, fn () => $account->buildTransport());
+                }
+            } catch (\Exception) {
+                // DB not ready on fresh install — skip silently
+            }
         });
     }
 }
