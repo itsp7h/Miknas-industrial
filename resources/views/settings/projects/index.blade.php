@@ -354,17 +354,16 @@ $allDeptsJson = json_encode($allDeptsData);
 
     {{-- Drop zone --}}
     <div style="padding:1.25rem 1.5rem;">
-        <div id="import-dz"
+        <label for="import-file-input" id="import-dz"
              ondragover="event.preventDefault();this.classList.add('dz-active')"
              ondragleave="this.classList.remove('dz-active')"
              ondrop="importHandleDrop(event)"
-             onclick="document.getElementById('import-file-input').click()"
-             style="border:2px dashed #cbd5e1;border-radius:0.75rem;padding:2rem;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#f8fafc;">
+             style="display:block;border:2px dashed #cbd5e1;border-radius:0.75rem;padding:2rem;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#f8fafc;">
             <svg id="import-dz-icon" width="32" height="32" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
-            <p id="import-dz-text" style="font-size:14px;color:#475569;margin:0;font-weight:500;">Drop your Excel file here, or click to browse</p>
+            <p id="import-dz-text" style="font-size:14px;color:#475569;margin:0;font-weight:500;">Click to browse, or drop your Excel file here</p>
             <p id="import-dz-sub" style="font-size:12px;color:#94a3b8;margin:4px 0 0;">.xlsx or .xls — max 10 MB</p>
-        </div>
-        <input type="file" id="import-file-input" accept=".xlsx,.xls" style="display:none;" onchange="importFileSelected(this)">
+        </label>
+        <input type="file" id="import-file-input" accept=".xlsx,.xls" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="importFileSelected(this)">
 
         {{-- Info box --}}
         <div style="margin-top:1rem;background:#f0f9ff;border:1px solid #bae6fd;border-radius:0.5rem;padding:0.75rem 1rem;">
@@ -543,10 +542,7 @@ function importHandleDrop(event) {
     event.preventDefault();
     document.getElementById('import-dz').classList.remove('dz-active');
     var file = event.dataTransfer.files[0];
-    if (file) {
-        document.getElementById('import-file-input').files = event.dataTransfer.files;
-        applyImportFile(file);
-    }
+    if (file) applyImportFile(file);
 }
 
 function submitImport() {
