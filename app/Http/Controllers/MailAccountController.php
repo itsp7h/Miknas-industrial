@@ -71,7 +71,7 @@ class MailAccountController extends Controller
             $mailer = new \Illuminate\Mail\Mailer(
                 $mailAccount->name,
                 app('view'),
-                new \Symfony\Component\Mailer\Mailer($mailAccount->buildTransport()),
+                $mailAccount->buildTransport(),
                 app('events')
             );
             $mailer->raw(
