@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\MailAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use PromoSeven\AzureMailer\Graph\TokenManager;
 
 class MailAccountController extends Controller
@@ -69,7 +68,13 @@ class MailAccountController extends Controller
     {
         $request->validate(['to' => ['required', 'email', 'max:255']]);
         try {
-            Mail::mailer($mailAccount->name)->raw(
+            $mailer = new \Illuminate\Mail\Mailer(
+                $mailAccount->name,
+                app('view'),
+                new \Symfony\Component\Mailer\Mailer($mailAccount->buildTransport()),
+                app('events')
+            );
+            $mailer->raw(
                 'This is a test email from SteelERP. Your mail account "' . $mailAccount->label . '" is working correctly.',
                 function ($message) use ($request, $mailAccount) {
                     $message->to($request->to)

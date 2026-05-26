@@ -28,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         $this->callAfterResolving(MailManager::class, function (MailManager $manager) {
             try {
                 foreach (MailAccount::all() as $account) {
+                    config(["mail.mailers.{$account->name}" => ['transport' => $account->name]]);
                     $manager->extend($account->name, fn () => $account->buildTransport());
                 }
             } catch (\Exception) {
