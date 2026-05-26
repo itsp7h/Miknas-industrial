@@ -84,6 +84,7 @@ class MailAccountController extends Controller
             );
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('sendTestEmail failed: ' . $e->getMessage(), ['account' => $mailAccount->name]);
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }

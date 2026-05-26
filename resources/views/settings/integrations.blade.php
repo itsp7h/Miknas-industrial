@@ -705,7 +705,7 @@ function sendTestEmail() {
             showToast('Test email sent!', 'success');
         } else {
             statusEl.textContent = 'Failed.'; statusEl.style.color = '#dc2626';
-            showToast(data.message || 'Failed to send.', 'error');
+            showToast(data.message || 'Failed to send.', 'error', 15000);
         }
     }).catch(function() {
         statusEl.textContent = 'Request failed.'; statusEl.style.color = '#dc2626';
