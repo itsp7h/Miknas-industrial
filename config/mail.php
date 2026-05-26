@@ -49,6 +49,14 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        'azure' => [
+            'transport'     => 'azure',
+            'tenant_id'     => env('AZURE_TENANT_ID'),
+            'client_id'     => env('AZURE_CLIENT_ID'),
+            'client_secret' => env('AZURE_CLIENT_SECRET'),
+            'from_address'  => env('AZURE_MAIL_FROM_ADDRESS'),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

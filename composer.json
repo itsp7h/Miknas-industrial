@@ -9,6 +9,10 @@
         {
             "type": "path",
             "url": "../ultra-message"
+        },
+        {
+            "type": "path",
+            "url": "../azure-mailer"
         }
     ],
     "require": {
@@ -17,6 +21,7 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "phpoffice/phpspreadsheet": "^5.7",
+        "promoseven/azure-mailer": "*",
         "promoseven/ultra-message": "*",
         "spatie/laravel-permission": "^6.25"
     },

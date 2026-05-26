@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2e7e9aaaedaec1e83a6d6b3e82228dda",
+    "content-hash": "5daed94f08a2aff0bba86affd37a0cd6",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -3279,12 +3279,63 @@
             "time": "2025-12-27T19:41:33+00:00"
         },
         {
+            "name": "promoseven/azure-mailer",
+            "version": "dev-master",
+            "dist": {
+                "type": "path",
+                "url": "../azure-mailer",
+                "reference": "d240f4f64afcd094b30cd460b82f809f3b2003f9"
+            },
+            "require": {
+                "illuminate/cache": "^11.0|^12.0",
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/mail": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "php": "^8.2",
+                "symfony/mailer": "^7.0"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^10.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "PromoSeven\\AzureMailer\\AzureMailerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "PromoSeven\\AzureMailer\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "PromoSeven\\AzureMailer\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "vendor/bin/phpunit"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Laravel mail transport for Microsoft 365 via Azure AD Graph API",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "promoseven/ultra-message",
             "version": "dev-master",
             "dist": {
                 "type": "path",
                 "url": "../ultra-message",
-                "reference": "36323902378c10fffd7c2f795360f06072b2fd51"
+                "reference": "56160235808f7d9d9dd3ec8d0eefa20a17807647"
             },
             "require": {
                 "illuminate/http": "^11.0|^12.0",
