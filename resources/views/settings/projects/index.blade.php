@@ -6,12 +6,8 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <style>
     .proj-card { border:1px solid #e2e8f0; border-radius:0.875rem; overflow:hidden; margin-bottom:0.75rem; background:white; }
-    .proj-header { display:flex; align-items:center; justify-content:space-between; padding:0.875rem 1.25rem; cursor:pointer; background:white; user-select:none; transition:background .15s; }
-    .proj-header:hover { background:#f8fafc; }
-    .proj-body { display:none; border-top:1px solid #e2e8f0; }
-    .proj-body.open { display:block; }
-    .proj-chevron { transition:transform .2s; flex-shrink:0; }
-    .proj-chevron.open { transform:rotate(90deg); }
+    .proj-header { display:flex; align-items:center; justify-content:space-between; padding:0.875rem 1.25rem; background:white; }
+    .proj-body { display:block; border-top:1px solid #e2e8f0; }
     .loc-row { display:flex; align-items:flex-start; justify-content:space-between; padding:0.75rem 1.25rem 0.75rem 2.5rem; border-bottom:1px solid #f1f5f9; }
     .proj-edit-wrap { display:none; padding:0.75rem 1.25rem; background:#f0f9ff; border-bottom:1px solid #bae6fd; align-items:center; gap:8px; }
     .proj-edit-wrap.open { display:flex; }
@@ -122,11 +118,8 @@ $allLocsJson = json_encode($allLocsData);
     <div class="proj-card" id="proj-card-{{ $project->id }}">
 
         {{-- Header --}}
-        <div class="proj-header" onclick="toggleProject({{ $project->id }})">
+        <div class="proj-header">
             <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
-                <svg class="proj-chevron" id="chevron-{{ $project->id }}" width="14" height="14" fill="none" stroke="#94a3b8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
                 <svg width="15" height="15" fill="none" stroke="{{ $project->is_active ? '#2563eb' : '#9ca3af' }}" viewBox="0 0 24 24" style="flex-shrink:0;" id="proj-icon-{{ $project->id }}">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                 </svg>
@@ -604,14 +597,6 @@ function deleteLoc(projectId, locId, name) {
     });
 }
 
-// ── Accordion toggle ─────────────────────────────────────────────────────────
-function toggleProject(id) {
-    var body    = document.getElementById('proj-body-' + id);
-    var chevron = document.getElementById('chevron-' + id);
-    body.classList.toggle('open');
-    chevron.classList.toggle('open');
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function updateLocCount(projectId) {
     var list  = document.getElementById('loc-list-' + projectId);
@@ -640,9 +625,8 @@ function buildProjectCard(p) {
     var pName   = esc(p.name);
     var rawName = p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return '<div class="proj-card" id="proj-card-' + p.id + '">'
-        + '<div class="proj-header" onclick="toggleProject(' + p.id + ')">'
+        + '<div class="proj-header">'
         +   '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">'
-        +     '<svg class="proj-chevron" id="chevron-' + p.id + '" width="14" height="14" fill="none" stroke="#94a3b8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>'
         +     '<svg width="15" height="15" fill="none" stroke="#2563eb" viewBox="0 0 24 24" style="flex-shrink:0;" id="proj-icon-' + p.id + '"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>'
         +     '<span id="proj-name-' + p.id + '" style="font-size:14px;font-weight:600;color:#1e293b;">' + pName + '</span>'
         +     '<span id="proj-inactive-badge-' + p.id + '" class="badge-inactive" style="display:none;">Inactive</span>'
@@ -660,7 +644,7 @@ function buildProjectCard(p) {
         +   '<button type="button" onclick="closeEditProject(' + p.id + ')" class="btn-secondary btn-sm">Cancel</button>'
         +   '<p id="edit-proj-error-' + p.id + '" class="field-error" style="margin:0;"></p>'
         + '</div>'
-        + '<div class="proj-body" id="proj-body-' + p.id + '">'
+        + '<div class="proj-body" id="proj-body-' + p.id + '" style="display:block;">'
         +   '<div id="loc-list-' + p.id + '">'
         +     '<div id="loc-empty-' + p.id + '" style="padding:14px 1.25rem 14px 2.5rem;color:#9ca3af;font-size:13px;border-bottom:1px solid #f1f5f9;">No locations yet — add the first one below.</div>'
         +   '</div>'
@@ -696,14 +680,5 @@ function buildLocationRow(projectId, loc) {
         + '</div>';
 }
 
-// Auto-expand first project on load
-(function() {
-    var first = document.querySelector('.proj-card');
-    if (first) {
-        var id = parseInt(first.id.replace('proj-card-', ''), 10);
-        document.getElementById('proj-body-' + id).classList.add('open');
-        document.getElementById('chevron-' + id).classList.add('open');
-    }
-})();
 </script>
 @endsection
