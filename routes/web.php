@@ -26,6 +26,7 @@ use App\Http\Controllers\Sales\DeliveryNoteController;
 use App\Http\Controllers\Sales\PaymentReceiptController;
 use App\Http\Controllers\Sales\SalesInvoiceController;
 use App\Http\Controllers\Sales\SalesOrderController;
+use App\Http\Controllers\MailAccountController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Settings\ProjectSettingController;
 use App\Models\Settings\Location;
@@ -123,9 +124,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/integrations/whatsapp', [SettingsController::class, 'updateWhatsapp'])->name('settings.integrations.whatsapp');
         Route::post('settings/integrations/test-whatsapp', [SettingsController::class, 'testWhatsappConnection'])->name('settings.integrations.test-whatsapp');
         Route::post('settings/integrations/send-test-message', [SettingsController::class, 'sendTestMessage'])->name('settings.integrations.send-test-message');
-        Route::post('settings/integrations/azure-mail', [SettingsController::class, 'updateAzureMail'])->name('settings.integrations.azure-mail');
-        Route::post('settings/integrations/test-azure-mail', [SettingsController::class, 'testAzureMailConnection'])->name('settings.integrations.test-azure-mail');
-        Route::post('settings/integrations/send-test-email', [SettingsController::class, 'sendTestEmail'])->name('settings.integrations.send-test-email');
+        Route::get('settings/integrations/mail-accounts', [MailAccountController::class, 'index'])->name('settings.mail-accounts.index');
+        Route::post('settings/integrations/mail-accounts', [MailAccountController::class, 'store'])->name('settings.mail-accounts.store');
+        Route::get('settings/integrations/mail-accounts/{mailAccount}', [MailAccountController::class, 'show'])->name('settings.mail-accounts.show');
+        Route::put('settings/integrations/mail-accounts/{mailAccount}', [MailAccountController::class, 'update'])->name('settings.mail-accounts.update');
+        Route::delete('settings/integrations/mail-accounts/{mailAccount}', [MailAccountController::class, 'destroy'])->name('settings.mail-accounts.destroy');
+        Route::post('settings/integrations/mail-accounts/{mailAccount}/test', [MailAccountController::class, 'testConnection'])->name('settings.mail-accounts.test');
+        Route::patch('settings/integrations/mail-accounts/{mailAccount}/toggle', [MailAccountController::class, 'toggleEnabled'])->name('settings.mail-accounts.toggle');
 
         // Projects settings
         Route::get('settings/projects', [ProjectSettingController::class, 'index'])->name('settings.projects.index');
