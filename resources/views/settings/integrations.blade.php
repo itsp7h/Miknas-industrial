@@ -3,71 +3,72 @@
 @section('title', 'Settings — Integrations')
 
 @section('content')
+
 <div class="mb-6">
     <h1 class="page-title">Settings — Integrations</h1>
     <p class="page-subtitle">Configure third-party service integrations.</p>
 </div>
 
-<div style="max-width:900px;" x-data="{ tab: 'whatsapp' }">
+<div x-data="{ tab: 'whatsapp' }">
 
     {{-- Pill tabs --}}
-    <div style="display:flex;gap:8px;margin-bottom:20px;">
+    <div style="display:flex;gap:8px;margin-bottom:24px;">
         <button type="button" @click="tab='whatsapp'"
             :style="tab==='whatsapp'
-                ? 'padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#1e293b;color:#fff;border:1px solid transparent;'
-                : 'padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:#374151;border:1px solid #d1d5db;'">
+                ? 'padding:8px 22px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#1e293b;color:#fff;border:2px solid transparent;'
+                : 'padding:8px 22px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:#374151;border:2px solid #e5e7eb;'">
             💬 WhatsApp
         </button>
         <button type="button" @click="tab='email'; loadMailAccounts()"
             :style="tab==='email'
-                ? 'padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#1e293b;color:#fff;border:1px solid transparent;'
-                : 'padding:7px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:#374151;border:1px solid #d1d5db;'">
+                ? 'padding:8px 22px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#1e293b;color:#fff;border:2px solid transparent;'
+                : 'padding:8px 22px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:#374151;border:2px solid #e5e7eb;'">
             ✉️ Email
         </button>
     </div>
 
     {{-- ===== WhatsApp tab ===== --}}
-    <div x-show="tab==='whatsapp'">
+    <div x-show="tab==='whatsapp'" x-transition>
 
-        <div class="card">
-            <div style="padding:20px 24px 16px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">
-                <svg style="width:24px;height:24px;color:#22c55e;flex-shrink:0;" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                </svg>
-                <h3 style="font-size:16px;font-weight:600;color:#111827;margin:0;">WhatsApp (UltraMSG)</h3>
+        <div style="background:#fff;border-radius:16px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;">
+
+            {{-- Card header --}}
+            <div style="padding:20px 28px;background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border-bottom:1px solid #d1fae5;display:flex;align-items:center;gap:14px;">
+                <div style="width:44px;height:44px;border-radius:12px;background:#22c55e;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(34,197,94,.35);">
+                    <svg style="width:24px;height:24px;color:#fff;" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-size:17px;font-weight:700;color:#14532d;">WhatsApp (UltraMSG)</div>
+                    <div style="font-size:13px;color:#16a34a;margin-top:1px;">Send WhatsApp messages and notifications via UltraMSG</div>
+                </div>
+                <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+                    <input type="hidden" id="wa-enabled-hidden" value="{{ $whatsappSettings['enabled'] ? '1' : '0' }}">
+                    <span style="font-size:12px;color:#16a34a;font-weight:500;" id="wa-enabled-label">{{ $whatsappSettings['enabled'] ? 'Enabled' : 'Disabled' }}</span>
+                    <div id="wa-toggle-track" onclick="toggleWaSwitch()" style="
+                        width:44px;height:24px;border-radius:12px;cursor:pointer;
+                        background:{{ $whatsappSettings['enabled'] ? '#22c55e' : '#d1d5db' }};
+                        position:relative;transition:background .2s;">
+                        <div id="wa-toggle-thumb" style="
+                            position:absolute;top:2px;
+                            left:{{ $whatsappSettings['enabled'] ? '22px' : '2px' }};
+                            width:20px;height:20px;border-radius:50%;background:#fff;
+                            box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .2s;"></div>
+                    </div>
+                </div>
             </div>
 
             {{-- Two-column body --}}
-            <div style="display:flex;gap:0;align-items:stretch;">
+            <div style="display:grid;grid-template-columns:1fr 360px;gap:0;">
 
-                {{-- Left: Settings form --}}
-                <div style="flex:1;padding:24px;border-right:1px solid #e5e7eb;">
+                {{-- Left: Settings --}}
+                <div style="padding:28px;border-right:1px solid #e5e7eb;">
 
-                    {{-- Enable toggle --}}
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-                        <div>
-                            <p style="font-size:14px;font-weight:500;color:#374151;margin:0 0 2px;">Enable WhatsApp Notifications</p>
-                            <p style="font-size:12px;color:#6b7280;margin:0;">When disabled, no messages will be sent.</p>
-                        </div>
-                        <div style="position:relative;display:inline-flex;align-items:center;cursor:pointer;">
-                            <input type="hidden" id="wa-enabled-hidden" value="{{ $whatsappSettings['enabled'] ? '1' : '0' }}">
-                            <div id="wa-toggle-track" onclick="toggleWaSwitch()" style="
-                                width:44px;height:24px;border-radius:12px;cursor:pointer;
-                                background:{{ $whatsappSettings['enabled'] ? '#22c55e' : '#d1d5db' }};
-                                position:relative;transition:background .2s;">
-                                <div id="wa-toggle-thumb" style="
-                                    position:absolute;top:2px;
-                                    left:{{ $whatsappSettings['enabled'] ? '22px' : '2px' }};
-                                    width:20px;height:20px;border-radius:50%;background:#fff;
-                                    box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .2s;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px;">
+                    <div style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:20px;">Connection Settings</div>
 
                     {{-- Instance ID --}}
-                    <div style="margin-bottom:16px;">
+                    <div style="margin-bottom:18px;">
                         <label class="form-label">Instance ID</label>
                         <input type="text" id="wa-instance-id"
                             value="{{ $whatsappSettings['instance_id'] }}"
@@ -76,7 +77,7 @@
                     </div>
 
                     {{-- API Token --}}
-                    <div style="margin-bottom:16px;" x-data="{ showWaToken: false }">
+                    <div style="margin-bottom:18px;" x-data="{ showWaToken: false }">
                         <label class="form-label">API Token</label>
                         <div style="position:relative;">
                             <input :type="showWaToken ? 'text' : 'password'" id="wa-token"
@@ -86,22 +87,15 @@
                             <button type="button" @click="showWaToken = !showWaToken"
                                 style="position:absolute;inset-y:0;right:0;padding:0 10px;background:none;border:none;cursor:pointer;color:#9ca3af;"
                                 onmouseover="this.style.color='#4b5563'" onmouseout="this.style.color='#9ca3af'">
-                                <svg x-show="!showWaToken" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                <svg x-show="showWaToken" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
-                                </svg>
+                                <svg x-show="!showWaToken" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                <svg x-show="showWaToken" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg>
                             </button>
                         </div>
                     </div>
 
                     {{-- Webhook Secret --}}
-                    <div style="margin-bottom:16px;" x-data="{ showWaSecret: false }">
-                        <label class="form-label">
-                            Webhook Secret <span style="color:#9ca3af;font-weight:400;">(optional)</span>
-                        </label>
+                    <div style="margin-bottom:18px;" x-data="{ showWaSecret: false }">
+                        <label class="form-label">Webhook Secret <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
                         <div style="position:relative;">
                             <input :type="showWaSecret ? 'text' : 'password'" id="wa-webhook-secret"
                                 value="{{ $whatsappSettings['webhook_secret'] }}"
@@ -110,77 +104,66 @@
                             <button type="button" @click="showWaSecret = !showWaSecret"
                                 style="position:absolute;inset-y:0;right:0;padding:0 10px;background:none;border:none;cursor:pointer;color:#9ca3af;"
                                 onmouseover="this.style.color='#4b5563'" onmouseout="this.style.color='#9ca3af'">
-                                <svg x-show="!showWaSecret" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                <svg x-show="showWaSecret" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
-                                </svg>
+                                <svg x-show="!showWaSecret" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                <svg x-show="showWaSecret" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg>
                             </button>
                         </div>
                     </div>
 
                     {{-- Webhook Path --}}
-                    <div style="margin-bottom:24px;">
+                    <div style="margin-bottom:28px;">
                         <label class="form-label">Webhook Path</label>
                         <div style="display:flex;align-items:stretch;">
                             <span style="display:inline-flex;align-items:center;padding:0 12px;font-size:13px;color:#6b7280;background:#f9fafb;border:1px solid #d1d5db;border-right:none;border-radius:6px 0 0 6px;white-space:nowrap;">{{ url('/') }}/</span>
-                            <input type="text" id="wa-webhook-path"
-                                value="{{ $whatsappSettings['webhook_path'] }}"
+                            <input type="text" id="wa-webhook-path" value="{{ $whatsappSettings['webhook_path'] }}"
                                 class="form-input" style="border-radius:0 6px 6px 0;flex:1;">
                         </div>
-                        <p style="font-size:12px;color:#6b7280;margin-top:4px;">
-                            Paste this full URL in your UltraMSG dashboard: <strong>{{ url('/') }}/{{ $whatsappSettings['webhook_path'] }}</strong>
-                        </p>
+                        <p style="font-size:12px;color:#6b7280;margin-top:5px;">Full webhook URL: <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px;">{{ url('/') }}/{{ $whatsappSettings['webhook_path'] }}</code></p>
                     </div>
 
                     {{-- Actions --}}
-                    <div style="display:flex;align-items:center;justify-content:space-between;padding-top:16px;border-top:1px solid #f3f4f6;">
-                        <div style="display:flex;align-items:center;gap:12px;">
-                            <button type="button" id="btn-wa-test" onclick="testWaConnection()"
-                                style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#2563eb;background:none;border:none;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0;"
-                                onmouseover="this.style.color='#1d4ed8'" onmouseout="this.style.color='#2563eb'">
-                                <svg style="width:15px;height:15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                Test Connection
-                            </button>
-                            <span id="wa-conn-status" style="font-size:13px;display:none;"></span>
-                        </div>
-                        <button type="button" id="btn-wa-save" onclick="saveWhatsapp()" class="btn-primary">Save Settings</button>
+                    <div style="display:flex;align-items:center;gap:12px;padding-top:20px;border-top:1px solid #f3f4f6;">
+                        <button type="button" id="btn-wa-save" onclick="saveWhatsapp()" class="btn-primary">
+                            Save Settings
+                        </button>
+                        <button type="button" id="btn-wa-test" onclick="testWaConnection()"
+                            style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#2563eb;background:none;border:1px solid #dbeafe;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500;"
+                            onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='none'">
+                            <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Test Connection
+                        </button>
+                        <span id="wa-conn-status" style="font-size:13px;display:none;"></span>
                     </div>
 
                 </div>
 
                 {{-- Right: Send Test Message --}}
-                <div style="width:300px;flex-shrink:0;padding:24px;background:#f9fafb;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-                        <svg style="width:16px;height:16px;color:#22c55e;flex-shrink:0;" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                        </svg>
-                        <span style="font-size:13px;font-weight:600;color:#111827;">Send Test Message</span>
+                <div style="padding:28px;background:#f8fafc;">
+
+                    <div style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:20px;">Send Test Message</div>
+
+                    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:0;">
+                        <p style="font-size:13px;color:#6b7280;margin:0 0 18px;">Verify the connection works end-to-end by sending a real WhatsApp message.</p>
+
+                        <div style="margin-bottom:14px;">
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Phone Number</label>
+                            <input type="text" id="wa-test-to" placeholder="+97333165444" class="form-input">
+                        </div>
+                        <div style="margin-bottom:18px;">
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Message</label>
+                            <textarea id="wa-test-body" rows="4" class="form-input" style="resize:vertical;">Test message from SteelERP — WhatsApp integration is working!</textarea>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <button type="button" id="btn-wa-send" onclick="sendWaTestMessage()"
+                                style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;font-size:13px;font-weight:600;color:#fff;background:#22c55e;border:none;border-radius:8px;cursor:pointer;"
+                                onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'">
+                                <svg style="width:14px;height:14px;" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                Send Message
+                            </button>
+                            <span id="wa-send-status" style="font-size:12px;display:none;"></span>
+                        </div>
                     </div>
-                    <div style="font-size:12px;color:#6b7280;margin-bottom:16px;">Verify the connection works end-to-end by sending a real message.</div>
-                    <div style="margin-bottom:12px;">
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Phone Number</label>
-                        <input type="text" id="wa-test-to" placeholder="+97333165444" class="form-input">
-                    </div>
-                    <div style="margin-bottom:14px;">
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Message</label>
-                        <textarea id="wa-test-body" rows="4" class="form-input" style="resize:vertical;">Test message from SteelERP — WhatsApp integration is working!</textarea>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <button type="button" id="btn-wa-send" onclick="sendWaTestMessage()"
-                            style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;font-size:13px;font-weight:600;color:#fff;background:#22c55e;border:none;border-radius:8px;cursor:pointer;"
-                            onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'">
-                            <svg style="width:14px;height:14px;" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                            </svg>
-                            Send
-                        </button>
-                        <span id="wa-send-status" style="font-size:12px;display:none;"></span>
-                    </div>
+
                 </div>
 
             </div>
@@ -189,98 +172,122 @@
     </div>{{-- end WhatsApp tab --}}
 
     {{-- ===== Email tab ===== --}}
-    <div x-show="tab==='email'" style="display:none;" id="email-tab-panel">
+    <div x-show="tab==='email'" style="display:none;" id="email-tab-panel" x-transition>
 
-        {{-- Two-column layout: account list left, send test right --}}
-        <div style="display:flex;gap:16px;align-items:flex-start;">
+        {{-- Email card --}}
+        <div style="background:#fff;border-radius:16px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;">
 
-            {{-- Left: account list --}}
-            <div style="flex:1;min-width:0;">
-
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-                    <div>
-                        <div style="font-size:15px;font-weight:600;color:#111827;">Mail Accounts</div>
-                        <div id="ma-count" style="font-size:12px;color:#6b7280;">Loading…</div>
-                    </div>
-                    <button type="button" onclick="maOpen()" class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
-                        <span style="font-size:16px;line-height:1;">+</span> Add Account
+            {{-- Card header --}}
+            <div style="padding:20px 28px;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border-bottom:1px solid #bfdbfe;display:flex;align-items:center;gap:14px;">
+                <div style="width:44px;height:44px;border-radius:12px;background:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(37,99,235,.35);font-size:22px;">
+                    ✉️
+                </div>
+                <div>
+                    <div style="font-size:17px;font-weight:700;color:#1e3a8a;">Email Accounts</div>
+                    <div style="font-size:13px;color:#2563eb;margin-top:1px;">Manage mail accounts for sending notifications and reports</div>
+                </div>
+                <div style="margin-left:auto;">
+                    <button type="button" onclick="maOpen()" class="btn-primary" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;">
+                        <span style="font-size:17px;line-height:1;font-weight:400;">+</span> Add Account
                     </button>
                 </div>
-
-                <div id="ma-list" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;display:none;"></div>
-
-                <div id="ma-empty" style="display:none;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:40px 24px;text-align:center;">
-                    <div style="font-size:32px;margin-bottom:12px;">✉️</div>
-                    <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:4px;">No mail accounts configured</div>
-                    <div style="font-size:13px;color:#6b7280;">Click <strong>Add Account</strong> to get started.</div>
-                </div>
-
             </div>
 
-            {{-- Right: Send Test Email --}}
-            <div style="width:280px;flex-shrink:0;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-                <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:8px;">
-                    <span style="font-size:15px;">📧</span>
-                    <span style="font-size:13px;font-weight:600;color:#111827;">Send Test Email</span>
-                </div>
-                <div style="padding:16px 20px;">
-                    <div style="font-size:12px;color:#6b7280;margin-bottom:14px;">Send a test email via any configured account.</div>
-                    <div style="margin-bottom:12px;">
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Account</label>
-                        <select id="em-test-account" class="form-input">
-                            <option value="">— select account —</option>
-                        </select>
+            {{-- Two-column body --}}
+            <div style="display:grid;grid-template-columns:1fr 320px;gap:0;">
+
+                {{-- Left: account list --}}
+                <div style="border-right:1px solid #e5e7eb;">
+
+                    {{-- List subheader --}}
+                    <div style="padding:16px 28px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+                        <div style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;">Configured Accounts</div>
+                        <div id="ma-count" style="font-size:12px;color:#6b7280;">Loading…</div>
                     </div>
-                    <div style="margin-bottom:14px;">
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">To</label>
-                        <input type="text" id="em-test-to" placeholder="recipient@example.com" class="form-input">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <button type="button" id="btn-em-send" onclick="sendTestEmail()"
-                            style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;font-size:13px;font-weight:600;color:#fff;background:#2563eb;border:none;border-radius:8px;cursor:pointer;"
+
+                    {{-- Account rows --}}
+                    <div id="ma-list"></div>
+
+                    {{-- Empty state --}}
+                    <div id="ma-empty" style="display:none;padding:48px 28px;text-align:center;">
+                        <div style="width:56px;height:56px;border-radius:16px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px;">✉️</div>
+                        <div style="font-size:15px;font-weight:600;color:#374151;margin-bottom:6px;">No mail accounts yet</div>
+                        <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">Add an account to start sending emails via Microsoft 365 or SMTP.</div>
+                        <button type="button" onclick="maOpen()"
+                            style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;font-size:13px;font-weight:600;color:#fff;background:#2563eb;border:none;border-radius:8px;cursor:pointer;"
                             onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
-                            ✉️ Send
+                            + Add Your First Account
                         </button>
-                        <span id="em-send-status" style="font-size:12px;display:none;"></span>
                     </div>
-                </div>
-            </div>
 
+                </div>
+
+                {{-- Right: Send Test Email --}}
+                <div style="padding:28px;background:#f8fafc;">
+
+                    <div style="font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:20px;">Send Test Email</div>
+
+                    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+                        <p style="font-size:13px;color:#6b7280;margin:0 0 18px;">Send a test email via any of your configured accounts.</p>
+
+                        <div style="margin-bottom:14px;">
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Account</label>
+                            <select id="em-test-account" class="form-input">
+                                <option value="">— select account —</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom:18px;">
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Recipient</label>
+                            <input type="text" id="em-test-to" placeholder="recipient@example.com" class="form-input">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <button type="button" id="btn-em-send" onclick="sendTestEmail()"
+                                style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;font-size:13px;font-weight:600;color:#fff;background:#2563eb;border:none;border-radius:8px;cursor:pointer;"
+                                onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
+                                <svg style="width:14px;height:14px;" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                Send
+                            </button>
+                            <span id="em-send-status" style="font-size:12px;display:none;"></span>
+                        </div>
+                    </div>
+
+                    {{-- Code hint --}}
+                    <div style="margin-top:16px;padding:14px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;">
+                        <div style="font-size:11px;font-weight:600;color:#9ca3af;margin-bottom:8px;">USE IN CODE</div>
+                        <code style="font-size:12px;color:#374151;line-height:1.6;">Mail::mailer('account-name')</code>
+                    </div>
+
+                </div>
+
+            </div>
         </div>
 
     </div>{{-- end Email tab --}}
 
-    {{-- Mail Accounts Modal --}}
+    {{-- ===== Mail Accounts Modal ===== --}}
     <div id="ma-modal-overlay"
         onclick="if(event.target===this) maClose()"
         style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,0.55);backdrop-filter:blur(3px);">
         <div style="width:100%;max-width:540px;max-height:88vh;overflow-y:auto;background:#fff;border-radius:16px;box-shadow:0 25px 60px -10px rgba(0,0,0,0.3);">
 
-            {{-- Header --}}
             <div style="padding:20px 24px 16px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;">
                 <h3 id="ma-modal-title" style="font-size:16px;font-weight:700;color:#111827;margin:0;">Add Mail Account</h3>
                 <button type="button" onclick="maClose()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;line-height:1;padding:0 4px;">&times;</button>
             </div>
 
-            {{-- Body --}}
             <div style="padding:24px;">
 
-                {{-- Account Name --}}
                 <div style="margin-bottom:16px;">
-                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
-                        Account Name <span style="color:#9ca3af;font-weight:400;">(used in code)</span>
-                    </label>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Account Name <span style="color:#9ca3af;font-weight:400;">(used in code)</span></label>
                     <input type="text" id="ma-form-name" placeholder="e.g. customer-support" class="form-input">
                     <div style="font-size:11px;color:#9ca3af;margin-top:3px;">Lowercase letters, numbers and hyphens only.</div>
                 </div>
 
-                {{-- Label --}}
                 <div style="margin-bottom:16px;">
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Label</label>
                     <input type="text" id="ma-form-label" placeholder="e.g. Customer Support" class="form-input">
                 </div>
 
-                {{-- Type --}}
                 <div style="margin-bottom:20px;">
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Type</label>
                     <select id="ma-form-type" class="form-input" onchange="maTypeChange()">
@@ -289,7 +296,6 @@
                     </select>
                 </div>
 
-                {{-- Azure section --}}
                 <div id="ma-azure-section" style="display:none;border-top:1px solid #f3f4f6;padding-top:16px;margin-bottom:16px;">
                     <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Azure AD Credentials</div>
                     <div style="margin-bottom:12px;">
@@ -312,7 +318,6 @@
                     </div>
                 </div>
 
-                {{-- SMTP section --}}
                 <div id="ma-smtp-section" style="border-top:1px solid #f3f4f6;padding-top:16px;margin-bottom:16px;">
                     <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">SMTP Server</div>
                     <div style="display:flex;gap:10px;margin-bottom:12px;">
@@ -349,7 +354,6 @@
                     </div>
                 </div>
 
-                {{-- Sender --}}
                 <div style="border-top:1px solid #f3f4f6;padding-top:16px;margin-bottom:16px;">
                     <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Sender</div>
                     <div style="margin-bottom:12px;">
@@ -364,8 +368,7 @@
 
             </div>
 
-            {{-- Footer --}}
-            <div style="padding:16px 24px;border-top:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;">
+            <div style="padding:16px 24px;border-top:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;background:#f9fafb;">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <button type="button" id="ma-test-btn" onclick="maTest()"
                         style="font-size:13px;color:#2563eb;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;"
@@ -376,12 +379,10 @@
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button type="button" onclick="maClose()"
-                        style="padding:8px 16px;background:#f9fafb;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;">
+                        style="padding:8px 16px;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;">
                         Cancel
                     </button>
-                    <button type="button" id="ma-save-btn" onclick="maSave()" class="btn-primary">
-                        Save Account
-                    </button>
+                    <button type="button" id="ma-save-btn" onclick="maSave()" class="btn-primary">Save Account</button>
                 </div>
             </div>
 
@@ -410,10 +411,13 @@ function toggleWaSwitch() {
     var hidden = document.getElementById('wa-enabled-hidden');
     var track  = document.getElementById('wa-toggle-track');
     var thumb  = document.getElementById('wa-toggle-thumb');
+    var label  = document.getElementById('wa-enabled-label');
     var on = hidden.value === '1';
     hidden.value = on ? '0' : '1';
     track.style.background = on ? '#d1d5db' : '#22c55e';
     thumb.style.left = on ? '2px' : '22px';
+    label.textContent = on ? 'Disabled' : 'Enabled';
+    label.style.color = on ? '#6b7280' : '#16a34a';
 }
 
 function saveWhatsapp() {
@@ -498,7 +502,7 @@ function renderMailAccounts() {
     var list  = document.getElementById('ma-list');
     var empty = document.getElementById('ma-empty');
     var count = document.getElementById('ma-count');
-    count.textContent = _maAccounts.length + ' account' + (_maAccounts.length !== 1 ? 's' : '') + ' configured';
+    count.textContent = _maAccounts.length + ' account' + (_maAccounts.length !== 1 ? 's' : '');
     if (_maAccounts.length === 0) {
         list.style.display  = 'none';
         empty.style.display = '';
@@ -517,22 +521,22 @@ function renderAccountRow(a) {
     var typeIcon  = isAzure ? '✉️' : '📧';
     var trackBg   = a.enabled ? '#22c55e' : '#d1d5db';
     var thumbLeft = a.enabled ? '22px' : '2px';
-    return '<div style="padding:16px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #f3f4f6;" data-id="' + a.id + '">' +
-        '<div style="width:36px;height:36px;background:' + typeBg + ';border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;">' + typeIcon + '</div>' +
+    return '<div style="padding:16px 28px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #f3f4f6;" data-id="' + a.id + '">' +
+        '<div style="width:38px;height:38px;background:' + typeBg + ';border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;">' + typeIcon + '</div>' +
         '<div style="flex:1;min-width:0;">' +
-            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">' +
                 '<span style="font-size:14px;font-weight:600;color:#111827;">' + escHtml(a.label) + '</span>' +
-                '<code style="font-size:11px;color:#6b7280;background:#f3f4f6;padding:1px 6px;border-radius:4px;">' + escHtml(a.name) + '</code>' +
-                '<span style="font-size:11px;font-weight:600;color:' + typeColor + ';background:' + typeBg + ';padding:2px 8px;border-radius:999px;">' + typeLabel + '</span>' +
+                '<code style="font-size:11px;color:#6b7280;background:#f3f4f6;padding:2px 7px;border-radius:5px;">' + escHtml(a.name) + '</code>' +
+                '<span style="font-size:11px;font-weight:600;color:' + typeColor + ';background:' + typeBg + ';padding:2px 9px;border-radius:999px;">' + typeLabel + '</span>' +
             '</div>' +
             '<div style="font-size:12px;color:#6b7280;">' + escHtml(a.from_address) + '</div>' +
         '</div>' +
         '<div onclick="maToggle(' + a.id + ')" id="ma-toggle-' + a.id + '" style="width:44px;height:24px;border-radius:12px;background:' + trackBg + ';position:relative;cursor:pointer;flex-shrink:0;transition:background .2s;">' +
             '<div id="ma-thumb-' + a.id + '" style="position:absolute;top:2px;left:' + thumbLeft + ';width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .2s;"></div>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;flex-shrink:0;">' +
-            '<button onclick="maOpen(' + a.id + ')" style="font-size:12px;color:#6b7280;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;cursor:pointer;">Edit</button>' +
-            '<button onclick="maDelete(' + a.id + ',\'' + escJs(a.label) + '\')" style="font-size:12px;color:#dc2626;background:#fff5f5;border:1px solid #fecaca;border-radius:6px;padding:5px 10px;cursor:pointer;">Delete</button>' +
+        '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+            '<button onclick="maOpen(' + a.id + ')" style="font-size:12px;color:#374151;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:500;">Edit</button>' +
+            '<button onclick="maDelete(' + a.id + ',\'' + escJs(a.label) + '\')" style="font-size:12px;color:#dc2626;background:#fff5f5;border:1px solid #fecaca;border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:500;">Delete</button>' +
         '</div>' +
     '</div>';
 }
@@ -608,7 +612,6 @@ function maSave() {
         username:   document.getElementById('ma-form-smtp-username').value.trim(),
         password:   document.getElementById('ma-form-smtp-password').value,
     };
-
     var data = {
         name:         document.getElementById('ma-form-name').value.trim(),
         label:        document.getElementById('ma-form-label').value.trim(),
@@ -617,12 +620,10 @@ function maSave() {
         from_name:    document.getElementById('ma-form-from-name').value.trim() || null,
         config:       config,
     };
-
     var btn    = document.getElementById('ma-save-btn');
     var url    = _maEditId ? MA_BASE + '/' + _maEditId : MA_BASE;
     var method = _maEditId ? 'PUT' : 'POST';
     btn.disabled = true; btn.style.opacity = '.6';
-
     fetch(url, {
         method: method,
         headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
