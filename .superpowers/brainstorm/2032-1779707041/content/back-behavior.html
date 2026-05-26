@@ -1,0 +1,36 @@
+<h2>Back Button Behavior</h2>
+<p class="subtitle">When the user clicks "← Change method" from step 2, what happens to their selections?</p>
+
+<div class="options">
+
+  <div class="option" data-choice="clear" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Clear selections on back <span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:6px;">Recommended</span></h3>
+      <p>Going back always resets everything. Switching from Full Order → By Item (or vice versa) is a fundamentally different configuration, so a clean slate avoids stale state.</p>
+      <div style="margin-top:10px;background:#f8fafc;border-radius:10px;padding:12px;font-size:11px;color:#475569;">
+        <strong>Flow:</strong> Pick method → select suppliers → back → <em>selections cleared</em> → pick method again → fresh start
+      </div>
+      <div class="pros-cons" style="margin-top:10px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Simple, no hidden state</li><li>No risk of mixing Full Order + By Item data</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>User loses work if they go back accidentally</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="preserve" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Preserve selections on back</h3>
+      <p>Selections are remembered per-mode. If the user goes back and re-enters the same mode, their previous picks are still there. Switching to the <em>other</em> mode starts fresh for that mode only.</p>
+      <div style="margin-top:10px;background:#f8fafc;border-radius:10px;padding:12px;font-size:11px;color:#475569;">
+        <strong>Flow:</strong> Full Order → select 3 suppliers → back → pick Full Order again → 3 suppliers still checked
+      </div>
+      <div class="pros-cons" style="margin-top:10px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Forgiving — accidental back doesn't lose work</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More complex state management</li><li>Can confuse users who expect a fresh start</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,78 @@
+<h2>Supplier Modal — 3 Redesign Approaches</h2>
+<p class="subtitle">The core problem: the two tabs (Full Order / By Item) are mutually exclusive but look like equals. Choosing one should lock out the other. Here are three ways to fix that.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Two-Step Wizard <span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:6px;">Recommended</span></h3>
+      <p>The modal opens on a "choose your method" screen with two large cards. Clicking one card transitions into that mode — no tabs ever appear. A small "← Change method" back link lets you restart if needed.</p>
+      <div style="margin-top:10px;background:#f8fafc;border-radius:10px;padding:12px;font-size:12px;">
+        <div style="display:flex;gap:8px;margin-bottom:6px;">
+          <div style="background:#eff6ff;border:2px solid #2563eb;border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+            <div style="font-size:18px;margin-bottom:4px;">📦</div>
+            <div style="font-weight:700;color:#0f172a;font-size:12px;">Full Order</div>
+            <div style="color:#64748b;font-size:10px;margin-top:2px;">One set of suppliers for everything</div>
+          </div>
+          <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+            <div style="font-size:18px;margin-bottom:4px;">🔀</div>
+            <div style="font-weight:700;color:#0f172a;font-size:12px;">By Item</div>
+            <div style="color:#64748b;font-size:10px;margin-top:2px;">Different suppliers per item</div>
+          </div>
+        </div>
+        <div style="color:#94a3b8;text-align:center;font-size:10px;">↓ clicking a card opens that flow directly</div>
+      </div>
+      <div class="pros-cons" style="margin-top:10px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Zero ambiguity — only one path at a time</li><li>Clean separation of concerns</li><li>Escape hatch via back link</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Extra click before seeing suppliers</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Wizard with Step Indicator</h3>
+      <p>Same two-step wizard as A, but with a visible step breadcrumb at the top: <strong>① Choose Method → ② Select Suppliers</strong>. Adds visual progress context for users who need orientation.</p>
+      <div style="margin-top:10px;background:#f8fafc;border-radius:10px;padding:12px;font-size:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+          <div style="background:#2563eb;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">1</div>
+          <div style="font-size:11px;font-weight:700;color:#2563eb;">Choose Method</div>
+          <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+          <div style="background:#e2e8f0;color:#94a3b8;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">2</div>
+          <div style="font-size:11px;color:#94a3b8;">Select Suppliers</div>
+        </div>
+        <div style="color:#94a3b8;text-align:center;font-size:10px;">step indicator lives in the modal header</div>
+      </div>
+      <div class="pros-cons" style="margin-top:10px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Users see where they are in the flow</li><li>Familiar wizard UX pattern</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Slightly more UI chrome</li><li>Overkill for a 2-step flow</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Prominent Mode Toggle (No Wizard)</h3>
+      <p>Keep a single-screen modal but replace the tabs with a large segmented toggle at the top. Switching mode clears all selections and shows a confirmation toast. Less structural change, but still communicates mutual exclusivity.</p>
+      <div style="margin-top:10px;background:#f8fafc;border-radius:10px;padding:12px;font-size:12px;">
+        <div style="display:flex;border:2px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:6px;">
+          <div style="flex:1;padding:8px 12px;background:#2563eb;color:#fff;text-align:center;font-weight:700;font-size:12px;">
+            📦 Full Order
+          </div>
+          <div style="flex:1;padding:8px 12px;background:#fff;color:#94a3b8;text-align:center;font-weight:600;font-size:12px;">
+            🔀 By Item
+          </div>
+        </div>
+        <div style="color:#f59e0b;font-size:10px;text-align:center;">⚠ Switching clears your current selections</div>
+      </div>
+      <div class="pros-cons" style="margin-top:10px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Fewest changes to existing code</li><li>Both options always visible</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Still looks like "tabs" — same confusion risk</li><li>Warning toast feels like an afterthought</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,168 @@
+<h2>Add Account Modal — Both Type Variants</h2>
+<p class="subtitle">Left: Microsoft 365 (Azure AD) fields. Right: SMTP fields. The type dropdown switches which fields appear. Account name is a slug used in code.</p>
+
+<div class="split">
+
+  <!-- Azure variant -->
+  <div class="mockup">
+    <div class="mockup-header">Add Mail Account — Microsoft 365</div>
+    <div class="mockup-body" style="padding:24px;background:#fff;">
+
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Account Name <span style="color:#9ca3af;font-weight:400;">(used in code)</span></div>
+        <div style="height:38px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+          <span style="font-size:13px;color:#374151;">customer-support</span>
+        </div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:3px;">Lowercase, hyphens only. Used as <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;">Mail::mailer('customer-support')</code></div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Type</div>
+        <div style="height:38px;background:#fff;border:1px solid #2563eb;border-radius:7px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;color:#374151;">✉️ Microsoft 365 (Azure AD)</span>
+          <span style="font-size:11px;color:#9ca3af;">▼</span>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #f3f4f6;margin:0 0 16px;padding-top:16px;">
+        <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Azure AD Credentials</div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Tenant ID</div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+            <span style="font-size:12px;color:#9ca3af;">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Client ID</div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+            <span style="font-size:12px;color:#9ca3af;">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Client Secret</div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:12px;color:#9ca3af;letter-spacing:2px;">••••••••••••</span>
+            <span style="font-size:11px;color:#6b7280;background:#f9fafb;padding:2px 7px;border-radius:4px;border:1px solid #e5e7eb;">Show</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #f3f4f6;padding-top:16px;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Sender</div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">From Address</div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+            <span style="font-size:12px;color:#9ca3af;">support@steelco.com</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">From Name <span style="color:#9ca3af;font-weight:400;">(optional)</span></div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+            <span style="font-size:12px;color:#9ca3af;">SteelERP</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f3f4f6;padding-top:16px;">
+        <span style="font-size:13px;color:#2563eb;text-decoration:underline;cursor:pointer;">🔗 Test Connection</span>
+        <div style="display:flex;gap:8px;">
+          <div style="padding:8px 16px;background:#f9fafb;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;">Cancel</div>
+          <div style="padding:8px 20px;background:#111827;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Save Account</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SMTP variant -->
+  <div class="mockup">
+    <div class="mockup-header">Add Mail Account — SMTP</div>
+    <div class="mockup-body" style="padding:24px;background:#fff;">
+
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Account Name <span style="color:#9ca3af;font-weight:400;">(used in code)</span></div>
+        <div style="height:38px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+          <span style="font-size:13px;color:#374151;">invoices</span>
+        </div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:3px;">Lowercase, hyphens only. Used as <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;">Mail::mailer('invoices')</code></div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Type</div>
+        <div style="height:38px;background:#fff;border:1px solid #2563eb;border-radius:7px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;color:#374151;">📧 SMTP</span>
+          <span style="font-size:11px;color:#9ca3af;">▼</span>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #f3f4f6;margin:0 0 16px;padding-top:16px;">
+        <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">SMTP Server</div>
+
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Host</div>
+            <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+              <span style="font-size:12px;color:#9ca3af;">smtp.gmail.com</span>
+            </div>
+          </div>
+          <div style="width:80px;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Port</div>
+            <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+              <span style="font-size:12px;color:#374151;">587</span>
+            </div>
+          </div>
+          <div style="width:90px;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Encryption</div>
+            <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:12px;color:#374151;">TLS</span>
+              <span style="font-size:10px;color:#9ca3af;">▼</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Username</div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+            <span style="font-size:12px;color:#9ca3af;">invoices@steelco.com</span>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Password</div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:12px;color:#9ca3af;letter-spacing:2px;">••••••••••••</span>
+            <span style="font-size:11px;color:#6b7280;background:#f9fafb;padding:2px 7px;border-radius:4px;border:1px solid #e5e7eb;">Show</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #f3f4f6;padding-top:16px;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Sender</div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">From Address</div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+            <span style="font-size:12px;color:#9ca3af;">invoices@steelco.com</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">From Name <span style="color:#9ca3af;font-weight:400;">(optional)</span></div>
+          <div style="height:36px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+            <span style="font-size:12px;color:#9ca3af;">SteelERP Invoices</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f3f4f6;padding-top:16px;">
+        <span style="font-size:13px;color:#2563eb;text-decoration:underline;cursor:pointer;">🔗 Test Connection</span>
+        <div style="display:flex;gap:8px;">
+          <div style="padding:8px 16px;background:#f9fafb;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;">Cancel</div>
+          <div style="padding:8px 20px;background:#111827;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Save Account</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Both variants use the same modal shell — only the credential section changes based on the Type dropdown. Does this look right? Let me know in the terminal.</p>

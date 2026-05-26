@@ -1,0 +1,133 @@
+<h2>Email Tab — Full Design</h2>
+<p class="subtitle">Here's what the Email (Microsoft 365) tab looks like with all its fields. Does this match what you had in mind?</p>
+
+<div class="mockup">
+  <div class="mockup-header">Settings — Integrations (Email tab active)</div>
+  <div class="mockup-body" style="background:#f9fafb;padding:24px;">
+    <div style="max-width:680px;margin:0 auto;">
+
+      <!-- Page heading -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:20px;font-weight:700;color:#111827;margin-bottom:4px;">Settings — Integrations</div>
+        <div style="font-size:13px;color:#6b7280;">Configure third-party service integrations.</div>
+      </div>
+
+      <!-- Pill tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;">
+        <div style="padding:7px 18px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;">
+          💬 WhatsApp
+        </div>
+        <div style="padding:7px 18px;background:#111827;color:#fff;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;">
+          ✉️ Email
+        </div>
+      </div>
+
+      <!-- Email card -->
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+
+        <!-- Card header -->
+        <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">
+          <div style="width:32px;height:32px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">✉️</div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:#111827;">Microsoft 365 (Azure Mail)</div>
+            <div style="font-size:12px;color:#6b7280;">Send emails via Microsoft Graph API using Azure AD</div>
+          </div>
+        </div>
+
+        <!-- Form body -->
+        <div style="padding:24px;">
+
+          <!-- Enable toggle -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <div>
+              <div style="font-size:14px;font-weight:500;color:#374151;margin-bottom:2px;">Enable Email Notifications</div>
+              <div style="font-size:12px;color:#6b7280;">When disabled, no emails will be sent.</div>
+            </div>
+            <div style="width:44px;height:24px;border-radius:12px;background:#d1d5db;position:relative;">
+              <div style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);"></div>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid #e5e7eb;margin-bottom:20px;"></div>
+
+          <!-- Tenant ID -->
+          <div style="margin-bottom:16px;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Tenant ID</div>
+            <div style="height:38px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+              <span style="font-size:13px;color:#9ca3af;">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+            </div>
+          </div>
+
+          <!-- Client ID -->
+          <div style="margin-bottom:16px;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Client ID</div>
+            <div style="height:38px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+              <span style="font-size:13px;color:#9ca3af;">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+            </div>
+          </div>
+
+          <!-- Client Secret -->
+          <div style="margin-bottom:16px;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Client Secret</div>
+            <div style="height:38px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:13px;color:#9ca3af;letter-spacing:2px;">••••••••••••••••</span>
+              <span style="font-size:11px;color:#6b7280;background:#f9fafb;padding:2px 8px;border-radius:4px;border:1px solid #e5e7eb;cursor:pointer;">Show</span>
+            </div>
+          </div>
+
+          <!-- From Address -->
+          <div style="margin-bottom:24px;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">From Address</div>
+            <div style="height:38px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+              <span style="font-size:13px;color:#9ca3af;">noreply@yourdomain.com</span>
+            </div>
+            <div style="font-size:11px;color:#6b7280;margin-top:4px;">Must be a mailbox in your Microsoft 365 tenant.</div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-top:16px;border-top:1px solid #f3f4f6;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:13px;color:#2563eb;text-decoration:underline;cursor:pointer;">🔗 Test Connection</span>
+            </div>
+            <div style="padding:8px 20px;background:#111827;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Save Settings</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Send Test Email accordion -->
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin-top:14px;overflow:hidden;">
+        <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:16px;">📧</span>
+            <span style="font-size:14px;font-weight:600;color:#111827;">Send Test Email</span>
+            <span style="font-size:12px;color:#6b7280;">— verify the connection works end-to-end</span>
+          </div>
+          <span style="font-size:12px;color:#9ca3af;">▼</span>
+        </div>
+        <!-- Expanded state shown -->
+        <div style="padding:0 24px 20px;border-top:1px solid #e5e7eb;">
+          <div style="height:12px;"></div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">To</div>
+            <div style="height:38px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+              <span style="font-size:13px;color:#9ca3af;">recipient@example.com</span>
+            </div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Subject</div>
+            <div style="height:38px;background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:0 12px;display:flex;align-items:center;">
+              <span style="font-size:13px;color:#6b7280;">Test Email from SteelERP</span>
+            </div>
+          </div>
+          <div style="padding:9px 18px;background:#2563eb;color:#fff;border-radius:8px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;cursor:pointer;">
+            ✉️ Send Email
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Does this look right? Let me know in the terminal if you'd like any changes — different fields, different layout, etc.</p>
