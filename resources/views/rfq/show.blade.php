@@ -146,9 +146,9 @@
               <td colspan="7" style="text-align:right;font-size:13px;color:#475569;">Subtotal:</td>
               <td style="text-align:right;font-size:14px;color:#475569;" id="subtotal-row">BD 0.000</td>
             </tr>
-            <tr id="vat-tr" style="background:#fffbeb;{{ $vatRate > 0 ? '' : 'display:none;' }}">
-              <td colspan="7" style="text-align:right;font-size:13px;color:#92400e;">VAT ({{ $vatRate }}%):</td>
-              <td style="text-align:right;font-size:14px;color:#92400e;" id="vat-row">BD 0.000</td>
+            <tr id="vat-tr" style="background:#f8fafc;{{ $vatRate > 0 ? '' : 'display:none;' }}">
+              <td colspan="7" style="text-align:right;font-size:13px;color:#475569;">VAT ({{ $vatRate }}%):</td>
+              <td style="text-align:right;font-size:14px;color:#475569;" id="vat-row">BD 0.000</td>
             </tr>
             <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
               <td colspan="7" style="text-align:right;font-size:13px;color:#475569;font-weight:700;">Grand Total:</td>
