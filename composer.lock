@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5daed94f08a2aff0bba86affd37a0cd6",
+    "content-hash": "644cad003bc58ba3ea106336e06e0396",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -3283,8 +3283,8 @@
             "version": "dev-master",
             "dist": {
                 "type": "path",
-                "url": "../azure-mailer",
-                "reference": "d240f4f64afcd094b30cd460b82f809f3b2003f9"
+                "url": "./packages/azure-mailer",
+                "reference": "b6d04a3e3a01a8439853efe8f52f672ae8a04b75"
             },
             "require": {
                 "illuminate/cache": "^11.0|^12.0",
@@ -3334,7 +3334,7 @@
             "version": "dev-master",
             "dist": {
                 "type": "path",
-                "url": "../ultra-message",
+                "url": "./packages/ultra-message",
                 "reference": "56160235808f7d9d9dd3ec8d0eefa20a17807647"
             },
             "require": {

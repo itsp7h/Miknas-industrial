@@ -8,11 +8,11 @@
     "repositories": [
         {
             "type": "path",
-            "url": "../ultra-message"
+            "url": "./packages/ultra-message"
         },
         {
             "type": "path",
-            "url": "../azure-mailer"
+            "url": "./packages/azure-mailer"
         }
     ],
     "require": {
