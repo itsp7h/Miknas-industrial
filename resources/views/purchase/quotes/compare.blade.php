@@ -48,7 +48,7 @@
           {{-- Per-item rows --}}
           @foreach($items as $i => $reqItem)
           @php
-            $rowPrices = $quotes->map(fn($q) => optional($q->items->get($i))->unit_price)->filter()->values();
+            $rowPrices = $quotes->map(fn($q) => ($q->items->get($i) && !$q->items->get($i)->not_available) ? $q->items->get($i)->unit_price : null)->filter()->values();
             $minPrice  = $rowPrices->count() ? $rowPrices->min() : null;
           @endphp
           <tr>
@@ -57,14 +57,24 @@
               <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Qty: {{ $reqItem->quantity }} {{ $reqItem->unit }}</div>
             </td>
             @foreach($quotes as $q)
-            @php $qItem = $q->items->get($i); $isMin = $qItem && $minPrice !== null && (float)$qItem->unit_price === (float)$minPrice && $rowPrices->count() > 1; @endphp
+            @php $qItem = $q->items->get($i); $isMin = $qItem && !$qItem->not_available && $minPrice !== null && (float)$qItem->unit_price === (float)$minPrice && $rowPrices->count() > 1; @endphp
             <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;text-align:center;background:{{ $isMin ? '#f0fdf4' : '' }};">
               @if($qItem)
-                <div style="font-weight:600;color:{{ $isMin ? '#15803d' : '#0f172a' }};">
-                  @if($isMin)<span style="font-size:10px;font-weight:700;color:#15803d;display:block;">LOWEST</span>@endif
-                  BD {{ number_format($qItem->unit_price, 3) }}
-                </div>
-                <div style="font-size:11px;color:#64748b;margin-top:2px;">BD {{ number_format($qItem->total_price, 3) }}</div>
+                @if($qItem->not_available)
+                  <span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;padding:2px 8px;border-radius:4px;border:1px solid #fecaca;">Not available</span>
+                @else
+                  @if($qItem->supplier_description)
+                    <div style="font-size:10px;color:#64748b;margin-bottom:2px;font-style:italic;">
+                      "{{ $qItem->supplier_description }}"
+                      <span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid #fde68a;font-style:normal;margin-left:2px;">adjusted</span>
+                    </div>
+                  @endif
+                  <div style="font-weight:600;color:{{ $isMin ? '#15803d' : '#0f172a' }};">
+                    @if($isMin)<span style="font-size:10px;font-weight:700;color:#15803d;display:block;">LOWEST</span>@endif
+                    BD {{ number_format($qItem->unit_price, 3) }}
+                  </div>
+                  <div style="font-size:11px;color:#64748b;margin-top:2px;">BD {{ number_format($qItem->total_price, 3) }}</div>
+                @endif
               @else
                 <span style="color:#e2e8f0;">—</span>
               @endif

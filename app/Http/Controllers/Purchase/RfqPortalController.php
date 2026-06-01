@@ -61,14 +61,16 @@ class RfqPortalController extends Controller
         }
 
         $validated = $request->validate([
-            'terms'                => ['accepted'],
-            'confirm_code'         => ['required', 'string'],
-            'lead_time_days'       => ['nullable', 'integer', 'min:0'],
-            'payment_terms'        => ['nullable', 'string', 'max:200'],
-            'notes'                => ['nullable', 'string', 'max:1000'],
-            'items'                => ['required', 'array'],
-            'items.*.unit_price'   => ['required', 'numeric', 'min:0'],
-            'items.*.is_vatable'   => ['nullable', 'boolean'],
+            'terms'                          => ['accepted'],
+            'confirm_code'                   => ['required', 'string'],
+            'lead_time_days'                 => ['nullable', 'integer', 'min:0'],
+            'payment_terms'                  => ['nullable', 'string', 'max:200'],
+            'notes'                          => ['nullable', 'string', 'max:1000'],
+            'items'                          => ['required', 'array'],
+            'items.*.unit_price'             => ['nullable', 'numeric', 'min:0'],
+            'items.*.is_vatable'             => ['nullable', 'boolean'],
+            'items.*.not_available'          => ['nullable', 'boolean'],
+            'items.*.supplier_description'   => ['nullable', 'string', 'max:500'],
         ]);
 
         $expectedCode = session('rfq_confirm_' . $token);
@@ -98,24 +100,31 @@ class RfqPortalController extends Controller
         $vatRate   = (float) Setting::get('vat_rate', 0);
 
         foreach ($purchaseItems as $i => $item) {
-            $unitPrice  = (float)($validated['items'][$i]['unit_price'] ?? 0);
-            $qty        = (float)$item->quantity_required;
-            $totalPrice = round($unitPrice * $qty, 3);
-            $isVatable  = !empty($validated['items'][$i]['is_vatable']);
-            $subtotal  += $totalPrice;
+            $notAvailable       = !empty($validated['items'][$i]['not_available']);
+            $unitPrice          = $notAvailable ? 0 : (float)($validated['items'][$i]['unit_price'] ?? 0);
+            $qty                = (float)$item->quantity_required;
+            $totalPrice         = $notAvailable ? 0 : round($unitPrice * $qty, 3);
+            $isVatable          = !$notAvailable && !empty($validated['items'][$i]['is_vatable']);
+            $supplierDescription = !empty($validated['items'][$i]['supplier_description'])
+                ? trim($validated['items'][$i]['supplier_description'])
+                : null;
+
+            $subtotal += $totalPrice;
 
             if ($isVatable && $vatRate > 0) {
                 $vatAmount += round($totalPrice * $vatRate / 100, 3);
             }
 
             SupplierQuoteItem::create([
-                'supplier_quote_id' => $quote->id,
-                'description'       => $item->description,
-                'unit'              => $item->unit ?? '',
-                'quantity'          => $qty,
-                'unit_price'        => $unitPrice,
-                'total_price'       => $totalPrice,
-                'is_vatable'        => $isVatable,
+                'supplier_quote_id'   => $quote->id,
+                'description'         => $item->description,
+                'supplier_description'=> $supplierDescription,
+                'unit'                => $item->unit ?? '',
+                'quantity'            => $qty,
+                'unit_price'          => $unitPrice,
+                'total_price'         => $totalPrice,
+                'is_vatable'          => $isVatable,
+                'not_available'       => $notAvailable,
             ]);
         }
 

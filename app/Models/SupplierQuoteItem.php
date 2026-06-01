@@ -7,11 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class SupplierQuoteItem extends Model
 {
     protected $fillable = [
-        'supplier_quote_id', 'description', 'unit', 'quantity', 'unit_price', 'total_price', 'is_vatable',
+        'supplier_quote_id', 'description', 'supplier_description', 'unit', 'quantity',
+        'unit_price', 'total_price', 'is_vatable', 'not_available',
     ];
 
     protected $casts = [
-        'is_vatable' => 'boolean',
+        'is_vatable'    => 'boolean',
+        'not_available' => 'boolean',
     ];
 
     public function quote()
