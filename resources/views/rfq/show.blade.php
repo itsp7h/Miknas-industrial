@@ -78,6 +78,7 @@
               <th>Description</th>
               <th>Qty</th>
               <th>Unit</th>
+              <th style="text-align:center;">VAT?</th>
               <th style="text-align:right;">Unit Price (BD)</th>
               <th style="text-align:right;">Total (BD)</th>
             </tr>
@@ -89,6 +90,15 @@
               <td style="font-weight:500;">{{ $item->description }}</td>
               <td>{{ rtrim(rtrim(number_format((float)$item->quantity_required, 3), '0'), '.') }}</td>
               <td style="color:#64748b;">{{ $item->unit ?: '—' }}</td>
+              <td style="text-align:center;">
+                @if($vatRate > 0)
+                <input type="checkbox" name="items[{{ $i }}][is_vatable]" value="1"
+                       onchange="calcRow({{ $i }}, {{ (float)$item->quantity_required }})"
+                       style="width:16px;height:16px;accent-color:#2563eb;cursor:pointer;">
+                @else
+                <span style="color:#cbd5e1;font-size:11px;">—</span>
+                @endif
+              </td>
               <td style="text-align:right;">
                 <input type="number" class="price" name="items[{{ $i }}][unit_price]"
                        min="0" step="0.001" required placeholder="0.000"
@@ -100,8 +110,16 @@
           </tbody>
           <tfoot>
             <tr style="background:#f8fafc;">
-              <td colspan="5" style="text-align:right;font-size:13px;color:#475569;">Grand Total:</td>
-              <td style="text-align:right;font-size:15px;color:#2563eb;" id="grand-total">BD 0.000</td>
+              <td colspan="6" style="text-align:right;font-size:13px;color:#475569;">Subtotal:</td>
+              <td style="text-align:right;font-size:14px;color:#475569;" id="subtotal-row">BD 0.000</td>
+            </tr>
+            <tr id="vat-tr" style="background:#fffbeb;{{ $vatRate > 0 ? '' : 'display:none;' }}">
+              <td colspan="6" style="text-align:right;font-size:13px;color:#92400e;">VAT ({{ $vatRate }}%):</td>
+              <td style="text-align:right;font-size:14px;color:#92400e;" id="vat-row">BD 0.000</td>
+            </tr>
+            <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
+              <td colspan="6" style="text-align:right;font-size:13px;color:#475569;font-weight:700;">Grand Total:</td>
+              <td style="text-align:right;font-size:15px;color:#2563eb;font-weight:700;" id="grand-total">BD 0.000</td>
             </tr>
           </tfoot>
         </table>
@@ -204,17 +222,38 @@
 </div>
 
 <script>
-var _totals = {};
+var _vatRate = {{ $vatRate }};
+var _totals  = {};
+var _vatable = {};
+
 function calcRow(i, qty) {
   var inp = document.querySelector('input[name="items[' + i + '][unit_price]"]');
+  var cb  = document.querySelector('input[name="items[' + i + '][is_vatable]"]');
   var up  = parseFloat(inp ? inp.value : 0) || 0;
   var tot = Math.round(up * qty * 1000) / 1000;
-  _totals[i] = tot;
+  _totals[i]  = tot;
+  _vatable[i] = cb ? cb.checked : false;
   var el = document.getElementById('tot-' + i);
-  if (el) el.textContent = 'BD ' + tot.toFixed(3);
-  var grand = Object.values(_totals).reduce(function(a,b){return a+b;}, 0);
-  var ge = document.getElementById('grand-total');
-  if (ge) ge.textContent = 'BD ' + grand.toFixed(3);
+  if (el) el.textContent = tot > 0 ? 'BD ' + tot.toFixed(3) : '—';
+  recalcTotals();
+}
+
+function recalcTotals() {
+  var subtotal  = 0;
+  var vatAmount = 0;
+  Object.keys(_totals).forEach(function(i) {
+    subtotal += _totals[i];
+    if (_vatable[i] && _vatRate > 0) {
+      vatAmount += Math.round(_totals[i] * _vatRate / 100 * 1000) / 1000;
+    }
+  });
+  var grand = Math.round((subtotal + vatAmount) * 1000) / 1000;
+  var elSub   = document.getElementById('subtotal-row');
+  var elVat   = document.getElementById('vat-row');
+  var elGrand = document.getElementById('grand-total');
+  if (elSub)   elSub.textContent   = 'BD ' + subtotal.toFixed(3);
+  if (elVat)   elVat.textContent   = 'BD ' + vatAmount.toFixed(3);
+  if (elGrand) elGrand.textContent = 'BD ' + grand.toFixed(3);
 }
 
 var _expected = '{{ $confirmCode }}';
