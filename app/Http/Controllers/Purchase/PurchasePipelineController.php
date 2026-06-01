@@ -35,7 +35,8 @@ class PurchasePipelineController extends Controller
             'items',
             'signature.signedBy',
             'rfqInvitations.supplier',
-            'supplierQuotes',
+            'supplierQuotes.supplier',
+            'supplierQuotes.items',
             'awardedQuote.supplier',
         ]);
 

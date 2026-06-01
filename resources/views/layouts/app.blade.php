@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') — SteelERP</title>
+    <title>SteelERP @hasSection('title') — @yield('title') @endif</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet"/>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -561,7 +563,7 @@ document.addEventListener('keydown', function(e) {
           empty.style.display = 'none';
           var html = '';
           data.items.forEach(function(n) {
-            html += '<a href="' + (n.url || '#') + '" onclick="markAllRead()" style="display:block;padding:12px 16px;border-bottom:1px solid #f8fafc;text-decoration:none;transition:background .1s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'transparent\'">';
+            html += '<a href="' + n.go_url + '" style="display:block;padding:12px 16px;border-bottom:1px solid #f8fafc;text-decoration:none;transition:background .1s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'transparent\'">';
             html += '<div style="font-size:12px;font-weight:600;color:#0f172a;line-height:1.4;">' + n.message + '</div>';
             html += '<div style="font-size:11px;color:#94a3b8;margin-top:2px;">' + n.ago + '</div>';
             html += '</a>';

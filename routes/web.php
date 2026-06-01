@@ -49,10 +49,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'items' => auth()->user()->unreadNotifications()->latest()->take(10)->get()->map(fn($n) => [
             'id'      => $n->id,
             'message' => $n->data['message'] ?? '',
-            'url'     => $n->data['url'] ?? null,
+            'go_url'  => route('notifications.go', $n->id),
             'ago'     => $n->created_at->diffForHumans(),
         ]),
     ]))->name('notifications.unread');
+
+    Route::get('/notifications/{id}/go', function (string $id) {
+        $n = auth()->user()->notifications()->findOrFail($id);
+        $n->markAsRead();
+        $dest = $n->data['url'] ?? route('dashboard');
+        return redirect($dest);
+    })->name('notifications.go');
 
     Route::post('/notifications/read-all', fn() => response()->json(
         tap(auth()->user()->unreadNotifications()->update(['read_at' => now()]))

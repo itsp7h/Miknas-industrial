@@ -300,23 +300,39 @@
         Quotes ({{ $pr->supplierQuotes->count() }})
       </h3>
       <div style="display:flex;flex-direction:column;gap:8px;">
+        @php $minTotal = $pr->supplierQuotes->min('total_amount'); @endphp
         @foreach($pr->supplierQuotes->sortBy('total_amount') as $quote)
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:8px 10px;border-radius:8px;
-          background:{{ $quote->is_awarded ? '#f0fdf4' : '#f8fafc' }};
-          border:1px solid {{ $quote->is_awarded ? '#bbf7d0' : '#f1f5f9' }};">
-          <div style="font-weight:600;color:#0f172a;">{{ $quote->supplier->name }}</div>
-          <div style="color:{{ $quote->is_awarded ? '#15803d' : '#374151' }};font-weight:700;">
-            {{ number_format($quote->total_amount, 2) }}
+        @php $isLowest = !$quote->is_awarded && $pr->supplierQuotes->count() > 1 && (float)$quote->total_amount === (float)$minTotal; @endphp
+        <div onclick="openQuoteModal({{ $quote->id }})"
+             style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:box-shadow .15s,border-color .15s;
+               background:{{ $quote->is_awarded ? '#f0fdf4' : ($isLowest ? '#eff6ff' : '#f8fafc') }};
+               border:1px solid {{ $quote->is_awarded ? '#bbf7d0' : ($isLowest ? '#bfdbfe' : '#f1f5f9') }};"
+             onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)';this.style.borderColor='{{ $quote->is_awarded ? '#86efac' : ($isLowest ? '#93c5fd' : '#e2e8f0') }}';"
+             onmouseleave="this.style.boxShadow='';this.style.borderColor='{{ $quote->is_awarded ? '#bbf7d0' : ($isLowest ? '#bfdbfe' : '#f1f5f9') }}';">
+          <div>
+            <div style="font-weight:600;color:#0f172a;">{{ $quote->supplier->name }}</div>
+            @if($isLowest)
+              <div style="font-size:10px;color:#2563eb;font-weight:700;margin-top:1px;">LOWEST</div>
+            @endif
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="color:{{ $quote->is_awarded ? '#15803d' : ($isLowest ? '#2563eb' : '#374151') }};font-weight:700;">
+              BD {{ number_format($quote->total_amount, 3) }}
+            </div>
             @if($quote->is_awarded)
-              <span style="font-size:10px;background:#22c55e;color:#fff;padding:1px 6px;border-radius:10px;margin-left:4px;">Awarded</span>
+              <span style="font-size:10px;background:#22c55e;color:#fff;padding:1px 6px;border-radius:10px;">✓</span>
+            @else
+              <svg width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
             @endif
           </div>
         </div>
         @endforeach
       </div>
-      <a href="{{ route('purchase.requests.quotes', $pr) }}"
-         style="display:block;margin-top:12px;text-align:center;font-size:12px;color:#2563eb;text-decoration:none;font-weight:600;">
-        View All Quotes →
+      <a href="{{ route('purchase.requests.compare', $pr) }}"
+         style="display:block;margin-top:12px;text-align:center;font-size:12px;color:#f59e0b;text-decoration:none;font-weight:700;padding:7px;border:1.5px solid #fde68a;border-radius:8px;background:#fffbeb;">
+        Compare All Quotes →
       </a>
     </div>
     @endif
@@ -401,6 +417,202 @@
 
 <x-purchase.supplier-select-modal :pr="$pr" :suppliers="$suppliers" :selectedIds="$selectedIds" />
 
+{{-- ============================================================
+     QUOTE DETAIL MODAL
+     ============================================================ --}}
+<div id="quote-modal" class="pipe-modal" role="dialog" aria-modal="true" onclick="if(event.target===this)closeQuoteModal()">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(0,0,0,.25);overflow:hidden;">
+
+    {{-- Header --}}
+    <div id="qm-header" style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;">Supplier Quote</div>
+        <div id="qm-supplier" style="font-size:19px;font-weight:700;color:#fff;margin-top:4px;"></div>
+        <div id="qm-submitted" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="text-align:right;">
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.7);">Total</div>
+          <div id="qm-total" style="font-size:22px;font-weight:800;color:#fff;"></div>
+        </div>
+        <button onclick="closeQuoteModal()"
+          style="width:32px;height:32px;border-radius:8px;border:none;background:rgba(255,255,255,.2);cursor:pointer;font-size:18px;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+      </div>
+    </div>
+
+    {{-- Body --}}
+    <div style="overflow-y:auto;flex:1;">
+
+      {{-- Meta row --}}
+      <div id="qm-meta" style="display:flex;gap:0;border-bottom:1px solid #f1f5f9;"></div>
+
+      {{-- Items table --}}
+      <div style="padding:20px 24px 0;">
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Line Items</div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px;" id="qm-items-table">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th style="padding:8px 10px;text-align:left;color:#64748b;font-weight:600;border-radius:6px 0 0 6px;">Item</th>
+                <th style="padding:8px 10px;text-align:right;color:#64748b;font-weight:600;white-space:nowrap;">Qty</th>
+                <th style="padding:8px 10px;text-align:right;color:#64748b;font-weight:600;white-space:nowrap;">Unit Price</th>
+                <th style="padding:8px 10px;text-align:right;color:#64748b;font-weight:600;border-radius:0 6px 6px 0;white-space:nowrap;">Total</th>
+              </tr>
+            </thead>
+            <tbody id="qm-items"></tbody>
+          </table>
+        </div>
+      </div>
+
+      {{-- Notes --}}
+      <div id="qm-notes-wrap" style="margin:14px 24px 0;padding:12px 14px;background:#f8fafc;border-radius:10px;border:1px solid #f1f5f9;display:none;">
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Notes</div>
+        <div id="qm-notes" style="font-size:13px;color:#374151;"></div>
+      </div>
+
+      {{-- Awarded banner --}}
+      <div id="qm-awarded-banner" style="margin:14px 24px 0;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:13px;font-weight:700;color:#15803d;display:none;">
+        ✓ This quote was awarded
+      </div>
+
+      <div style="height:20px;"></div>
+    </div>
+
+    {{-- Footer --}}
+    <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;gap:10px;flex-shrink:0;background:#fff;">
+      <button onclick="closeQuoteModal()"
+        style="flex:1;padding:10px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-weight:600;color:#475569;background:#f8fafc;cursor:pointer;">
+        Close
+      </button>
+      <a id="qm-compare-btn" href="{{ route('purchase.requests.compare', $pr) }}"
+        style="flex:2;padding:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Compare All Quotes
+      </a>
+    </div>
+  </div>
+</div>
+
+@php
+$quoteDataForJs = $pr->supplierQuotes->keyBy('id')->map(function($q) {
+    return [
+        'id'          => $q->id,
+        'supplier'    => $q->supplier->name,
+        'total'       => number_format($q->total_amount, 3),
+        'isAwarded'   => (bool)$q->is_awarded,
+        'leadTime'    => $q->lead_time_days !== null ? $q->lead_time_days . ' days' : null,
+        'paymentTerms'=> $q->payment_terms,
+        'notes'       => $q->notes,
+        'submittedAt' => $q->submitted_at->format('d M Y, H:i'),
+        'items'       => $q->items->map(function($i) {
+            return [
+                'description'         => $i->description,
+                'supplierDescription' => $i->supplier_description,
+                'quantity'            => $i->quantity,
+                'unit'                => $i->unit,
+                'unitPrice'           => number_format($i->unit_price, 3),
+                'totalPrice'          => number_format($i->total_price, 3),
+                'isVatable'           => (bool)$i->is_vatable,
+                'notAvailable'        => (bool)$i->not_available,
+            ];
+        })->values(),
+    ];
+});
+@endphp
+<script>
+var QUOTE_DATA = @json($quoteDataForJs);
+</script>
+
+<script>
+// ---- Quote detail modal ----
+(function () {
+  window.openQuoteModal = function (id) {
+    var q = QUOTE_DATA[id];
+    if (!q) return;
+
+    // Header
+    document.getElementById('qm-supplier').textContent  = q.supplier;
+    document.getElementById('qm-total').textContent     = 'BD ' + q.total;
+    document.getElementById('qm-submitted').textContent = 'Submitted ' + q.submittedAt;
+
+    // Awarded header tint
+    var hdr = document.getElementById('qm-header');
+    hdr.style.background = q.isAwarded
+      ? 'linear-gradient(135deg,#16a34a,#15803d)'
+      : 'linear-gradient(135deg,#f59e0b,#d97706)';
+
+    // Meta chips
+    var meta = document.getElementById('qm-meta');
+    meta.innerHTML = '';
+    var chips = [];
+    if (q.leadTime)     chips.push(['⏱ Lead Time', q.leadTime]);
+    if (q.paymentTerms) chips.push(['💳 Payment', q.paymentTerms]);
+    chips.forEach(function (c) {
+      var d = document.createElement('div');
+      d.style.cssText = 'flex:1;padding:10px 16px;border-right:1px solid #f1f5f9;';
+      d.innerHTML = '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">' + c[0] + '</div>'
+                  + '<div style="font-size:13px;font-weight:600;color:#0f172a;">' + c[1] + '</div>';
+      meta.appendChild(d);
+    });
+
+    // Items
+    var tbody = document.getElementById('qm-items');
+    tbody.innerHTML = '';
+    q.items.forEach(function (item, i) {
+      var tr = document.createElement('tr');
+      tr.style.borderTop = i > 0 ? '1px solid #f8fafc' : '';
+      if (item.notAvailable) {
+        tr.innerHTML =
+          '<td style="padding:8px 10px;color:#0f172a;font-weight:500;">' +
+            escHtml(item.description) +
+            (item.supplierDescription ? '<div style="font-size:11px;color:#94a3b8;font-style:italic;margin-top:2px;">' + escHtml(item.supplierDescription) + '</div>' : '') +
+          '</td>' +
+          '<td style="padding:8px 10px;text-align:right;color:#94a3b8;">' + item.quantity + '</td>' +
+          '<td colspan="2" style="padding:8px 10px;text-align:center;">' +
+            '<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;padding:2px 8px;border-radius:4px;border:1px solid #fecaca;">N/A</span>' +
+          '</td>';
+      } else {
+        tr.innerHTML =
+          '<td style="padding:8px 10px;color:#0f172a;font-weight:500;">' +
+            escHtml(item.description) +
+            (item.supplierDescription ? '<div style="font-size:11px;color:#64748b;font-style:italic;margin-top:2px;">' + escHtml(item.supplierDescription) + ' <span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;border:1px solid #fde68a;font-style:normal;">adjusted</span></div>' : '') +
+          '</td>' +
+          '<td style="padding:8px 10px;text-align:right;color:#64748b;">' + item.quantity + (item.unit ? ' ' + escHtml(item.unit) : '') + '</td>' +
+          '<td style="padding:8px 10px;text-align:right;font-weight:600;color:#0f172a;">' +
+            'BD ' + item.unitPrice +
+            (item.isVatable ? ' <span title="VAT applicable" style="font-size:9px;font-weight:700;color:#0ea5e9;background:#e0f2fe;padding:1px 4px;border-radius:3px;border:1px solid #bae6fd;">VAT</span>' : '') +
+          '</td>' +
+          '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#0f172a;">BD ' + item.totalPrice + '</td>';
+      }
+      tbody.appendChild(tr);
+    });
+
+    // Notes
+    var nw = document.getElementById('qm-notes-wrap');
+    if (q.notes) {
+      document.getElementById('qm-notes').textContent = q.notes;
+      nw.style.display = 'block';
+    } else {
+      nw.style.display = 'none';
+    }
+
+    // Awarded banner
+    document.getElementById('qm-awarded-banner').style.display = q.isAwarded ? 'block' : 'none';
+
+    document.getElementById('quote-modal').classList.add('open');
+  };
+
+  window.closeQuoteModal = function () {
+    document.getElementById('quote-modal').classList.remove('open');
+  };
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+}());
+</script>
 
 <script>
 // ---- Signature modal ----
