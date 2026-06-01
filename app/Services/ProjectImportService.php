@@ -12,6 +12,7 @@ class ProjectImportService
     private array $stats = [
         'companies_created'   => 0,
         'projects_created'    => 0,
+        'locations_created'   => 0,
         'departments_created' => 0,
         'skipped'             => 0,
     ];
@@ -56,8 +57,12 @@ class ProjectImportService
         $rows    = $sheet->toArray(null, true, true, false);
         $headers = $this->normalizeHeaders((array) array_shift($rows));
 
-        $coIdx   = $this->findCol($headers, ['company', 'company name', 'company name', 'companyname']);
-        $projIdx = $this->findCol($headers, ['project', 'project name', 'project name', 'projectname']);
+        $coIdx   = $this->findCol($headers, ['company', 'company name', 'companyname']);
+        $projIdx = $this->findCol($headers, ['project', 'project name', 'projectname']);
+        $locIdx  = $this->findCol($headers, ['location', 'location name', 'locationname', 'loc', 'loc name']);
+        $addrIdx = $this->findCol($headers, ['address', 'addr']);
+        $latIdx  = $this->findCol($headers, ['latitude', 'lat']);
+        $lngIdx  = $this->findCol($headers, ['longitude', 'lng', 'lon', 'long']);
 
         if ($coIdx === null || $projIdx === null) {
             return;
@@ -72,17 +77,38 @@ class ProjectImportService
                 continue;
             }
 
-            $company  = $this->findOrCreateCompany($coName);
-            $existing = ProjectSetting::whereRaw('LOWER(name) = ?', [strtolower($projName)])
+            $company = $this->findOrCreateCompany($coName);
+            $project = ProjectSetting::whereRaw('LOWER(name) = ?', [strtolower($projName)])
                 ->where('company_id', $company->id)->first();
 
-            if ($existing) {
-                $this->stats['skipped']++;
-                continue;
+            if (!$project) {
+                $project = ProjectSetting::create(['name' => $projName, 'company_id' => $company->id, 'is_active' => true]);
+                $this->stats['projects_created']++;
             }
 
-            ProjectSetting::create(['name' => $projName, 'company_id' => $company->id, 'is_active' => true]);
-            $this->stats['projects_created']++;
+            // If a location name is present on this row, import it too
+            $locName = $locIdx !== null ? $this->str($row[$locIdx] ?? null) : null;
+            if ($locName) {
+                $existingLoc = $project->locations()
+                    ->whereRaw('LOWER(name) = ?', [strtolower($locName)])->first();
+
+                if ($existingLoc) {
+                    $this->stats['skipped']++;
+                } else {
+                    $address = $addrIdx !== null ? $this->str($row[$addrIdx] ?? null) : null;
+                    $lat     = $latIdx  !== null ? $this->str($row[$latIdx]  ?? null) : null;
+                    $lng     = $lngIdx  !== null ? $this->str($row[$lngIdx]  ?? null) : null;
+
+                    $project->locations()->create([
+                        'name'      => $locName,
+                        'address'   => $address,
+                        'latitude'  => is_numeric($lat) ? (float) $lat : null,
+                        'longitude' => is_numeric($lng) ? (float) $lng : null,
+                        'is_active' => true,
+                    ]);
+                    $this->stats['locations_created']++;
+                }
+            }
         }
     }
 

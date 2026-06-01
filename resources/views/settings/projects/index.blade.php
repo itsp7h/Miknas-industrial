@@ -369,9 +369,10 @@ $allDeptsJson = json_encode($allDeptsData);
         <div style="margin-top:1rem;background:#f0f9ff;border:1px solid #bae6fd;border-radius:0.5rem;padding:0.75rem 1rem;">
             <p style="font-size:12px;color:#0369a1;margin:0;line-height:1.7;">
                 <strong>Expected format (2 tabs):</strong><br>
-                <strong>Projects</strong> tab — columns: <em>Company Name</em> | <em>Project Name</em><br>
-                <strong>Departments</strong> tab — columns: <em>Company Name</em> | <em>Department Name</em><br>
-                Companies are created automatically if they don't exist. Duplicates are skipped.
+                <strong>Projects</strong> tab — <em>Company Name</em> | <em>Project Name</em> | <em>Location Name</em> | <em>Address</em> | <em>Latitude</em> | <em>Longitude</em><br>
+                &nbsp;&nbsp;&nbsp;↳ Leave Location Name blank for project-only rows. Add multiple rows per project for multiple locations.<br>
+                <strong>Departments</strong> tab — <em>Company Name</em> | <em>Department Name</em><br>
+                Companies are created automatically. Address, Latitude, Longitude are optional. Duplicates are skipped.
             </p>
         </div>
     </div>

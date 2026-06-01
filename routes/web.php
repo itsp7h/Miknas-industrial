@@ -43,6 +43,20 @@ Route::post('/rfq/{token}', [RfqPortalController::class, 'submit'])->name('rfq.s
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('/notifications/unread',  fn() => response()->json([
+        'count' => auth()->user()->unreadNotifications()->count(),
+        'items' => auth()->user()->unreadNotifications()->latest()->take(10)->get()->map(fn($n) => [
+            'id'      => $n->id,
+            'message' => $n->data['message'] ?? '',
+            'url'     => $n->data['url'] ?? null,
+            'ago'     => $n->created_at->diffForHumans(),
+        ]),
+    ]))->name('notifications.unread');
+
+    Route::post('/notifications/read-all', fn() => response()->json(
+        tap(auth()->user()->unreadNotifications()->update(['read_at' => now()]))
+    ))->name('notifications.read-all');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

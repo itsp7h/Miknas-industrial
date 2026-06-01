@@ -36,6 +36,9 @@ class RfqController extends Controller
             }
 
             if (empty($supplierItems)) {
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'Please assign at least one supplier to an item.'], 422);
+                }
                 return redirect()->back()->with('error', 'Please assign at least one supplier to an item.');
             }
 
@@ -66,6 +69,22 @@ class RfqController extends Controller
         }
 
         $stages->setStage($purchaseRequest, 'rfq');
+
+        if ($request->expectsJson()) {
+            $invitations = $purchaseRequest->rfqInvitations()->with('supplier')->get()->map(function ($inv) {
+                return [
+                    'supplier_name' => $inv->supplier->name,
+                    'channel'       => $inv->channel,
+                    'url'           => route('rfq.show', $inv->token),
+                    'status'        => $inv->status,
+                ];
+            });
+            return response()->json([
+                'added'       => $added,
+                'invitations' => $invitations,
+                'redirect'    => route('purchase.pipeline.show', $purchaseRequest),
+            ]);
+        }
 
         return redirect()->route('purchase.pipeline.show', $purchaseRequest)
             ->with('success', $added . ' supplier(s) added. Now send them the quote request links.');

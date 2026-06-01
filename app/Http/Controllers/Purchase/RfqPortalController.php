@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\RfqInvitation;
 use App\Models\SupplierQuote;
 use App\Models\SupplierQuoteItem;
+use App\Models\User;
+use App\Notifications\QuoteReceived;
 use App\Services\PurchaseStageService;
 use Illuminate\Http\Request;
 
@@ -35,9 +37,16 @@ class RfqPortalController extends Controller
         }
 
         $purchaseRequest = $invitation->purchaseRequest;
-        $items           = $purchaseRequest->items;
+        $itemIds         = $invitation->item_ids;
+        $items           = $itemIds
+            ? $purchaseRequest->items->whereIn('id', $itemIds)->values()
+            : $purchaseRequest->items;
 
-        return view('rfq.show', compact('invitation', 'purchaseRequest', 'items'));
+        // Generate a fresh confirmation code per page load and store in session
+        $confirmCode = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
+        session(['rfq_confirm_' . $token => $confirmCode]);
+
+        return view('rfq.show', compact('invitation', 'purchaseRequest', 'items', 'confirmCode'));
     }
 
     public function submit(Request $request, string $token)
@@ -49,6 +58,8 @@ class RfqPortalController extends Controller
         }
 
         $validated = $request->validate([
+            'terms'              => ['accepted'],
+            'confirm_code'       => ['required', 'string'],
             'lead_time_days'     => ['nullable', 'integer', 'min:0'],
             'payment_terms'      => ['nullable', 'string', 'max:200'],
             'notes'              => ['nullable', 'string', 'max:1000'],
@@ -56,7 +67,16 @@ class RfqPortalController extends Controller
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $purchaseItems = $invitation->purchaseRequest->items;
+        $expectedCode = session('rfq_confirm_' . $token);
+        if (!$expectedCode || strtoupper(trim($validated['confirm_code'])) !== $expectedCode) {
+            return back()->withErrors(['confirm_code' => 'Incorrect confirmation code. Please copy the code exactly as shown.'])->withInput();
+        }
+        session()->forget('rfq_confirm_' . $token);
+
+        $itemIds       = $invitation->item_ids;
+        $purchaseItems = $itemIds
+            ? $invitation->purchaseRequest->items->whereIn('id', $itemIds)->values()
+            : $invitation->purchaseRequest->items;
 
         $quote = SupplierQuote::create([
             'rfq_invitation_id'   => $invitation->id,
@@ -72,7 +92,7 @@ class RfqPortalController extends Controller
         $total = 0;
         foreach ($purchaseItems as $i => $item) {
             $unitPrice  = (float)($validated['items'][$i]['unit_price'] ?? 0);
-            $qty        = (float)$item->quantity;
+            $qty        = (float)$item->quantity_required;
             $totalPrice = round($unitPrice * $qty, 3);
             $total     += $totalPrice;
 
@@ -94,6 +114,10 @@ class RfqPortalController extends Controller
         if ($pr->stage === 'quoting') {
             app(PurchaseStageService::class)->setStage($pr, 'comparison');
         }
+
+        // Notify all admin users
+        $invitation->load('supplier', 'purchaseRequest');
+        User::role('Admin')->each(fn($u) => $u->notify(new QuoteReceived($invitation)));
 
         return view('rfq.submitted', compact('invitation'));
     }

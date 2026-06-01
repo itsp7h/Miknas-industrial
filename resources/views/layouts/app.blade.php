@@ -250,6 +250,38 @@
             <div style="display:flex;align-items:center;gap:16px;">
                 <span style="font-size:12px;color:#94a3b8;">{{ now()->format('l, d M Y') }}</span>
                 <div style="width:1px;height:20px;background:#e2e8f0;"></div>
+
+                {{-- Bell notification --}}
+                <div style="position:relative;" id="bell-wrap">
+                  <button id="bell-btn" onclick="toggleBellDropdown()" title="Notifications"
+                    style="position:relative;width:34px;height:34px;border-radius:9px;border:1px solid #e2e8f0;
+                           background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;
+                           transition:background .15s,color .15s;"
+                    onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#fff'">
+                    <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <span id="bell-badge" style="display:none;position:absolute;top:-4px;right:-4px;
+                      background:#ef4444;color:#fff;font-size:10px;font-weight:700;
+                      min-width:17px;height:17px;border-radius:9px;padding:0 4px;
+                      display:none;align-items:center;justify-content:center;border:2px solid #fff;"></span>
+                  </button>
+
+                  {{-- Dropdown --}}
+                  <div id="bell-dropdown" style="display:none;position:absolute;top:42px;right:0;
+                    background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;
+                    box-shadow:0 12px 32px rgba(0,0,0,.12);width:320px;z-index:9000;overflow:hidden;">
+                    <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
+                      <span style="font-size:13px;font-weight:700;color:#0f172a;">Notifications</span>
+                      <button onclick="markAllRead()" style="font-size:11px;color:#2563eb;background:none;border:none;cursor:pointer;font-weight:600;">Mark all read</button>
+                    </div>
+                    <div id="bell-list" style="max-height:320px;overflow-y:auto;">
+                      <div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;" id="bell-empty">No new notifications</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="width:1px;height:20px;background:#e2e8f0;"></div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div style="width:32px;height:32px;border-radius:50%;background:#2563eb;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">
                         {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
@@ -491,6 +523,77 @@ document.getElementById('global-delete-modal').addEventListener('click', functio
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeGlobalDeleteModal();
 });
+</script>
+
+<script>
+// ── Bell notifications ────────────────────────────────────
+(function() {
+  var bellOpen = false;
+
+  function fetchNotifications() {
+    fetch('{{ route('notifications.unread') }}', { headers: { 'Accept': 'application/json' } })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        var badge = document.getElementById('bell-badge');
+        var list  = document.getElementById('bell-list');
+        var empty = document.getElementById('bell-empty');
+        if (!badge) return;
+
+        if (data.count > 0) {
+          badge.textContent = data.count > 9 ? '9+' : data.count;
+          badge.style.display = 'flex';
+        } else {
+          badge.style.display = 'none';
+        }
+
+        if (data.items && data.items.length > 0) {
+          empty.style.display = 'none';
+          var html = '';
+          data.items.forEach(function(n) {
+            html += '<a href="' + (n.url || '#') + '" onclick="markAllRead()" style="display:block;padding:12px 16px;border-bottom:1px solid #f8fafc;text-decoration:none;transition:background .1s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'transparent\'">';
+            html += '<div style="font-size:12px;font-weight:600;color:#0f172a;line-height:1.4;">' + n.message + '</div>';
+            html += '<div style="font-size:11px;color:#94a3b8;margin-top:2px;">' + n.ago + '</div>';
+            html += '</a>';
+          });
+          list.innerHTML = html + '<div id="bell-empty" style="display:none;"></div>';
+        } else {
+          list.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;" id="bell-empty">No new notifications</div>';
+        }
+      }).catch(function(){});
+  }
+
+  window.toggleBellDropdown = function() {
+    var dd = document.getElementById('bell-dropdown');
+    bellOpen = !bellOpen;
+    dd.style.display = bellOpen ? 'block' : 'none';
+    if (bellOpen) fetchNotifications();
+  };
+
+  window.markAllRead = function() {
+    var CSRF = document.querySelector('meta[name="csrf-token"]').content;
+    fetch('{{ route('notifications.read-all') }}', {
+      method: 'POST',
+      headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
+    }).then(function() {
+      document.getElementById('bell-badge').style.display = 'none';
+      document.getElementById('bell-dropdown').style.display = 'none';
+      bellOpen = false;
+    });
+  };
+
+  // Close dropdown on outside click
+  document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('bell-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('bell-dropdown').style.display = 'none';
+      bellOpen = false;
+    }
+  });
+
+  // Poll every 30 seconds
+  fetchNotifications();
+  setInterval(fetchNotifications, 30000);
+}());
 </script>
 
 <script>

@@ -256,18 +256,15 @@
 
     </div>{{-- /sup-step2 --}}
 
-    {{-- Step 3: Summary / confirmation (By Item only) --}}
+    {{-- Step 3: Links --}}
     <div id="sup-step3" style="flex:1;display:none;flex-direction:column;min-height:0;">
       <div id="sup-summary-body" style="flex:1;overflow-y:auto;overscroll-behavior:contain;padding:20px 24px;">
       </div>
       <div style="padding:14px 24px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa;">
-        <button type="button" onclick="backToEdit()"
-          style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:#64748b;background:none;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;padding:8px 16px;">
-          ← Back to edit
-        </button>
-        <button type="button" onclick="document.getElementById('sup-form').submit()"
+        <div style="font-size:12px;color:#64748b;" id="sup-link-count"></div>
+        <button type="button" onclick="doneWithLinks()"
           style="padding:8px 22px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
-          Confirm &amp; Send →
+          Done ✓
         </button>
       </div>
     </div>
@@ -520,69 +517,117 @@ function updateFooter() {
   }
 }
 
+var _rfqRedirect = null;
+
 function submitSuppliers() {
   if (_supTab === 'global') {
     var checked = document.querySelectorAll('#sup-list input[type="checkbox"]:checked:not([disabled])');
     if (checked.length === 0) { showToast('Please select at least one supplier.', 'warn'); return; }
-    document.getElementById('sup-form').submit();
   } else {
     var checked = document.querySelectorAll('input[name^="item_suppliers["]:checked:not([disabled])');
     if (checked.length === 0) { showToast('Please assign at least one supplier to an item.', 'warn'); return; }
-    showSummary();
   }
+
+  // Show step 3 with loading state immediately
+  document.getElementById('sup-summary-body').innerHTML =
+    '<div style="text-align:center;padding:40px;color:#64748b;font-size:13px;">Generating links…</div>';
+  document.getElementById('sup-modal-title').textContent    = 'Quote Links';
+  document.getElementById('sup-modal-subtitle').textContent = 'One-time-use links for each supplier';
+  document.getElementById('sup-step2').style.display = 'none';
+  document.getElementById('sup-step3').style.display = 'flex';
+
+  var form = document.getElementById('sup-form');
+  var CSRF = document.querySelector('meta[name="csrf-token"]').content;
+  fetch(form.action, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+    body: new FormData(form),
+  }).then(function(r) {
+    return r.json().then(function(body) {
+      if (!r.ok) return Promise.reject(body);
+      return body;
+    });
+  }).then(function(data) {
+    _rfqRedirect = data.redirect || null;
+    showLinks(data.invitations || []);
+  }).catch(function(err) {
+    document.getElementById('sup-step3').style.display = 'none';
+    document.getElementById('sup-step2').style.display = 'flex';
+    document.getElementById('sup-modal-title').textContent    = 'Select Suppliers';
+    document.getElementById('sup-modal-subtitle').textContent = 'Choose who receives the quote request';
+    showToast((err && err.message) || 'Something went wrong.', 'error');
+  });
 }
 
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function showSummary() {
-  var chanLabel = {
-    email:    '<span style="background:#eff6ff;color:#2563eb;padding:3px 10px;border-radius:8px;font-size:12px;font-weight:700;">Email</span>',
-    whatsapp: '<span style="background:#f0fdf4;color:#15803d;padding:3px 10px;border-radius:8px;font-size:12px;font-weight:700;">WhatsApp</span>',
-    both:     '<span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:8px;font-size:12px;font-weight:700;">Email + WA</span>',
-  };
-  var html = '<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:16px;">Review assignments before sending</div>';
+var _chanBadge = {
+  email:    '<span style="background:#eff6ff;color:#2563eb;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0;">Email</span>',
+  whatsapp: '<span style="background:#f0fdf4;color:#15803d;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0;">WhatsApp</span>',
+  both:     '<span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0;">Email + WA</span>',
+};
 
-  var btns = document.querySelectorAll('[id^="idd-btn-"]');
-  btns.forEach(function(btn) {
-    var itemId = btn.id.replace('idd-btn-', '');
-    var checked = document.querySelectorAll('input[name="item_suppliers[' + itemId + '][]"]:checked:not([disabled])');
-    if (checked.length === 0) return;
-
-    var name = btn.dataset.itemname || ('Item ' + itemId);
-    var qty  = btn.dataset.itemqty  || '';
-
-    html += '<div style="margin-bottom:12px;border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;">';
-    html += '<div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">';
-    html += '<div style="font-size:13px;font-weight:700;color:#0f172a;">' + escHtml(name) + '</div>';
-    if (qty) html += '<div style="font-size:11px;color:#94a3b8;margin-top:1px;">Qty: ' + escHtml(qty) + '</div>';
-    html += '</div>';
-
-    checked.forEach(function(cb) {
-      var supName = cb.dataset.supname || cb.value;
-      var chan    = (document.getElementById('ichan-val-' + cb.value) || {}).value || 'email';
-      var cl      = chanLabel[chan] || '<span style="background:#f1f5f9;color:#475569;padding:3px 10px;border-radius:8px;font-size:12px;font-weight:700;">' + escHtml(chan) + '</span>';
-      html += '<div style="padding:9px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f8fafc;">';
-      html += '<span style="font-size:13px;font-weight:600;color:#0f172a;">' + escHtml(supName) + '</span>';
-      html += cl;
+function showLinks(invitations) {
+  var html = '';
+  if (!invitations || invitations.length === 0) {
+    html = '<div style="padding:30px;text-align:center;color:#94a3b8;font-size:13px;">No new invitations were created.</div>';
+  } else {
+    html += '<div style="font-size:12px;color:#64748b;margin-bottom:16px;">Each link is private to the supplier and valid until submitted or expired.</div>';
+    invitations.forEach(function(inv, i) {
+      var badge = _chanBadge[inv.channel] || '';
+      html += '<div style="margin-bottom:10px;border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;">';
+      html += '<div style="padding:9px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:8px;">';
+      html += '<span style="font-size:13px;font-weight:700;color:#0f172a;">' + escHtml(inv.supplier_name) + '</span>';
+      html += badge;
+      html += '</div>';
+      html += '<div style="padding:10px 14px;display:flex;align-items:center;gap:8px;">';
+      html += '<a href="' + escHtml(inv.url) + '" target="_blank"'
+            + ' style="flex:1;display:flex;align-items:center;gap:8px;padding:9px 14px;'
+            + 'background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;text-decoration:none;'
+            + 'color:#1d4ed8;font-size:12px;font-weight:600;transition:background .15s;overflow:hidden;"'
+            + ' onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">'
+            + '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;">'
+            + '<path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>'
+            + '</svg>'
+            + '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Open Quote Link</span>'
+            + '</a>';
+      html += '<button type="button" data-idx="' + i + '" data-url="' + escHtml(inv.url) + '" onclick="copyLink(this)"'
+            + ' style="flex-shrink:0;padding:9px 14px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Copy Link</button>';
+      html += '</div>';
       html += '</div>';
     });
-
-    html += '</div>';
-  });
+  }
 
   document.getElementById('sup-summary-body').innerHTML = html;
-  document.getElementById('sup-modal-title').textContent    = 'Confirm Assignments';
-  document.getElementById('sup-modal-subtitle').textContent = 'Review before sending to suppliers';
-  document.getElementById('sup-step2').style.display = 'none';
-  document.getElementById('sup-step3').style.display = 'flex';
+  document.getElementById('sup-modal-title').textContent    = 'Quote Links Ready';
+  document.getElementById('sup-modal-subtitle').textContent = 'Share with suppliers via their preferred channel';
+  var countEl = document.getElementById('sup-link-count');
+  if (countEl) countEl.textContent = invitations.length + ' link' + (invitations.length === 1 ? '' : 's') + ' generated';
 }
 
-function backToEdit() {
-  document.getElementById('sup-modal-title').textContent    = 'Select Suppliers';
-  document.getElementById('sup-modal-subtitle').textContent = 'Choose who receives the quote request';
-  document.getElementById('sup-step3').style.display = 'none';
-  document.getElementById('sup-step2').style.display = 'flex';
+function copyLink(btn) {
+  var url = btn.dataset.url;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(function() {
+    btn.textContent = 'Copied!';
+    btn.style.background = '#16a34a';
+    setTimeout(function() { btn.textContent = 'Copy'; btn.style.background = '#2563eb'; }, 2000);
+  }).catch(function() {
+    // Fallback for older browsers
+    var ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); btn.textContent = 'Copied!'; btn.style.background = '#16a34a';
+      setTimeout(function() { btn.textContent = 'Copy'; btn.style.background = '#2563eb'; }, 2000);
+    } catch(e) { showToast('Could not copy — please copy manually.', 'warn'); }
+    document.body.removeChild(ta);
+  });
+}
+
+function doneWithLinks() {
+  if (_rfqRedirect) { window.location.href = _rfqRedirect; }
+  else { window.location.reload(); }
 }
 </script>

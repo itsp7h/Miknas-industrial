@@ -41,8 +41,11 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    public function routeNotificationFor(string $channel, mixed $notification = null): ?string
+    public function routeNotificationFor(string $channel, mixed $notification = null): mixed
     {
+        if ($channel === 'database') {
+            return $this->notifications();
+        }
         return $this->whatsapp_number;
     }
 
