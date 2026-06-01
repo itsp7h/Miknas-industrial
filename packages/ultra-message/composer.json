@@ -1,0 +1,42 @@
+{
+    "name": "promoseven/ultra-message",
+    "description": "Laravel WhatsApp integration via UltraMSG API",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/http": "^11.0|^12.0",
+        "illuminate/notifications": "^11.0|^12.0",
+        "illuminate/routing": "^11.0|^12.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "orchestra/testbench": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "PromoSeven\\UltraMessage\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PromoSeven\\UltraMessage\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "PromoSeven\\UltraMessage\\UltraMessageServiceProvider"
+            ],
+            "aliases": {
+                "UltraMessage": "PromoSeven\\UltraMessage\\Facades\\UltraMessage"
+            }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
