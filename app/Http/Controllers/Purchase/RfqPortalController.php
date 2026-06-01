@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Purchase;
 
 use App\Http\Controllers\Controller;
 use App\Models\RfqInvitation;
+use App\Models\Setting;
 use App\Models\SupplierQuote;
 use App\Models\SupplierQuoteItem;
 use App\Models\User;
@@ -46,7 +47,9 @@ class RfqPortalController extends Controller
         $confirmCode = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
         session(['rfq_confirm_' . $token => $confirmCode]);
 
-        return view('rfq.show', compact('invitation', 'purchaseRequest', 'items', 'confirmCode'));
+        $vatRate = (float) Setting::get('vat_rate', 0);
+
+        return view('rfq.show', compact('invitation', 'purchaseRequest', 'items', 'confirmCode', 'vatRate'));
     }
 
     public function submit(Request $request, string $token)
@@ -58,13 +61,14 @@ class RfqPortalController extends Controller
         }
 
         $validated = $request->validate([
-            'terms'              => ['accepted'],
-            'confirm_code'       => ['required', 'string'],
-            'lead_time_days'     => ['nullable', 'integer', 'min:0'],
-            'payment_terms'      => ['nullable', 'string', 'max:200'],
-            'notes'              => ['nullable', 'string', 'max:1000'],
-            'items'              => ['required', 'array'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'terms'                => ['accepted'],
+            'confirm_code'         => ['required', 'string'],
+            'lead_time_days'       => ['nullable', 'integer', 'min:0'],
+            'payment_terms'        => ['nullable', 'string', 'max:200'],
+            'notes'                => ['nullable', 'string', 'max:1000'],
+            'items'                => ['required', 'array'],
+            'items.*.unit_price'   => ['required', 'numeric', 'min:0'],
+            'items.*.is_vatable'   => ['nullable', 'boolean'],
         ]);
 
         $expectedCode = session('rfq_confirm_' . $token);
@@ -89,12 +93,20 @@ class RfqPortalController extends Controller
             'total_amount'        => 0,
         ]);
 
-        $total = 0;
+        $subtotal  = 0;
+        $vatAmount = 0;
+        $vatRate   = (float) Setting::get('vat_rate', 0);
+
         foreach ($purchaseItems as $i => $item) {
             $unitPrice  = (float)($validated['items'][$i]['unit_price'] ?? 0);
             $qty        = (float)$item->quantity_required;
             $totalPrice = round($unitPrice * $qty, 3);
-            $total     += $totalPrice;
+            $isVatable  = !empty($validated['items'][$i]['is_vatable']);
+            $subtotal  += $totalPrice;
+
+            if ($isVatable && $vatRate > 0) {
+                $vatAmount += round($totalPrice * $vatRate / 100, 3);
+            }
 
             SupplierQuoteItem::create([
                 'supplier_quote_id' => $quote->id,
@@ -103,10 +115,11 @@ class RfqPortalController extends Controller
                 'quantity'          => $qty,
                 'unit_price'        => $unitPrice,
                 'total_price'       => $totalPrice,
+                'is_vatable'        => $isVatable,
             ]);
         }
 
-        $quote->update(['total_amount' => round($total, 3)]);
+        $quote->update(['total_amount' => round($subtotal + $vatAmount, 3)]);
         $invitation->update(['status' => 'submitted']);
 
         // If at least 1 quote is in, move to comparison stage
