@@ -12,18 +12,18 @@
     input:focus,textarea:focus{border-color:#2563eb;}
     .btn{width:100%;padding:15px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
     table{width:100%;border-collapse:collapse;font-size:13px;}
-    thead th{background:#f8fafc;padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;}
-    tbody td{padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
-    tfoot td{padding:12px;font-weight:700;}
-    input[type=number].price{width:130px;text-align:right;}
+    thead th{background:#f8fafc;padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;}
+    tbody td{padding:12px 16px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+    tfoot td{padding:13px 16px;font-weight:700;}
+    input[type=number].price{width:140px;text-align:right;}
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
 
     /* ── Desktop: centered card ── */
     @media(min-width:641px){
       body{padding:28px 16px;}
-      .card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:740px;margin:0 auto;overflow:hidden;}
-      .hd{background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:28px 32px;}
-      .body{padding:32px;}
+      .card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:980px;margin:0 auto;overflow:hidden;}
+      .hd{background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:28px 36px;}
+      .body{padding:36px;}
     }
 
     /* ── Mobile: full page ── */
@@ -146,9 +146,9 @@
               <td colspan="7" style="text-align:right;font-size:13px;color:#475569;">Subtotal:</td>
               <td style="text-align:right;font-size:14px;color:#475569;" id="subtotal-row">BD 0.000</td>
             </tr>
-            <tr id="vat-tr" style="background:#f8fafc;{{ $vatRate > 0 ? '' : 'display:none;' }}">
-              <td colspan="7" style="text-align:right;font-size:13px;color:#475569;">VAT ({{ $vatRate }}%):</td>
-              <td style="text-align:right;font-size:14px;color:#475569;" id="vat-row">BD 0.000</td>
+            <tr id="vat-tr" style="background:#eef2fb;{{ $vatRate > 0 ? '' : 'display:none;' }}">
+              <td colspan="7" style="text-align:right;font-size:13px;color:#3b5ea6;">VAT ({{ $vatRate }}%):</td>
+              <td style="text-align:right;font-size:14px;color:#3b5ea6;" id="vat-row">BD 0.000</td>
             </tr>
             <tr style="background:#f8fafc;border-top:2px solid #e2e8f0;">
               <td colspan="7" style="text-align:right;font-size:13px;color:#475569;font-weight:700;">Grand Total:</td>
