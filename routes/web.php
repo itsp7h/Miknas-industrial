@@ -29,6 +29,7 @@ use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\MailAccountController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Settings\ProjectSettingController;
+use App\Http\Controllers\Settings\VatSettingController;
 use App\Models\Settings\Location;
 use Illuminate\Support\Facades\Route;
 
@@ -163,6 +164,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/projects/companies/{company}/departments', [ProjectSettingController::class, 'storeDepartment'])->name('settings.projects.companies.departments.store');
         Route::patch('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'updateDepartment'])->name('settings.projects.companies.departments.update');
         Route::delete('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'destroyDepartment'])->name('settings.projects.companies.departments.destroy');
+
+        // VAT settings
+        Route::get('settings/vat',  [VatSettingController::class, 'index'])->name('settings.vat');
+        Route::post('settings/vat', [VatSettingController::class, 'update'])->name('settings.vat.update');
     });
 });
 
