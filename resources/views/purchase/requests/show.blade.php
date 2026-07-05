@@ -9,18 +9,15 @@
         <p class="page-subtitle"><a href="{{ route('purchase.requests.index') }}" class="text-blue-600 hover:underline">Purchase Requests</a> / {{ $purchaseRequest->request_number }}</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
+        <a href="{{ route('purchase.pipeline.show', $purchaseRequest) }}"
+           class="text-sm text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg px-3 py-2 inline-flex items-center gap-1">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Back to Pipeline
+        </a>
         <a href="{{ route('purchase.requests.print', $purchaseRequest) }}" target="_blank"
            class="btn-primary">Print MPR Form</a>
         @if($purchaseRequest->status === 'pending')
-            <x-purchase.edit-request-modal :purchaseRequest="$purchaseRequest" />
-            <form action="{{ route('purchase.requests.approve', $purchaseRequest) }}" method="POST">
-                @csrf @method('PATCH')
-                <button type="submit" class="btn-success">Approve</button>
-            </form>
-            <form action="{{ route('purchase.requests.reject', $purchaseRequest) }}" method="POST">
-                @csrf @method('PATCH')
-                <button type="submit" class="btn-danger">Reject</button>
-            </form>
+            <x-purchase.edit-request-modal :purchaseRequest="$purchaseRequest" size="md" />
         @endif
     </div>
 </div>

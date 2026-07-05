@@ -9,13 +9,11 @@ class SupplierQuote extends Model
     protected $fillable = [
         'rfq_invitation_id', 'purchase_request_id', 'supplier_id',
         'submitted_at', 'lead_time_days', 'payment_terms', 'notes',
-        'total_amount', 'is_awarded', 'award_reason', 'awarded_at', 'awarded_by',
+        'total_amount',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
-        'awarded_at'   => 'datetime',
-        'is_awarded'   => 'boolean',
     ];
 
     public function rfqInvitation()
@@ -38,8 +36,18 @@ class SupplierQuote extends Model
         return $this->hasMany(SupplierQuoteItem::class);
     }
 
-    public function awardedBy()
+    /**
+     * Line items on this quote that won an award. Awarding now happens
+     * per item (a supplier can win some items on a request and lose others),
+     * so there is no single quote-level "awarded" flag anymore.
+     */
+    public function awardedItems()
     {
-        return $this->belongsTo(User::class, 'awarded_by');
+        return $this->items->where('is_awarded', true);
+    }
+
+    public function hasAwardedItems(): bool
+    {
+        return $this->awardedItems()->isNotEmpty();
     }
 }

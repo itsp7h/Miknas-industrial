@@ -45,16 +45,22 @@
         </div>
     </form>
 
-    {{-- Dev credentials hint --}}
-    @if(app()->isLocal())
-    <div style="margin-top:1.5rem; padding:0.75rem 1rem; background:#f0f9ff; border:1px solid #bae6fd; border-radius:0.5rem; font-size:0.8rem; color:#0369a1;">
-        <div style="font-weight:600; margin-bottom:0.25rem;">Dev Credentials</div>
-        <div>Email: <span style="font-family:monospace; font-weight:600;">admin@erp.com</span></div>
-        <div>Password: <span style="font-family:monospace; font-weight:600;">password</span></div>
-        <button type="button" onclick="document.getElementById('email').value='admin@erp.com'; document.getElementById('password').value='password';"
-            style="margin-top:0.5rem; padding:0.25rem 0.75rem; background:#0ea5e9; color:#fff; border:none; border-radius:0.375rem; cursor:pointer; font-size:0.75rem;">
-            Fill in
-        </button>
+    {{-- Dev credentials quick-fill --}}
+    <div style="margin-top:1.5rem; padding:0.875rem 1rem; background:#f0f9ff; border:1px solid #bae6fd; border-radius:0.5rem; font-size:0.8rem; color:#0369a1;">
+        <div style="font-weight:700; margin-bottom:0.5rem; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">Dev Quick Login</div>
+        <div style="display:flex; flex-wrap:wrap; gap:0.375rem;">
+            <button type="button" onclick="fill('admin@erp.com','password')"
+                style="padding:0.3rem 0.75rem; background:#0ea5e9; color:#fff; border:none; border-radius:0.375rem; cursor:pointer; font-size:0.75rem; font-weight:600;">
+                Admin
+            </button>
+        </div>
+        <div style="margin-top:0.5rem; color:#64748b; font-size:0.7rem;">Password for all accounts: <code style="background:#e0f2fe; padding:0.1rem 0.3rem; border-radius:0.2rem;">password</code></div>
     </div>
-    @endif
+    <script>
+    function fill(email, pwd) {
+        document.getElementById('email').value = email;
+        document.getElementById('password').value = pwd;
+        document.getElementById('email').focus();
+    }
+    </script>
 </x-guest-layout>

@@ -125,8 +125,11 @@
                   {{ $pr->supplierQuotes->count() }} quote(s) received · {{ $sentInv->count() }} invited
                 @elseif($stage === 'comparison')
                   {{ $pr->supplierQuotes->count() }} quote(s) ready to compare
-                @elseif($stage === 'lpo' && $pr->awardedQuote)
-                  Awarded to {{ $pr->awardedQuote->supplier->name }}
+                @elseif($stage === 'lpo')
+                  @php $awardedBySupplier = $pr->supplierQuotes->filter(fn($q) => $q->hasAwardedItems()); @endphp
+                  @if($awardedBySupplier->isNotEmpty())
+                    Awarded to {{ $awardedBySupplier->pluck('supplier.name')->implode(', ') }}
+                  @endif
                 @endif
               </div>
               @endif
@@ -193,21 +196,97 @@
                 </a>
 
               @elseif($stage === 'lpo')
-                <a href="{{ route('purchase.orders.create') }}"
-                   class="action-btn" style="background:#16a34a;color:#fff;">
-                  Issue LPO →
-                </a>
+                @if($pr->purchaseOrders->isEmpty())
+                <form action="{{ route('purchase.requests.generate-lpo', $pr) }}" method="POST" style="display:inline;">
+                  @csrf
+                  <button type="submit" class="action-btn" style="background:#16a34a;color:#fff;border:none;cursor:pointer;">
+                    Issue LPO →
+                  </button>
+                </form>
+                @else
+                <span class="action-btn" style="background:#dcfce7;color:#15803d;">✓ LPO(s) Issued</span>
+                @endif
 
               @elseif($stage === 'receiving')
-                <a href="{{ route('purchase.grns.create') }}"
+                <button type="button" onclick="openGrnSelectModal()"
                    class="action-btn" style="background:#16a34a;color:#fff;">
                   Record GRN →
-                </a>
+                </button>
 
               @elseif($stage === 'payment')
                 <a href="{{ route('purchase.payments.create') }}"
                    class="action-btn" style="background:#0f172a;color:#fff;">
                   Issue Payment →
+                </a>
+              @endif
+            @elseif($done)
+              {{-- Completed stages: let the user review what was done at each step. --}}
+              @php
+                $viewStyle = 'background:#fff;color:#475569;border:1.5px solid #e2e8f0;';
+                $eyeSvg = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+              @endphp
+
+              @if($stage === 'draft')
+                <a href="{{ route('purchase.requests.show', $pr) }}" class="action-btn" style="{{ $viewStyle }}">
+                  {!! $eyeSvg !!} View Request
+                </a>
+
+              @elseif($stage === 'gm_approval')
+                @if($pr->signature)
+                  <button type="button" onclick="openSignModal()" class="action-btn" style="{{ $viewStyle }}">
+                    {!! $eyeSvg !!} View Signature
+                  </button>
+                @endif
+
+              @elseif($stage === 'rfq')
+                <button type="button" onclick="openViewRfqModal()" class="action-btn" style="{{ $viewStyle }}">
+                  {!! $eyeSvg !!} View Suppliers
+                </button>
+
+              @elseif($stage === 'quoting')
+                <a href="{{ route('purchase.requests.quotes', $pr) }}" class="action-btn" style="{{ $viewStyle }}">
+                  {!! $eyeSvg !!} View Quotes ({{ $pr->supplierQuotes->count() }})
+                </a>
+
+              @elseif($stage === 'comparison')
+                <a href="{{ route('purchase.requests.compare', $pr) }}" class="action-btn" style="{{ $viewStyle }}">
+                  {!! $eyeSvg !!} View Comparison
+                </a>
+
+              @elseif($stage === 'lpo' && $pr->purchaseOrders->isNotEmpty())
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  @if($pr->purchaseOrders->count() === 1)
+                    <a href="{{ route('purchase.orders.show', $pr->purchaseOrders->first()) }}" class="action-btn" style="{{ $viewStyle }}">
+                      {!! $eyeSvg !!} View LPO
+                    </a>
+                    <a href="{{ route('purchase.orders.pdf', $pr->purchaseOrders->first()) }}" class="action-btn" style="{{ $viewStyle }}">
+                      ⬇ Download PDF
+                    </a>
+                  @else
+                    @foreach($pr->purchaseOrders as $po)
+                    <a href="{{ route('purchase.orders.pdf', $po) }}" class="action-btn" style="{{ $viewStyle }}">
+                      ⬇ {{ $po->supplier->name ?? 'PDF' }}
+                    </a>
+                    @endforeach
+                  @endif
+                  {{-- Awards can still change after LPOs are issued — let the user re-issue to match. --}}
+                  <form id="reissue-lpo-form-{{ $pr->id }}" action="{{ route('purchase.requests.generate-lpo', $pr) }}" method="POST" style="display:inline;">
+                    @csrf
+                  </form>
+                  <button type="button" onclick="confirmAction('Re-issue LPO?', 'This will cancel the existing LPO(s) for this request and generate new ones matching the current awards.', function () { document.getElementById('reissue-lpo-form-{{ $pr->id }}').submit(); })"
+                    class="action-btn" style="background:#fff;color:#d97706;border:1.5px solid #fde68a;cursor:pointer;">
+                    ↻ Re-issue LPO
+                  </button>
+                </div>
+
+              @elseif($stage === 'receiving')
+                <a href="{{ route('purchase.grns.index') }}" class="action-btn" style="{{ $viewStyle }}">
+                  {!! $eyeSvg !!} View GRNs
+                </a>
+
+              @elseif($stage === 'payment')
+                <a href="{{ route('purchase.payments.index') }}" class="action-btn" style="{{ $viewStyle }}">
+                  {!! $eyeSvg !!} View Payments
                 </a>
               @endif
             @endif
@@ -293,6 +372,53 @@
     </div>
     @endif
 
+    {{-- Items & quotes received (per item, not per supplier) --}}
+    @if($pr->supplierQuotes->isNotEmpty())
+    @php
+      $itemQuoteMap = $pr->items->mapWithKeys(function ($item) use ($pr) {
+          $entries = $pr->supplierQuotes->map(function ($q) use ($item) {
+              $qi = $q->items->firstWhere('purchase_request_item_id', $item->id);
+              return ($qi && !$qi->not_available) ? ['quote' => $q, 'item' => $qi] : null;
+          })->filter()->values();
+          return [$item->id => $entries];
+      });
+    @endphp
+    <div style="background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.05);padding:20px;">
+      <h3 style="font-size:13px;font-weight:700;color:#0f172a;margin:0 0 14px;">
+        Items ({{ $pr->items->count() }})
+      </h3>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        @foreach($pr->items as $item)
+        @php $entries = $itemQuoteMap[$item->id]; $itemAwarded = $entries->contains(fn($e) => $e['item']->is_awarded); @endphp
+        <div onclick="openItemModal({{ $item->id }})"
+             style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;padding:8px 10px;border-radius:8px;cursor:pointer;background:{{ $itemAwarded ? '#f0fdf4' : '#f8fafc' }};border:1px solid {{ $itemAwarded ? '#bbf7d0' : '#f1f5f9' }};transition:box-shadow .15s;"
+             onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)';"
+             onmouseleave="this.style.boxShadow='';">
+          <div>
+            <div style="font-weight:600;color:#0f172a;">{{ $item->description }}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:1px;">
+              @if($entries->isEmpty())
+                No quotes yet
+              @else
+                {{ $entries->pluck('quote.supplier.name')->implode(', ') }}
+              @endif
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            @if($itemAwarded)
+              <span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:12px;font-weight:700;font-size:10px;">✓ Awarded</span>
+            @else
+              <span style="background:{{ $entries->count() >= 2 ? '#dbeafe' : '#f1f5f9' }};color:{{ $entries->count() >= 2 ? '#1d4ed8' : '#64748b' }};padding:2px 8px;border-radius:12px;font-weight:700;font-size:10px;">
+                {{ $entries->count() }} {{ Str::plural('quote', $entries->count()) }}
+              </span>
+            @endif
+          </div>
+        </div>
+        @endforeach
+      </div>
+    </div>
+    @endif
+
     {{-- Quotes summary --}}
     @if($pr->supplierQuotes->isNotEmpty())
     <div style="background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.05);padding:20px;">
@@ -302,24 +428,27 @@
       <div style="display:flex;flex-direction:column;gap:8px;">
         @php $minTotal = $pr->supplierQuotes->min('total_amount'); @endphp
         @foreach($pr->supplierQuotes->sortBy('total_amount') as $quote)
-        @php $isLowest = !$quote->is_awarded && $pr->supplierQuotes->count() > 1 && (float)$quote->total_amount === (float)$minTotal; @endphp
+        @php $hasAwardedItems = $quote->hasAwardedItems(); $isLowest = !$hasAwardedItems && $pr->supplierQuotes->count() > 1 && (float)$quote->total_amount === (float)$minTotal; @endphp
         <div onclick="openQuoteModal({{ $quote->id }})"
              style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:box-shadow .15s,border-color .15s;
-               background:{{ $quote->is_awarded ? '#f0fdf4' : ($isLowest ? '#eff6ff' : '#f8fafc') }};
-               border:1px solid {{ $quote->is_awarded ? '#bbf7d0' : ($isLowest ? '#bfdbfe' : '#f1f5f9') }};"
-             onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)';this.style.borderColor='{{ $quote->is_awarded ? '#86efac' : ($isLowest ? '#93c5fd' : '#e2e8f0') }}';"
-             onmouseleave="this.style.boxShadow='';this.style.borderColor='{{ $quote->is_awarded ? '#bbf7d0' : ($isLowest ? '#bfdbfe' : '#f1f5f9') }}';">
+               background:{{ $hasAwardedItems ? '#f0fdf4' : ($isLowest ? '#eff6ff' : '#f8fafc') }};
+               border:1px solid {{ $hasAwardedItems ? '#bbf7d0' : ($isLowest ? '#bfdbfe' : '#f1f5f9') }};"
+             onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)';this.style.borderColor='{{ $hasAwardedItems ? '#86efac' : ($isLowest ? '#93c5fd' : '#e2e8f0') }}';"
+             onmouseleave="this.style.boxShadow='';this.style.borderColor='{{ $hasAwardedItems ? '#bbf7d0' : ($isLowest ? '#bfdbfe' : '#f1f5f9') }}';">
           <div>
             <div style="font-weight:600;color:#0f172a;">{{ $quote->supplier->name }}</div>
             @if($isLowest)
               <div style="font-size:10px;color:#2563eb;font-weight:700;margin-top:1px;">LOWEST</div>
             @endif
+            @if($hasAwardedItems)
+              <div style="font-size:10px;color:#15803d;font-weight:700;margin-top:1px;">{{ $quote->awardedItems()->count() }} item(s) awarded</div>
+            @endif
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <div style="color:{{ $quote->is_awarded ? '#15803d' : ($isLowest ? '#2563eb' : '#374151') }};font-weight:700;">
+            <div style="color:{{ $hasAwardedItems ? '#15803d' : ($isLowest ? '#2563eb' : '#374151') }};font-weight:700;">
               BD {{ number_format($quote->total_amount, 3) }}
             </div>
-            @if($quote->is_awarded)
+            @if($hasAwardedItems)
               <span style="font-size:10px;background:#22c55e;color:#fff;padding:1px 6px;border-radius:10px;">✓</span>
             @else
               <svg width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;">
@@ -330,10 +459,41 @@
         </div>
         @endforeach
       </div>
-      <a href="{{ route('purchase.requests.compare', $pr) }}"
-         style="display:block;margin-top:12px;text-align:center;font-size:12px;color:#f59e0b;text-decoration:none;font-weight:700;padding:7px;border:1.5px solid #fde68a;border-radius:8px;background:#fffbeb;">
-        Compare All Quotes →
-      </a>
+    </div>
+    @endif
+
+    {{-- Linked LPOs --}}
+    @if($pr->purchaseOrders->isNotEmpty())
+    <div style="background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.05);padding:20px;">
+      <h3 style="font-size:13px;font-weight:700;color:#0f172a;margin:0 0 14px;">
+        LPOs ({{ $pr->purchaseOrders->count() }})
+      </h3>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        @foreach($pr->purchaseOrders as $po)
+        @php
+          $statusMap = [
+            'draft'     => ['bg'=>'#f1f5f9','fg'=>'#64748b','label'=>'Draft'],
+            'sent'      => ['bg'=>'#dbeafe','fg'=>'#1d4ed8','label'=>'Sent'],
+            'received'  => ['bg'=>'#dcfce7','fg'=>'#15803d','label'=>'Received'],
+            'cancelled' => ['bg'=>'#fee2e2','fg'=>'#991b1b','label'=>'Cancelled'],
+          ];
+          $sc = $statusMap[$po->status] ?? $statusMap['draft'];
+        @endphp
+        <a href="{{ route('purchase.orders.show', $po) }}"
+           style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;padding:8px 10px;border-radius:8px;text-decoration:none;background:#f8fafc;border:1px solid #f1f5f9;transition:box-shadow .15s;"
+           onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)';"
+           onmouseleave="this.style.boxShadow='';">
+          <div>
+            <div style="font-weight:600;color:#0f172a;">{{ $po->po_number ?? 'PO-' . str_pad($po->id, 5, '0', STR_PAD_LEFT) }}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:1px;">{{ $po->supplier->name ?? '—' }}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="color:#374151;font-weight:700;">BD {{ number_format($po->total_amount, 3) }}</div>
+            <span style="background:{{ $sc['bg'] }};color:{{ $sc['fg'] }};padding:2px 8px;border-radius:12px;font-weight:700;font-size:10px;">{{ $sc['label'] }}</span>
+          </div>
+        </a>
+        @endforeach
+      </div>
     </div>
     @endif
 
@@ -417,6 +577,10 @@
 
 <x-purchase.supplier-select-modal :pr="$pr" :suppliers="$suppliers" :selectedIds="$selectedIds" />
 
+<x-purchase.view-rfq-modal :pr="$pr" />
+
+<x-purchase.select-grn-modal :pr="$pr" />
+
 {{-- ============================================================
      QUOTE DETAIL MODAL
      ============================================================ --}}
@@ -495,13 +659,54 @@
   </div>
 </div>
 
+{{-- Single-item comparison modal --}}
+<div id="item-modal" class="pipe-modal" role="dialog" aria-modal="true" onclick="if(event.target===this)closeItemModal()">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(0,0,0,.25);overflow:hidden;">
+
+    <div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;">Item Comparison</div>
+        <div id="im-description" style="font-size:19px;font-weight:700;color:#fff;margin-top:4px;"></div>
+        <div id="im-qty" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;"></div>
+      </div>
+      <button onclick="closeItemModal()"
+        style="width:32px;height:32px;border-radius:8px;border:none;background:rgba(255,255,255,.2);cursor:pointer;font-size:18px;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+    </div>
+
+    <div style="overflow-y:auto;flex:1;padding:20px 24px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th style="padding:8px 10px;text-align:left;color:#64748b;font-weight:600;border-radius:6px 0 0 6px;">Supplier</th>
+            <th style="padding:8px 10px;text-align:right;color:#64748b;font-weight:600;white-space:nowrap;">Unit Price</th>
+            <th style="padding:8px 10px;text-align:right;color:#64748b;font-weight:600;white-space:nowrap;">Total</th>
+            <th style="padding:8px 10px;text-align:center;color:#64748b;font-weight:600;border-radius:0 6px 6px 0;white-space:nowrap;">Status</th>
+          </tr>
+        </thead>
+        <tbody id="im-rows"></tbody>
+      </table>
+    </div>
+
+    <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;gap:10px;flex-shrink:0;background:#fff;">
+      <button onclick="closeItemModal()"
+        style="flex:1;padding:10px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-weight:600;color:#475569;background:#f8fafc;cursor:pointer;">
+        Close
+      </button>
+      <a href="{{ route('purchase.requests.compare', $pr) }}"
+        style="flex:2;padding:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
+        Open Full Comparison to Award
+      </a>
+    </div>
+  </div>
+</div>
+
 @php
 $quoteDataForJs = $pr->supplierQuotes->keyBy('id')->map(function($q) {
     return [
         'id'          => $q->id,
         'supplier'    => $q->supplier->name,
         'total'       => number_format($q->total_amount, 3),
-        'isAwarded'   => (bool)$q->is_awarded,
+        'isAwarded'   => $q->hasAwardedItems(),
         'leadTime'    => $q->lead_time_days !== null ? $q->lead_time_days . ' days' : null,
         'paymentTerms'=> $q->payment_terms,
         'notes'       => $q->notes,
@@ -520,9 +725,81 @@ $quoteDataForJs = $pr->supplierQuotes->keyBy('id')->map(function($q) {
         })->values(),
     ];
 });
+$itemDataForJs = $pr->items->keyBy('id')->map(function($item) use ($pr) {
+    return [
+        'id'          => $item->id,
+        'description' => $item->description,
+        'quantity'    => $item->quantity_required,
+        'unit'        => $item->unit,
+        'suppliers'   => $pr->supplierQuotes->map(function($q) use ($item) {
+            $qi = $q->items->firstWhere('purchase_request_item_id', $item->id);
+            return [
+                'supplier'     => $q->supplier->name,
+                'quoted'       => (bool)$qi,
+                'notAvailable' => $qi ? (bool)$qi->not_available : false,
+                'unitPrice'    => ($qi && !$qi->not_available) ? number_format($qi->unit_price, 3) : null,
+                'totalPrice'   => ($qi && !$qi->not_available) ? number_format($qi->total_price, 3) : null,
+                'isAwarded'    => $qi ? (bool)$qi->is_awarded : false,
+            ];
+        })->values(),
+    ];
+});
 @endphp
 <script>
 var QUOTE_DATA = @json($quoteDataForJs);
+var ITEM_DATA  = @json($itemDataForJs);
+</script>
+
+<script>
+// ---- Single-item comparison modal ----
+(function () {
+  window.openItemModal = function (id) {
+    var it = ITEM_DATA[id];
+    if (!it) return;
+
+    document.getElementById('im-description').textContent = it.description;
+    document.getElementById('im-qty').textContent = 'Qty: ' + it.quantity + (it.unit ? ' ' + it.unit : '');
+
+    var validPrices = it.suppliers.filter(function (s) { return s.quoted && !s.notAvailable; }).map(function (s) { return parseFloat(s.unitPrice); });
+    var minPrice = validPrices.length ? Math.min.apply(null, validPrices) : null;
+    var anyAwarded = it.suppliers.some(function (s) { return s.isAwarded; });
+
+    var rows = document.getElementById('im-rows');
+    rows.innerHTML = '';
+    it.suppliers.forEach(function (s, i) {
+      var tr = document.createElement('tr');
+      tr.style.borderTop = i > 0 ? '1px solid #f8fafc' : '';
+      var statusCell;
+      if (s.isAwarded) {
+        statusCell = '<span style="font-size:10px;font-weight:700;color:#15803d;background:#dcfce7;padding:3px 10px;border-radius:10px;">✓ AWARDED</span>';
+      } else if (!s.quoted) {
+        statusCell = '<span style="color:#94a3b8;font-size:11px;">Not quoted</span>';
+      } else if (s.notAvailable) {
+        statusCell = '<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;padding:2px 8px;border-radius:4px;border:1px solid #fecaca;">Not available</span>';
+      } else if (!anyAwarded && minPrice !== null && parseFloat(s.unitPrice) === minPrice) {
+        statusCell = '<span style="font-size:10px;font-weight:700;color:#2563eb;background:#eff6ff;padding:3px 10px;border-radius:10px;">LOWEST</span>';
+      } else {
+        statusCell = '';
+      }
+      tr.innerHTML =
+        '<td style="padding:8px 10px;color:#0f172a;font-weight:500;">' + escHtmlItem(s.supplier) + '</td>' +
+        '<td style="padding:8px 10px;text-align:right;color:#0f172a;font-weight:600;">' + (s.unitPrice !== null ? 'BD ' + s.unitPrice : '—') + '</td>' +
+        '<td style="padding:8px 10px;text-align:right;color:#64748b;">' + (s.totalPrice !== null ? 'BD ' + s.totalPrice : '—') + '</td>' +
+        '<td style="padding:8px 10px;text-align:center;">' + statusCell + '</td>';
+      rows.appendChild(tr);
+    });
+
+    document.getElementById('item-modal').classList.add('open');
+  };
+
+  window.closeItemModal = function () {
+    document.getElementById('item-modal').classList.remove('open');
+  };
+
+  function escHtmlItem(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+}());
 </script>
 
 <script>

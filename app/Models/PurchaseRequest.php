@@ -56,8 +56,39 @@ class PurchaseRequest extends Model
         return $this->hasMany(SupplierQuote::class);
     }
 
-    public function awardedQuote()
+    /**
+     * Winning line items across all quotes for this request. A request can have
+     * items awarded to different suppliers — there is no single "awarded quote".
+     */
+    public function awardedQuoteItems()
     {
-        return $this->hasOne(SupplierQuote::class)->where('is_awarded', true);
+        return $this->hasManyThrough(
+            SupplierQuoteItem::class,
+            SupplierQuote::class,
+            'purchase_request_id',
+            'supplier_quote_id',
+        )->where('supplier_quote_items.is_awarded', true);
+    }
+
+    /**
+     * True once every request item that received at least one quote has a winner.
+     * Items nobody quoted are excluded — they need manual sourcing, not an award.
+     */
+    public function isFullyAwarded(): bool
+    {
+        $awardedItemIds = $this->awardedQuoteItems()->pluck('purchase_request_item_id')->all();
+
+        foreach ($this->items as $item) {
+            $quoted = SupplierQuoteItem::whereHas('quote', fn ($q) => $q->where('purchase_request_id', $this->id))
+                ->where('purchase_request_item_id', $item->id)
+                ->where('not_available', false)
+                ->exists();
+
+            if ($quoted && !in_array($item->id, $awardedItemIds)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

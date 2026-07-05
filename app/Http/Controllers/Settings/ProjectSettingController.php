@@ -14,10 +14,25 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ProjectSettingController extends Controller
 {
+    public function projectsOverview()
+    {
+        $companies = Company::orderBy('name')->get();
+        $projects  = \App\Models\Settings\ProjectSetting::with('locations')
+            ->orderBy('name')->get();
+
+        $stats = [
+            'total_projects'  => $projects->count(),
+            'active_projects' => $projects->where('is_active', true)->count(),
+            'total_locations' => $projects->sum(fn ($p) => $p->locations->count()),
+            'total_companies' => $companies->count(),
+        ];
+
+        return view('settings.projects.overview', compact('companies', 'projects', 'stats'));
+    }
+
     public function index()
     {
         $companies = Company::with([
@@ -221,65 +236,29 @@ class ProjectSettingController extends Controller
             'font' => ['italic' => true, 'color' => ['rgb' => '64748b'], 'size' => 10],
         ];
 
-        // ── Sheet 1: Projects (with optional locations) ────────────────────
+        // ── Projects sheet ─────────────────────────────────────────────────
         $s1 = $spreadsheet->getActiveSheet()->setTitle('Projects');
         $s1->setCellValue('A1', 'Company Name')
-           ->setCellValue('B1', 'Project Name')
-           ->setCellValue('C1', 'Location Name')
-           ->setCellValue('D1', 'Address')
-           ->setCellValue('E1', 'Latitude')
-           ->setCellValue('F1', 'Longitude');
-        $s1->getStyle('A1:F1')->applyFromArray($headerStyle);
+           ->setCellValue('B1', 'Project Name');
+        $s1->getStyle('A1:B1')->applyFromArray($headerStyle);
 
         $samples = [
-            ['Miknas Industrial', 'New Warehouse',    'Main Gate',    'Industrial Area, Block 5', '24.7136', '46.6753'],
-            ['Miknas Industrial', 'New Warehouse',    'Storage Yard', '',                          '',        ''],
-            ['Steel tech',        'Factory Extension','Site Office',  '2nd Ring Road, Riyadh',    '24.6877', '46.7219'],
-            ['Steel tech',        'New Office Block', '',             '',                          '',        ''],
+            ['Miknas Industrial', 'New Warehouse'],
+            ['Miknas Industrial', 'Factory Extension'],
+            ['Steel tech',        'New Office Block'],
+            ['Steel tech',        'Site Expansion'],
         ];
         foreach ($samples as $i => $row) {
             $s1->setCellValue('A' . ($i + 2), $row[0]);
             $s1->setCellValue('B' . ($i + 2), $row[1]);
-            $s1->setCellValue('C' . ($i + 2), $row[2]);
-            $s1->setCellValue('D' . ($i + 2), $row[3]);
-            $s1->setCellValue('E' . ($i + 2), $row[4]);
-            $s1->setCellValue('F' . ($i + 2), $row[5]);
         }
 
-        $s1->setCellValue('A7', '* Leave Location Name blank for rows that are projects only. Company is created automatically. Duplicates are skipped.');
+        $s1->setCellValue('A7', '* Company is created automatically if it does not exist. Duplicate project names are skipped.');
         $s1->getStyle('A7')->applyFromArray($noteStyle);
-        $s1->mergeCells('A7:F7');
+        $s1->mergeCells('A7:B7');
 
-        $s1->getColumnDimension('A')->setWidth(28);
-        $s1->getColumnDimension('B')->setWidth(28);
-        $s1->getColumnDimension('C')->setWidth(24);
-        $s1->getColumnDimension('D')->setWidth(32);
-        $s1->getColumnDimension('E')->setWidth(14);
-        $s1->getColumnDimension('F')->setWidth(14);
-
-        // ── Sheet 2: Departments ───────────────────────────────────────────
-        $s2 = new Worksheet($spreadsheet, 'Departments');
-        $spreadsheet->addSheet($s2);
-        $s2->setCellValue('A1', 'Company Name')
-           ->setCellValue('B1', 'Department Name');
-        $s2->getStyle('A1:B1')->applyFromArray($headerStyle);
-
-        $deptSamples = [
-            ['Miknas Industrial', 'Finance'],
-            ['Miknas Industrial', 'Operations'],
-            ['Steel tech', 'Production'],
-        ];
-        foreach ($deptSamples as $i => $row) {
-            $s2->setCellValue('A' . ($i + 2), $row[0]);
-            $s2->setCellValue('B' . ($i + 2), $row[1]);
-        }
-
-        $s2->setCellValue('A6', '* Delete sample rows before importing. Company will be created if it does not exist.');
-        $s2->getStyle('A6')->applyFromArray($noteStyle);
-        $s2->mergeCells('A6:B6');
-
-        $s2->getColumnDimension('A')->setWidth(32);
-        $s2->getColumnDimension('B')->setWidth(32);
+        $s1->getColumnDimension('A')->setWidth(32);
+        $s1->getColumnDimension('B')->setWidth(32);
 
         (new Xlsx($spreadsheet))->save($path);
     }

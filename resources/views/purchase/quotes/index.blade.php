@@ -4,6 +4,15 @@
 
 @section('content')
 <div style="max-width:760px;margin:0 auto;">
+  <div style="margin-bottom:16px;">
+    <a href="{{ route('purchase.pipeline.show', $request) }}"
+       style="font-size:13px;color:#2563eb;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Back to Pipeline
+    </a>
+  </div>
   <div style="background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);overflow:hidden;">
 
     <div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -30,8 +39,8 @@
       @else
         <div style="display:flex;flex-direction:column;gap:12px;">
           @foreach($quotes->sortBy('total_amount') as $quote)
-          @php $isLowest = $quote->total_amount == $quotes->min('total_amount') && $quotes->count() > 1; @endphp
-          <div style="border:1.5px solid {{ $quote->is_awarded ? '#bbf7d0' : ($isLowest ? '#bfdbfe' : '#e2e8f0') }};border-radius:12px;padding:18px 20px;background:{{ $quote->is_awarded ? '#f0fdf4' : ($isLowest ? '#eff6ff' : '#fff') }};">
+          @php $isLowest = $quote->total_amount == $quotes->min('total_amount') && $quotes->count() > 1; $hasAwardedItems = $quote->hasAwardedItems(); @endphp
+          <div style="border:1.5px solid {{ $hasAwardedItems ? '#bbf7d0' : ($isLowest ? '#bfdbfe' : '#e2e8f0') }};border-radius:12px;padding:18px 20px;background:{{ $hasAwardedItems ? '#f0fdf4' : ($isLowest ? '#eff6ff' : '#fff') }};">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
               <div>
                 <div style="font-size:14px;font-weight:700;color:#0f172a;">{{ $quote->supplier->name }}</div>
@@ -46,8 +55,8 @@
                 @if($isLowest && $quotes->count() > 1)
                 <div style="font-size:10px;font-weight:700;color:#2563eb;margin-top:2px;">LOWEST PRICE</div>
                 @endif
-                @if($quote->is_awarded)
-                <div style="font-size:11px;font-weight:700;color:#15803d;margin-top:4px;">✓ Awarded</div>
+                @if($hasAwardedItems)
+                <div style="font-size:11px;font-weight:700;color:#15803d;margin-top:4px;">✓ {{ $quote->awardedItems()->count() }} item(s) awarded</div>
                 @endif
               </div>
             </div>
@@ -88,7 +97,7 @@
           @endforeach
         </div>
 
-        @if(!$request->awardedQuote && $quotes->count() >= 1)
+        @if(!$request->isFullyAwarded() && $quotes->count() >= 1)
         <div style="margin-top:20px;padding:14px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
           <div style="font-size:13px;color:#92400e;font-weight:500;">Ready to pick a winner?</div>
           <a href="{{ route('purchase.requests.compare', $request) }}"

@@ -279,7 +279,7 @@
 
                 <div style="margin-bottom:16px;">
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Account Name <span style="color:#9ca3af;font-weight:400;">(used in code)</span></label>
-                    <input type="text" id="ma-form-name" placeholder="e.g. customer-support" class="form-input">
+                    <input type="text" id="ma-form-name" placeholder="e.g. customer-support" class="form-input" oninput="maSlugifyName(this)">
                     <div style="font-size:11px;color:#9ca3af;margin-top:3px;">Lowercase letters, numbers and hyphens only.</div>
                 </div>
 
@@ -543,6 +543,12 @@ function renderAccountRow(a) {
 
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escJs(s)   { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function maSlugifyName(el) {
+    var cursorAtEnd = el.selectionStart === el.value.length;
+    el.value = el.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    if (cursorAtEnd) el.setSelectionRange(el.value.length, el.value.length);
+}
 
 function maTypeChange() {
     var type = document.getElementById('ma-form-type').value;

@@ -1,4 +1,4 @@
-@props(['purchaseRequest'])
+@props(['purchaseRequest', 'size' => 'sm'])
 
 @php
 $prId   = $purchaseRequest->id;
@@ -46,7 +46,7 @@ $curProjectInList = $editProjects->contains('name', $curProject);
 </style>
 
 {{-- ── Trigger button ── --}}
-<button type="button" onclick="{{ $prefix }}Open()" class="btn-secondary btn-sm">
+<button type="button" onclick="{{ $prefix }}Open()" class="btn-secondary {{ $size === 'sm' ? 'btn-sm' : '' }}">
     Edit
 </button>
 

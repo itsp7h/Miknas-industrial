@@ -88,7 +88,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Quotes
         Route::get('requests/{purchaseRequest}/quotes',                    [SupplierQuoteController::class, 'index'])->name('requests.quotes');
         Route::get('requests/{purchaseRequest}/compare',                   [SupplierQuoteController::class, 'compare'])->name('requests.compare');
-        Route::post('requests/{purchaseRequest}/quotes/{quote}/award',     [SupplierQuoteController::class, 'award'])->name('requests.quotes.award');
+        Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award',   [SupplierQuoteController::class, 'awardItem'])->name('requests.quotes.items.award');
+        Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unawardItem'])->name('requests.quotes.items.unaward');
 
         Route::post('suppliers/import',    [SupplierController::class, 'import'])->name('suppliers.import');
         Route::get('suppliers/template',   [SupplierController::class, 'downloadTemplate'])->name('suppliers.template');
@@ -98,6 +99,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('requests/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('requests.approve');
         Route::patch('requests/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('requests.reject');
         Route::get('requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('requests.print');
+        Route::post('requests/{purchaseRequest}/generate-lpo', [PurchaseOrderController::class, 'generateFromRequest'])->name('requests.generate-lpo');
+        Route::get('orders/{order}/print', [PurchaseOrderController::class, 'print'])->name('orders.print');
+        Route::get('orders/{order}/pdf', [PurchaseOrderController::class, 'pdf'])->name('orders.pdf');
         Route::resource('orders', PurchaseOrderController::class);
         Route::resource('grns', GoodsReceiptNoteController::class);
         Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm'])->name('grns.confirm');
@@ -157,6 +161,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Projects settings
         Route::get('settings/projects', [ProjectSettingController::class, 'index'])->name('settings.projects.index');
+        Route::get('settings/projects-overview', [ProjectSettingController::class, 'projectsOverview'])->name('settings.projects.overview');
         Route::post('settings/projects', [ProjectSettingController::class, 'store'])->name('settings.projects.store');
         Route::post('settings/projects/import', [ProjectSettingController::class, 'import'])->name('settings.projects.import');
         Route::get('settings/projects/template', [ProjectSettingController::class, 'downloadTemplate'])->name('settings.projects.template');

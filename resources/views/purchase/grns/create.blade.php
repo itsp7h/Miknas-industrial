@@ -32,7 +32,7 @@
                     @foreach($purchaseOrders as $po)
                         <option value="{{ $po->id }}"
                                 data-items="{{ json_encode($po->items) }}"
-                                {{ old('purchase_order_id') == $po->id ? 'selected' : '' }}>
+                                {{ old('purchase_order_id', $selectedOrderId) == $po->id ? 'selected' : '' }}>
                             {{ $po->po_number ?? 'PO-' . str_pad($po->id, 5, '0', STR_PAD_LEFT) }} - {{ $po->supplier->name ?? '' }}
                         </option>
                     @endforeach
@@ -152,5 +152,10 @@ function loadPOItems(select) {
         tbody.appendChild(row);
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    var select = document.getElementById('po-select');
+    if (select.value) loadPOItems(select);
+});
 </script>
 @endsection

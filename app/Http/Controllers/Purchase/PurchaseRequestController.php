@@ -164,7 +164,7 @@ class PurchaseRequestController extends Controller
 
     public function print(PurchaseRequest $purchaseRequest)
     {
-        $purchaseRequest->load(['items', 'requestedBy', 'approvedBy']);
+        $purchaseRequest->load(['items', 'requestedBy', 'approvedBy', 'signature.signedBy']);
 
         return view('purchase.requests.print', compact('purchaseRequest'));
     }

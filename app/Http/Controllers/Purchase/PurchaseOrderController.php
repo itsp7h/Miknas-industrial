@@ -7,9 +7,14 @@ use App\Models\Item;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
+use App\Models\Setting;
 use App\Models\Supplier;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
+use App\Services\LpoGenerationService;
+use App\Services\PurchaseStageService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 class PurchaseOrderController extends Controller
 {
@@ -59,7 +64,7 @@ class PurchaseOrderController extends Controller
                 'item_id'           => $item['item_id'],
                 'quantity'          => $item['quantity'],
                 'rate'              => $item['rate'],
-                'amount'            => $item['quantity'] * $item['rate'],
+                'total_amount'      => $item['quantity'] * $item['rate'],
             ]);
         }
 
@@ -70,36 +75,98 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase.orders.show', $order)->with('success', 'Purchase order created successfully.');
     }
 
-    public function show(PurchaseOrder $purchaseOrder)
+    /**
+     * Auto-generate the LPO(s) for a request straight from its awarded quote items —
+     * one LPO per winning supplier, since items on the same request can be split
+     * across different suppliers.
+     */
+    public function generateFromRequest(PurchaseRequest $purchaseRequest, LpoGenerationService $service, PurchaseStageService $stages)
     {
-        $purchaseOrder->load(['supplier', 'items.item']);
+        try {
+            $orders = $service->generate($purchaseRequest);
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
-        return view('purchase.orders.show', compact('purchaseOrder'));
+        $stages->setStage($purchaseRequest, 'receiving');
+
+        if ($orders->count() === 1) {
+            return redirect()->route('purchase.orders.show', $orders->first())
+                ->with('success', 'LPO ' . $orders->first()->po_number . ' generated.');
+        }
+
+        return redirect()->route('purchase.orders.index')
+            ->with('success', $orders->count() . ' LPOs generated: ' . $orders->pluck('po_number')->implode(', '));
     }
 
-    public function edit(PurchaseOrder $purchaseOrder)
+    public function show(PurchaseOrder $order)
+    {
+        $order->load(['supplier', 'items.item', 'createdBy', 'purchaseRequest', 'goodsReceiptNotes.warehouse']);
+
+        $company = $order->purchaseRequest
+            ? \App\Models\Settings\ProjectSetting::where('name', $order->purchaseRequest->project_name)->with('company')->first()?->company
+            : null;
+
+        return view('purchase.orders.show', compact('order', 'company'));
+    }
+
+    public function print(PurchaseOrder $order)
+    {
+        $data = $this->lpoDocumentData($order);
+
+        return view('purchase.orders.print', $data);
+    }
+
+    public function pdf(PurchaseOrder $order)
+    {
+        $data = $this->lpoDocumentData($order);
+
+        $pdf = Pdf::loadView('purchase.orders.pdf', $data)
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download(($order->po_number ?? 'PO-' . str_pad($order->id, 5, '0', STR_PAD_LEFT)) . '.pdf');
+    }
+
+    private function lpoDocumentData(PurchaseOrder $order): array
+    {
+        $order->load(['supplier', 'items.item', 'createdBy', 'purchaseRequest']);
+
+        $company = $order->purchaseRequest
+            ? \App\Models\Settings\ProjectSetting::where('name', $order->purchaseRequest->project_name)->with('company')->first()?->company
+            : null;
+
+        $subtotal  = (float) $order->items->sum('total_amount');
+        $vatRate   = (float) Setting::get('vat_rate', 0);
+        $vatAmount = $vatRate > 0 ? round($subtotal * $vatRate / 100, 3) : 0;
+        $discount  = 0;
+        $total     = $subtotal + $vatAmount - $discount;
+
+        return compact('order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total');
+    }
+
+    public function edit(PurchaseOrder $order)
     {
         $suppliers = Supplier::all();
         $items     = Item::all();
 
-        return view('purchase.orders.edit', compact('purchaseOrder', 'suppliers', 'items'));
+        return view('purchase.orders.edit', compact('order', 'suppliers', 'items'));
     }
 
-    public function update(Request $request, PurchaseOrder $purchaseOrder)
+    public function update(Request $request, PurchaseOrder $order)
     {
         $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'po_date'     => 'required|date',
         ]);
 
-        $purchaseOrder->update($request->only('supplier_id', 'po_date', 'status'));
+        $order->update($request->only('supplier_id', 'po_date', 'status'));
 
-        return redirect()->route('purchase.orders.show', $purchaseOrder)->with('success', 'Purchase order updated successfully.');
+        return redirect()->route('purchase.orders.show', $order)->with('success', 'Purchase order updated successfully.');
     }
 
-    public function destroy(PurchaseOrder $purchaseOrder)
+    public function destroy(PurchaseOrder $order)
     {
-        $purchaseOrder->delete();
+        $order->delete();
 
         return redirect()->route('purchase.orders.index')->with('success', 'Purchase order deleted successfully.');
     }

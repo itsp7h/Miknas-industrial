@@ -22,12 +22,13 @@ class GoodsReceiptNoteController extends Controller
         return view('purchase.grns.index', compact('grns'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $purchaseOrders = PurchaseOrder::whereIn('status', ['sent', 'partial'])->with('supplier')->get();
-        $warehouses     = Warehouse::all();
+        $purchaseOrders  = PurchaseOrder::whereIn('status', ['sent', 'partial'])->with('supplier')->get();
+        $warehouses      = Warehouse::all();
+        $selectedOrderId = $request->query('purchase_order_id');
 
-        return view('purchase.grns.create', compact('purchaseOrders', 'warehouses'));
+        return view('purchase.grns.create', compact('purchaseOrders', 'warehouses', 'selectedOrderId'));
     }
 
     public function store(Request $request)
@@ -36,9 +37,9 @@ class GoodsReceiptNoteController extends Controller
             'purchase_order_id'    => 'required|exists:purchase_orders,id',
             'warehouse_id'         => 'required|exists:warehouses,id',
             'received_date'        => 'required|date',
-            'items'                => 'required|array|min:1',
-            'items.*.item_id'      => 'required|exists:items,id',
-            'items.*.quantity'     => 'required|numeric|min:1',
+            'items'                     => 'required|array|min:1',
+            'items.*.item_id'           => 'required|exists:items,id',
+            'items.*.quantity_received' => 'required|numeric|min:1',
         ]);
 
         $grnNumber = 'GRN-' . str_pad(GoodsReceiptNote::max('id') + 1, 5, '0', STR_PAD_LEFT);
@@ -60,7 +61,7 @@ class GoodsReceiptNoteController extends Controller
                 'goods_receipt_note_id'  => $grn->id,
                 'purchase_order_item_id' => $item['po_item_id'] ?? $po->items()->where('item_id', $item['item_id'])->first()?->id ?? 0,
                 'item_id'                => $item['item_id'],
-                'quantity_received'      => $item['quantity'],
+                'quantity_received'      => $item['quantity_received'],
                 'unit_cost'              => $item['unit_cost'] ?? 0,
                 'type'                   => in_array($item['type'] ?? '', ['inventory', 'consumable']) ? $item['type'] : 'inventory',
             ]);

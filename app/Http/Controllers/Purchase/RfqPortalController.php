@@ -116,7 +116,8 @@ class RfqPortalController extends Controller
             }
 
             SupplierQuoteItem::create([
-                'supplier_quote_id'   => $quote->id,
+                'supplier_quote_id'         => $quote->id,
+                'purchase_request_item_id'  => $item->id,
                 'description'         => $item->description,
                 'supplier_description'=> $supplierDescription,
                 'unit'                => $item->unit ?? '',

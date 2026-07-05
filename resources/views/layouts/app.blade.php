@@ -180,7 +180,18 @@
                 display:flex; align-items:center; gap:8px;
                 padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
                 font-size:13px; text-decoration:none;
-                {{ request()->routeIs('settings.projects.*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+                {{ request()->routeIs('settings.projects.index') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+            " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                Companies
+            </a>
+            <a href="{{ route('settings.projects.overview') }}" style="
+                display:flex; align-items:center; gap:8px;
+                padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
+                font-size:13px; text-decoration:none;
+                {{ request()->routeIs('settings.projects.overview') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
             " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0;">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>

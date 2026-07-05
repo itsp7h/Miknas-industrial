@@ -26,6 +26,18 @@ class PurchaseStageService
         $request->update(['stage' => $stage]);
     }
 
+    /**
+     * Move to a stage only if the request hasn't already progressed past it —
+     * e.g. re-awarding an item after LPOs are issued shouldn't roll the
+     * request back from 'receiving' to 'lpo'.
+     */
+    public function setStageIfNotPast(PurchaseRequest $request, string $stage): void
+    {
+        if ($this->stageIndex($request->stage) < $this->stageIndex($stage)) {
+            $this->setStage($request, $stage);
+        }
+    }
+
     public function stageIndex(string $stage): int
     {
         $idx = array_search($stage, self::STAGES);

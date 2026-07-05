@@ -15,8 +15,7 @@ class PurchasePipelineController extends Controller
             'requestedBy',
             'signature.signedBy',
             'rfqInvitations.supplier',
-            'supplierQuotes',
-            'awardedQuote.supplier',
+            'supplierQuotes.items',
         ]);
     }
 
@@ -37,7 +36,7 @@ class PurchasePipelineController extends Controller
             'rfqInvitations.supplier',
             'supplierQuotes.supplier',
             'supplierQuotes.items',
-            'awardedQuote.supplier',
+            'purchaseOrders.supplier',
         ]);
 
         $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();

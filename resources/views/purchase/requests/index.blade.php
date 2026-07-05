@@ -50,18 +50,6 @@
                 <td>{{ $request->requestedBy->name ?? $request->requested_by }}</td>
                 <td>
                     <div class="flex items-center gap-2 flex-wrap">
-                        @if($request->status === 'pending')
-                            <form action="{{ route('purchase.requests.approve', $request) }}" method="POST">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn-success btn-sm">Approve</button>
-                            </form>
-                            <form action="{{ route('purchase.requests.reject', $request) }}" method="POST">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn-danger btn-sm">Reject</button>
-                            </form>
-                        @endif
                         <x-purchase.edit-request-modal :purchaseRequest="$request" />
                         <form action="{{ route('purchase.requests.destroy', $request) }}" method="POST"
                               onsubmit="confirmDelete(this,'Delete this purchase request?','This request will be permanently removed.'); return false;">
