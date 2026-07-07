@@ -13,17 +13,25 @@ use Illuminate\Support\Collection;
 
 class SupplierQuoteController extends Controller
 {
+    /**
+     * Both routes render the same workspace — "view submitted quotes" and
+     * "compare & award" are just two names for the same comparison view.
+     */
     public function index(PurchaseRequest $purchaseRequest)
     {
-        $quotes = $purchaseRequest->supplierQuotes()->with('supplier', 'items')->get();
-        return view('purchase.quotes.index', ['request' => $purchaseRequest, 'quotes' => $quotes]);
+        return $this->workspace($purchaseRequest);
     }
 
     public function compare(PurchaseRequest $purchaseRequest)
     {
+        return $this->workspace($purchaseRequest);
+    }
+
+    private function workspace(PurchaseRequest $purchaseRequest)
+    {
         $quotes = $this->loadQuotes($purchaseRequest);
 
-        return view('purchase.quotes.compare', [
+        return view('purchase.quotes.workspace', [
             'request'          => $purchaseRequest,
             'quotes'           => $quotes,
             'items'            => $purchaseRequest->items,
@@ -196,6 +204,9 @@ class SupplierQuoteController extends Controller
 
                 return [
                     'supplier'     => $entry['quote']->supplier->name,
+                    'leadTimeDays' => $entry['quote']->lead_time_days,
+                    'paymentTerms' => $entry['quote']->payment_terms,
+                    'notes'        => $entry['quote']->notes,
                     'isMin'        => $isMin,
                     'item'         => $qi ? [
                         'id'                  => $qi->id,

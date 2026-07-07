@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
-@section('title', 'Compare Quotes — ' . $request->request_number)
+@section('title', 'Quotes — ' . $request->request_number)
 
 @section('content')
-<div style="max-width:900px;margin:0 auto;">
+<div>
 
   <div style="margin-bottom:16px;">
     <a href="{{ route('purchase.pipeline.show', $request) }}"
@@ -17,44 +17,45 @@
 
   <div style="background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:16px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;box-shadow:0 4px 24px rgba(0,0,0,.08);">
     <div>
-      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;">Quote Comparison &amp; Award</div>
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;">Supplier Quotes &amp; Comparison</div>
       <div style="font-size:20px;font-weight:700;color:#fff;margin-top:4px;">{{ $request->request_number }}</div>
       @if($request->project_name)
       <div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:2px;">{{ $request->project_name }}</div>
       @endif
     </div>
-    <a href="{{ route('purchase.requests.quotes', $request) }}"
-       style="padding:9px 18px;background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.35);border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">
-      ← Back to Quotes
-    </a>
+    <div style="font-size:13px;color:rgba(255,255,255,.9);font-weight:600;">
+      {{ $quotes->count() }} {{ Str::plural('quote', $quotes->count()) }} received
+    </div>
   </div>
 
   @if($quotes->isEmpty())
     <div style="background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:60px 0;text-align:center;color:#94a3b8;">
-      No quotes submitted yet.
+      <div style="font-size:40px;margin-bottom:12px;">📬</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:4px;">No quotes yet</div>
+      <div style="font-size:13px;">Waiting for suppliers to submit their quotes via the private links.</div>
     </div>
   @else
 
     {{-- Tabs --}}
     <div style="display:flex;gap:4px;margin-bottom:16px;background:#f1f5f9;padding:4px;border-radius:10px;width:fit-content;">
-      <button type="button" id="tab-btn-comparison" onclick="showCompareTab('comparison')"
-        style="padding:8px 18px;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(0,0,0,.08);">
-        Comparison &amp; Breakdown
+      <button type="button" id="tab-btn-comparison" onclick="showWorkspaceTab('comparison')"
+        style="padding:8px 18px;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;">
+        Comparison &amp; Award
       </button>
-      <button type="button" id="tab-btn-awarded" onclick="showCompareTab('awarded')"
-        style="padding:8px 18px;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;background:transparent;color:#64748b;">
+      <button type="button" id="tab-btn-awarded" onclick="showWorkspaceTab('awarded')"
+        style="padding:8px 18px;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;">
         Awarded Suppliers
       </button>
     </div>
 
-    {{-- ===================== TAB: Comparison & Breakdown ===================== --}}
-    <div id="tab-panel-comparison">
+    {{-- ===================== TAB: Comparison & Award ===================== --}}
+    <div id="tab-panel-comparison" style="display:none;">
 
     <div style="font-size:12px;color:#64748b;margin-bottom:16px;">
       Each item is its own decision — award it to whichever supplier offers the best terms for that item. Different items can go to different suppliers.
     </div>
 
-    {{-- One card per item --}}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:16px;">
     @foreach($items as $item)
     @php
       $rowEntries = $quotes->map(fn($q) => ['quote' => $q, 'item' => $q->itemsByRequestItem->get($item->id)]);
@@ -72,7 +73,7 @@
           $badgeBg = '#f1f5f9'; $badgeFg = '#64748b'; $badgeLabel = 'No quotes yet';
       }
     @endphp
-    <div id="item-card-{{ $item->id }}" style="background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.05);overflow:hidden;margin-bottom:16px;">
+    <div id="item-card-{{ $item->id }}" style="background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.05);overflow:hidden;align-self:start;">
       <div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
         <div>
           <div style="font-size:15px;font-weight:700;color:#0f172a;">{{ $item->description }}</div>
@@ -84,7 +85,7 @@
       </div>
 
       <div style="padding:8px 20px 16px;overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;min-width:520px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;min-width:460px;">
           <colgroup>
             <col style="width:34%;">
             <col style="width:20%;">
@@ -105,6 +106,16 @@
             <tr style="border-top:1px solid #f8fafc;background:{{ $isMin ? '#f0fdf4' : '' }};">
               <td style="padding:8px 10px;text-align:left;color:#0f172a;font-weight:500;">
                 {{ $q->supplier->name }}
+                @php
+                  $metaParts = array_filter([
+                      $q->lead_time_days !== null ? $q->lead_time_days . ' days' : null,
+                      $q->payment_terms,
+                      $q->notes,
+                  ]);
+                @endphp
+                @if(count($metaParts))
+                  <div style="font-size:10px;color:#94a3b8;font-weight:400;margin-top:2px;">{{ implode(' · ', $metaParts) }}</div>
+                @endif
                 @if($qi && $qi->supplier_description)
                   <div style="font-size:10px;color:#64748b;font-style:italic;margin-top:2px;">
                     "{{ $qi->supplier_description }}"
@@ -155,9 +166,10 @@
       </div>
     </div>
     @endforeach
+    </div>
 
     {{-- Grand total across every item, taking whichever supplier wins each one --}}
-    <div style="margin-top:12px;padding:18px 20px;background:#0f172a;border-radius:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div style="margin-top:16px;padding:18px 20px;background:#0f172a;border-radius:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
         <div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;">Grand Total</div>
         <div id="grand-total-subtitle" style="font-size:11px;color:#64748b;margin-top:2px;">
@@ -184,7 +196,7 @@
 
     {{-- ===================== TAB: Awarded Suppliers ===================== --}}
     <div id="tab-panel-awarded" style="display:none;">
-      <div id="awarded-tab-body"></div>
+      <div id="awarded-tab-body" style="max-width:900px;"></div>
     </div>
 
     @php
@@ -422,6 +434,10 @@ function renderItemCard(item) {
     tr.style.background = row.isMin ? '#f0fdf4' : '';
 
     var supplierCell = '<td style="padding:8px 10px;text-align:left;color:#0f172a;font-weight:500;">' + escHtmlCmp(row.supplier);
+    var metaParts = [row.leadTimeDays !== null && row.leadTimeDays !== undefined ? row.leadTimeDays + ' days' : null, row.paymentTerms, row.notes].filter(Boolean);
+    if (metaParts.length) {
+      supplierCell += '<div style="font-size:10px;color:#94a3b8;font-weight:400;margin-top:2px;">' + escHtmlCmp(metaParts.join(' · ')) + '</div>';
+    }
     if (qi && qi.supplierDescription) {
       supplierCell += '<div style="font-size:10px;color:#64748b;font-style:italic;margin-top:2px;">"' + escHtmlCmp(qi.supplierDescription) + '" ' +
         '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid #fde68a;font-style:normal;margin-left:2px;">adjusted</span></div>';
@@ -460,14 +476,14 @@ function renderItemCard(item) {
 }
 
 // ---- Tabs ----
-function showCompareTab(tab) {
+var WORKSPACE_TABS = ['comparison', 'awarded'];
+function showWorkspaceTab(tab) {
   var activeStyle   = 'background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(0,0,0,.08);';
   var inactiveStyle = 'background:transparent;color:#64748b;box-shadow:none;';
-  document.getElementById('tab-panel-comparison').style.display = tab === 'comparison' ? 'block' : 'none';
-  document.getElementById('tab-panel-awarded').style.display    = tab === 'awarded'    ? 'block' : 'none';
-  document.getElementById('tab-btn-comparison').style.cssText += activeStyle;
-  document.getElementById('tab-btn-awarded').style.cssText    += activeStyle;
-  document.getElementById('tab-btn-' + (tab === 'comparison' ? 'awarded' : 'comparison')).style.cssText += inactiveStyle;
+  WORKSPACE_TABS.forEach(function (t) {
+    document.getElementById('tab-panel-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-btn-' + t).style.cssText += (t === tab ? activeStyle : inactiveStyle);
+  });
   if (tab === 'awarded') renderAwardedTab();
 }
 
@@ -537,7 +553,7 @@ function renderAwardedTab() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  if (typeof AWARD_DATA !== 'undefined') renderAwardedTab();
+  showWorkspaceTab('comparison');
 });
 </script>
 @endsection
