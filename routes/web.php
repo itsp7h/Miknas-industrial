@@ -181,6 +181,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('settings/vat',  [VatSettingController::class, 'index'])->name('settings.vat');
         Route::post('settings/vat', [VatSettingController::class, 'update'])->name('settings.vat.update');
     });
+
+    // React SPA shell (catch-all — must stay last so it never shadows a more specific route)
+    Route::get('/app/{any?}', fn () => view('app-shell'))
+        ->where('any', '.*')
+        ->name('app.shell');
 });
 
 require __DIR__.'/auth.php';
