@@ -8,19 +8,19 @@
         <h1 class="page-title">Production Order</h1>
         <p class="page-subtitle">
             <a href="{{ route('production.orders.index') }}" class="text-blue-600 hover:underline">Production Orders</a>
-            / {{ $order->order_number ?? 'PRD-' . str_pad($order->id, 5, '0', STR_PAD_LEFT) }}
+            / {{ $productionOrder->order_number ?? 'PRD-' . str_pad($productionOrder->id, 5, '0', STR_PAD_LEFT) }}
         </p>
     </div>
     <div class="flex gap-2">
-        <a href="{{ route('production.orders.edit', $order) }}" class="btn-secondary">Edit</a>
-        @if($order->status === 'pending')
-        <form action="{{ route('production.orders.start', $order) }}" method="POST">
+        <a href="{{ route('production.orders.edit', $productionOrder) }}" class="btn-secondary">Edit</a>
+        @if($productionOrder->status === 'pending')
+        <form action="{{ route('production.orders.start', $productionOrder) }}" method="POST">
             @csrf @method('PATCH')
             <button type="submit" class="btn-primary">Start Production</button>
         </form>
         @endif
-        @if($order->status === 'in_progress')
-        <form action="{{ route('production.orders.complete', $order) }}" method="POST">
+        @if($productionOrder->status === 'in_progress')
+        <form action="{{ route('production.orders.complete', $productionOrder) }}" method="POST">
             @csrf @method('PATCH')
             <button type="submit" class="btn-success">Mark Complete</button>
         </form>
@@ -35,42 +35,42 @@
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">Order Number</dt>
-                <dd class="font-mono font-semibold text-gray-800">{{ $order->order_number ?? 'PRD-' . str_pad($order->id, 5, '0', STR_PAD_LEFT) }}</dd>
+                <dd class="font-mono font-semibold text-gray-800">{{ $productionOrder->order_number ?? 'PRD-' . str_pad($productionOrder->id, 5, '0', STR_PAD_LEFT) }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">Product</dt>
-                <dd class="font-medium text-gray-800">{{ $order->product->item_name ?? '' }}</dd>
+                <dd class="font-medium text-gray-800">{{ $productionOrder->product->item_name ?? '' }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">Qty to Produce</dt>
-                <dd class="text-gray-800">{{ number_format($order->quantity_to_produce, 2) }}</dd>
+                <dd class="text-gray-800">{{ number_format($productionOrder->quantity_to_produce, 2) }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">Qty Produced</dt>
-                <dd class="text-gray-800">{{ number_format($order->quantity_produced ?? 0, 2) }}</dd>
+                <dd class="text-gray-800">{{ number_format($productionOrder->quantity_produced ?? 0, 2) }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">Production Date</dt>
-                <dd class="text-gray-800">{{ $order->production_date ? \Carbon\Carbon::parse($order->production_date)->format('d M Y') : '-' }}</dd>
+                <dd class="text-gray-800">{{ $productionOrder->production_date ? \Carbon\Carbon::parse($productionOrder->production_date)->format('d M Y') : '-' }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">Status</dt>
                 <dd>
                     @php
-                        $badgeClass = match($order->status ?? 'pending') {
+                        $badgeClass = match($productionOrder->status ?? 'pending') {
                             'pending' => 'badge-yellow',
                             'in_progress' => 'badge-blue',
                             'completed' => 'badge-green',
                             default => 'badge-gray',
                         };
                     @endphp
-                    <span class="{{ $badgeClass }}">{{ ucwords(str_replace('_', ' ', $order->status ?? 'pending')) }}</span>
+                    <span class="{{ $badgeClass }}">{{ ucwords(str_replace('_', ' ', $productionOrder->status ?? 'pending')) }}</span>
                 </dd>
             </div>
-            @if($order->notes)
+            @if($productionOrder->notes)
             <div>
                 <dt class="text-gray-500">Notes</dt>
-                <dd class="text-gray-700 mt-1">{{ $order->notes }}</dd>
+                <dd class="text-gray-700 mt-1">{{ $productionOrder->notes }}</dd>
             </div>
             @endif
         </dl>
@@ -109,7 +109,7 @@
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <h2 class="text-base font-semibold text-gray-700">Material Issues</h2>
-        <a href="{{ route('production.material-issues.create', ['production_order_id' => $order->id]) }}"
+        <a href="{{ route('production.material-issues.create', ['production_order_id' => $productionOrder->id]) }}"
            class="btn-primary btn-sm">+ Issue Material</a>
     </div>
     <table class="table-base">
@@ -140,7 +140,7 @@
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <h2 class="text-base font-semibold text-gray-700">Production Output</h2>
-        <a href="{{ route('production.outputs.create', ['production_order_id' => $order->id]) }}"
+        <a href="{{ route('production.outputs.create', ['production_order_id' => $productionOrder->id]) }}"
            class="btn-primary btn-sm">+ Record Output</a>
     </div>
     <table class="table-base">
