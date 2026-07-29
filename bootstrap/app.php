@@ -16,9 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->statefulApi();
 
-        // Add session middleware to API routes for stateful authentication
-        $middleware->appendToGroup('api', \Illuminate\Session\Middleware\StartSession::class);
-
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,

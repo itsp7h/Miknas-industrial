@@ -12,6 +12,12 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         $this->seedRoles();
+
+        // Sanctum's stateful-request detection (EnsureFrontendRequestsAreStateful)
+        // only starts a session for requests carrying a Referer/Origin matching
+        // SANCTUM_STATEFUL_DOMAINS — a real browser SPA request always has one,
+        // so tests hitting /api/* need it too rather than bypassing the check.
+        $this->withHeader('Referer', config('app.url'));
     }
 
     protected function seedRoles(): void
