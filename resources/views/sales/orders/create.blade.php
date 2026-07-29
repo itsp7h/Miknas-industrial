@@ -80,8 +80,8 @@
                             <select name="items[0][item_id]"
                                     class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400">
                                 <option value="">-- Select Product --</option>
-                                @foreach($products as $product)
-                                    <option value="{{ $product->id }}">{{ $product->item_code }} - {{ $product->item_name }}</option>
+                                @foreach($items as $item)
+                                    <option value="{{ $item->id }}">{{ $item->item_code }} - {{ $item->item_name }}</option>
                                 @endforeach
                             </select>
                         </td>
@@ -122,7 +122,7 @@
 
 <script>
 var soRowIndex = 1;
-var soItemsHtml = `@foreach($products as $product)<option value="{{ $product->id }}">{{ $product->item_code }} - {{ $product->item_name }}</option>@endforeach`;
+var soItemsHtml = `@foreach($items as $item)<option value="{{ $item->id }}">{{ $item->item_code }} - {{ $item->item_name }}</option>@endforeach`;
 
 function addSORow() {
     var tbody = document.getElementById('so-items-body');

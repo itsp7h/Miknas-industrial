@@ -43,10 +43,13 @@ class StockReportController extends Controller
 
     public function lowStock()
     {
-        // Items whose total stock across all warehouses is below their minimum_stock_level
+        // Items whose total stock across all warehouses is below their minimum_stock_level.
+        // Filtered in PHP rather than a HAVING clause, since withSum's subquery has no
+        // GROUP BY for SQLite to attach a HAVING to.
         $items = Item::withSum('stockLevels', 'quantity')
-            ->having(DB::raw('COALESCE(stock_levels_sum_quantity, 0)'), '<', DB::raw('minimum_stock_level'))
-            ->get();
+            ->get()
+            ->filter(fn ($item) => ($item->stock_levels_sum_quantity ?? 0) < $item->minimum_stock_level)
+            ->values();
 
         return view('inventory.reports.low-stock', compact('items'));
     }
