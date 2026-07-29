@@ -10,8 +10,8 @@ vi.mock('./echo', () => ({
 }));
 
 describe('App', () => {
-    it('renders the SteelERP app shell', async () => {
-        vi.spyOn(client, 'apiGet').mockResolvedValue({ suppliers_total: 0 });
+    it('routes /app to the dashboard page', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ suppliers_total: 7 });
 
         render(
             <MemoryRouter initialEntries={['/app']}>
@@ -21,6 +21,18 @@ describe('App', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByText('SteelERP')).toBeInTheDocument();
+        await screen.findByText('7');
+    });
+
+    it('routes an unknown /app/* path to a not-found message', () => {
+        render(
+            <MemoryRouter initialEntries={['/app/does-not-exist']}>
+                <ToastProvider>
+                    <App currentUserId={1} />
+                </ToastProvider>
+            </MemoryRouter>
+        );
+
+        expect(screen.getByText('Page not found.')).toBeInTheDocument();
     });
 });
