@@ -27,7 +27,7 @@
                 <label class="form-label">Invoice <span class="text-red-500">*</span></label>
                 <select name="supplier_invoice_id" required class="form-select">
                     <option value="">-- Select Unpaid Invoice --</option>
-                    @foreach($unpaidInvoices as $invoice)
+                    @foreach($invoices as $invoice)
                         <option value="{{ $invoice->id }}" {{ (old('supplier_invoice_id', request('invoice_id'))) == $invoice->id ? 'selected' : '' }}>
                             {{ $invoice->invoice_number }} - {{ $invoice->supplier->name ?? '' }}
                             (Outstanding: {{ number_format($invoice->total_amount - $invoice->paid_amount, 2) }})

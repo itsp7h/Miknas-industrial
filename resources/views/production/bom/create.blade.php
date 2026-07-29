@@ -27,7 +27,7 @@
                 <label class="form-label">Product (Finished Good) <span class="text-red-500">*</span></label>
                 <select name="product_id" required class="form-select">
                     <option value="">-- Select Product --</option>
-                    @foreach($products as $product)
+                    @foreach($finishedGoods as $product)
                         <option value="{{ $product->id }}" {{ old('product_id') == $product->id ? 'selected' : '' }}>
                             {{ $product->item_code }} - {{ $product->item_name }}
                         </option>

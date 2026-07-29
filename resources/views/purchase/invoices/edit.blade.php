@@ -19,41 +19,41 @@
 @endif
 
 <div class="card card-body max-w-2xl">
-    <form action="{{ route('purchase.invoices.update', $invoice) }}" method="POST">
+    <form action="{{ route('purchase.invoices.update', $supplierInvoice) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
 
             <div>
                 <label class="form-label">Invoice Number <span class="text-red-500">*</span></label>
-                <input type="text" name="invoice_number" value="{{ old('invoice_number', $invoice->invoice_number) }}" required class="form-input">
+                <input type="text" name="invoice_number" value="{{ old('invoice_number', $supplierInvoice->invoice_number) }}" required class="form-input">
             </div>
 
             <div>
                 <label class="form-label">Invoice Date <span class="text-red-500">*</span></label>
-                <input type="date" name="invoice_date" value="{{ old('invoice_date', $invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') : '') }}" required class="form-input">
+                <input type="date" name="invoice_date" value="{{ old('invoice_date', $supplierInvoice->invoice_date ? \Carbon\Carbon::parse($supplierInvoice->invoice_date)->format('Y-m-d') : '') }}" required class="form-input">
             </div>
 
             <div>
                 <label class="form-label">Due Date</label>
-                <input type="date" name="due_date" value="{{ old('due_date', $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('Y-m-d') : '') }}" class="form-input">
+                <input type="date" name="due_date" value="{{ old('due_date', $supplierInvoice->due_date ? \Carbon\Carbon::parse($supplierInvoice->due_date)->format('Y-m-d') : '') }}" class="form-input">
             </div>
 
             <div>
                 <label class="form-label">Subtotal</label>
-                <input type="number" name="subtotal" id="edit-subtotal" value="{{ old('subtotal', $invoice->subtotal) }}"
+                <input type="number" name="subtotal" id="edit-subtotal" value="{{ old('subtotal', $supplierInvoice->subtotal) }}"
                        min="0" step="0.01" onchange="calcPurchaseEditTotal()" class="form-input">
             </div>
 
             <div>
                 <label class="form-label">VAT Amount</label>
-                <input type="number" name="vat_amount" id="edit-vat" value="{{ old('vat_amount', $invoice->vat_amount) }}"
+                <input type="number" name="vat_amount" id="edit-vat" value="{{ old('vat_amount', $supplierInvoice->vat_amount) }}"
                        min="0" step="0.01" onchange="calcPurchaseEditTotal()" class="form-input">
             </div>
 
             <div>
                 <label class="form-label">Total Amount</label>
-                <input type="number" name="total_amount" id="edit-total" value="{{ old('total_amount', $invoice->total_amount) }}"
+                <input type="number" name="total_amount" id="edit-total" value="{{ old('total_amount', $supplierInvoice->total_amount) }}"
                        readonly
                        class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800">
             </div>
@@ -61,9 +61,9 @@
             <div>
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
-                    <option value="unpaid" {{ old('status', $invoice->status) === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
-                    <option value="partial" {{ old('status', $invoice->status) === 'partial' ? 'selected' : '' }}>Partial</option>
-                    <option value="paid" {{ old('status', $invoice->status) === 'paid' ? 'selected' : '' }}>Paid</option>
+                    <option value="unpaid" {{ old('status', $supplierInvoice->status) === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
+                    <option value="partial" {{ old('status', $supplierInvoice->status) === 'partial' ? 'selected' : '' }}>Partial</option>
+                    <option value="paid" {{ old('status', $supplierInvoice->status) === 'paid' ? 'selected' : '' }}>Paid</option>
                 </select>
             </div>
 

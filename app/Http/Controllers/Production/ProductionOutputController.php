@@ -17,8 +17,11 @@ class ProductionOutputController extends Controller
     public function index()
     {
         $outputs = ProductionOutput::with(['productionOrder', 'item', 'warehouse'])->paginate(15);
+        $productionOrders = ProductionOrder::whereIn('status', ['in_progress'])->with('product')->get();
+        $products = Item::where('category', 'finished_good')->get();
+        $warehouses = Warehouse::all();
 
-        return view('production.outputs.index', compact('outputs'));
+        return view('production.outputs.index', compact('outputs', 'productionOrders', 'products', 'warehouses'));
     }
 
     public function create()

@@ -27,9 +27,9 @@
                 <label class="form-label">Product (Finished Good) <span class="text-red-500">*</span></label>
                 <select name="product_id" required class="form-select">
                     <option value="">-- Select Product --</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}" {{ old('product_id') == $product->id ? 'selected' : '' }}>
-                            {{ $product->item_code }} - {{ $product->item_name }}
+                    @foreach($items as $item)
+                        <option value="{{ $item->id }}" {{ old('product_id') == $item->id ? 'selected' : '' }}>
+                            {{ $item->item_code }} - {{ $item->item_name }}
                         </option>
                     @endforeach
                 </select>

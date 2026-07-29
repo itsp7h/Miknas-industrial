@@ -19,36 +19,36 @@
 @endif
 
 <div class="card card-body max-w-2xl">
-    <form action="{{ route('sales.invoices.update', $invoice) }}" method="POST">
+    <form action="{{ route('sales.invoices.update', $salesInvoice) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
 
             <div>
                 <label class="form-label">Invoice Date <span class="text-red-500">*</span></label>
-                <input type="date" name="invoice_date" value="{{ old('invoice_date', $invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') : '') }}" required class="form-input">
+                <input type="date" name="invoice_date" value="{{ old('invoice_date', $salesInvoice->invoice_date ? \Carbon\Carbon::parse($salesInvoice->invoice_date)->format('Y-m-d') : '') }}" required class="form-input">
             </div>
 
             <div>
                 <label class="form-label">Due Date</label>
-                <input type="date" name="due_date" value="{{ old('due_date', $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('Y-m-d') : '') }}" class="form-input">
+                <input type="date" name="due_date" value="{{ old('due_date', $salesInvoice->due_date ? \Carbon\Carbon::parse($salesInvoice->due_date)->format('Y-m-d') : '') }}" class="form-input">
             </div>
 
             <div>
                 <label class="form-label">Subtotal</label>
-                <input type="number" name="subtotal" id="edit-subtotal" value="{{ old('subtotal', $invoice->subtotal) }}"
+                <input type="number" name="subtotal" id="edit-subtotal" value="{{ old('subtotal', $salesInvoice->subtotal) }}"
                        min="0" step="0.01" onchange="calcEditTotal()" class="form-input">
             </div>
 
             <div>
                 <label class="form-label">VAT Amount</label>
-                <input type="number" name="vat_amount" id="edit-vat" value="{{ old('vat_amount', $invoice->vat_amount) }}"
+                <input type="number" name="vat_amount" id="edit-vat" value="{{ old('vat_amount', $salesInvoice->vat_amount) }}"
                        min="0" step="0.01" onchange="calcEditTotal()" class="form-input">
             </div>
 
             <div class="sm:col-span-2">
                 <label class="form-label">Total Amount</label>
-                <input type="number" name="total_amount" id="edit-total" value="{{ old('total_amount', $invoice->total_amount) }}"
+                <input type="number" name="total_amount" id="edit-total" value="{{ old('total_amount', $salesInvoice->total_amount) }}"
                        readonly
                        class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800">
             </div>
@@ -56,9 +56,9 @@
             <div>
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
-                    <option value="unpaid" {{ old('status', $invoice->status) === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
-                    <option value="partial" {{ old('status', $invoice->status) === 'partial' ? 'selected' : '' }}>Partial</option>
-                    <option value="paid" {{ old('status', $invoice->status) === 'paid' ? 'selected' : '' }}>Paid</option>
+                    <option value="unpaid" {{ old('status', $salesInvoice->status) === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
+                    <option value="partial" {{ old('status', $salesInvoice->status) === 'partial' ? 'selected' : '' }}>Partial</option>
+                    <option value="paid" {{ old('status', $salesInvoice->status) === 'paid' ? 'selected' : '' }}>Paid</option>
                 </select>
             </div>
 

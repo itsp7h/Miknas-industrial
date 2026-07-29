@@ -19,7 +19,7 @@
 @endif
 
 <div class="card card-body max-w-xl">
-    <form action="{{ route('production.bom.update', $bom) }}" method="POST">
+    <form action="{{ route('production.bom.update', $billOfMaterial) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -28,8 +28,8 @@
                 <label class="form-label">Product (Finished Good) <span class="text-red-500">*</span></label>
                 <select name="product_id" required class="form-select">
                     <option value="">-- Select Product --</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}" {{ old('product_id', $bom->product_id) == $product->id ? 'selected' : '' }}>
+                    @foreach($finishedGoods as $product)
+                        <option value="{{ $product->id }}" {{ old('product_id', $billOfMaterial->product_id) == $product->id ? 'selected' : '' }}>
                             {{ $product->item_code }} - {{ $product->item_name }}
                         </option>
                     @endforeach
@@ -41,7 +41,7 @@
                 <select name="raw_material_id" required class="form-select">
                     <option value="">-- Select Raw Material --</option>
                     @foreach($rawMaterials as $material)
-                        <option value="{{ $material->id }}" {{ old('raw_material_id', $bom->raw_material_id) == $material->id ? 'selected' : '' }}>
+                        <option value="{{ $material->id }}" {{ old('raw_material_id', $billOfMaterial->raw_material_id) == $material->id ? 'selected' : '' }}>
                             {{ $material->item_code }} - {{ $material->item_name }}
                         </option>
                     @endforeach
@@ -50,12 +50,12 @@
 
             <div>
                 <label class="form-label">Quantity Required <span class="text-red-500">*</span></label>
-                <input type="number" name="quantity_required" value="{{ old('quantity_required', $bom->quantity_required) }}" min="0.001" step="0.001" required class="form-input">
+                <input type="number" name="quantity_required" value="{{ old('quantity_required', $billOfMaterial->quantity_required) }}" min="0.001" step="0.001" required class="form-input">
             </div>
 
             <div>
                 <label class="form-label">Unit of Measure <span class="text-red-500">*</span></label>
-                <input type="text" name="unit_of_measure" value="{{ old('unit_of_measure', $bom->unit_of_measure) }}" required class="form-input">
+                <input type="text" name="unit_of_measure" value="{{ old('unit_of_measure', $billOfMaterial->unit_of_measure) }}" required class="form-input">
             </div>
 
         </div>
