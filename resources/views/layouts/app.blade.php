@@ -97,6 +97,13 @@
                 {{ $label }}
             </a>
             @endforeach
+            <a href="/app/purchase/suppliers" style="
+                display:block; padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
+                font-size:13px; text-decoration:none;
+                {{ request()->is('app/purchase/*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+            " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
+                Suppliers (New)
+            </a>
 
             {{-- ── INVENTORY ── --}}
             <div style="margin-top:16px; margin-bottom:4px; padding:0 12px;">
