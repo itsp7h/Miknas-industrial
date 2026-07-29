@@ -12,7 +12,7 @@ Route::prefix('v1')->group(function () {
         Route::post('dashboard/ping', [\App\Http\Controllers\Api\DashboardController::class, 'ping']);
         Route::get('dashboard/summary', [\App\Http\Controllers\Api\DashboardController::class, 'summary']);
 
-        Route::prefix('purchase')->name('purchase.')->group(function () {
+        Route::prefix('purchase')->name('api.v1.purchase.')->group(function () {
             Route::apiResource('suppliers', \App\Http\Controllers\Api\Purchase\SupplierController::class);
         });
     });
