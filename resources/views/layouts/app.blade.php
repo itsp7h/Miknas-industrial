@@ -72,8 +72,8 @@
             @endphp
             {{-- Pipeline top-level link --}}
             <a href="{{ route('purchase.pipeline.index') }}" style="
-                display:flex; align-items:center; gap:8px;
-                padding:7px 12px 7px 14px; border-radius:7px; margin-bottom:4px;
+                display:block;
+                padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:4px;
                 font-size:13px; text-decoration:none; font-weight:600;
                 {{ request()->routeIs('purchase.pipeline.*') ? 'background:#2563eb;color:#fff;' : 'color:#fbbf24;' }}
             " onmouseover="if(!this.style.background.includes('2563eb'))this.style.background='#1e293b'" onmouseout="if(!this.style.background.includes('2563eb'))this.style.background=''">
