@@ -1,3 +1,5 @@
+import Button from '../../ui/Button';
+
 export function supplierTableColumns({ onEdit, onDelete }) {
     return [
         { key: 'supplier_code', label: 'Code' },
@@ -14,8 +16,8 @@ export function supplierTableColumns({ onEdit, onDelete }) {
             label: '',
             render: (row) => (
                 <div className="flex gap-2">
-                    <button className="text-blue-600 text-sm" onClick={() => onEdit(row)}>Edit</button>
-                    <button className="text-red-600 text-sm" onClick={() => onDelete(row)}>Delete</button>
+                    <Button variant="link" onClick={() => onEdit(row)}>Edit</Button>
+                    <Button variant="link-danger" onClick={() => onDelete(row)}>Delete</Button>
                 </div>
             ),
         },

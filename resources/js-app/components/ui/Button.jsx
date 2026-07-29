@@ -1,7 +1,9 @@
 const VARIANT_CLASSES = {
-    primary: 'bg-green-600 hover:bg-green-700 text-white',
-    secondary: 'bg-white hover:bg-gray-50 text-gray-800 border border-gray-300',
-    danger: 'bg-red-600 hover:bg-red-700 text-white',
+    primary: 'px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white',
+    secondary: 'px-4 py-2 rounded-md bg-white hover:bg-gray-50 text-gray-800 border border-gray-300',
+    danger: 'px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white',
+    link: 'text-blue-600 hover:text-blue-800',
+    'link-danger': 'text-red-600 hover:text-red-800',
 };
 
 export default function Button({
@@ -17,7 +19,7 @@ export default function Button({
             type={type}
             onClick={onClick}
             disabled={disabled || loading}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT_CLASSES[variant]}`}
+            className={`text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT_CLASSES[variant]}`}
         >
             {loading ? 'Loading…' : children}
         </button>

@@ -27,4 +27,15 @@ describe('Button', () => {
         expect(screen.getByRole('button')).toBeDisabled();
         expect(screen.getByText('Loading…')).toBeInTheDocument();
     });
+
+    it('renders a link variant without block padding, for use inside table rows', () => {
+        const onClick = vi.fn();
+        render(<Button variant="link" onClick={onClick}>Edit</Button>);
+
+        const button = screen.getByRole('button', { name: 'Edit' });
+        fireEvent.click(button);
+
+        expect(onClick).toHaveBeenCalledOnce();
+        expect(button.className).not.toMatch(/px-4/);
+    });
 });
