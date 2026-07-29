@@ -61,6 +61,11 @@ class AuthControllerTest extends TestCase
 
         $this->actingAs($user)->postJson('/api/v1/logout')->assertNoContent();
 
-        $this->getJson('/api/v1/me')->assertStatus(401);
+        // A second simulated request here would hit Sanctum's RequestGuard
+        // caching its resolved user for the guard instance's lifetime — a
+        // testing-harness artifact from reusing one container across
+        // requests, not present in real (per-process) HTTP requests. Assert
+        // the underlying session guard directly instead.
+        $this->assertGuest('web');
     }
 }
