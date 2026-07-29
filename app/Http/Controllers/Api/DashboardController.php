@@ -14,4 +14,11 @@ class DashboardController extends Controller
 
         return response()->noContent();
     }
+
+    public function summary()
+    {
+        return response()->json([
+            'suppliers_total' => \App\Models\Supplier::count(),
+        ]);
+    }
 }

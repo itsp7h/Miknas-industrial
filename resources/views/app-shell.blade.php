@@ -8,6 +8,6 @@
     @vite(['resources/css/app.css', 'resources/js-app/main.jsx'])
 </head>
 <body>
-    <div id="react-app"></div>
+    <div id="react-app" data-user-id="{{ auth()->id() }}"></div>
 </body>
 </html>
