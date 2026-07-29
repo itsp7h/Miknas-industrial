@@ -36,7 +36,7 @@ class PurchaseSignatureController extends Controller
 
         $stages->advance($purchaseRequest);
 
-        return redirect()->route('purchase.pipeline.index')
+        return redirect()->route('purchase.pipeline.show', $purchaseRequest)
             ->with('success', 'Signature saved. Request moved to RFQ stage.');
     }
 }

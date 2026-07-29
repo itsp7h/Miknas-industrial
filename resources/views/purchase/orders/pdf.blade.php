@@ -10,19 +10,14 @@
         font-family: 'DejaVu Sans', 'Arial', sans-serif;
         font-size: 11px;
         color: #1e293b;
+        padding: 2cm 1.6cm;
     }
 
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 18px;
-    }
-    .brand { display: flex; align-items: center; gap: 10px; }
+    .header { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+    .header td { vertical-align: top; padding: 0; }
     .brand-box {
         width: 40px; height: 40px; border-radius: 6px;
-        background: #16a34a;
-        display: flex; align-items: center; justify-content: center;
+        background: #16a34a; text-align: center; padding: 10px 0 0;
     }
     .brand-name { font-size: 19px; font-weight: 700; color: #0f172a; }
     .brand-sub  { font-size: 10px; color: #64748b; margin-top: 1px; }
@@ -37,8 +32,10 @@
         padding: 3px 10px; font-weight: 700; color: #0f172a; min-width: 110px;
     }
 
-    .parties { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+    .parties { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .parties td { vertical-align: top; padding: 0; }
     .party { width: 48%; }
+    .party-gap { width: 4%; }
     .party-title {
         font-size: 11px; font-weight: 700; color: #0f172a; text-transform: uppercase;
         letter-spacing: .04em; border-bottom: 1.5px solid #1e293b; padding-bottom: 4px; margin-bottom: 8px;
@@ -61,8 +58,10 @@
     table.items td.text-right { text-align: right; }
     table.items tbody tr:nth-child(even) { background: #f8fafc; }
 
-    .bottom { display: flex; justify-content: space-between; gap: 20px; }
+    .bottom { width: 100%; border-collapse: collapse; }
+    .bottom td { vertical-align: top; padding: 0; }
     .notes-box { width: 55%; }
+    .bottom-gap { width: 5%; }
     .notes-title { font-size: 10.5px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
     .notes-body {
         border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; min-height: 70px;
@@ -76,8 +75,10 @@
     .summary-table td.value { text-align: right; font-weight: 600; color: #0f172a; }
     .summary-table tr.total td { border-top: 2px solid #1e293b; padding-top: 8px; font-size: 14px; font-weight: 700; color: #0f172a; }
 
-    .signatures { display: flex; justify-content: space-between; margin-top: 40px; }
+    .signatures { width: 100%; border-collapse: collapse; margin-top: 40px; }
+    .signatures td { vertical-align: top; padding: 0; }
     .sig-block { width: 45%; }
+    .sig-gap { width: 10%; }
     .sig-line { border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 10px; color: #64748b; text-align: center; }
     .sig-name { font-size: 11px; font-weight: 600; color: #0f172a; margin-bottom: 26px; text-align: center; }
 
@@ -89,74 +90,85 @@
 </head>
 <body>
 
-<div class="header">
-    <div class="brand">
-        <div class="brand-box">
-            <svg width="20" height="20" fill="none" stroke="#fff" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-            </svg>
-        </div>
-        <div>
-            <div class="brand-name">{{ $company->name ?? 'SteelERP' }}</div>
-            <div class="brand-sub">{{ $order->purchaseRequest->project_name ?? 'Manufacturing & Trading' }}</div>
-        </div>
-    </div>
-    <div>
-        <div class="doc-title">Purchase Order</div>
-        <table class="meta-table" align="right">
-            <tr>
-                <td class="label">Date</td>
-                <td class="value">{{ $order->po_date ? \Carbon\Carbon::parse($order->po_date)->format('d/M/y') : '—' }}</td>
-            </tr>
-            <tr>
-                <td class="label">P.O. Number</td>
-                <td class="value">{{ $order->po_number ?? 'PO-' . str_pad($order->id, 5, '0', STR_PAD_LEFT) }}</td>
-            </tr>
-            <tr>
-                <td class="label">Req. No</td>
-                <td class="value">{{ $order->purchaseRequest->request_number ?? '—' }}</td>
-            </tr>
-        </table>
-    </div>
-</div>
+<table class="header">
+    <tr>
+        <td>
+            <table style="border-collapse:collapse;">
+                <tr>
+                    <td style="width:40px;padding:0;">
+                        <div class="brand-box">
+                            <svg width="20" height="20" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                            </svg>
+                        </div>
+                    </td>
+                    <td style="padding:0 0 0 10px;vertical-align:middle;">
+                        <div class="brand-name">{{ $company->name ?? 'SteelERP' }}</div>
+                        <div class="brand-sub">{{ $order->purchaseRequest->project_name ?? 'Manufacturing & Trading' }}</div>
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style="text-align:right;">
+            <div class="doc-title">Purchase Order</div>
+            <table class="meta-table" align="right">
+                <tr>
+                    <td class="label">Date</td>
+                    <td class="value">{{ $order->po_date ? \Carbon\Carbon::parse($order->po_date)->format('d/M/y') : '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="label">P.O. Number</td>
+                    <td class="value">{{ $order->po_number ?? 'PO-' . str_pad($order->id, 5, '0', STR_PAD_LEFT) }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Req. No</td>
+                    <td class="value">{{ $order->purchaseRequest->request_number ?? '—' }}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
-<div class="parties">
-    <div class="party">
-        <div class="party-title">Vendor</div>
-        <div class="party-name">{{ $order->supplier->name ?? '—' }}</div>
-        @if($order->supplier?->contact_person)
-            <div class="party-line">{{ $order->supplier->contact_person }}</div>
-        @endif
-        @if($order->supplier?->address)
-            <div class="party-line">{{ $order->supplier->address }}</div>
-        @endif
-        @if($order->supplier?->phone)
-            <div class="party-line">P: {{ $order->supplier->phone }}</div>
-        @endif
-        @if($order->supplier?->email)
-            <div class="party-line">{{ $order->supplier->email }}</div>
-        @endif
-    </div>
-    <div class="party">
-        <div class="party-title">Ship To</div>
-        @if($order->purchaseRequest?->requested_by_name)
-            <div class="party-name">{{ $order->purchaseRequest->requested_by_name }}</div>
-        @endif
-        @if($order->purchaseRequest?->department)
-            <div class="party-line">{{ $order->purchaseRequest->department }}</div>
-        @endif
-        @if($order->purchaseRequest?->location)
-            <div class="party-line">{{ $order->purchaseRequest->location }}</div>
-        @endif
-        @if($order->purchaseRequest?->project_name)
-        <div class="site-box">
-            <div class="site-label">Site / Project</div>
-            <div class="site-value">{{ $order->purchaseRequest->project_name }}</div>
-        </div>
-        @endif
-    </div>
-</div>
+<table class="parties">
+    <tr>
+        <td class="party">
+            <div class="party-title">Vendor</div>
+            <div class="party-name">{{ $order->supplier->name ?? '—' }}</div>
+            @if($order->supplier?->contact_person)
+                <div class="party-line">{{ $order->supplier->contact_person }}</div>
+            @endif
+            @if($order->supplier?->address)
+                <div class="party-line">{{ $order->supplier->address }}</div>
+            @endif
+            @if($order->supplier?->phone)
+                <div class="party-line">P: {{ $order->supplier->phone }}</div>
+            @endif
+            @if($order->supplier?->email)
+                <div class="party-line">{{ $order->supplier->email }}</div>
+            @endif
+        </td>
+        <td class="party-gap"></td>
+        <td class="party">
+            <div class="party-title">Ship To</div>
+            @if($order->purchaseRequest?->requested_by_name)
+                <div class="party-name">{{ $order->purchaseRequest->requested_by_name }}</div>
+            @endif
+            @if($order->purchaseRequest?->department)
+                <div class="party-line">{{ $order->purchaseRequest->department }}</div>
+            @endif
+            @if($order->purchaseRequest?->location)
+                <div class="party-line">{{ $order->purchaseRequest->location }}</div>
+            @endif
+            @if($order->purchaseRequest?->project_name)
+            <div class="site-box">
+                <div class="site-label">Site / Project</div>
+                <div class="site-value">{{ $order->purchaseRequest->project_name }}</div>
+            </div>
+            @endif
+        </td>
+    </tr>
+</table>
 
 <table class="items">
     <thead>
@@ -187,47 +199,53 @@
     </tbody>
 </table>
 
-<div class="bottom">
-    <div class="notes-box">
-        <div class="notes-title">Notes and Instructions</div>
-        <div class="notes-body">{{ $order->notes ?? '—' }}</div>
-    </div>
-    <div class="summary">
-        <table class="summary-table">
-            <tr>
-                <td class="label">Subtotal</td>
-                <td class="value">BHD {{ number_format($subtotal, 3) }}</td>
-            </tr>
-            <tr>
-                <td class="label">VAT Rate</td>
-                <td class="value">{{ rtrim(rtrim(number_format($vatRate, 2), '0'), '.') }}%</td>
-            </tr>
-            <tr>
-                <td class="label">VAT</td>
-                <td class="value">BHD {{ number_format($vatAmount, 3) }}</td>
-            </tr>
-            <tr>
-                <td class="label">Discount</td>
-                <td class="value">BHD {{ number_format($discount, 3) }}</td>
-            </tr>
-            <tr class="total">
-                <td class="label">Total</td>
-                <td class="value">BHD {{ number_format($total, 3) }}</td>
-            </tr>
-        </table>
-    </div>
-</div>
+<table class="bottom">
+    <tr>
+        <td class="notes-box">
+            <div class="notes-title">Notes and Instructions</div>
+            <div class="notes-body">{{ $order->notes ?? '—' }}</div>
+        </td>
+        <td class="bottom-gap"></td>
+        <td class="summary">
+            <table class="summary-table">
+                <tr>
+                    <td class="label">Subtotal</td>
+                    <td class="value">BHD {{ number_format($subtotal, 3) }}</td>
+                </tr>
+                <tr>
+                    <td class="label">VAT Rate</td>
+                    <td class="value">{{ rtrim(rtrim(number_format($vatRate, 2), '0'), '.') }}%</td>
+                </tr>
+                <tr>
+                    <td class="label">VAT</td>
+                    <td class="value">BHD {{ number_format($vatAmount, 3) }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Discount</td>
+                    <td class="value">BHD {{ number_format($discount, 3) }}</td>
+                </tr>
+                <tr class="total">
+                    <td class="label">Total</td>
+                    <td class="value">BHD {{ number_format($total, 3) }}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
-<div class="signatures">
-    <div class="sig-block">
-        <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
-        <div class="sig-line">Prepared By</div>
-    </div>
-    <div class="sig-block">
-        <div class="sig-name">&nbsp;</div>
-        <div class="sig-line">Approved By</div>
-    </div>
-</div>
+<table class="signatures">
+    <tr>
+        <td class="sig-block">
+            <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
+            <div class="sig-line">Prepared By</div>
+        </td>
+        <td class="sig-gap"></td>
+        <td class="sig-block">
+            <div class="sig-name">&nbsp;</div>
+            <div class="sig-line">Approved By</div>
+        </td>
+    </tr>
+</table>
 
 <div class="disclaimer">This is not a Tax Invoice!</div>
 <div class="disclaimer-sub">FOR {{ strtoupper($company->name ?? 'SteelERP') }}</div>

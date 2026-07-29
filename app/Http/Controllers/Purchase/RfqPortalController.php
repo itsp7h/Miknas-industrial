@@ -48,8 +48,24 @@ class RfqPortalController extends Controller
         session(['rfq_confirm_' . $token => $confirmCode]);
 
         $vatRate = (float) Setting::get('vat_rate', 0);
+        $view    = $this->isMobileDevice() ? 'rfq.show-mobile' : 'rfq.show';
 
-        return view('rfq.show', compact('invitation', 'purchaseRequest', 'items', 'confirmCode', 'vatRate'));
+        return view($view, compact('invitation', 'purchaseRequest', 'items', 'confirmCode', 'vatRate'));
+    }
+
+    /**
+     * Phones only — tablets (iPad, Android tablets) render the desktop view,
+     * since they have enough screen space for the table-based layout.
+     */
+    private function isMobileDevice(): bool
+    {
+        $userAgent = request()->userAgent() ?? '';
+
+        if (preg_match('/iPad|Android(?!.*Mobile)/i', $userAgent)) {
+            return false;
+        }
+
+        return (bool) preg_match('/Mobi|iPhone|iPod|Android|BlackBerry|IEMobile|Opera Mini/i', $userAgent);
     }
 
     public function submit(Request $request, string $token)

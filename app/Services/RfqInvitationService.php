@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Mail\RfqInvitationMail;
+use App\Models\MailAccount;
 use App\Models\PurchaseRequest;
 use App\Models\RfqInvitation;
 use App\Models\Supplier;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class RfqInvitationService
@@ -28,11 +30,31 @@ class RfqInvitationService
         $invitation->update(['status' => 'sent', 'sent_at' => now()]);
 
         $supplier = $invitation->supplier;
-        if (in_array($invitation->channel, ['email', 'both']) && $supplier->email) {
+        $hasWhatsapp = (bool) preg_replace('/\D/', '', $supplier->phone ?? '');
+
+        // The "whatsapp" channel is a manual wa.me link, not an automatic send —
+        // if the supplier has no phone number to receive it, fall back to email
+        // rather than silently sending nothing.
+        $wantsEmail = in_array($invitation->channel, ['email', 'both'])
+            || ($invitation->channel === 'whatsapp' && ! $hasWhatsapp);
+
+        if ($wantsEmail && $supplier->email) {
+            $account = MailAccount::where('enabled', true)->first();
+
             try {
-                Mail::to($supplier->email)->send(new RfqInvitationMail($invitation));
-            } catch (\Exception $e) {
-                // Mail failure should not block flow
+                if (! $account) {
+                    throw new \RuntimeException('No enabled mail account is configured.');
+                }
+
+                Mail::mailer($account->name)->to($supplier->email)->send(new RfqInvitationMail($invitation));
+            } catch (\Throwable $e) {
+                Log::error('RFQ invitation email failed to send', [
+                    'invitation_id'  => $invitation->id,
+                    'supplier_id'    => $supplier->id,
+                    'supplier_email' => $supplier->email,
+                    'mail_account'   => $account?->name,
+                    'error'          => $e->getMessage(),
+                ]);
             }
         }
     }

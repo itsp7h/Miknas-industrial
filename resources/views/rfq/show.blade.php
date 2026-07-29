@@ -36,10 +36,38 @@
       /* Items table → stacked cards */
       table,thead,tbody,tfoot,tr,th,td{display:block;}
       thead{display:none;}
-      tbody td{border:none;padding:3px 0;}
-      tbody tr{border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;}
-      tfoot tr{border-top:2px solid #e2e8f0;padding:12px 0;}
+      tbody td{border:none;padding:0;text-align:left !important;}
+      tbody tr{border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px;background:#fff;}
+      td.m-idx{display:none;}
+      td.m-desc{margin-bottom:10px;}
+
+      /* Qty + Unit share a compact row */
+      td.m-qty,td.m-unit{display:inline-block;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed #e2e8f0;width:auto;}
+      td.m-qty{margin-right:22px;}
+
+      /* Labelled value rows (data-label technique) */
+      tbody td[data-label]:before{
+        content:attr(data-label);
+        display:block;
+        font-size:10px;font-weight:700;color:#94a3b8;
+        text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;
+      }
+      td[data-label]:not(.m-toggle){margin-bottom:10px;}
+
+      /* N/A + VAT become a labelled toggle row instead of a bare checkbox */
+      td.m-toggle{display:flex !important;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding:9px 12px;background:#f8fafc;border-radius:8px;}
+      td.m-toggle:before{content:attr(data-label);margin:0;font-size:12px;font-weight:600;color:#334155;text-transform:none;letter-spacing:0;}
+      td.m-toggle input[type=checkbox]{width:19px;height:19px;flex-shrink:0;}
+
+      td.m-total{padding-top:10px;border-top:1px solid #e2e8f0;}
+      td.m-total:before{margin-bottom:2px;}
+
       input[type=number].price{width:100%;}
+
+      tfoot tr{border-top:2px solid #e2e8f0;padding:12px 0;display:flex;justify-content:space-between;align-items:center;}
+      tfoot td{padding:0;}
+      tfoot td:first-child{text-align:left !important;}
+
       /* Confirm code stacks */
       .code-row{flex-direction:column !important;align-items:stretch !important;}
       .code-display{display:block;text-align:center;}
@@ -87,8 +115,8 @@
           <tbody>
             @foreach($items as $i => $item)
             <tr id="row-{{ $i }}">
-              <td style="color:#94a3b8;font-size:12px;">{{ $i + 1 }}</td>
-              <td>
+              <td class="m-idx" style="color:#94a3b8;font-size:12px;">{{ $i + 1 }}</td>
+              <td class="m-desc">
                 {{-- Display mode --}}
                 <div id="desc-display-{{ $i }}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                   <span id="desc-text-{{ $i }}" style="font-weight:500;">{{ $item->description }}</span>
@@ -114,16 +142,16 @@
                 {{-- Hidden field submitted with form --}}
                 <input type="hidden" name="items[{{ $i }}][supplier_description]" id="desc-hidden-{{ $i }}" value="">
               </td>
-              <td>{{ rtrim(rtrim(number_format((float)$item->quantity_required, 3), '0'), '.') }}</td>
-              <td style="color:#64748b;">{{ $item->unit ?: '—' }}</td>
+              <td class="m-qty" data-label="Qty">{{ rtrim(rtrim(number_format((float)$item->quantity_required, 3), '0'), '.') }}</td>
+              <td class="m-unit" style="color:#64748b;" data-label="Unit">{{ $item->unit ?: '—' }}</td>
               {{-- N/A checkbox --}}
-              <td style="text-align:center;">
+              <td class="m-toggle" style="text-align:center;" data-label="Item not available">
                 <input type="checkbox" name="items[{{ $i }}][not_available]" id="na-{{ $i }}" value="1"
                        onchange="toggleNA({{ $i }}, {{ (float)$item->quantity_required }})"
                        style="width:16px;height:16px;accent-color:#dc2626;cursor:pointer;">
               </td>
               {{-- VAT checkbox --}}
-              <td style="text-align:center;">
+              <td class="m-toggle" style="text-align:center;" data-label="Add VAT">
                 @if($vatRate > 0)
                 <input type="checkbox" name="items[{{ $i }}][is_vatable]" id="vat-cb-{{ $i }}" value="1"
                        onchange="calcRow({{ $i }}, {{ (float)$item->quantity_required }})"
@@ -132,12 +160,12 @@
                 <span style="color:#cbd5e1;font-size:11px;">—</span>
                 @endif
               </td>
-              <td style="text-align:right;">
+              <td style="text-align:right;" data-label="Unit Price (BD)">
                 <input type="number" class="price" id="price-{{ $i }}" name="items[{{ $i }}][unit_price]"
                        min="0" step="0.001" required placeholder="0.000"
                        oninput="calcRow({{ $i }}, {{ (float)$item->quantity_required }})">
               </td>
-              <td style="text-align:right;font-weight:600;" id="tot-{{ $i }}">—</td>
+              <td class="m-total" style="text-align:right;font-weight:600;" id="tot-{{ $i }}" data-label="Total (BD)">—</td>
             </tr>
             @endforeach
           </tbody>

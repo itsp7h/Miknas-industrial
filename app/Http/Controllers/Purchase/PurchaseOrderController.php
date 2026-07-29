@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Purchase;
 
 use App\Http\Controllers\Controller;
+use App\Mail\LpoIssuedMail;
 use App\Models\Item;
+use App\Models\MailAccount;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
@@ -14,6 +16,8 @@ use App\Services\LpoGenerationService;
 use App\Services\PurchaseStageService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 
 class PurchaseOrderController extends Controller
@@ -90,6 +94,10 @@ class PurchaseOrderController extends Controller
 
         $stages->setStage($purchaseRequest, 'receiving');
 
+        foreach ($orders as $order) {
+            $this->issueLpoToSupplier($order);
+        }
+
         if ($orders->count() === 1) {
             return redirect()->route('purchase.orders.show', $orders->first())
                 ->with('success', 'LPO ' . $orders->first()->po_number . ' generated.');
@@ -125,6 +133,48 @@ class PurchaseOrderController extends Controller
             ->setPaper('a4', 'portrait');
 
         return $pdf->download(($order->po_number ?? 'PO-' . str_pad($order->id, 5, '0', STR_PAD_LEFT)) . '.pdf');
+    }
+
+    /**
+     * Notify the winning supplier that their LPO was issued — email with the
+     * signed PDF attached, plus a WhatsApp heads-up if a number is on file.
+     * Failures here must not block LPO issuance, but must be logged so a
+     * failed send is discoverable instead of silently disappearing.
+     */
+    private function issueLpoToSupplier(PurchaseOrder $order): void
+    {
+        $order->loadMissing('supplier');
+
+        if ($order->supplier && $order->supplier->email) {
+            $account = MailAccount::where('enabled', true)->first();
+
+            try {
+                if (! $account) {
+                    throw new RuntimeException('No enabled mail account is configured.');
+                }
+
+                $pdf = Pdf::loadView('purchase.orders.pdf', $this->lpoDocumentData($order))
+                    ->setPaper('a4', 'portrait')
+                    ->output();
+
+                Mail::mailer($account->name)
+                    ->to($order->supplier->email)
+                    ->send(new LpoIssuedMail($order, $pdf));
+            } catch (\Throwable $e) {
+                Log::error('LPO email failed to send', [
+                    'purchase_order_id' => $order->id,
+                    'po_number'         => $order->po_number,
+                    'supplier_id'       => $order->supplier->id,
+                    'supplier_email'    => $order->supplier->email,
+                    'mail_account'      => $account?->name,
+                    'error'             => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($order->supplier && $order->supplier->whatsapp_number) {
+            $order->supplier->notify(new PurchaseOrderConfirmedNotification($order));
+        }
     }
 
     private function lpoDocumentData(PurchaseOrder $order): array
