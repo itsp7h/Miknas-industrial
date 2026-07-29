@@ -12,6 +12,7 @@ async function request(path, options = {}) {
     await ensureCsrfCookie();
 
     const response = await fetch(`/api/v1${path}`, {
+        ...options,
         credentials: 'include',
         headers: {
             Accept: 'application/json',
@@ -19,7 +20,6 @@ async function request(path, options = {}) {
             'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') ?? '',
             ...options.headers,
         },
-        ...options,
     });
 
     const body = await response.json().catch(() => null);
