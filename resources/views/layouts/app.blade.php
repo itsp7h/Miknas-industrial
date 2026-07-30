@@ -195,6 +195,17 @@
                 </svg>
                 Projects
             </a>
+            <a href="{{ route('settings.users.index') }}" style="
+                display:flex; align-items:center; gap:8px;
+                padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
+                font-size:13px; text-decoration:none;
+                {{ request()->routeIs('settings.users.*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+            " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4"/>
+                </svg>
+                Users
+            </a>
             <a href="{{ route('settings.integrations') }}" style="
                 display:flex; align-items:center; gap:8px;
                 padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
