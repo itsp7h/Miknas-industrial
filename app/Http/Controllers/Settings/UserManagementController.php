@@ -27,7 +27,7 @@ class UserManagementController extends Controller
     {
         $validated = $request->validate([
             'name'    => ['required', 'string', 'max:255'],
-            'email'   => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email'   => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'roles'   => ['array'],
             'roles.*' => ['string', 'exists:roles,name'],
         ]);

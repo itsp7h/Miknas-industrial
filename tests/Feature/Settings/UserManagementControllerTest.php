@@ -141,4 +141,15 @@ class UserManagementControllerTest extends TestCase
             'email' => 'taken@example.test',
         ])->assertStatus(422);
     }
+
+    public function test_creating_a_user_with_an_uppercase_email_fails_validation(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+            'name'  => 'New Person',
+            'email' => 'Mixed@Example.com',
+        ])->assertStatus(422)->assertJsonValidationErrors('email');
+    }
 }

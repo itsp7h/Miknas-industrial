@@ -107,13 +107,13 @@
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Name</label>
                 <input type="text" id="new-user-name"
                        style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
-                <p id="new-user-name-error" class="hidden-by-search" style="color:#dc2626;font-size:12px;margin-top:4px;"></p>
+                <p id="new-user-name-error" style="color:#dc2626;font-size:12px;margin-top:4px;"></p>
             </div>
             <div style="margin-bottom:18px;">
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email</label>
                 <input type="email" id="new-user-email"
                        style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
-                <p id="new-user-email-error" class="hidden-by-search" style="color:#dc2626;font-size:12px;margin-top:4px;"></p>
+                <p id="new-user-email-error" style="color:#dc2626;font-size:12px;margin-top:4px;"></p>
             </div>
             <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Profiles</div>
             <div id="new-user-roles-list" style="display:flex;flex-direction:column;gap:8px;">
