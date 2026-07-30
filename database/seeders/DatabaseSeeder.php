@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
             Role::firstOrCreate(['name' => $role]);
         }
 
+        $this->call(PurchaseAccessSeeder::class);
+
         $admin = User::firstOrCreate(
             ['email' => 'admin@erp.com'],
             ['name' => 'Admin User', 'password' => Hash::make('password')]

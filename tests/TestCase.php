@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use Database\Seeders\PurchaseAccessSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
@@ -29,6 +30,10 @@ abstract class TestCase extends BaseTestCase
         $roles = ['Admin', 'Accounts', 'Store Manager', 'Production Manager', 'Sales Manager'];
         foreach ($roles as $role) {
             Role::firstOrCreate(['name' => $role]);
+        }
+
+        if (Schema::hasTable('permissions')) {
+            (new PurchaseAccessSeeder())->run();
         }
     }
 }
