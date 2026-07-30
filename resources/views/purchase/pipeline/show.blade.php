@@ -52,7 +52,9 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <x-purchase.edit-request-modal :purchaseRequest="$pr" />
+      @can('update', $pr)
+        <x-purchase.edit-request-modal :purchaseRequest="$pr" />
+      @endcan
       <a href="{{ route('purchase.requests.show', $pr) }}"
          style="font-size:12px;color:#64748b;text-decoration:none;border:1px solid #e2e8f0;padding:6px 14px;border-radius:7px;white-space:nowrap;">
         View Full Request →
@@ -138,6 +140,7 @@
             {{-- Action buttons per stage --}}
             @if($current)
               @if($stage === 'draft')
+                @can('approve', $pr)
                 <button type="button" onclick="openSignModal()"
                    class="action-btn" style="background:#7c3aed;color:#fff;">
                   @if($pr->signature)
@@ -148,9 +151,11 @@
                     Sign
                   @endif
                 </button>
+                @endcan
 
               @elseif($stage === 'gm_approval')
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  @can('approve', $pr)
                   <button type="button" onclick="openSignModal()"
                      class="action-btn" style="background:#7c3aed;color:#fff;">
                     @if($pr->signature)
@@ -161,14 +166,18 @@
                       Sign
                     @endif
                   </button>
+                  @endcan
+                  @can('manageRfq', $pr)
                   <button type="button" onclick="openSupplierModal()"
                      class="action-btn" style="background:#2563eb;color:#fff;">
                     🏭 Select Suppliers
                   </button>
+                  @endcan
                 </div>
 
               @elseif($stage === 'rfq')
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  @can('manageRfq', $pr)
                   <button type="button" onclick="openSupplierModal()"
                      class="action-btn" style="background:#2563eb;color:#fff;">
                     + Add Suppliers
@@ -181,28 +190,35 @@
                     </button>
                   </form>
                   @endif
+                  @endcan
                 </div>
 
               @elseif($stage === 'quoting')
+                @can('manageQuotes', $pr)
                 <a href="{{ route('purchase.requests.quotes', $pr) }}"
                    class="action-btn" style="background:#f59e0b;color:#fff;">
                   View Quotes ({{ $pr->supplierQuotes->count() }}) →
                 </a>
+                @endcan
 
               @elseif($stage === 'comparison')
+                @can('manageQuotes', $pr)
                 <a href="{{ route('purchase.requests.compare', $pr) }}"
                    class="action-btn" style="background:#f59e0b;color:#fff;">
                   Compare & Award →
                 </a>
+                @endcan
 
               @elseif($stage === 'lpo')
                 @if($pr->purchaseOrders->isEmpty())
+                @can('generateLpo', $pr)
                 <form action="{{ route('purchase.requests.generate-lpo', $pr) }}" method="POST" style="display:inline;">
                   @csrf
                   <button type="submit" class="action-btn" style="background:#16a34a;color:#fff;border:none;cursor:pointer;">
                     Issue LPO →
                   </button>
                 </form>
+                @endcan
                 @else
                 <span class="action-btn" style="background:#dcfce7;color:#15803d;">✓ LPO(s) Issued</span>
                 @endif
@@ -244,14 +260,18 @@
                 </button>
 
               @elseif($stage === 'quoting')
+                @can('manageQuotes', $pr)
                 <a href="{{ route('purchase.requests.quotes', $pr) }}" class="action-btn" style="{{ $viewStyle }}">
                   {!! $eyeSvg !!} View Quotes ({{ $pr->supplierQuotes->count() }})
                 </a>
+                @endcan
 
               @elseif($stage === 'comparison')
+                @can('manageQuotes', $pr)
                 <a href="{{ route('purchase.requests.compare', $pr) }}" class="action-btn" style="{{ $viewStyle }}">
                   {!! $eyeSvg !!} View Comparison
                 </a>
+                @endcan
 
               @elseif($stage === 'lpo' && $pr->purchaseOrders->isNotEmpty())
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -270,6 +290,7 @@
                     @endforeach
                   @endif
                   {{-- Awards can still change after LPOs are issued — let the user re-issue to match. --}}
+                  @can('generateLpo', $pr)
                   <form id="reissue-lpo-form-{{ $pr->id }}" action="{{ route('purchase.requests.generate-lpo', $pr) }}" method="POST" style="display:inline;">
                     @csrf
                   </form>
@@ -277,6 +298,7 @@
                     class="action-btn" style="background:#fff;color:#d97706;border:1.5px solid #fde68a;cursor:pointer;">
                     ↻ Re-issue LPO
                   </button>
+                  @endcan
                 </div>
 
               @elseif($stage === 'receiving')
@@ -648,6 +670,7 @@
         style="flex:1;padding:10px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-weight:600;color:#475569;background:#f8fafc;cursor:pointer;">
         Close
       </button>
+      @can('manageQuotes', $pr)
       <a id="qm-compare-btn" href="{{ route('purchase.requests.compare', $pr) }}"
         style="flex:2;padding:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -655,6 +678,7 @@
         </svg>
         Compare All Quotes
       </a>
+      @endcan
     </div>
   </div>
 </div>
@@ -692,10 +716,12 @@
         style="flex:1;padding:10px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-weight:600;color:#475569;background:#f8fafc;cursor:pointer;">
         Close
       </button>
+      @can('manageQuotes', $pr)
       <a href="{{ route('purchase.requests.compare', $pr) }}"
         style="flex:2;padding:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
         Open Full Comparison to Award
       </a>
+      @endcan
     </div>
   </div>
 </div>
