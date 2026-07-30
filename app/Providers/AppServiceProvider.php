@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\MailAccount;
 use App\Models\Setting;
 use Illuminate\Mail\MailManager;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use PromoSeven\UltraMessage\Facades\UltraMessage;
 
@@ -14,6 +15,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::before(function ($user, string $ability) {
+            return $user->hasRole('Admin') ? true : null;
+        });
+
         UltraMessage::configUsing(function () {
             return [
                 'instance_id'    => Setting::get('ultramsg_instance_id', config('ultra-message.instance_id')),
