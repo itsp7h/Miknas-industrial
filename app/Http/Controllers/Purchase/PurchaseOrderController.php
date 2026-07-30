@@ -86,6 +86,8 @@ class PurchaseOrderController extends Controller
      */
     public function generateFromRequest(PurchaseRequest $purchaseRequest, LpoGenerationService $service, PurchaseStageService $stages)
     {
+        $this->authorize('generateLpo', $purchaseRequest);
+
         try {
             $orders = $service->generate($purchaseRequest);
         } catch (RuntimeException $e) {

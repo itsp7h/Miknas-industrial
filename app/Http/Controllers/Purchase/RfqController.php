@@ -20,6 +20,8 @@ class RfqController extends Controller
 
     public function selectSuppliers(Request $request, PurchaseRequest $purchaseRequest, RfqInvitationService $service, PurchaseStageService $stages)
     {
+        $this->authorize('manageRfq', $purchaseRequest);
+
         $mode = $request->input('mode', 'global');
 
         $alreadySelected = $purchaseRequest->rfqInvitations()->pluck('supplier_id')->toArray();
@@ -92,6 +94,8 @@ class RfqController extends Controller
 
     public function sendAll(PurchaseRequest $purchaseRequest, RfqInvitationService $service, PurchaseStageService $stages)
     {
+        $this->authorize('manageRfq', $purchaseRequest);
+
         $pending = $purchaseRequest->rfqInvitations()->where('status', 'pending')->with('supplier')->get();
 
         if ($pending->isEmpty()) {
@@ -110,6 +114,8 @@ class RfqController extends Controller
 
     public function store(Request $request, PurchaseRequest $purchaseRequest, RfqInvitationService $service, PurchaseStageService $stages)
     {
+        $this->authorize('manageRfq', $purchaseRequest);
+
         $validated = $request->validate([
             'supplier_ids'   => ['required', 'array', 'min:1'],
             'supplier_ids.*' => ['required', 'exists:suppliers,id'],

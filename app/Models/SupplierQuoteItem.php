@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SupplierQuoteItem extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'supplier_quote_id', 'purchase_request_item_id', 'description', 'supplier_description', 'unit', 'quantity',
         'unit_price', 'total_price', 'is_vatable', 'not_available',

@@ -29,6 +29,8 @@ class SupplierQuoteController extends Controller
 
     private function workspace(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('manageQuotes', $purchaseRequest);
+
         $quotes = $this->loadQuotes($purchaseRequest);
 
         return view('purchase.quotes.workspace', [
@@ -47,6 +49,8 @@ class SupplierQuoteController extends Controller
      */
     public function awardItem(Request $request, PurchaseRequest $purchaseRequest, SupplierQuoteItem $quoteItem, PurchaseStageService $stages)
     {
+        $this->authorize('award', $purchaseRequest);
+
         abort_unless($quoteItem->quote->purchase_request_id === $purchaseRequest->id, 404);
 
         $validated = $request->validate([
@@ -90,6 +94,8 @@ class SupplierQuoteController extends Controller
      */
     public function unawardItem(PurchaseRequest $purchaseRequest, SupplierQuoteItem $quoteItem, PurchaseStageService $stages)
     {
+        $this->authorize('award', $purchaseRequest);
+
         abort_unless($quoteItem->quote->purchase_request_id === $purchaseRequest->id, 404);
 
         if (!$quoteItem->is_awarded) {

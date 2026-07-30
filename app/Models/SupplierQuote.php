@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SupplierQuote extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'rfq_invitation_id', 'purchase_request_id', 'supplier_id',
         'submitted_at', 'lead_time_days', 'payment_terms', 'notes',
