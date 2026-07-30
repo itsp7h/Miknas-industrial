@@ -11,12 +11,28 @@ class PurchasePipelineController extends Controller
 {
     private function withRelations()
     {
-        return PurchaseRequest::with([
+        $query = PurchaseRequest::with([
             'requestedBy',
             'signature.signedBy',
             'rfqInvitations.supplier',
             'supplierQuotes.items',
         ]);
+
+        $user = auth()->user();
+
+        if (! $user->can('purchase-requests.view-all')) {
+            if ($user->can('purchase-requests.view-active-pipeline')) {
+                $query->whereIn('stage', [
+                    'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete',
+                ]);
+            } elseif ($user->can('purchase-requests.view-own')) {
+                $query->where('requested_by', $user->id);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        return $query;
     }
 
     public function index(PurchaseStageService $stages)
@@ -29,6 +45,8 @@ class PurchasePipelineController extends Controller
 
     public function show(PurchaseRequest $purchaseRequest, PurchaseStageService $stages)
     {
+        $this->authorize('view', $purchaseRequest);
+
         $purchaseRequest->load([
             'requestedBy',
             'items',
