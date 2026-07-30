@@ -123,10 +123,12 @@ class UserManagementControllerTest extends TestCase
         ]);
 
         $response->assertCreated();
+        $response->assertJson(['message' => 'New Person created. A password-setup email has been sent.']);
         $this->assertDatabaseHas('users', ['email' => 'new@example.test']);
 
         $newUser = User::where('email', 'new@example.test')->first();
         $this->assertTrue($newUser->hasRole('Requester'));
+        $this->assertNull($newUser->email_verified_at);
 
         Notification::assertSentTo($newUser, ResetPassword::class);
     }
@@ -148,6 +150,7 @@ class UserManagementControllerTest extends TestCase
         ]);
 
         $response->assertCreated();
+        $response->assertJson(['message' => 'New Person created.']);
 
         $newUser = User::where('email', 'manual@example.test')->first();
         $this->assertNotNull($newUser);
@@ -156,6 +159,34 @@ class UserManagementControllerTest extends TestCase
         $this->assertTrue($newUser->hasRole('Requester'));
 
         Notification::assertNothingSent();
+    }
+
+    public function test_creating_a_user_with_an_invalid_mode_fails_validation(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+            'name'  => 'New Person',
+            'email' => 'badmode@example.test',
+            'mode'  => 'foo',
+        ])->assertStatus(422)->assertJsonValidationErrors('mode');
+    }
+
+    public function test_creating_a_user_with_a_short_manual_password_fails_validation(): void
+    {
+        // Only length is enforced today: Rules\Password::defaults() has no app-level
+        // customization (checked app/Providers/*), so it degrades to Laravel's built-in min(8).
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+            'name'                  => 'New Person',
+            'email'                 => 'shortpass@example.test',
+            'mode'                  => 'password',
+            'password'              => 'short',
+            'password_confirmation' => 'short',
+        ])->assertStatus(422)->assertJsonValidationErrors('password');
     }
 
     public function test_creating_a_user_with_manual_mode_and_mismatched_passwords_fails_validation(): void

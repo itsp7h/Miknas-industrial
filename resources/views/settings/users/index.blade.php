@@ -137,13 +137,13 @@
                 <div id="new-user-password-fields" style="display:none;margin-top:12px;">
                     <div style="margin-bottom:14px;">
                         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Password</label>
-                        <input type="password" id="new-user-password"
+                        <input type="password" id="new-user-password" autocomplete="new-password"
                                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
                         <p id="new-user-password-error" style="color:#dc2626;font-size:12px;margin-top:4px;"></p>
                     </div>
                     <div>
                         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Confirm Password</label>
-                        <input type="password" id="new-user-password-confirmation"
+                        <input type="password" id="new-user-password-confirmation" autocomplete="new-password"
                                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
                     </div>
                 </div>
@@ -213,6 +213,9 @@ function openNewUserModal() {
 
 function closeNewUserModal() {
     document.getElementById('new-user-modal').style.display = 'none';
+    document.getElementById('new-user-password').value = '';
+    document.getElementById('new-user-password-confirmation').value = '';
+    document.getElementById('new-user-password-error').textContent = '';
 }
 
 function toggleNewUserPasswordFields() {

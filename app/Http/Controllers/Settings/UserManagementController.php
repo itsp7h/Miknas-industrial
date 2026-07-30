@@ -27,23 +27,28 @@ class UserManagementController extends Controller
 
     public function store(Request $request)
     {
+        $mode = $request->input('mode') ?: 'email';
+
         $validated = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'roles'    => ['array'],
             'roles.*'  => ['string', 'exists:roles,name'],
-            'mode'     => ['nullable', 'in:email,password'],
-            'password' => [Rule::requiredIf($request->input('mode') === 'password'), 'confirmed', Rules\Password::defaults()],
+            'mode'     => ['nullable', Rule::in(['email', 'password'])],
+            'password' => $mode === 'password'
+                ? ['required', 'confirmed', Rules\Password::defaults()]
+                : ['prohibited'],
         ]);
-
-        $mode = $validated['mode'] ?? 'email';
 
         $user = User::create([
-            'name'              => $validated['name'],
-            'email'             => $validated['email'],
-            'password'          => $mode === 'password' ? $validated['password'] : Str::random(40),
-            'email_verified_at' => $mode === 'password' ? now() : null,
+            'name'     => $validated['name'],
+            'email'    => $validated['email'],
+            'password' => $mode === 'password' ? $validated['password'] : Str::random(40),
         ]);
+
+        if ($mode === 'password') {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
 
         $user->syncRoles($validated['roles'] ?? []);
 

@@ -24,7 +24,6 @@ class User extends Authenticatable
         'email',
         'whatsapp_number',
         'password',
-        'email_verified_at',
     ];
 
     /**

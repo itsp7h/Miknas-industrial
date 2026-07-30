@@ -37,7 +37,7 @@ The New User modal (added in [admin-creates-user](2026-07-30-admin-user-creation
 
 ## Why auto-verify on the password path
 
-Routes are gated by the `verified` middleware. A user created with a known password but no verification email would be able to log in yet get stuck on Breeze's "verify your email" screen with no way to receive that email (none was sent). Setting `email_verified_at` at creation avoids stranding that account.
+`User` does not currently implement `MustVerifyEmail`, so the `verified` middleware is a no-op today — this isn't about avoiding a verification wall that doesn't exist yet. Setting `email_verified_at` at creation records that the Admin vouched for the address at creation time, and pre-empts a future problem: if `User` is ever made to implement `MustVerifyEmail` (turning on real enforcement), password-path users will already be correctly marked verified, while email-path users (whose `email_verified_at` stays null — Breeze's reset-password flow doesn't set it) would need a backfill before enforcement could safely apply to them.
 
 ## Data Flow & Error Handling
 
