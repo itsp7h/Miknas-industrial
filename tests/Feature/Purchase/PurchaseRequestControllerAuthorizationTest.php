@@ -88,4 +88,63 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
 
         $this->assertSame('approved', $atStage->fresh()->status);
     }
+
+    public function test_unauthorized_user_cannot_destroy_a_request(): void
+    {
+        $user = User::factory()->create();
+        $draft = PurchaseRequest::factory()->create(['stage' => 'draft']);
+
+        $this->actingAs($user)
+            ->delete(route('purchase.requests.destroy', $draft))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('purchase_requests', ['id' => $draft->id]);
+    }
+
+    public function test_requester_cannot_destroy_someone_elses_draft_request(): void
+    {
+        $requester = User::factory()->create();
+        $requester->assignRole('Requester');
+        $othersDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
+
+        $this->actingAs($requester)
+            ->delete(route('purchase.requests.destroy', $othersDraft))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('purchase_requests', ['id' => $othersDraft->id]);
+    }
+
+    public function test_requester_can_destroy_own_draft_request(): void
+    {
+        $requester = User::factory()->create();
+        $requester->assignRole('Requester');
+        $ownDraft = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
+
+        $this->actingAs($requester)
+            ->delete(route('purchase.requests.destroy', $ownDraft))
+            ->assertRedirect(route('purchase.requests.index'));
+
+        $this->assertDatabaseMissing('purchase_requests', ['id' => $ownDraft->id]);
+    }
+
+    public function test_unauthorized_user_cannot_view_show_edit_or_print(): void
+    {
+        $user = User::factory()->create();
+        $pr = PurchaseRequest::factory()->create();
+
+        $this->actingAs($user)->get(route('purchase.requests.show', $pr))->assertForbidden();
+        $this->actingAs($user)->get(route('purchase.requests.edit', $pr))->assertForbidden();
+        $this->actingAs($user)->get(route('purchase.requests.print', $pr))->assertForbidden();
+    }
+
+    public function test_requester_can_view_show_edit_and_print_their_own_request(): void
+    {
+        $requester = User::factory()->create();
+        $requester->assignRole('Requester');
+        $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
+
+        $this->actingAs($requester)->get(route('purchase.requests.show', $pr))->assertOk();
+        $this->actingAs($requester)->get(route('purchase.requests.edit', $pr))->assertOk();
+        $this->actingAs($requester)->get(route('purchase.requests.print', $pr))->assertOk();
+    }
 }

@@ -78,6 +78,8 @@ class PurchaseRequestController extends Controller
 
     public function show(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('view', $purchaseRequest);
+
         $purchaseRequest->load(['items', 'requestedBy', 'approvedBy']);
 
         return view('purchase.requests.show', compact('purchaseRequest'));
@@ -85,6 +87,8 @@ class PurchaseRequestController extends Controller
 
     public function edit(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('view', $purchaseRequest);
+
         $purchaseRequest->load('items');
 
         return view('purchase.requests.edit', compact('purchaseRequest'));
@@ -143,6 +147,8 @@ class PurchaseRequestController extends Controller
 
     public function destroy(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('delete', $purchaseRequest);
+
         $purchaseRequest->delete();
 
         return redirect()->route('purchase.requests.index')->with('success', 'Purchase request deleted.');
@@ -172,6 +178,8 @@ class PurchaseRequestController extends Controller
 
     public function print(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('view', $purchaseRequest);
+
         $purchaseRequest->load(['items', 'requestedBy', 'approvedBy', 'signature.signedBy']);
 
         return view('purchase.requests.print', compact('purchaseRequest'));

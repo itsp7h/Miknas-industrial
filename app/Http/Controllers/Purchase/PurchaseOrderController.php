@@ -42,12 +42,15 @@ class PurchaseOrderController extends Controller
     {
         $request->validate([
             'supplier_id'          => 'required|exists:suppliers,id',
+            'purchase_request_id'  => 'nullable|exists:purchase_requests,id',
             'po_date'              => 'required|date',
             'items'                => 'required|array|min:1',
             'items.*.item_id'      => 'required|exists:items,id',
             'items.*.quantity'     => 'required|numeric|min:1',
             'items.*.rate'         => 'required|numeric|min:0',
         ]);
+
+        $this->authorizeOrderAccess($request->input('purchase_request_id'));
 
         $poNumber = 'PO-' . str_pad(PurchaseOrder::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
@@ -206,6 +209,9 @@ class PurchaseOrderController extends Controller
 
     public function update(Request $request, PurchaseOrder $order)
     {
+        $order->loadMissing('purchaseRequest');
+        $this->authorizeOrderAccess($order->purchase_request_id, $order->purchaseRequest);
+
         $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'po_date'     => 'required|date',
@@ -218,8 +224,39 @@ class PurchaseOrderController extends Controller
 
     public function destroy(PurchaseOrder $order)
     {
+        $order->loadMissing('purchaseRequest');
+        $this->authorizeOrderAccess($order->purchase_request_id, $order->purchaseRequest);
+
         $order->delete();
 
         return redirect()->route('purchase.orders.index')->with('success', 'Purchase order deleted successfully.');
+    }
+
+    /**
+     * Authorize direct create/edit/delete access to a PurchaseOrder record.
+     *
+     * The `generateLpo` ability is instance-scoped to a PurchaseRequest (it
+     * checks the request's stage), so it cannot be used as a class-level
+     * check (`authorize('generateLpo', PurchaseRequest::class)` would pass a
+     * bare class string into a policy method that requires a PurchaseRequest
+     * instance and blow up with a TypeError). When the order is linked to a
+     * PurchaseRequest we authorize against that instance at the same trust
+     * level as generating an LPO from it. When there is no linked request
+     * (a manually-created PO with no request context to gate on) we fall
+     * back to a plain permission check so manual CRUD can't bypass
+     * authorization entirely just by omitting the link.
+     */
+    private function authorizeOrderAccess(?int $purchaseRequestId, ?PurchaseRequest $purchaseRequest = null): void
+    {
+        $purchaseRequest ??= $purchaseRequestId ? PurchaseRequest::findOrFail($purchaseRequestId) : null;
+
+        if ($purchaseRequest) {
+            $this->authorize('generateLpo', $purchaseRequest);
+            return;
+        }
+
+        if (! auth()->user() || ! auth()->user()->can('purchase-requests.generate-lpo')) {
+            abort(403);
+        }
     }
 }

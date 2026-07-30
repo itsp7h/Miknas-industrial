@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Purchase;
 use App\Http\Controllers\Controller;
 use App\Models\PurchaseRequest;
 use App\Models\Supplier;
+use App\Policies\PurchaseRequestPolicy;
 use App\Services\PurchaseStageService;
 
 class PurchasePipelineController extends Controller
@@ -22,9 +23,7 @@ class PurchasePipelineController extends Controller
 
         if (! $user->can('purchase-requests.view-all')) {
             if ($user->can('purchase-requests.view-active-pipeline')) {
-                $query->whereIn('stage', [
-                    'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete',
-                ]);
+                $query->whereIn('stage', PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES);
             } elseif ($user->can('purchase-requests.view-own')) {
                 $query->where('requested_by', $user->id);
             } else {

@@ -70,4 +70,42 @@ class ProcurementAuthorizationTest extends TestCase
             ->post(route('purchase.requests.generate-lpo', $atLpo))
             ->assertForbidden();
     }
+
+    public function test_unauthorized_user_cannot_view_the_rfq_page(): void
+    {
+        $user = User::factory()->create();
+        $pr = PurchaseRequest::factory()->create(['stage' => 'rfq']);
+
+        $this->actingAs($user)->get(route('purchase.requests.rfq', $pr))->assertForbidden();
+    }
+
+    public function test_procurement_officer_can_view_the_rfq_page_at_rfq_stage(): void
+    {
+        $procurement = User::factory()->create();
+        $procurement->assignRole('Procurement Officer');
+        $pr = PurchaseRequest::factory()->create(['stage' => 'rfq']);
+
+        $this->actingAs($procurement)->get(route('purchase.requests.rfq', $pr))->assertOk();
+    }
+
+    public function test_procurement_officer_can_select_suppliers_at_gm_approval_precondition_stage(): void
+    {
+        $procurement = User::factory()->create();
+        $procurement->assignRole('Procurement Officer');
+        $atGmApproval = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
+        $supplier = Supplier::factory()->create();
+
+        $this->actingAs($procurement)
+            ->post(route('purchase.requests.rfq.select', $atGmApproval), ['supplier_ids' => [$supplier->id]])
+            ->assertRedirect();
+    }
+
+    public function test_procurement_officer_can_reach_manage_quotes_actions_at_lpo_stage(): void
+    {
+        $procurement = User::factory()->create();
+        $procurement->assignRole('Procurement Officer');
+        $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
+
+        $this->assertTrue($procurement->can('manageQuotes', $atLpo));
+    }
 }

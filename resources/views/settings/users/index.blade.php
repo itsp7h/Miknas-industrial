@@ -39,7 +39,11 @@
                 </td>
                 <td class="text-right">
                     <button class="btn-secondary btn-sm"
-                            onclick="openAccessModal({{ $user->id }}, '{{ $user->name }}', {{ $user->roles->pluck('name')->toJson() }}, {{ $user->permissions->pluck('name')->toJson() }})">
+                            data-user-id="{{ $user->id }}"
+                            data-user-name="{{ $user->name }}"
+                            data-roles="{{ $user->roles->pluck('name')->toJson() }}"
+                            data-permissions="{{ $user->permissions->pluck('name')->toJson() }}"
+                            onclick="openAccessModal(this)">
                         Edit Access
                     </button>
                 </td>
@@ -102,7 +106,12 @@
 var CSRF = document.querySelector('meta[name="csrf-token"]').content;
 var currentUserId = null;
 
-function openAccessModal(userId, userName, roles, permissions) {
+function openAccessModal(btn) {
+    var userId      = btn.dataset.userId;
+    var userName    = btn.dataset.userName;
+    var roles       = JSON.parse(btn.dataset.roles);
+    var permissions = JSON.parse(btn.dataset.permissions);
+
     currentUserId = userId;
     document.getElementById('access-modal-title').textContent = 'Edit Access — ' + userName;
 

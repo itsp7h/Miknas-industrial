@@ -13,6 +13,8 @@ class RfqController extends Controller
 {
     public function show(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('view', $purchaseRequest);
+
         $suppliers   = Supplier::where('is_active', true)->orderBy('name')->get();
         $invitations = $purchaseRequest->rfqInvitations()->with('supplier', 'quote')->get();
         return view('purchase.rfq.show', ['request' => $purchaseRequest, 'suppliers' => $suppliers, 'invitations' => $invitations]);

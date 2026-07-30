@@ -7,7 +7,7 @@ use App\Models\User;
 
 class PurchaseRequestPolicy
 {
-    private const ACTIVE_PIPELINE_STAGES = [
+    public const ACTIVE_PIPELINE_STAGES = [
         'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete',
     ];
 
@@ -40,20 +40,36 @@ class PurchaseRequestPolicy
             && $purchaseRequest->stage === 'draft';
     }
 
+    public function delete(User $user, PurchaseRequest $purchaseRequest): bool
+    {
+        return $user->can('purchase-requests.edit')
+            && $purchaseRequest->requested_by === $user->id
+            && $purchaseRequest->stage === 'draft';
+    }
+
     public function approve(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->can('purchase-requests.approve') && $purchaseRequest->stage === 'gm_approval';
+        // 'draft' is the precondition stage: PurchaseSignatureController::store is
+        // invoked while the request is still at draft and only advances it to
+        // gm_approval afterwards. 'gm_approval' is accepted too so re-checks
+        // against an already-advanced request still pass.
+        return $user->can('purchase-requests.approve')
+            && in_array($purchaseRequest->stage, ['draft', 'gm_approval'], true);
     }
 
     public function manageRfq(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->can('purchase-requests.manage-rfq') && $purchaseRequest->stage === 'rfq';
+        // 'gm_approval' is the precondition stage: RfqController::selectSuppliers
+        // is invoked right after the GM signature advances the request to
+        // gm_approval, and it is itself the action that sets stage to 'rfq'.
+        return $user->can('purchase-requests.manage-rfq')
+            && in_array($purchaseRequest->stage, ['gm_approval', 'rfq'], true);
     }
 
     public function manageQuotes(User $user, PurchaseRequest $purchaseRequest): bool
     {
         return $user->can('purchase-requests.manage-quotes')
-            && in_array($purchaseRequest->stage, ['quoting', 'comparison'], true);
+            && in_array($purchaseRequest->stage, ['quoting', 'comparison', 'lpo'], true);
     }
 
     public function award(User $user, PurchaseRequest $purchaseRequest): bool
