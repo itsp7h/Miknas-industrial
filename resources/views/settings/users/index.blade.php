@@ -124,7 +124,31 @@
                 </label>
                 @endforeach
             </div>
-            <p style="font-size:12px;color:#94a3b8;margin-top:14px;">
+            <div style="margin-top:18px;margin-bottom:14px;">
+                <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Password</div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;margin-bottom:8px;">
+                    <input type="radio" name="new-user-password-mode" id="new-user-mode-email" value="email" checked onchange="toggleNewUserPasswordFields()">
+                    Email setup link
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;">
+                    <input type="radio" name="new-user-password-mode" id="new-user-mode-password" value="password" onchange="toggleNewUserPasswordFields()">
+                    Set password now
+                </label>
+                <div id="new-user-password-fields" style="display:none;margin-top:12px;">
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Password</label>
+                        <input type="password" id="new-user-password"
+                               style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
+                        <p id="new-user-password-error" style="color:#dc2626;font-size:12px;margin-top:4px;"></p>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Confirm Password</label>
+                        <input type="password" id="new-user-password-confirmation"
+                               style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
+                    </div>
+                </div>
+            </div>
+            <p id="new-user-mode-help" style="font-size:12px;color:#94a3b8;margin-top:14px;">
                 The new user will receive an email with a link to set their own password.
             </p>
         </div>
@@ -178,7 +202,12 @@ function openNewUserModal() {
     document.getElementById('new-user-email').value = '';
     document.getElementById('new-user-name-error').textContent = '';
     document.getElementById('new-user-email-error').textContent = '';
+    document.getElementById('new-user-password').value = '';
+    document.getElementById('new-user-password-confirmation').value = '';
+    document.getElementById('new-user-password-error').textContent = '';
+    document.getElementById('new-user-mode-email').checked = true;
     document.querySelectorAll('.new-user-role-checkbox').forEach(function(cb) { cb.checked = false; });
+    toggleNewUserPasswordFields();
     document.getElementById('new-user-modal').style.display = 'flex';
 }
 
@@ -186,18 +215,39 @@ function closeNewUserModal() {
     document.getElementById('new-user-modal').style.display = 'none';
 }
 
+function toggleNewUserPasswordFields() {
+    var manual = document.getElementById('new-user-mode-password').checked;
+    document.getElementById('new-user-password-fields').style.display = manual ? 'block' : 'none';
+    document.getElementById('new-user-mode-help').textContent = manual
+        ? 'The password below will be set immediately — no email will be sent.'
+        : 'The new user will receive an email with a link to set their own password.';
+    if (!manual) {
+        document.getElementById('new-user-password').value = '';
+        document.getElementById('new-user-password-confirmation').value = '';
+        document.getElementById('new-user-password-error').textContent = '';
+    }
+}
+
 function createUser() {
     var name = document.getElementById('new-user-name').value;
     var email = document.getElementById('new-user-email').value;
     var roles = Array.prototype.slice.call(document.querySelectorAll('.new-user-role-checkbox:checked')).map(function(cb) { return cb.value; });
+    var manual = document.getElementById('new-user-mode-password').checked;
 
     document.getElementById('new-user-name-error').textContent = '';
     document.getElementById('new-user-email-error').textContent = '';
+    document.getElementById('new-user-password-error').textContent = '';
+
+    var payload = { name: name, email: email, roles: roles, mode: manual ? 'password' : 'email' };
+    if (manual) {
+        payload.password = document.getElementById('new-user-password').value;
+        payload.password_confirmation = document.getElementById('new-user-password-confirmation').value;
+    }
 
     fetch('/settings/users', {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, email: email, roles: roles })
+        body: JSON.stringify(payload)
     }).then(function(r) {
         return r.json().then(function(body) {
             if (!r.ok) return Promise.reject(body);
@@ -211,6 +261,7 @@ function createUser() {
         if (err.errors) {
             if (err.errors.name) document.getElementById('new-user-name-error').textContent = err.errors.name[0];
             if (err.errors.email) document.getElementById('new-user-email-error').textContent = err.errors.email[0];
+            if (err.errors.password) document.getElementById('new-user-password-error').textContent = err.errors.password[0];
         }
         showToast(err.message || 'Failed to create user.', 'error');
     });
