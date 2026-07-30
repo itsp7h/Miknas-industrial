@@ -29,6 +29,7 @@ use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\MailAccountController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Settings\ProjectSettingController;
+use App\Http\Controllers\Settings\UserManagementController;
 use App\Http\Controllers\Settings\VatSettingController;
 use App\Models\Settings\Location;
 use Illuminate\Support\Facades\Route;
@@ -180,6 +181,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // VAT settings
         Route::get('settings/vat',  [VatSettingController::class, 'index'])->name('settings.vat');
         Route::post('settings/vat', [VatSettingController::class, 'update'])->name('settings.vat.update');
+
+        // User management
+        Route::get('settings/users', [UserManagementController::class, 'index'])->name('settings.users.index');
+        Route::patch('settings/users/{user}', [UserManagementController::class, 'update'])->name('settings.users.update');
     });
 
     // React SPA shell (catch-all — must stay last so it never shadows a more specific route)
