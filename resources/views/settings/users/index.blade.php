@@ -12,7 +12,10 @@
     <input type="text" id="user-search" placeholder="Search users…"
            style="width:100%;max-width:320px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;"
            onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#e2e8f0'">
-    <span id="search-count" style="font-size:12px;color:#94a3b8;font-weight:500;">{{ $users->count() }}</span>
+    <div style="display:flex;align-items:center;gap:16px;">
+        <span id="search-count" style="font-size:12px;color:#94a3b8;font-weight:500;">{{ $users->count() }}</span>
+        <button class="btn-primary btn-sm" onclick="openNewUserModal()">+ New User</button>
+    </div>
 </div>
 
 <div style="background:white;border:1px solid #e2e8f0;border-radius:0.875rem;overflow:hidden;">
@@ -92,6 +95,46 @@
     </div>
 </div>
 
+{{-- ── New user modal ── --}}
+<div id="new-user-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:12px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;">
+        <div style="padding:16px 24px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+            <h2 style="font-size:15px;font-weight:700;color:#0f172a;">New User</h2>
+            <button onclick="closeNewUserModal()" style="background:none;border:none;font-size:20px;color:#94a3b8;cursor:pointer;">&times;</button>
+        </div>
+        <div style="padding:20px 24px;">
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Name</label>
+                <input type="text" id="new-user-name"
+                       style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
+                <p id="new-user-name-error" class="hidden-by-search" style="color:#dc2626;font-size:12px;margin-top:4px;"></p>
+            </div>
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email</label>
+                <input type="email" id="new-user-email"
+                       style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
+                <p id="new-user-email-error" class="hidden-by-search" style="color:#dc2626;font-size:12px;margin-top:4px;"></p>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Profiles</div>
+            <div id="new-user-roles-list" style="display:flex;flex-direction:column;gap:8px;">
+                @foreach($roles as $role)
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;">
+                    <input type="checkbox" class="new-user-role-checkbox" value="{{ $role }}">
+                    {{ $role }}
+                </label>
+                @endforeach
+            </div>
+            <p style="font-size:12px;color:#94a3b8;margin-top:14px;">
+                The new user will receive an email with a link to set their own password.
+            </p>
+        </div>
+        <div style="padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn-secondary" onclick="closeNewUserModal()">Cancel</button>
+            <button class="btn-primary" onclick="createUser()">Create User</button>
+        </div>
+    </div>
+</div>
+
 <style>
     .hidden-by-search { display: none; }
     .access-permission-checkbox:checked + .toggle-slider { background: #2563eb; }
@@ -128,6 +171,49 @@ function openAccessModal(btn) {
 function closeAccessModal() {
     document.getElementById('access-modal').style.display = 'none';
     currentUserId = null;
+}
+
+function openNewUserModal() {
+    document.getElementById('new-user-name').value = '';
+    document.getElementById('new-user-email').value = '';
+    document.getElementById('new-user-name-error').textContent = '';
+    document.getElementById('new-user-email-error').textContent = '';
+    document.querySelectorAll('.new-user-role-checkbox').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('new-user-modal').style.display = 'flex';
+}
+
+function closeNewUserModal() {
+    document.getElementById('new-user-modal').style.display = 'none';
+}
+
+function createUser() {
+    var name = document.getElementById('new-user-name').value;
+    var email = document.getElementById('new-user-email').value;
+    var roles = Array.prototype.slice.call(document.querySelectorAll('.new-user-role-checkbox:checked')).map(function(cb) { return cb.value; });
+
+    document.getElementById('new-user-name-error').textContent = '';
+    document.getElementById('new-user-email-error').textContent = '';
+
+    fetch('/settings/users', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, email: email, roles: roles })
+    }).then(function(r) {
+        return r.json().then(function(body) {
+            if (!r.ok) return Promise.reject(body);
+            return body;
+        });
+    }).then(function(body) {
+        closeNewUserModal();
+        showToast(body.message, 'success');
+        setTimeout(function() { window.location.reload(); }, 600);
+    }).catch(function(err) {
+        if (err.errors) {
+            if (err.errors.name) document.getElementById('new-user-name-error').textContent = err.errors.name[0];
+            if (err.errors.email) document.getElementById('new-user-email-error').textContent = err.errors.email[0];
+        }
+        showToast(err.message || 'Failed to create user.', 'error');
+    });
 }
 
 function saveAccess() {
