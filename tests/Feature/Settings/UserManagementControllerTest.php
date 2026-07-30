@@ -5,6 +5,7 @@ namespace Tests\Feature\Settings;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -128,6 +129,59 @@ class UserManagementControllerTest extends TestCase
         $this->assertTrue($newUser->hasRole('Requester'));
 
         Notification::assertSentTo($newUser, ResetPassword::class);
+    }
+
+    public function test_admin_can_create_a_user_with_a_manual_password_and_no_email_is_sent(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $response = $this->actingAs($admin)->postJson(route('settings.users.store'), [
+            'name'                  => 'New Person',
+            'email'                 => 'manual@example.test',
+            'roles'                 => ['Requester'],
+            'mode'                  => 'password',
+            'password'              => 'CorrectHorseBattery9!',
+            'password_confirmation' => 'CorrectHorseBattery9!',
+        ]);
+
+        $response->assertCreated();
+
+        $newUser = User::where('email', 'manual@example.test')->first();
+        $this->assertNotNull($newUser);
+        $this->assertTrue(Hash::check('CorrectHorseBattery9!', $newUser->password));
+        $this->assertNotNull($newUser->email_verified_at);
+        $this->assertTrue($newUser->hasRole('Requester'));
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_creating_a_user_with_manual_mode_and_mismatched_passwords_fails_validation(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+            'name'                  => 'New Person',
+            'email'                 => 'mismatch@example.test',
+            'mode'                  => 'password',
+            'password'              => 'CorrectHorseBattery9!',
+            'password_confirmation' => 'DifferentPassword9!',
+        ])->assertStatus(422)->assertJsonValidationErrors('password');
+    }
+
+    public function test_creating_a_user_with_manual_mode_and_no_password_fails_validation(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+            'name'  => 'New Person',
+            'email' => 'nopassword@example.test',
+            'mode'  => 'password',
+        ])->assertStatus(422)->assertJsonValidationErrors('password');
     }
 
     public function test_creating_a_user_with_a_duplicate_email_fails_validation(): void

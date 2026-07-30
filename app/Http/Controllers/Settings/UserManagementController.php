@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -26,24 +28,34 @@ class UserManagementController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'    => ['required', 'string', 'max:255'],
-            'email'   => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
-            'roles'   => ['array'],
-            'roles.*' => ['string', 'exists:roles,name'],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+            'roles'    => ['array'],
+            'roles.*'  => ['string', 'exists:roles,name'],
+            'mode'     => ['nullable', 'in:email,password'],
+            'password' => [Rule::requiredIf($request->input('mode') === 'password'), 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $mode = $validated['mode'] ?? 'email';
+
         $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => Str::random(40),
+            'name'              => $validated['name'],
+            'email'             => $validated['email'],
+            'password'          => $mode === 'password' ? $validated['password'] : Str::random(40),
+            'email_verified_at' => $mode === 'password' ? now() : null,
         ]);
 
         $user->syncRoles($validated['roles'] ?? []);
 
-        Password::sendResetLink(['email' => $user->email]);
+        $message = $user->name . ' created.';
+
+        if ($mode === 'email') {
+            Password::sendResetLink(['email' => $user->email]);
+            $message = $user->name . ' created. A password-setup email has been sent.';
+        }
 
         return response()->json([
-            'message' => $user->name . ' created. A password-setup email has been sent.',
+            'message' => $message,
             'user' => [
                 'id'          => $user->id,
                 'name'        => $user->name,
