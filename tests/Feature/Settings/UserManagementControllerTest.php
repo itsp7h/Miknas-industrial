@@ -3,7 +3,9 @@
 namespace Tests\Feature\Settings;
 
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class UserManagementControllerTest extends TestCase
@@ -94,5 +96,49 @@ class UserManagementControllerTest extends TestCase
             'roles'       => ['Requester'],
             'permissions' => [],
         ])->assertForbidden();
+    }
+
+    public function test_non_admin_cannot_create_a_user(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson(route('settings.users.store'), [
+            'name'  => 'New Person',
+            'email' => 'new@example.test',
+        ])->assertForbidden();
+    }
+
+    public function test_admin_can_create_a_user_and_a_password_setup_email_is_sent(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $response = $this->actingAs($admin)->postJson(route('settings.users.store'), [
+            'name'  => 'New Person',
+            'email' => 'new@example.test',
+            'roles' => ['Requester'],
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('users', ['email' => 'new@example.test']);
+
+        $newUser = User::where('email', 'new@example.test')->first();
+        $this->assertTrue($newUser->hasRole('Requester'));
+
+        Notification::assertSentTo($newUser, ResetPassword::class);
+    }
+
+    public function test_creating_a_user_with_a_duplicate_email_fails_validation(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        User::factory()->create(['email' => 'taken@example.test']);
+
+        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+            'name'  => 'New Person',
+            'email' => 'taken@example.test',
+        ])->assertStatus(422);
     }
 }

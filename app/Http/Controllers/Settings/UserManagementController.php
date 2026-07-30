@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -19,6 +21,37 @@ class UserManagementController extends Controller
             ->values();
 
         return view('settings.users.index', compact('users', 'roles', 'permissions'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name'    => ['required', 'string', 'max:255'],
+            'email'   => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'roles'   => ['array'],
+            'roles.*' => ['string', 'exists:roles,name'],
+        ]);
+
+        $user = User::create([
+            'name'     => $validated['name'],
+            'email'    => $validated['email'],
+            'password' => Str::random(40),
+        ]);
+
+        $user->syncRoles($validated['roles'] ?? []);
+
+        Password::sendResetLink(['email' => $user->email]);
+
+        return response()->json([
+            'message' => $user->name . ' created. A password-setup email has been sent.',
+            'user' => [
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'roles'       => $user->roles->pluck('name'),
+                'permissions' => $user->permissions->pluck('name'),
+            ],
+        ], 201);
     }
 
     public function update(Request $request, User $user)

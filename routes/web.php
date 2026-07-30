@@ -184,6 +184,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // User management
         Route::get('settings/users', [UserManagementController::class, 'index'])->name('settings.users.index');
+        Route::post('settings/users', [UserManagementController::class, 'store'])->name('settings.users.store');
         Route::patch('settings/users/{user}', [UserManagementController::class, 'update'])->name('settings.users.update');
     });
 
