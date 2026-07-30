@@ -12,12 +12,16 @@ class PurchaseSignatureController extends Controller
 {
     public function show(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('approve', $purchaseRequest);
+
         $purchaseRequest->load('signature.signedBy');
         return view('purchase.signature.show', ['request' => $purchaseRequest]);
     }
 
     public function store(Request $request, PurchaseRequest $purchaseRequest, PurchaseStageService $stages)
     {
+        $this->authorize('approve', $purchaseRequest);
+
         $validated = $request->validate([
             'signature_image' => ['required', 'string'],
         ]);

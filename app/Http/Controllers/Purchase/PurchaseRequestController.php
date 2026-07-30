@@ -22,6 +22,8 @@ class PurchaseRequestController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', PurchaseRequest::class);
+
         $request->validate([
             'date'                          => 'required|date',
             'project_name'                  => 'required|string|max:255',
@@ -90,6 +92,8 @@ class PurchaseRequestController extends Controller
 
     public function update(Request $request, PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('update', $purchaseRequest);
+
         $request->validate([
             'date'                          => 'required|date',
             'project_name'                  => 'required|string|max:255',
@@ -146,6 +150,8 @@ class PurchaseRequestController extends Controller
 
     public function approve(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('approve', $purchaseRequest);
+
         $purchaseRequest->update([
             'status'      => 'approved',
             'approved_by' => auth()->id(),
@@ -157,6 +163,8 @@ class PurchaseRequestController extends Controller
 
     public function reject(PurchaseRequest $purchaseRequest)
     {
+        $this->authorize('approve', $purchaseRequest);
+
         $purchaseRequest->update(['status' => 'rejected']);
 
         return redirect()->back()->with('success', 'Purchase request rejected.');
