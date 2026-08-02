@@ -396,3 +396,12 @@ function api(url, method, data) {
 - For deletes: use `confirmAction(title, body, onConfirm)` (not `confirm()`) before calling the API
 
 **Never** use `<form method="POST">` for inline data entry on settings/management pages. `<form>` submissions that navigate away from the page are banned for these flows.
+
+### 12. All frontend work is React — mobile and desktop are separate files, everything is live
+This project is migrating from Blade/Alpine to a React SPA (`resources/js-app/`), module by module. See `docs/superpowers/specs/2026-07-29-react-spa-migration-design.md` and `docs/superpowers/specs/2026-08-02-mobile-view-and-live-everywhere-design.md` for the full architecture.
+
+- **React only, going forward.** New pages and any page being converted are built in React, not Blade. Blade/Alpine remain only for not-yet-migrated modules.
+- **Mobile and desktop are separate component files, never one file branching on device.** Every page has a `pages/desktop/...` version and a `pages/mobile/...` version. A `useViewport()` hook (breakpoint: 768px) picks which tree renders and swaps it live on resize/rotate — no reload, no route change.
+- **Everything live, no polling.** Any change to the database that matters to a user on screen (new record, status change, notification) reaches them via Laravel Reverb broadcast + Laravel Echo, not a polling `setInterval`. If you add a feature that changes state other users can see, add a `ShouldBroadcast` event for it.
+- **Full cutover per module, no coexistence.** When converting a module to React, delete its Blade controllers/routes/views in the same change — never leave old and new versions of the same page both linked in the sidebar. (Lesson from commit `575eb7a`: a side-by-side React Suppliers page caused two confusing sidebar entries and was reverted.)
+- **Migration order:** Foundation/shell → Purchase → Inventory → Production → Sales. Each module is its own phase with its own spec.
