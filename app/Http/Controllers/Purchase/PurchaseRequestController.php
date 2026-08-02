@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Events\PurchaseRequestCreated;
 use App\Http\Controllers\Controller;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
@@ -40,7 +41,7 @@ class PurchaseRequestController extends Controller
             'items.*.required_date'         => 'nullable|date',
         ]);
 
-        DB::transaction(function () use ($request) {
+        $pr = DB::transaction(function () use ($request) {
             $year = now()->format('y');
             $next = PurchaseRequest::max('id') + 1;
             $mprNumber = 'MPR' . $year . '-' . str_pad($next, 4, '0', STR_PAD_LEFT);
@@ -71,7 +72,14 @@ class PurchaseRequestController extends Controller
                     'required_date'       => $item['required_date'] ?? null,
                 ]);
             }
+
+            return $pr->refresh();
         });
+
+        event(new PurchaseRequestCreated(
+            $pr->id, $pr->request_number, $pr->date, $pr->project_name,
+            $pr->requested_by_name, $pr->department, $pr->stage
+        ));
 
         return redirect()->route('purchase.requests.index')->with('success', 'Purchase request submitted successfully.');
     }

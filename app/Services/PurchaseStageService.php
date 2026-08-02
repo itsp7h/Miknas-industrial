@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\PurchaseRequestStageChanged;
 use App\Models\PurchaseRequest;
 
 class PurchaseStageService
@@ -17,13 +18,14 @@ class PurchaseStageService
         if ($current === false || $current === count(self::STAGES) - 1) {
             return;
         }
-        $request->update(['stage' => self::STAGES[$current + 1]]);
+        $this->setStage($request, self::STAGES[$current + 1]);
     }
 
     public function setStage(PurchaseRequest $request, string $stage): void
     {
         abort_unless(in_array($stage, self::STAGES), 422, 'Invalid stage');
         $request->update(['stage' => $stage]);
+        event(new PurchaseRequestStageChanged($request->id, $request->request_number, $stage));
     }
 
     /**
