@@ -77,8 +77,8 @@ class PurchaseRequestController extends Controller
         });
 
         event(new PurchaseRequestCreated(
-            $pr->id, $pr->request_number, $pr->date, $pr->project_name,
-            $pr->requested_by_name, $pr->department, $pr->stage
+            $pr->id, $pr->request_number, $pr->date?->toDateString(), $pr->project_name,
+            $pr->requested_by_name, $pr->department, $pr->stage, $pr->requested_by
         ));
 
         return redirect()->route('purchase.requests.index')->with('success', 'Purchase request submitted successfully.');

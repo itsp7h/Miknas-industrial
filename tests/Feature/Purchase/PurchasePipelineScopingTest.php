@@ -11,46 +11,18 @@ class PurchasePipelineScopingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_requester_sees_only_their_own_requests(): void
+    // The old Blade index() action has been removed — the Pipeline Board is now the
+    // React page at /app/purchase/pipeline (see resources/js-app/pages/*/purchase/
+    // PipelineBoardPage.jsx), and its permission-scoping is covered by
+    // tests/Feature/Api/Purchase/PurchasePipelineControllerTest.php. This route is now
+    // just a redirect safety net for anyone with the old URL bookmarked.
+    public function test_pipeline_index_redirects_to_the_react_board(): void
     {
-        $requester = User::factory()->create();
-        $requester->assignRole('Requester');
-        $own   = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
-        $other = PurchaseRequest::factory()->create();
+        $user = User::factory()->create();
 
-        $response = $this->actingAs($requester)->get(route('purchase.pipeline.index'));
+        $response = $this->actingAs($user)->get(route('purchase.pipeline.index'));
 
-        $response->assertOk();
-        $response->assertSee($own->request_number);
-        $response->assertDontSee($other->request_number);
-    }
-
-    public function test_procurement_officer_sees_only_rfq_stage_or_later(): void
-    {
-        $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
-        $draft = PurchaseRequest::factory()->create(['stage' => 'draft']);
-        $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
-
-        $response = $this->actingAs($procurement)->get(route('purchase.pipeline.index'));
-
-        $response->assertOk();
-        $response->assertDontSee($draft->request_number);
-        $response->assertSee($atRfq->request_number);
-    }
-
-    public function test_purchase_manager_sees_all_requests(): void
-    {
-        $manager = User::factory()->create();
-        $manager->assignRole('Purchase Manager');
-        $a = PurchaseRequest::factory()->create(['stage' => 'draft']);
-        $b = PurchaseRequest::factory()->create(['stage' => 'lpo']);
-
-        $response = $this->actingAs($manager)->get(route('purchase.pipeline.index'));
-
-        $response->assertOk();
-        $response->assertSee($a->request_number);
-        $response->assertSee($b->request_number);
+        $response->assertRedirect('/app/purchase/pipeline');
     }
 
     public function test_user_without_view_permission_cannot_open_a_single_request(): void

@@ -7,7 +7,10 @@ import MobileSupplierListPage from './pages/mobile/purchase/SupplierListPage';
 import DesktopPipelineBoardPage from './pages/desktop/purchase/PipelineBoardPage';
 import MobilePipelineBoardPage from './pages/mobile/purchase/PipelineBoardPage';
 
-export default function App({ currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken }) {
+export default function App({
+    currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken,
+    canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
+}) {
     const viewport = useViewport();
     const SupplierListPage = viewport === 'mobile' ? MobileSupplierListPage : DesktopSupplierListPage;
     const PipelineBoardPage = viewport === 'mobile' ? MobilePipelineBoardPage : DesktopPipelineBoardPage;
@@ -24,7 +27,14 @@ export default function App({ currentUserId, userName, userEmail, isAdmin, logou
             <Routes>
                 <Route path="/app" element={<DashboardPage currentUserId={currentUserId} />} />
                 <Route path="/app/purchase/suppliers" element={<SupplierListPage />} />
-                <Route path="/app/purchase/pipeline" element={<PipelineBoardPage />} />
+                <Route path="/app/purchase/pipeline" element={(
+                    <PipelineBoardPage
+                        currentUserId={currentUserId}
+                        canViewAllPurchaseRequests={canViewAllPurchaseRequests}
+                        canViewActivePipeline={canViewActivePipeline}
+                        canViewOwnPurchaseRequests={canViewOwnPurchaseRequests}
+                    />
+                )} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>
         </AppShell>

@@ -34,14 +34,6 @@ class PurchasePipelineController extends Controller
         return $query;
     }
 
-    public function index(PurchaseStageService $stages)
-    {
-        $active    = $this->withRelations()->where('stage', '!=', 'complete')->latest()->get();
-        $completed = $this->withRelations()->where('stage', 'complete')->latest()->get();
-
-        return view('purchase.pipeline.index', compact('active', 'completed', 'stages'));
-    }
-
     public function show(PurchaseRequest $purchaseRequest, PurchaseStageService $stages)
     {
         $this->authorize('view', $purchaseRequest);

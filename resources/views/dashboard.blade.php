@@ -51,7 +51,7 @@
         </div>
     </div>
 
-    <a href="{{ route('purchase.pipeline.index') }}"
+    <a href="/app/purchase/pipeline"
        class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex items-start gap-4 hover:border-amber-300 hover:shadow-md transition-all duration-200 group">
         <div class="w-11 h-11 rounded-xl bg-amber-100 group-hover:bg-amber-200 flex items-center justify-center flex-shrink-0 transition-colors">
             <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

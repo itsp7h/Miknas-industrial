@@ -71,8 +71,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Purchase Module
     Route::prefix('purchase')->name('purchase.')->group(function () {
-        // Pipeline
-        Route::get('pipeline', [PurchasePipelineController::class, 'index'])->name('pipeline.index');
+        // Pipeline — the index view was replaced by the React board at
+        // /app/purchase/pipeline; this route is now a safety net for anyone with the
+        // old URL bookmarked. The per-request detail page stays Blade.
+        Route::redirect('pipeline', '/app/purchase/pipeline')->name('pipeline.index');
         Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show'])->name('pipeline.show');
 
         // GM Signature

@@ -19,6 +19,7 @@ class PurchaseRequestCreated implements ShouldBroadcastNow
         public ?string $requestedByName,
         public ?string $department,
         public string $stage,
+        public ?int $requestedById = null,
     ) {}
 
     public function broadcastOn(): array
@@ -41,6 +42,7 @@ class PurchaseRequestCreated implements ShouldBroadcastNow
             'requested_by_name' => $this->requestedByName,
             'department' => $this->department,
             'stage' => $this->stage,
+            'requested_by_id' => $this->requestedById,
         ];
     }
 }

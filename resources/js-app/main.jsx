@@ -11,6 +11,9 @@ const userEmail = container.dataset.userEmail || '';
 const isAdmin = container.dataset.isAdmin === '1';
 const logoutUrl = container.dataset.logoutUrl || '/logout';
 const csrfToken = container.dataset.csrfToken || '';
+const canViewAllPurchaseRequests = container.dataset.canViewAllPurchaseRequests === '1';
+const canViewActivePipeline = container.dataset.canViewActivePipeline === '1';
+const canViewOwnPurchaseRequests = container.dataset.canViewOwnPurchaseRequests === '1';
 
 createRoot(container).render(
     <StrictMode>
@@ -23,6 +26,9 @@ createRoot(container).render(
                     isAdmin={isAdmin}
                     logoutUrl={logoutUrl}
                     csrfToken={csrfToken}
+                    canViewAllPurchaseRequests={canViewAllPurchaseRequests}
+                    canViewActivePipeline={canViewActivePipeline}
+                    canViewOwnPurchaseRequests={canViewOwnPurchaseRequests}
                 />
             </ToastProvider>
         </BrowserRouter>

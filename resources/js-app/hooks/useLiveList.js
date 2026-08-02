@@ -38,6 +38,7 @@ export default function useLiveList({
     }, [endpoint]);
 
     useEffect(() => {
+        if (!event) return undefined;
         const ch = echo.private(channel);
         const handler = (payload) => setItems((prev) => upsert(prev, payload, mergeKey));
         ch.listen(event, handler);

@@ -33,11 +33,29 @@ class PurchaseRequestCreatedBroadcastTest extends TestCase
 
     public function test_event_broadcasts_on_the_shared_purchase_channel(): void
     {
-        $event = new PurchaseRequestCreated(1, 'MPR26-0001', '2026-08-02', 'Test Project', 'Jane', 'Ops', 'draft');
+        $event = new PurchaseRequestCreated(1, 'MPR26-0001', '2026-08-02', 'Test Project', 'Jane', 'Ops', 'draft', 42);
 
         $channels = $event->broadcastOn();
 
         $this->assertSame('private-purchase', $channels[0]->name);
         $this->assertSame('purchase-request.created', $event->broadcastAs());
+    }
+
+    public function test_broadcast_payload_includes_requester_id_and_plain_date(): void
+    {
+        $event = new PurchaseRequestCreated(1, 'MPR26-0001', '2026-08-02', 'Test Project', 'Jane', 'Ops', 'draft', 42);
+
+        $payload = $event->broadcastWith();
+
+        $this->assertSame([
+            'id' => 1,
+            'request_number' => 'MPR26-0001',
+            'date' => '2026-08-02',
+            'project_name' => 'Test Project',
+            'requested_by_name' => 'Jane',
+            'department' => 'Ops',
+            'stage' => 'draft',
+            'requested_by_id' => 42,
+        ], $payload);
     }
 }

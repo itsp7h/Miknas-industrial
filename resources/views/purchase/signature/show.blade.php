@@ -27,7 +27,7 @@
             on {{ $request->signature->signed_at->format('d M Y, H:i') }}
           </div>
         </div>
-        <a href="{{ route('purchase.pipeline.index') }}"
+        <a href="/app/purchase/pipeline"
            style="display:block;text-align:center;margin-top:20px;padding:10px;background:#f1f5f9;color:#475569;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">
           ← Back to Pipeline
         </a>

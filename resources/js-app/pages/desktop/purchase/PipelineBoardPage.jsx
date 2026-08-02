@@ -9,6 +9,10 @@ const STAGE_LABELS = {
     comparison: 'Comparison', lpo: 'LPO', receiving: 'Receiving', payment: 'Payment', complete: 'Complete',
 };
 
+// Mirrors App\Policies\PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES exactly — kept
+// in sync by hand since the frontend can't import PHP constants.
+const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+
 const COLUMNS = [
     { key: 'request_number', label: 'Request #' },
     { key: 'project_name', label: 'Project' },
@@ -34,14 +38,37 @@ const COLUMNS = [
     },
 ];
 
-export default function PipelineBoardPage() {
+export default function PipelineBoardPage({
+    currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
+} = {}) {
     const { items, setItems } = useLiveList({
         endpoint: '/purchase/pipeline',
         channel: 'purchase',
-        event: '.purchase-request.created',
         mergeKey: 'id',
         errorMessage: 'Failed to load the purchase pipeline.',
     });
+
+    // .purchase-request.created goes out unfiltered on the shared `private-purchase`
+    // channel to every authenticated user (the API endpoint filters by permission,
+    // the broadcast doesn't). Mirror the API's own filter here so a view-own user
+    // doesn't see other users' new requests, and a view-active-pipeline user doesn't
+    // see newly-created draft-stage requests.
+    useEffect(() => {
+        const ch = echo.private('purchase');
+        const handleCreated = (payload) => {
+            const allowed = canViewAllPurchaseRequests
+                || (canViewActivePipeline && ACTIVE_PIPELINE_STAGES.includes(payload.stage))
+                || (canViewOwnPurchaseRequests && payload.requested_by_id === currentUserId);
+            if (!allowed) return;
+            setItems((prev) => (
+                prev.some((item) => item.id === payload.id)
+                    ? prev.map((item) => (item.id === payload.id ? payload : item))
+                    : [...prev, payload]
+            ));
+        };
+        ch.listen('.purchase-request.created', handleCreated);
+        return () => ch.stopListening('.purchase-request.created');
+    }, [currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests, setItems]);
 
     // .purchase-request.stage-changed carries only {id, request_number, stage} — a
     // wholesale upsert (as useLiveList's default `event` handler does) would blank

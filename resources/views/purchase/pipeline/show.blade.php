@@ -12,7 +12,7 @@
 
 {{-- Breadcrumb --}}
 <div style="margin-bottom:20px;">
-  <a href="{{ route('purchase.pipeline.index') }}"
+  <a href="/app/purchase/pipeline"
      style="font-size:13px;color:#2563eb;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>

@@ -12,7 +12,7 @@ class PurchaseRequestBoardResource extends JsonResource
         return [
             'id' => $this->id,
             'request_number' => $this->request_number,
-            'date' => $this->date,
+            'date' => $this->date?->toDateString(),
             'project_name' => $this->project_name,
             'department' => $this->department,
             'requested_by_name' => $this->requested_by_name ?? $this->requestedBy?->name,

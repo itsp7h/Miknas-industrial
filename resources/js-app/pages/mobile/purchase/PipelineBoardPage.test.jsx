@@ -65,4 +65,94 @@ describe('PipelineBoardPage (mobile)', () => {
 
         expect(screen.getByText('MPR26-0007').closest('a')).toHaveAttribute('href', '/purchase/pipeline/7');
     });
+
+    it('a view-own user ignores a created event for someone else\'s request', async () => {
+        handlers = {};
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+
+        render(<ToastProvider>
+            <PipelineBoardPage currentUserId={1} canViewOwnPurchaseRequests />
+        </ToastProvider>);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        act(() => {
+            handlers['.purchase-request.created']({
+                id: 9, request_number: 'MPR26-0009', stage: 'draft', requested_by_id: 2,
+            });
+        });
+
+        expect(screen.queryByText('MPR26-0009')).not.toBeInTheDocument();
+    });
+
+    it('a view-own user accepts a created event for their own request', async () => {
+        handlers = {};
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+
+        render(<ToastProvider>
+            <PipelineBoardPage currentUserId={1} canViewOwnPurchaseRequests />
+        </ToastProvider>);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        act(() => {
+            handlers['.purchase-request.created']({
+                id: 9, request_number: 'MPR26-0009', stage: 'draft', requested_by_id: 1,
+            });
+        });
+
+        expect(screen.getByText('MPR26-0009')).toBeInTheDocument();
+    });
+
+    it('a view-active-pipeline user ignores a created event for a draft-stage request', async () => {
+        handlers = {};
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+
+        render(<ToastProvider>
+            <PipelineBoardPage currentUserId={1} canViewActivePipeline />
+        </ToastProvider>);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        act(() => {
+            handlers['.purchase-request.created']({
+                id: 10, request_number: 'MPR26-0010', stage: 'draft', requested_by_id: 2,
+            });
+        });
+
+        expect(screen.queryByText('MPR26-0010')).not.toBeInTheDocument();
+    });
+
+    it('a view-active-pipeline user accepts a created event for an active-pipeline-stage request', async () => {
+        handlers = {};
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+
+        render(<ToastProvider>
+            <PipelineBoardPage currentUserId={1} canViewActivePipeline />
+        </ToastProvider>);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        act(() => {
+            handlers['.purchase-request.created']({
+                id: 11, request_number: 'MPR26-0011', stage: 'rfq', requested_by_id: 2,
+            });
+        });
+
+        expect(screen.getByText('MPR26-0011')).toBeInTheDocument();
+    });
+
+    it('a view-all user accepts any created event', async () => {
+        handlers = {};
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+
+        render(<ToastProvider>
+            <PipelineBoardPage currentUserId={1} canViewAllPurchaseRequests />
+        </ToastProvider>);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        act(() => {
+            handlers['.purchase-request.created']({
+                id: 12, request_number: 'MPR26-0012', stage: 'draft', requested_by_id: 2,
+            });
+        });
+
+        expect(screen.getByText('MPR26-0012')).toBeInTheDocument();
+    });
 });

@@ -71,4 +71,18 @@ class PurchasePipelineControllerTest extends TestCase
         $response->assertOk();
         $this->assertCount(0, $response->json('data'));
     }
+
+    public function test_index_serializes_date_as_a_plain_y_m_d_string(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('purchase-requests.view-all');
+        $this->actingAs($user);
+        PurchaseRequest::factory()->create(['date' => '2026-08-02']);
+
+        $response = $this->getJson('/api/v1/purchase/pipeline');
+
+        $response->assertOk();
+        $this->assertSame('2026-08-02', $response->json('data.0.date'));
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $response->json('data.0.date'));
+    }
 }

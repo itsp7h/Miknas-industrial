@@ -18,6 +18,9 @@
         data-user-name="{{ auth()->user()->name ?? 'User' }}"
         data-user-email="{{ auth()->user()->email ?? '' }}"
         data-is-admin="{{ auth()->user() && auth()->user()->hasRole('Admin') ? '1' : '0' }}"
+        data-can-view-all-purchase-requests="{{ auth()->user() && auth()->user()->can('purchase-requests.view-all') ? '1' : '0' }}"
+        data-can-view-active-pipeline="{{ auth()->user() && auth()->user()->can('purchase-requests.view-active-pipeline') ? '1' : '0' }}"
+        data-can-view-own-purchase-requests="{{ auth()->user() && auth()->user()->can('purchase-requests.view-own') ? '1' : '0' }}"
         data-logout-url="{{ route('logout') }}"
         data-csrf-token="{{ csrf_token() }}"
     ></div>
