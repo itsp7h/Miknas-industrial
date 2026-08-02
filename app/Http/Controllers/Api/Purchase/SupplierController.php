@@ -35,7 +35,7 @@ class SupplierController extends Controller
             'address' => 'nullable|string',
             'website' => 'nullable|string|max:255',
             'tax_number' => 'nullable|string|max:255',
-            'credit_terms' => 'nullable|string|max:255',
+            'credit_terms' => 'nullable|string|max:10',
             'credit_days' => 'nullable|integer|min:0',
             'remarks' => 'nullable|string',
         ]);
@@ -65,7 +65,7 @@ class SupplierController extends Controller
             'address' => 'nullable|string',
             'website' => 'nullable|string|max:255',
             'tax_number' => 'nullable|string|max:255',
-            'credit_terms' => 'nullable|string|max:255',
+            'credit_terms' => 'nullable|string|max:10',
             'credit_days' => 'nullable|integer|min:0',
             'remarks' => 'nullable|string',
             'is_active' => 'boolean',
@@ -80,6 +80,12 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier)
     {
+        if ($supplier->hasRelatedRecords()) {
+            return response()->json([
+                'message' => 'Cannot delete a supplier that has purchase orders, invoices, or payments.',
+            ], 422);
+        }
+
         $id = $supplier->id;
         $supplier->delete();
 

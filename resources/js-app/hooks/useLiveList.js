@@ -26,10 +26,14 @@ export default function useLiveList({
     const [items, setItems] = useState([]);
     const { showToast } = useToast();
 
-    useEffect(() => {
-        apiGet(endpoint)
+    function refetch() {
+        return apiGet(endpoint)
             .then((res) => setItems(res.data))
             .catch(() => showToast(errorMessage, 'error'));
+    }
+
+    useEffect(() => {
+        refetch();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [endpoint]);
 
@@ -58,5 +62,5 @@ export default function useLiveList({
         setItems((prev) => prev.filter((item) => item[mergeKey] !== id));
     }
 
-    return { items, setItems, upsertItem, removeItem };
+    return { items, setItems, upsertItem, removeItem, refetch };
 }

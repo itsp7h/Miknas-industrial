@@ -126,6 +126,19 @@ class SupplierControllerTest extends TestCase
         Event::assertDispatched(SupplierDeleted::class, fn ($e) => $e->supplierId === $supplier->id);
     }
 
+    public function test_destroy_blocks_deletion_of_a_supplier_with_related_purchase_history(): void
+    {
+        $this->actingUser();
+        $supplier = Supplier::factory()->create();
+        \App\Models\RfqInvitation::factory()->create(['supplier_id' => $supplier->id]);
+
+        $response = $this->deleteJson("/api/v1/purchase/suppliers/{$supplier->id}");
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('message', 'Cannot delete a supplier that has purchase orders, invoices, or payments.');
+        $this->assertDatabaseHas('suppliers', ['id' => $supplier->id]);
+    }
+
     public function test_import_rejects_a_non_excel_file(): void
     {
         $this->actingUser();
@@ -135,6 +148,28 @@ class SupplierControllerTest extends TestCase
         ]);
 
         $response->assertStatus(422);
+    }
+
+    public function test_import_processes_a_valid_template_file(): void
+    {
+        $this->actingUser();
+
+        $path = storage_path('app/test_suppliers_template.xlsx');
+        \Illuminate\Support\Facades\Artisan::call('suppliers:template', ['--output' => $path]);
+        $this->assertFileExists($path);
+
+        $file = new UploadedFile($path, 'suppliers.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+
+        $response = $this->postJson('/api/v1/purchase/suppliers/import', [
+            'file' => $file,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonStructure(['imported', 'updated', 'skipped']);
+        // The generated template ships with three example supplier rows.
+        $response->assertJsonPath('imported', 3);
+
+        @unlink($path);
     }
 
     public function test_download_template_returns_a_file(): void

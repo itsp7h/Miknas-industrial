@@ -60,4 +60,21 @@ describe('SupplierListPage (mobile)', () => {
         await waitFor(() => expect(apiPostSpy).toHaveBeenCalled());
         await waitFor(() => expect(screen.getByText(/2 added, 1 updated/i)).toBeInTheDocument());
     });
+
+    it('refetches the supplier list after a successful import', async () => {
+        const apiGetSpy = vi.spyOn(client, 'apiGet')
+            .mockResolvedValueOnce({ data: [] })
+            .mockResolvedValueOnce({ data: [{ id: 9, name: 'Imported Supplier', category: null, is_active: true }] });
+        vi.spyOn(client, 'apiPostForm').mockResolvedValue({ imported: 1, updated: 0, skipped: 0 });
+        apiGetSpy.mockClear();
+
+        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        await waitFor(() => expect(apiGetSpy).toHaveBeenCalledTimes(1));
+
+        const file = new File(['dummy'], 'suppliers.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        fireEvent.change(screen.getByLabelText('Import'), { target: { files: [file] } });
+
+        await waitFor(() => expect(apiGetSpy).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(screen.getByText('Imported Supplier')).toBeInTheDocument());
+    });
 });

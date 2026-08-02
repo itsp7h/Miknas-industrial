@@ -94,4 +94,32 @@ describe('useLiveList', () => {
         unmount();
         expect(stopListeningSpy).toHaveBeenCalledWith('.supplier.saved');
     });
+
+    it('removes an item from the list when a delete broadcast fires for it', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{ id: 1, name: 'Acme' }, { id: 2, name: 'Beta' }],
+        });
+
+        const { result, unmount } = renderHook(
+            () => useLiveList({
+                endpoint: '/purchase/suppliers',
+                channel: 'purchase',
+                event: '.supplier.saved',
+                deleteEvent: '.supplier.deleted',
+            }),
+            { wrapper }
+        );
+
+        await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+        // The delete-event effect registers after the save-event effect, so the
+        // shared capture vars now hold the delete listener/stopListening spy.
+        act(() => {
+            capturedHandler({ id: 1 });
+        });
+        expect(result.current.items).toEqual([{ id: 2, name: 'Beta' }]);
+
+        unmount();
+        expect(stopListeningSpy).toHaveBeenCalledWith('.supplier.deleted');
+    });
 });

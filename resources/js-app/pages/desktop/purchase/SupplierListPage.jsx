@@ -15,7 +15,7 @@ const COLUMNS = [
 ];
 
 export default function SupplierListPage() {
-    const { items: suppliers, upsertItem, removeItem } = useLiveList({
+    const { items: suppliers, upsertItem, removeItem, refetch } = useLiveList({
         endpoint: '/purchase/suppliers',
         channel: 'purchase',
         event: '.supplier.saved',
@@ -68,6 +68,7 @@ export default function SupplierListPage() {
                 `${result.imported} added, ${result.updated} updated, ${result.skipped} skipped.`,
                 'success'
             );
+            await refetch();
         } catch (err) {
             showToast(err.message || 'Failed to import suppliers.', 'error');
         } finally {

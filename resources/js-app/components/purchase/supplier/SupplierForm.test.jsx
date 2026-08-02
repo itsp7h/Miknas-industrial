@@ -76,9 +76,9 @@ describe('SupplierForm', () => {
         fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Acme Steel' } });
         fireEvent.change(screen.getByLabelText('Secondary Email'), { target: { value: 'sales@acme.test' } });
         fireEvent.change(screen.getByLabelText('Phone 2'), { target: { value: '555-0200' } });
-        fireEvent.change(screen.getByLabelText('WhatsApp'), { target: { value: '555-0300' } });
+        fireEvent.change(screen.getByLabelText('WhatsApp (secondary)'), { target: { value: '555-0300' } });
         fireEvent.change(screen.getByLabelText('Website'), { target: { value: 'https://acme.test' } });
-        fireEvent.change(screen.getByLabelText('Credit Terms'), { target: { value: 'Net 30' } });
+        fireEvent.change(screen.getByLabelText('Credit (Y/N)'), { target: { value: 'Net 30' } });
         fireEvent.change(screen.getByLabelText('Remarks'), { target: { value: 'Preferred vendor' } });
         fireEvent.click(screen.getByText('Save'));
 

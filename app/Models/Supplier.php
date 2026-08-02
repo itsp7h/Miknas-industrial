@@ -40,4 +40,29 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierPayment::class);
     }
+
+    public function goodsReceiptNotes()
+    {
+        return $this->hasMany(GoodsReceiptNote::class);
+    }
+
+    public function rfqInvitations()
+    {
+        return $this->hasMany(RfqInvitation::class);
+    }
+
+    public function supplierQuotes()
+    {
+        return $this->hasMany(SupplierQuote::class);
+    }
+
+    public function hasRelatedRecords(): bool
+    {
+        return $this->purchaseOrders()->exists()
+            || $this->invoices()->exists()
+            || $this->payments()->exists()
+            || $this->goodsReceiptNotes()->exists()
+            || $this->rfqInvitations()->exists()
+            || $this->supplierQuotes()->exists();
+    }
 }

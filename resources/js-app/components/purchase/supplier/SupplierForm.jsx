@@ -76,11 +76,11 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
             <FormField label="Phone" name="phone" value={values.phone} onChange={handleChange} />
             <FormField label="Phone 2" name="phone2" value={values.phone2} onChange={handleChange} />
             <FormField label="WhatsApp Number" name="whatsapp_number" value={values.whatsapp_number} onChange={handleChange} />
-            <FormField label="WhatsApp" name="whatsapp" value={values.whatsapp} onChange={handleChange} />
+            <FormField label="WhatsApp (secondary)" name="whatsapp" value={values.whatsapp} onChange={handleChange} />
             <FormField label="Website" name="website" value={values.website} onChange={handleChange} />
             <FormField label="Address" name="address" value={values.address} onChange={handleChange} type="textarea" />
             <FormField label="Tax Number" name="tax_number" value={values.tax_number} onChange={handleChange} />
-            <FormField label="Credit Terms" name="credit_terms" value={values.credit_terms} onChange={handleChange} />
+            <FormField label="Credit (Y/N)" name="credit_terms" value={values.credit_terms} onChange={handleChange} />
             <FormField label="Credit Days" name="credit_days" value={values.credit_days} onChange={handleChange} type="number" />
             <FormField label="Remarks" name="remarks" value={values.remarks} onChange={handleChange} type="textarea" />
             <div className="mb-4">
