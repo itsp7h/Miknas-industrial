@@ -51,6 +51,9 @@ class SupplierBroadcastTest extends TestCase
 
         $payload = (new SupplierSaved($supplier))->broadcastWith();
 
+        // secondary_email, phone2, whatsapp, website, credit_terms and remarks
+        // were added to SupplierResource alongside the delete/import/template/
+        // PDF-export endpoints, so the broadcast payload now includes them too.
         $this->assertSame([
             'id' => $supplier->id,
             'supplier_code' => 'SUP-1',
@@ -58,12 +61,18 @@ class SupplierBroadcastTest extends TestCase
             'category' => 'Raw Material',
             'contact_person' => 'Jane Doe',
             'email' => 'jane@example.com',
+            'secondary_email' => null,
             'phone' => '555-0100',
+            'phone2' => null,
             'whatsapp_number' => '555-0101',
+            'whatsapp' => null,
             'address' => '123 Main St',
+            'website' => null,
             'tax_number' => 'TRN-999',
+            'credit_terms' => null,
             'credit_days' => 45,
             'is_active' => true,
+            'remarks' => null,
         ], $payload);
     }
 }

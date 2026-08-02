@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Api\Purchase;
 
+use App\Events\SupplierDeleted;
 use App\Events\SupplierSaved;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
+use App\Services\SupplierImportService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 
 class SupplierController extends Controller
 {
@@ -23,11 +27,17 @@ class SupplierController extends Controller
             'category' => 'nullable|string|max:100',
             'contact_person' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
+            'secondary_email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
+            'phone2' => 'nullable|string|max:20',
             'whatsapp_number' => 'nullable|string|max:20',
+            'whatsapp' => 'nullable|string|max:20',
             'address' => 'nullable|string',
+            'website' => 'nullable|string|max:255',
             'tax_number' => 'nullable|string|max:255',
+            'credit_terms' => 'nullable|string|max:255',
             'credit_days' => 'nullable|integer|min:0',
+            'remarks' => 'nullable|string',
         ]);
 
         $supplier = Supplier::create(array_merge($data, [
@@ -47,11 +57,17 @@ class SupplierController extends Controller
             'category' => 'nullable|string|max:100',
             'contact_person' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
+            'secondary_email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
+            'phone2' => 'nullable|string|max:20',
             'whatsapp_number' => 'nullable|string|max:20',
+            'whatsapp' => 'nullable|string|max:20',
             'address' => 'nullable|string',
+            'website' => 'nullable|string|max:255',
             'tax_number' => 'nullable|string|max:255',
+            'credit_terms' => 'nullable|string|max:255',
             'credit_days' => 'nullable|integer|min:0',
+            'remarks' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
@@ -60,5 +76,53 @@ class SupplierController extends Controller
         event(new SupplierSaved($supplier));
 
         return new SupplierResource($supplier);
+    }
+
+    public function destroy(Supplier $supplier)
+    {
+        $id = $supplier->id;
+        $supplier->delete();
+
+        event(new SupplierDeleted($id));
+
+        return response()->noContent();
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls|max:10240',
+        ]);
+
+        try {
+            $result = app(SupplierImportService::class)->import(
+                $request->file('file')->getPathname()
+            );
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Import failed: '.$e->getMessage()], 422);
+        }
+    }
+
+    public function downloadTemplate()
+    {
+        $path = storage_path('app/suppliers_template.xlsx');
+
+        if (! file_exists($path)) {
+            Artisan::call('suppliers:template');
+        }
+
+        return response()->download($path, 'suppliers_import_template.xlsx');
+    }
+
+    public function exportPdf()
+    {
+        $suppliers = Supplier::orderBy('name')->get();
+
+        $pdf = Pdf::loadView('purchase.suppliers.pdf', compact('suppliers'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('suppliers_'.now()->format('Y-m-d').'.pdf');
     }
 }

@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Api\Purchase;
 
+use App\Events\SupplierDeleted;
 use App\Events\SupplierSaved;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -109,5 +111,50 @@ class SupplierControllerTest extends TestCase
         $response->assertJsonPath('data.tax_number', 'NEW-2');
         $response->assertJsonPath('data.is_active', false);
         $this->assertDatabaseHas('suppliers', ['id' => $supplier->id, 'tax_number' => 'NEW-2', 'is_active' => false]);
+    }
+
+    public function test_destroy_deletes_a_supplier_and_broadcasts(): void
+    {
+        Event::fake([SupplierDeleted::class]);
+        $this->actingUser();
+        $supplier = Supplier::factory()->create();
+
+        $response = $this->deleteJson("/api/v1/purchase/suppliers/{$supplier->id}");
+
+        $response->assertNoContent();
+        $this->assertDatabaseMissing('suppliers', ['id' => $supplier->id]);
+        Event::assertDispatched(SupplierDeleted::class, fn ($e) => $e->supplierId === $supplier->id);
+    }
+
+    public function test_import_rejects_a_non_excel_file(): void
+    {
+        $this->actingUser();
+
+        $response = $this->postJson('/api/v1/purchase/suppliers/import', [
+            'file' => UploadedFile::fake()->create('not-excel.txt', 10),
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_download_template_returns_a_file(): void
+    {
+        $this->actingUser();
+
+        $response = $this->get('/api/v1/purchase/suppliers/template');
+
+        $response->assertOk();
+        $response->assertHeader('content-disposition');
+    }
+
+    public function test_export_pdf_returns_a_pdf(): void
+    {
+        $this->actingUser();
+        Supplier::factory()->count(2)->create();
+
+        $response = $this->get('/api/v1/purchase/suppliers/export-pdf');
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', $response->headers->get('content-type'));
     }
 }
