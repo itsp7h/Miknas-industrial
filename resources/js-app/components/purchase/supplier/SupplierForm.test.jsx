@@ -58,6 +58,44 @@ describe('SupplierForm', () => {
         );
     });
 
+    it('renders the secondary contact/business fields and submits them', async () => {
+        const created = {
+            id: 5,
+            name: 'Acme Steel',
+            secondary_email: 'sales@acme.test',
+            phone2: '555-0200',
+            whatsapp: '555-0300',
+            website: 'https://acme.test',
+            credit_terms: 'Net 30',
+            remarks: 'Preferred vendor',
+        };
+        vi.spyOn(client, 'apiPost').mockResolvedValue({ data: created });
+        const onSaved = vi.fn();
+
+        render(<SupplierForm supplier={null} onSaved={onSaved} onCancel={() => {}} />);
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Acme Steel' } });
+        fireEvent.change(screen.getByLabelText('Secondary Email'), { target: { value: 'sales@acme.test' } });
+        fireEvent.change(screen.getByLabelText('Phone 2'), { target: { value: '555-0200' } });
+        fireEvent.change(screen.getByLabelText('WhatsApp'), { target: { value: '555-0300' } });
+        fireEvent.change(screen.getByLabelText('Website'), { target: { value: 'https://acme.test' } });
+        fireEvent.change(screen.getByLabelText('Credit Terms'), { target: { value: 'Net 30' } });
+        fireEvent.change(screen.getByLabelText('Remarks'), { target: { value: 'Preferred vendor' } });
+        fireEvent.click(screen.getByText('Save'));
+
+        await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+        expect(client.apiPost).toHaveBeenCalledWith(
+            '/purchase/suppliers',
+            expect.objectContaining({
+                secondary_email: 'sales@acme.test',
+                phone2: '555-0200',
+                whatsapp: '555-0300',
+                website: 'https://acme.test',
+                credit_terms: 'Net 30',
+                remarks: 'Preferred vendor',
+            })
+        );
+    });
+
     it('populates every field (not blank) when opening a row that arrived via a full-payload broadcast', () => {
         // Simulates a supplier delivered by the .supplier.saved live event now that
         // SupplierSaved::broadcastWith() returns the full SupplierResource field set —

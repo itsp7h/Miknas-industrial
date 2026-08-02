@@ -8,11 +8,17 @@ const BLANK = {
     category: '',
     contact_person: '',
     email: '',
+    secondary_email: '',
     phone: '',
+    phone2: '',
     whatsapp_number: '',
+    whatsapp: '',
+    website: '',
     address: '',
     tax_number: '',
     credit_days: '',
+    credit_terms: '',
+    remarks: '',
     is_active: true,
 };
 
@@ -66,11 +72,17 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
             <FormField label="Category" name="category" value={values.category} onChange={handleChange} />
             <FormField label="Contact Person" name="contact_person" value={values.contact_person} onChange={handleChange} />
             <FormField label="Email" name="email" value={values.email} onChange={handleChange} type="email" />
+            <FormField label="Secondary Email" name="secondary_email" value={values.secondary_email} onChange={handleChange} type="email" />
             <FormField label="Phone" name="phone" value={values.phone} onChange={handleChange} />
+            <FormField label="Phone 2" name="phone2" value={values.phone2} onChange={handleChange} />
             <FormField label="WhatsApp Number" name="whatsapp_number" value={values.whatsapp_number} onChange={handleChange} />
+            <FormField label="WhatsApp" name="whatsapp" value={values.whatsapp} onChange={handleChange} />
+            <FormField label="Website" name="website" value={values.website} onChange={handleChange} />
             <FormField label="Address" name="address" value={values.address} onChange={handleChange} type="textarea" />
             <FormField label="Tax Number" name="tax_number" value={values.tax_number} onChange={handleChange} />
+            <FormField label="Credit Terms" name="credit_terms" value={values.credit_terms} onChange={handleChange} />
             <FormField label="Credit Days" name="credit_days" value={values.credit_days} onChange={handleChange} type="number" />
+            <FormField label="Remarks" name="remarks" value={values.remarks} onChange={handleChange} type="textarea" />
             <div className="mb-4">
                 <label htmlFor="is_active" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
                     <input

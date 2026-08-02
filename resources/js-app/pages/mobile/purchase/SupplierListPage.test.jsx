@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ToastProvider } from '../../../components/ui/Toast';
 import SupplierListPage from './SupplierListPage';
 import * as client from '../../../api/client';
@@ -24,5 +24,40 @@ describe('SupplierListPage (mobile)', () => {
         render(<ToastProvider><SupplierListPage /></ToastProvider>);
 
         await waitFor(() => expect(screen.getByText('Failed to load suppliers.')).toBeInTheDocument());
+    });
+
+    it('deletes a supplier after confirming', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [{ id: 1, name: 'Acme Steel', category: null, is_active: true }] });
+        vi.spyOn(client, 'apiDelete').mockResolvedValue({});
+
+        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        await waitFor(() => expect(screen.getByText('Acme Steel')).toBeInTheDocument());
+
+        fireEvent.click(screen.getByText('Delete'));
+        fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+
+        await waitFor(() => expect(client.apiDelete).toHaveBeenCalledWith('/purchase/suppliers/1'));
+        await waitFor(() => expect(screen.queryByText('Acme Steel')).not.toBeInTheDocument());
+    });
+
+    it('renders template and PDF export as plain download links', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+
+        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+
+        expect(screen.getByText('Download Template').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/template');
+        expect(screen.getByText('Export PDF').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/export-pdf');
+    });
+
+    it('imports a file and shows a summary toast', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        const apiPostSpy = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ imported: 2, updated: 1, skipped: 0 });
+
+        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        const file = new File(['dummy'], 'suppliers.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        fireEvent.change(screen.getByLabelText('Import'), { target: { files: [file] } });
+
+        await waitFor(() => expect(apiPostSpy).toHaveBeenCalled());
+        await waitFor(() => expect(screen.getByText(/2 added, 1 updated/i)).toBeInTheDocument());
     });
 });

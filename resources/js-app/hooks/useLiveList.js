@@ -15,7 +15,14 @@ function upsert(prev, payload, mergeKey) {
  * by every Purchase entity list page (initial fetch with error toast, Echo
  * private-channel subscription, and merging full-payload broadcasts into state).
  */
-export default function useLiveList({ endpoint, channel, event, mergeKey = 'id', errorMessage = 'Failed to load data.' }) {
+export default function useLiveList({
+    endpoint,
+    channel,
+    event,
+    deleteEvent,
+    mergeKey = 'id',
+    errorMessage = 'Failed to load data.',
+}) {
     const [items, setItems] = useState([]);
     const { showToast } = useToast();
 
@@ -34,9 +41,22 @@ export default function useLiveList({ endpoint, channel, event, mergeKey = 'id',
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [channel, event, mergeKey]);
 
+    useEffect(() => {
+        if (!deleteEvent) return undefined;
+        const ch = echo.private(channel);
+        const handler = (payload) => removeItem(payload[mergeKey]);
+        ch.listen(deleteEvent, handler);
+        return () => ch.stopListening(deleteEvent);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [channel, deleteEvent, mergeKey]);
+
     function upsertItem(payload) {
         setItems((prev) => upsert(prev, payload, mergeKey));
     }
 
-    return { items, setItems, upsertItem };
+    function removeItem(id) {
+        setItems((prev) => prev.filter((item) => item[mergeKey] !== id));
+    }
+
+    return { items, setItems, upsertItem, removeItem };
 }
