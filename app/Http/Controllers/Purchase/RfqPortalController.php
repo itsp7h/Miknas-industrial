@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
 use App\Models\RfqInvitation;
 use App\Models\Setting;
@@ -156,7 +157,23 @@ class RfqPortalController extends Controller
 
         // Notify all admin users
         $invitation->load('supplier', 'purchaseRequest');
-        User::role('Admin')->each(fn($u) => $u->notify(new QuoteReceived($invitation)));
+        User::role('Admin')->each(function ($u) use ($invitation) {
+            $u->notify(new QuoteReceived($invitation));
+
+            // Broadcast the just-created database notification live over
+            // Reverb so the bell updates instantly instead of via polling.
+            $notification = $u->notifications()->latest()->first();
+            if ($notification) {
+                event(new NotificationPushed(
+                    $u->id,
+                    'New Quote Received',
+                    $notification->data['message'] ?? '',
+                    $notification->data['url'] ?? null,
+                    $notification->id,
+                    optional($notification->created_at)->toIso8601String(),
+                ));
+            }
+        });
 
         return view('rfq.submitted', compact('invitation'));
     }
