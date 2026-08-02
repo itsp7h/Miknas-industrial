@@ -267,7 +267,7 @@
     <div id="sidebar-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;"></div>
 
     {{-- ════════════════ MAIN AREA ════════════════ --}}
-    <div style="flex:1; margin-left:260px; display:flex; flex-direction:column; min-height:100vh;">
+    <div id="main-area" style="flex:1; margin-left:260px; display:flex; flex-direction:column; min-height:100vh;">
 
         {{-- Top bar --}}
         <header style="
@@ -287,8 +287,10 @@
             </div>
 
             <div style="display:flex;align-items:center;gap:16px;">
-                <span style="font-size:12px;color:#94a3b8;">{{ now()->format('l, d M Y') }}</span>
-                <div style="width:1px;height:20px;background:#e2e8f0;"></div>
+                <div id="topbar-date-group" style="display:flex;align-items:center;gap:16px;">
+                    <span style="font-size:12px;color:#94a3b8;white-space:nowrap;">{{ now()->format('l, d M Y') }}</span>
+                    <div style="width:1px;height:20px;background:#e2e8f0;"></div>
+                </div>
 
                 {{-- Bell notification --}}
                 <div style="position:relative;" id="bell-wrap">
@@ -320,29 +322,81 @@
                   </div>
                 </div>
 
-                <div style="width:1px;height:20px;background:#e2e8f0;"></div>
+                <div id="topbar-user-divider" style="width:1px;height:20px;background:#e2e8f0;"></div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:32px;height:32px;border-radius:50%;background:#2563eb;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">
+                    <div style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:#2563eb;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">
                         {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
                     </div>
-                    <span style="font-size:13px;color:#475569;font-weight:500;">{{ Auth::user()->name ?? 'User' }}</span>
+                    <span id="topbar-username" style="font-size:13px;color:#475569;font-weight:500;white-space:nowrap;">{{ Auth::user()->name ?? 'User' }}</span>
                 </div>
             </div>
         </header>
 
         {{-- Content --}}
-        <main style="flex:1; padding:28px; background:#f1f5f9;">
+        <main id="main-content" style="flex:1; padding:28px; background:#f1f5f9;">
 
             @yield('content')
         </main>
     </div>
 </div>
 
+{{-- ── Mobile bottom tab bar — mirrors the sidebar's top-level module links.
+     Hidden on desktop (>=1024px) via the media query below; #main-content
+     gets extra bottom padding there so this doesn't cover the last row of
+     content. ── --}}
+<nav id="bottom-tab-bar" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:45;
+    background:#fff; border-top:1px solid #e2e8f0; box-shadow:0 -2px 8px rgba(0,0,0,.05);
+    padding-bottom:env(safe-area-inset-bottom);
+">
+    <div style="display:flex;">
+        @foreach([
+            ['route' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard',
+             'icon' => 'M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM14 5a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 11a1 1 0 011-1h4a1 1 0 011 1v8a1 1 0 01-1 1h-4a1 1 0 01-1-1v-8z'],
+            ['route' => '/app/purchase/pipeline', 'active' => request()->is('purchase*') || request()->is('app/purchase*'), 'label' => 'Purchase',
+             'icon' => 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'],
+            ['route' => route('inventory.items.index'), 'active' => request()->is('inventory*'), 'label' => 'Inventory',
+             'icon' => 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4'],
+            ['route' => route('production.orders.index'), 'active' => request()->is('production*'), 'label' => 'Production',
+             'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z'],
+            ['route' => route('sales.customers.index'), 'active' => request()->is('sales*'), 'label' => 'Sales',
+             'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'],
+        ] as $tab)
+        <a href="{{ $tab['route'] }}" style="
+            flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+            padding:8px 4px 6px; text-decoration:none;
+            color: {{ $tab['active'] ? '#2563eb' : '#94a3b8' }};
+        ">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $tab['icon'] }}"/>
+            </svg>
+            <span style="font-size:10px; font-weight:{{ $tab['active'] ? '700' : '500' }};">{{ $tab['label'] }}</span>
+        </a>
+        @endforeach
+    </div>
+</nav>
+
 {{-- ── Toast notification container ── --}}
 <div id="toast-stack" style="position:fixed;bottom:24px;right:24px;z-index:9999;
      display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
 
 <style>
+/* The sidebar slides off-screen via JS below <1024px, but the content area's
+   margin-left:260px (set inline, above) never followed it — leaving a 260px
+   dead zone that shifted everything right on phones. This is CSS (not JS)
+   so it applies on first paint, before toggleSidebar()'s script even runs. */
+@media (max-width: 1023px) {
+    #main-area { margin-left: 0 !important; }
+    /* The top bar's fixed 28px padding + a full date string + username all in one
+       row only fit a desktop-width window — on a phone they overflowed the
+       viewport (the "shifted/cut off" look). Trim to what actually fits. */
+    #main-area > header { padding: 0 14px !important; gap: 8px !important; }
+    #main-area > header > div:first-of-type { min-width: 0; }
+    #main-area > header > div:first-of-type span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #topbar-date-group, #topbar-user-divider, #topbar-username { display: none !important; }
+    #bottom-tab-bar { display: block !important; }
+    #main-content { padding-bottom: 84px !important; }
+}
 @keyframes toastIn {
     from { opacity:0; transform:translateX(40px) scale(.95); }
     to   { opacity:1; transform:translateX(0)    scale(1); }
