@@ -6,7 +6,7 @@ const NAV_ITEMS = [
     { to: '/app/purchase/suppliers', label: 'Suppliers' },
 ];
 
-export default function DesktopShell({ children }) {
+export default function DesktopShell({ children, currentUserId }) {
     const location = useLocation();
 
     return (
@@ -43,7 +43,7 @@ export default function DesktopShell({ children }) {
                     height: 60, borderBottom: '1px solid #e2e8f0',
                     display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 24px',
                 }}>
-                    <NotificationBell />
+                    <NotificationBell currentUserId={currentUserId} />
                 </header>
                 <main style={{ flex: 1, padding: 24 }}>{children}</main>
             </div>

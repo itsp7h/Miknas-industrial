@@ -4,7 +4,7 @@ import DashboardPage from './pages/DashboardPage';
 
 export default function App({ currentUserId }) {
     return (
-        <AppShell>
+        <AppShell currentUserId={currentUserId}>
             <Routes>
                 <Route path="/app" element={<DashboardPage currentUserId={currentUserId} />} />
                 <Route path="*" element={<div>Page not found.</div>} />

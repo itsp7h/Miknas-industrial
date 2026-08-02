@@ -7,7 +7,7 @@ const NAV_ITEMS = [
     { to: '/app/purchase/suppliers', label: 'Suppliers' },
 ];
 
-export default function MobileShell({ children }) {
+export default function MobileShell({ children, currentUserId }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const location = useLocation();
 
@@ -21,7 +21,7 @@ export default function MobileShell({ children }) {
                     ☰
                 </button>
                 <span style={{ fontWeight: 700 }}>SteelERP</span>
-                <NotificationBell />
+                <NotificationBell currentUserId={currentUserId} />
             </header>
 
             {menuOpen && (
