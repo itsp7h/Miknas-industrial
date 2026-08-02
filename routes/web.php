@@ -5,7 +5,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchaseRequestController;
-use App\Http\Controllers\Purchase\SupplierController;
 use App\Http\Controllers\Purchase\SupplierInvoiceController;
 use App\Http\Controllers\Purchase\SupplierPaymentController;
 use App\Http\Controllers\Purchase\PurchasePipelineController;
@@ -92,10 +91,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award',   [SupplierQuoteController::class, 'awardItem'])->name('requests.quotes.items.award');
         Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unawardItem'])->name('requests.quotes.items.unaward');
 
-        Route::post('suppliers/import',    [SupplierController::class, 'import'])->name('suppliers.import');
-        Route::get('suppliers/template',   [SupplierController::class, 'downloadTemplate'])->name('suppliers.template');
-        Route::get('suppliers/export-pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.export-pdf');
-        Route::resource('suppliers', SupplierController::class);
         Route::resource('requests', PurchaseRequestController::class)->parameters(['requests' => 'purchaseRequest']);
         Route::patch('requests/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('requests.approve');
         Route::patch('requests/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('requests.reject');

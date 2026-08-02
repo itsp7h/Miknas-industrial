@@ -79,8 +79,15 @@
             " onmouseover="if(!this.style.background.includes('2563eb'))this.style.background='#1e293b'" onmouseout="if(!this.style.background.includes('2563eb'))this.style.background=''">
                 Pipeline
             </a>
+            {{-- Suppliers now lives in the React app shell — full navigation, not a named Blade route --}}
+            <a href="/app/purchase/suppliers" style="
+                display:block; padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
+                font-size:13px; text-decoration:none;
+                {{ request()->is('app/purchase/suppliers*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+            " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
+                Suppliers
+            </a>
             @foreach([
-                ['purchase.suppliers.index',  'Suppliers'],
                 ['purchase.orders.index',     'Purchase Orders'],
                 ['purchase.grns.index',       'Goods Receipt (GRN)'],
                 ['purchase.invoices.index',   'Supplier Invoices'],
