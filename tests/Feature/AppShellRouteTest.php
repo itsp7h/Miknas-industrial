@@ -1,5 +1,4 @@
 <?php
-// tests/Feature/AppShellRouteTest.php
 
 namespace Tests\Feature;
 
@@ -26,5 +25,21 @@ class AppShellRouteTest extends TestCase
         $response = $this->get('/app/purchase/suppliers');
 
         $response->assertRedirect('/login');
+    }
+
+    public function test_app_shell_view_does_not_extend_the_old_blade_layout(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/app');
+
+        $response->assertOk();
+        // The old layouts/app.blade.php sidebar/topbar/bell must not be present —
+        // the React shell (DesktopShell/MobileShell) owns navigation entirely on
+        // this page. Its distinctive bell-polling markup is the id="bell-wrap"
+        // element, only ever rendered by the Blade layout.
+        $response->assertDontSee('id="bell-wrap"', false);
+        $response->assertDontSee('id="sidebar"', false);
+        $response->assertSee('id="react-app"', false);
     }
 }

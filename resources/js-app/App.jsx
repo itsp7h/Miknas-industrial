@@ -5,12 +5,19 @@ import DashboardPage from './pages/DashboardPage';
 import DesktopSupplierListPage from './pages/desktop/purchase/SupplierListPage';
 import MobileSupplierListPage from './pages/mobile/purchase/SupplierListPage';
 
-export default function App({ currentUserId }) {
+export default function App({ currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken }) {
     const viewport = useViewport();
     const SupplierListPage = viewport === 'mobile' ? MobileSupplierListPage : DesktopSupplierListPage;
 
     return (
-        <AppShell currentUserId={currentUserId}>
+        <AppShell
+            currentUserId={currentUserId}
+            userName={userName}
+            userEmail={userEmail}
+            isAdmin={isAdmin}
+            logoutUrl={logoutUrl}
+            csrfToken={csrfToken}
+        >
             <Routes>
                 <Route path="/app" element={<DashboardPage currentUserId={currentUserId} />} />
                 <Route path="/app/purchase/suppliers" element={<SupplierListPage />} />
