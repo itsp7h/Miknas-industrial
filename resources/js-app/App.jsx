@@ -4,10 +4,13 @@ import useViewport from './hooks/useViewport';
 import DashboardPage from './pages/DashboardPage';
 import DesktopSupplierListPage from './pages/desktop/purchase/SupplierListPage';
 import MobileSupplierListPage from './pages/mobile/purchase/SupplierListPage';
+import DesktopPipelineBoardPage from './pages/desktop/purchase/PipelineBoardPage';
+import MobilePipelineBoardPage from './pages/mobile/purchase/PipelineBoardPage';
 
 export default function App({ currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken }) {
     const viewport = useViewport();
     const SupplierListPage = viewport === 'mobile' ? MobileSupplierListPage : DesktopSupplierListPage;
+    const PipelineBoardPage = viewport === 'mobile' ? MobilePipelineBoardPage : DesktopPipelineBoardPage;
 
     return (
         <AppShell
@@ -21,6 +24,7 @@ export default function App({ currentUserId, userName, userEmail, isAdmin, logou
             <Routes>
                 <Route path="/app" element={<DashboardPage currentUserId={currentUserId} />} />
                 <Route path="/app/purchase/suppliers" element={<SupplierListPage />} />
+                <Route path="/app/purchase/pipeline" element={<PipelineBoardPage />} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>
         </AppShell>

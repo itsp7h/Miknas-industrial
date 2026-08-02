@@ -1,3 +1,5 @@
+@props(['hideTrigger' => false])
+
 @php
 $hasErrors   = $errors->any();
 $mprProjects = \App\Models\Settings\ProjectSetting::active()
@@ -33,10 +35,14 @@ $today    = date('Y-m-d');
 .mpr-urgency-opt:hover { background:#f8fafc; }
 </style>
 
-{{-- Trigger button --}}
-<button type="button" onclick="mprModalOpen()" class="btn-primary">
-    + New Request
-</button>
+{{-- Trigger button (hidden when the component is embedded purely for its modal/state,
+     e.g. app-shell.blade.php, where the React page renders its own "+ New Request"
+     button that calls window.mprModalOpen() directly) --}}
+<div @if($hideTrigger ?? false) style="display:none" @endif>
+    <button type="button" onclick="mprModalOpen()" class="btn-primary">
+        + New Request
+    </button>
+</div>
 
 {{-- ── Modal overlay ── --}}
 <div id="mpr-modal-overlay"

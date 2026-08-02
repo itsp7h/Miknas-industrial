@@ -21,5 +21,11 @@
         data-logout-url="{{ route('logout') }}"
         data-csrf-token="{{ csrf_token() }}"
     ></div>
+
+    {{-- Provides window.mprModalOpen()/the MPR Alpine.js modal state to every React page,
+         regardless of which one is showing. Its own "+ New Request" trigger button is
+         hidden here since React pages render their own button that calls
+         window.mprModalOpen() directly. --}}
+    <x-purchase.request-modal :hide-trigger="true" />
 </body>
 </html>

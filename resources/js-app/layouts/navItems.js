@@ -13,7 +13,7 @@ export const NAV_GROUPS = [
     {
         label: 'Purchase',
         items: [
-            { type: 'href', to: '/purchase/pipeline', label: 'Pipeline' },
+            { type: 'link', to: '/app/purchase/pipeline', label: 'Pipeline' },
             { type: 'link', to: '/app/purchase/suppliers', label: 'Suppliers' },
             { type: 'href', to: '/purchase/orders', label: 'Purchase Orders' },
             { type: 'href', to: '/purchase/grns', label: 'Goods Receipt (GRN)' },
