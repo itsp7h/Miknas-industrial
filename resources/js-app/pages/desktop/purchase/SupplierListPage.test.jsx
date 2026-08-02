@@ -5,7 +5,7 @@ import SupplierListPage from './SupplierListPage';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
-    echo: { private: () => ({ listen: () => {} }), leave: () => {} },
+    echo: { private: () => ({ listen: () => {}, stopListening: () => {} }) },
 }));
 
 describe('SupplierListPage', () => {
@@ -29,5 +29,13 @@ describe('SupplierListPage', () => {
         fireEvent.click(screen.getByText('Save'));
 
         await waitFor(() => expect(screen.getByRole('cell', { name: 'New Supplier' })).toBeInTheDocument());
+    });
+
+    it('shows an error toast when the suppliers fail to load', async () => {
+        vi.spyOn(client, 'apiGet').mockRejectedValue(new Error('network error'));
+
+        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+
+        await waitFor(() => expect(screen.getByText('Failed to load suppliers.')).toBeInTheDocument());
     });
 });

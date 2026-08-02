@@ -2,10 +2,37 @@ import { useState } from 'react';
 import FormField from '../../ui/FormField';
 import { apiPost, apiPut } from '../../../api/client';
 
-const BLANK = { name: '', supplier_code: '', category: '', contact_person: '', email: '', phone: '', whatsapp_number: '', address: '', credit_days: '' };
+const BLANK = {
+    name: '',
+    supplier_code: '',
+    category: '',
+    contact_person: '',
+    email: '',
+    phone: '',
+    whatsapp_number: '',
+    address: '',
+    tax_number: '',
+    credit_days: '',
+    is_active: true,
+};
+
+// Coerce null/undefined field values (e.g. from a partial or freshly-fetched
+// supplier record) to '' so every text input stays controlled from the start —
+// React warns ("value prop on input should not be null") and briefly renders
+// an uncontrolled input otherwise. `is_active` is left as a real boolean since
+// it drives a checkbox's `checked`, not an input's `value`.
+function normalize(supplier) {
+    const merged = { ...BLANK, ...supplier };
+    return Object.fromEntries(
+        Object.entries(merged).map(([key, value]) => {
+            if (key === 'is_active') return [key, value ?? true];
+            return [key, value ?? ''];
+        })
+    );
+}
 
 export default function SupplierForm({ supplier, onSaved, onCancel }) {
-    const [values, setValues] = useState({ ...BLANK, ...supplier });
+    const [values, setValues] = useState(() => normalize(supplier));
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
 
@@ -42,7 +69,20 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
             <FormField label="Phone" name="phone" value={values.phone} onChange={handleChange} />
             <FormField label="WhatsApp Number" name="whatsapp_number" value={values.whatsapp_number} onChange={handleChange} />
             <FormField label="Address" name="address" value={values.address} onChange={handleChange} type="textarea" />
+            <FormField label="Tax Number" name="tax_number" value={values.tax_number} onChange={handleChange} />
             <FormField label="Credit Days" name="credit_days" value={values.credit_days} onChange={handleChange} type="number" />
+            <div className="mb-4">
+                <label htmlFor="is_active" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
+                    <input
+                        id="is_active"
+                        name="is_active"
+                        type="checkbox"
+                        checked={!!values.is_active}
+                        onChange={(e) => handleChange('is_active', e.target.checked)}
+                    />
+                    Active
+                </label>
+            </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
                 <button onClick={onCancel} disabled={saving}>Cancel</button>
                 <button onClick={handleSave} disabled={saving}>Save</button>

@@ -7,6 +7,7 @@ use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\RfqInvitation;
 use App\Models\User;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
@@ -31,6 +32,13 @@ class NotificationBroadcastTest extends TestCase
         // since Laravel strips the prefix when resolving the callback.
         $this->assertSame('private-App.Models.User.'.$user->id, $channels[0]->name);
         $this->assertSame('notification.pushed', $event->broadcastAs());
+    }
+
+    public function test_it_broadcasts_immediately_rather_than_via_the_queue(): void
+    {
+        $event = new NotificationPushed(1, 'Test title', 'Test body');
+
+        $this->assertInstanceOf(ShouldBroadcastNow::class, $event);
     }
 
     public function test_submitting_a_supplier_quote_fires_the_event_for_admin_users(): void

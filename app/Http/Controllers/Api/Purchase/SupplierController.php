@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/Api/Purchase/SupplierController.php
 
 namespace App\Http\Controllers\Api\Purchase;
 
@@ -27,6 +26,7 @@ class SupplierController extends Controller
             'phone' => 'nullable|string|max:20',
             'whatsapp_number' => 'nullable|string|max:20',
             'address' => 'nullable|string',
+            'tax_number' => 'nullable|string|max:255',
             'credit_days' => 'nullable|integer|min:0',
         ]);
 
@@ -50,6 +50,7 @@ class SupplierController extends Controller
             'phone' => 'nullable|string|max:20',
             'whatsapp_number' => 'nullable|string|max:20',
             'address' => 'nullable|string',
+            'tax_number' => 'nullable|string|max:255',
             'credit_days' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
         ]);

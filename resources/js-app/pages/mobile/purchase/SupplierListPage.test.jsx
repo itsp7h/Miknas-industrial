@@ -5,7 +5,7 @@ import SupplierListPage from './SupplierListPage';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
-    echo: { private: () => ({ listen: () => {} }), leave: () => {} },
+    echo: { private: () => ({ listen: () => {}, stopListening: () => {} }) },
 }));
 
 describe('SupplierListPage (mobile)', () => {
@@ -16,5 +16,13 @@ describe('SupplierListPage (mobile)', () => {
 
         await waitFor(() => expect(screen.getByText('Acme Steel')).toBeInTheDocument());
         expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    });
+
+    it('shows an error toast when the suppliers fail to load', async () => {
+        vi.spyOn(client, 'apiGet').mockRejectedValue(new Error('network error'));
+
+        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+
+        await waitFor(() => expect(screen.getByText('Failed to load suppliers.')).toBeInTheDocument());
     });
 });

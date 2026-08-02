@@ -1,5 +1,4 @@
 <?php
-// tests/Feature/Api/Purchase/SupplierControllerTest.php
 
 namespace Tests\Feature\Api\Purchase;
 
@@ -77,5 +76,38 @@ class SupplierControllerTest extends TestCase
         $response = $this->getJson('/api/v1/purchase/suppliers');
 
         $response->assertUnauthorized();
+    }
+
+    public function test_store_accepts_tax_number_and_is_active(): void
+    {
+        $this->actingUser();
+
+        $response = $this->postJson('/api/v1/purchase/suppliers', [
+            'name' => 'Acme Steel',
+            'tax_number' => 'TRN-12345',
+            'is_active' => false,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.tax_number', 'TRN-12345');
+        $response->assertJsonPath('data.is_active', false);
+        $this->assertDatabaseHas('suppliers', ['name' => 'Acme Steel', 'tax_number' => 'TRN-12345', 'is_active' => false]);
+    }
+
+    public function test_update_modifies_tax_number_and_is_active(): void
+    {
+        $this->actingUser();
+        $supplier = Supplier::factory()->create(['tax_number' => 'OLD-1', 'is_active' => true]);
+
+        $response = $this->putJson("/api/v1/purchase/suppliers/{$supplier->id}", [
+            'name' => $supplier->name,
+            'tax_number' => 'NEW-2',
+            'is_active' => false,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.tax_number', 'NEW-2');
+        $response->assertJsonPath('data.is_active', false);
+        $this->assertDatabaseHas('suppliers', ['id' => $supplier->id, 'tax_number' => 'NEW-2', 'is_active' => false]);
     }
 }

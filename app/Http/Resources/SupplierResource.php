@@ -1,5 +1,4 @@
 <?php
-// app/Http/Resources/SupplierResource.php
 
 namespace App\Http\Resources;
 
@@ -20,6 +19,7 @@ class SupplierResource extends JsonResource
             'phone' => $this->phone,
             'whatsapp_number' => $this->whatsapp_number,
             'address' => $this->address,
+            'tax_number' => $this->tax_number,
             'credit_days' => $this->credit_days,
             'is_active' => (bool) $this->is_active,
         ];

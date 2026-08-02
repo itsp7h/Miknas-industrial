@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Card from '../../../components/ui/Card';
 import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
 import SupplierForm from '../../../components/purchase/supplier/SupplierForm';
-import { apiGet } from '../../../api/client';
-import { echo } from '../../../echo';
+import useLiveList from '../../../hooks/useLiveList';
 import { useToast } from '../../../components/ui/Toast';
 
 const COLUMNS = [
@@ -14,25 +13,16 @@ const COLUMNS = [
 ];
 
 export default function SupplierListPage() {
-    const [suppliers, setSuppliers] = useState([]);
+    const { items: suppliers, upsertItem } = useLiveList({
+        endpoint: '/purchase/suppliers',
+        channel: 'purchase',
+        event: '.supplier.saved',
+        mergeKey: 'id',
+        errorMessage: 'Failed to load suppliers.',
+    });
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const { showToast } = useToast();
-
-    useEffect(() => {
-        apiGet('/purchase/suppliers').then((res) => setSuppliers(res.data));
-    }, []);
-
-    useEffect(() => {
-        const channel = echo.private('purchase');
-        channel.listen('.supplier.saved', (event) => {
-            setSuppliers((prev) => {
-                const exists = prev.some((s) => s.id === event.id);
-                return exists ? prev.map((s) => (s.id === event.id ? { ...s, ...event } : s)) : [...prev, event];
-            });
-        });
-        return () => echo.leave('purchase');
-    }, []);
 
     function openCreate() {
         setEditing(null);
@@ -45,18 +35,18 @@ export default function SupplierListPage() {
     }
 
     function handleSaved(supplier) {
-        setSuppliers((prev) => {
-            const exists = prev.some((s) => s.id === supplier.id);
-            return exists ? prev.map((s) => (s.id === supplier.id ? supplier : s)) : [...prev, supplier];
-        });
+        upsertItem(supplier);
         setModalOpen(false);
         showToast('Supplier saved.', 'success');
     }
 
-    const columnsWithActions = [
-        ...COLUMNS,
-        { key: 'actions', label: '', render: (row) => <button onClick={() => openEdit(row)}>Edit</button> },
-    ];
+    const columnsWithActions = useMemo(
+        () => [
+            ...COLUMNS,
+            { key: 'actions', label: '', render: (row) => <button onClick={() => openEdit(row)}>Edit</button> },
+        ],
+        []
+    );
 
     return (
         <Card title="Suppliers">
