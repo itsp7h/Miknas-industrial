@@ -421,6 +421,14 @@
     #bottom-tab-bar { display: block !important; }
     #main-content { padding-bottom: 84px !important; max-width: 100vw !important; }
 }
+/* Phone-width only (matches the `mobile` viewport-cookie bucket, gotcha #13) —
+   the 28px desktop content padding and 60px admin-panel topbar read as "a
+   desktop page shrunk down" rather than a native mobile screen. Tighten both
+   so mobile.* pages can go closer to edge-to-edge. */
+@media (max-width: 767px) {
+    #main-content { padding: 12px 12px 84px !important; background: #f8fafc !important; }
+    #main-area > header { height: 52px !important; box-shadow: none !important; border-bottom: 1px solid #f1f5f9 !important; }
+}
 @keyframes toastIn {
     from { opacity:0; transform:translateX(40px) scale(.95); }
     to   { opacity:1; transform:translateX(0)    scale(1); }
