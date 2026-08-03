@@ -13,8 +13,8 @@ The Pipeline detail page (`resources/views/purchase/pipeline/show.blade.php`, 97
 - Full cutover of `show.blade.php` and its route/controller method — no coexisting old+new detail page.
 
 **Explicitly NOT in this phase** (each becomes its own future spec+plan):
-- Send RFQs, Compare & Award, Issue LPO, Issue Payment — these keep working exactly as today, but reached via a real "link out" navigation from the React page's stage timeline to the existing standalone Blade pages/routes (`purchase.requests.quotes`, `purchase.requests.compare`, `purchase.orders.show`, `purchase.payments.create`), instead of an inline modal/POST on the same page.
-- Add Suppliers (RFQ selection) and Record GRN (selection) — today these are modals with **no standalone page**, only ever rendered inside `show.blade.php`. Since deleting `show.blade.php` would otherwise remove the only way to perform them, Phase 1 extracts each into a small new standalone Blade page/route (`GET requests/{purchaseRequest}/rfq/select-suppliers`, `GET requests/{purchaseRequest}/grn/select`) reusing the existing modal markup/JS as a full page. These are not ported to React in this phase — they're a minimal stopgap so the cutover doesn't strand any action.
+- Send RFQs, Compare & Award, Issue Payment — these keep working exactly as today, but reached via a real "link out" navigation from the React page's stage timeline to the existing standalone Blade pages/routes (`purchase.requests.quotes`, `purchase.requests.compare`, `purchase.payments.create`), instead of an inline modal/POST on the same page.
+- Add Suppliers (RFQ selection), Record GRN (selection), and Issue LPO — today all three are POST-only actions or modals with **no standalone GET page**, only ever reachable from inside `show.blade.php` (the first two via embedded modals, the third via an inline form button). Since deleting `show.blade.php` would otherwise remove the only way to perform them, Phase 1 extracts each into a small new standalone Blade page/route (`GET requests/{purchaseRequest}/rfq/select-suppliers`, `GET requests/{purchaseRequest}/grn/select`, `GET requests/{purchaseRequest}/generate-lpo/confirm`) reusing the existing modal markup or wrapping the existing POST action in a confirm page. These are not ported to React in this phase — they're a minimal stopgap so the cutover doesn't strand any action.
 
 ## What Changes
 
@@ -44,7 +44,7 @@ The Pipeline detail page (`resources/views/purchase/pipeline/show.blade.php`, 97
   - `rfq` → **Add Suppliers** (links to the new `requests/{id}/rfq/select-suppliers` page) and **Send RFQs** (links to the existing RFQ page/action), gated on `permissions.manageRfq`.
   - `quoting` → **View Quotes** (links to `purchase.requests.quotes`).
   - `comparison` → **Compare & Award** (links to `purchase.requests.compare`), gated on `permissions.manageQuotes`/`award`.
-  - `lpo` → **Issue LPO** / **View LPO(s)** (POST link-out to the existing action / link to `purchase.orders.show`), gated on `permissions.generateLpo`.
+  - `lpo` → **Issue LPO** (links to the new `requests/{id}/generate-lpo/confirm` page) / **View LPO(s)** (link to `purchase.orders.show`), gated on `permissions.generateLpo`.
   - `receiving` → **Record GRN** (links to the new `requests/{id}/grn/select` page).
   - `payment` → **Issue Payment** (links to `purchase.payments.create`).
   - Completed stages show the same read-only summaries the Blade page shows today (view request/signature/suppliers/quotes/comparison/LPO/GRNs/payments) — as links out, not inline data, for anything not covered by the loaded relations.
@@ -55,4 +55,4 @@ The Pipeline detail page (`resources/views/purchase/pipeline/show.blade.php`, 97
 
 - No React port of RFQ management, quote comparison/award, LPO generation, GRN recording, or payment issuance — all reached via link-out to existing Blade pages, per Scope Decomposition.
 - No changes to the permission model — the API endpoint reuses the exact existing `PurchaseRequestPolicy` gates.
-- The two new standalone Blade pages (RFQ supplier-select, GRN-select) are a deliberate stopgap, not a design decision to keep them Blade long-term — they get ported (or replaced) when their parent flows (RFQ management, GRN recording) are picked up in a future phase.
+- The three new standalone Blade pages (RFQ supplier-select, GRN-select, Issue LPO confirm) are a deliberate stopgap, not a design decision to keep them Blade long-term — they get ported (or replaced) when their parent flows (RFQ management, GRN recording, LPO generation) are picked up in a future phase.
