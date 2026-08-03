@@ -21,3 +21,17 @@ if (! function_exists('resolveView')) {
         return view($view, $data);
     }
 }
+
+if (! function_exists('isMobileViewport')) {
+    /**
+     * For pages whose mobile view needs different data than desktop (e.g. a
+     * full unpaginated list so client-side search covers everything, per
+     * CLAUDE.md gotcha #6, instead of the desktop page's server pagination) —
+     * use this to branch the query itself rather than trying to force one
+     * dataset to fit both views.
+     */
+    function isMobileViewport(): bool
+    {
+        return request()->cookie('viewport') === 'mobile';
+    }
+}

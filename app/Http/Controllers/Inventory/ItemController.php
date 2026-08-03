@@ -13,9 +13,19 @@ class ItemController extends Controller
 {
     public function index()
     {
+        $mobileView = 'mobile.inventory.items.index';
+
+        if (isMobileViewport() && view()->exists($mobileView)) {
+            // Mobile's search bar filters client-side over every item (CLAUDE.md
+            // gotcha #6), so it needs the full list rather than one page of it.
+            $items = Item::orderBy('item_name')->get();
+
+            return view($mobileView, compact('items'));
+        }
+
         $items = Item::paginate(20);
 
-        return resolveView('inventory.items.index', compact('items'));
+        return view('inventory.items.index', compact('items'));
     }
 
     public function create()
