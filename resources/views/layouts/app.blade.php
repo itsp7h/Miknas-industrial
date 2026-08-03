@@ -4,6 +4,30 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+    // Buckets the real viewport width into a `viewport` cookie so the next
+    // server-rendered request can pick the matching Blade view via
+    // resolveView() (CLAUDE.md gotcha #13). Blade has no live client-side
+    // swap like the React shell's useViewport(), so a mismatch reloads once —
+    // guarded by sessionStorage so a bad detection can never loop.
+    (function () {
+        function bucket() { return window.innerWidth < 768 ? 'mobile' : 'desktop'; }
+        function getCookie(name) {
+            var m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+            return m ? decodeURIComponent(m[2]) : null;
+        }
+        var current = bucket();
+        if (getCookie('viewport') !== current) {
+            document.cookie = 'viewport=' + current + ';path=/;max-age=31536000;SameSite=Lax';
+            if (!sessionStorage.getItem('viewport_reload_done')) {
+                sessionStorage.setItem('viewport_reload_done', '1');
+                location.reload();
+            }
+        } else {
+            sessionStorage.removeItem('viewport_reload_done');
+        }
+    })();
+    </script>
     <title>SteelERP @hasSection('title') — @yield('title') @endif</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="alternate icon" href="/favicon.ico">
@@ -11,9 +35,9 @@
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet"/>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-slate-100 antialiased" style="font-family:'Inter',sans-serif;">
+<body class="bg-slate-100 antialiased" style="font-family:'Inter',sans-serif; overflow-x:hidden;">
 
-<div style="display:flex; min-height:100vh;">
+<div style="display:flex; min-height:100vh; min-width:0;">
 
     {{-- ════════════════ SIDEBAR ════════════════ --}}
     <aside id="sidebar" style="
@@ -267,7 +291,7 @@
     <div id="sidebar-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;"></div>
 
     {{-- ════════════════ MAIN AREA ════════════════ --}}
-    <div id="main-area" style="flex:1; margin-left:260px; display:flex; flex-direction:column; min-height:100vh;">
+    <div id="main-area" style="flex:1; margin-left:260px; display:flex; flex-direction:column; min-height:100vh; min-width:0;">
 
         {{-- Top bar --}}
         <header style="
@@ -333,7 +357,7 @@
         </header>
 
         {{-- Content --}}
-        <main id="main-content" style="flex:1; padding:28px; background:#f1f5f9;">
+        <main id="main-content" style="flex:1; padding:28px; background:#f1f5f9; min-width:0; overflow-x:hidden;">
 
             @yield('content')
         </main>
@@ -395,7 +419,7 @@
     #main-area > header > div:first-of-type span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #topbar-date-group, #topbar-user-divider, #topbar-username { display: none !important; }
     #bottom-tab-bar { display: block !important; }
-    #main-content { padding-bottom: 84px !important; }
+    #main-content { padding-bottom: 84px !important; max-width: 100vw !important; }
 }
 @keyframes toastIn {
     from { opacity:0; transform:translateX(40px) scale(.95); }

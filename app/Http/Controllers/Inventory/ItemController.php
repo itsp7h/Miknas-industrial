@@ -15,7 +15,7 @@ class ItemController extends Controller
     {
         $items = Item::paginate(20);
 
-        return view('inventory.items.index', compact('items'));
+        return resolveView('inventory.items.index', compact('items'));
     }
 
     public function create()
