@@ -22,8 +22,14 @@ class GoodsReceiptConfirmedNotification extends Notification implements ShouldQu
 
     public function toUltraMessage(mixed $notifiable): UltraMessageMessage
     {
+        // `??` is not valid inside "{...}" string interpolation — it is a parse
+        // error, not a runtime one, so the whole class fails to load. Resolve
+        // the fallbacks before building the message.
+        $poNumber = $this->grn->purchaseOrder?->po_number ?? 'N/A';
+        $receivedDate = $this->grn->received_date->format('d M Y');
+
         return UltraMessageMessage::text(
-            "GRN *#{$this->grn->grn_number}* has been confirmed and goods received.\n\nPO Reference: {$this->grn->purchaseOrder?->po_number ?? 'N/A'}\nDate: {$this->grn->received_date->format('d M Y')}"
+            "GRN *#{$this->grn->grn_number}* has been confirmed and goods received.\n\nPO Reference: {$poNumber}\nDate: {$receivedDate}"
         );
     }
 }

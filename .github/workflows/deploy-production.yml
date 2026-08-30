@@ -1,0 +1,45 @@
+name: Deploy production
+
+# Production follows `main`, and never deploys automatically off a branch push:
+# it goes out on an explicit version tag or a manual run, and waits on the
+# `production` environment's approval gate before touching anything.
+# Day-to-day work lands on `development` (which auto-deploys to staging) and
+# reaches production by merging into `main` and tagging.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to deploy (defaults to the tag, else main)'
+        required: false
+        default: 'github/main'
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: [self-hosted, steelerp, production]
+    # Configure required reviewers on this environment in the repo settings —
+    # that is what turns this job into an approval gate.
+    environment:
+      name: production
+      url: https://steelerp.p7h.me
+
+    steps:
+      - name: Deploy
+        run: |
+          sudo /var/www/ProjectsERP/scripts/deploy.sh production \
+            "${{ github.event.inputs.ref || github.ref_name }}"
+
+      - name: Smoke test
+        run: /var/www/ProjectsERP/scripts/smoke-test.sh https://steelerp.p7h.me
+
+      - name: Report failure
+        if: failure()
+        run: |
+          echo "::error::Production deploy or smoke test failed." \
+               "A pre-migration database backup is in storage/backups."

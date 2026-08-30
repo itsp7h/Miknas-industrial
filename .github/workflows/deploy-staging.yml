@@ -1,0 +1,41 @@
+name: Deploy staging
+
+# Staging tracks `development` automatically, but only once CI is green —
+# deploying a commit whose tests failed just moves the breakage somewhere more
+# expensive. Production tracks `main`; see deploy-production.yml.
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [development]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to staging
+    # Self-hosted: staging lives on a private LAN (192.168.0.38) that
+    # GitHub-hosted runners cannot reach. See docs/ci-cd-setup.md.
+    runs-on: [self-hosted, steelerp, staging]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Deploy
+        run: sudo /var/www/ProjectsERP/scripts/deploy.sh staging github/development
+
+      - name: Smoke test
+        env:
+          REVERB_URL: http://192.168.0.38:8080
+          REVERB_APP_KEY: ${{ secrets.STAGING_REVERB_APP_KEY }}
+        run: /var/www/ProjectsERP/scripts/smoke-test.sh http://192.168.0.38
+
+      - name: Report failure
+        if: failure()
+        run: |
+          echo "::error::Staging deploy failed. The database was backed up to" \
+               "storage/backups before migrating — see scripts/deploy.sh."

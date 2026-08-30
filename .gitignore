@@ -25,3 +25,10 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 .superpowers/
+
+# Working scratch: customer PDFs, quote spreadsheets, screenshots. Never publish.
+/draft
+# Timestamped .env copies made by deploys and manual edits — these hold live secrets.
+.env.bak-*
+.env.prod-clone-backup
+/storage/backups

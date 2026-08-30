@@ -22,8 +22,14 @@ class DeliveryDispatchedNotification extends Notification implements ShouldQueue
 
     public function toUltraMessage(mixed $notifiable): UltraMessageMessage
     {
+        // `??` is not valid inside "{...}" string interpolation — it is a parse
+        // error, not a runtime one, so the whole class fails to load. Resolve
+        // the fallbacks before building the message.
+        $orderReference = $this->delivery->salesOrder?->order_number ?? 'N/A';
+        $dispatchDate = $this->delivery->delivery_date->format('d M Y');
+
         return UltraMessageMessage::text(
-            "Dear {$notifiable->name},\n\nYour delivery *#{$this->delivery->delivery_number}* has been dispatched and is on its way.\n\nOrder Reference: {$this->delivery->salesOrder?->order_number ?? 'N/A'}\nDispatch Date: {$this->delivery->delivery_date->format('d M Y')}\n\nThank you for your business."
+            "Dear {$notifiable->name},\n\nYour delivery *#{$this->delivery->delivery_number}* has been dispatched and is on its way.\n\nOrder Reference: {$orderReference}\nDispatch Date: {$dispatchDate}\n\nThank you for your business."
         );
     }
 }

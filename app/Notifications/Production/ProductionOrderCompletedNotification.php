@@ -22,8 +22,14 @@ class ProductionOrderCompletedNotification extends Notification implements Shoul
 
     public function toUltraMessage(mixed $notifiable): UltraMessageMessage
     {
+        // `??` is not valid inside "{...}" string interpolation — it is a parse
+        // error, not a runtime one, so the whole class fails to load. Resolve
+        // the fallbacks before building the message.
+        $product = $this->order->product?->item_name ?? 'N/A';
+        $completedOn = $this->order->completion_date?->format('d M Y') ?? now()->format('d M Y');
+
         return UltraMessageMessage::text(
-            "✅ *Production Complete*\n\nProduction Order *#{$this->order->order_number}* has been completed.\n\nProduct: {$this->order->product?->item_name ?? 'N/A'}\nQuantity: {$this->order->quantity_to_produce}\nCompleted: {$this->order->completion_date?->format('d M Y') ?? now()->format('d M Y')}"
+            "✅ *Production Complete*\n\nProduction Order *#{$this->order->order_number}* has been completed.\n\nProduct: {$product}\nQuantity: {$this->order->quantity_to_produce}\nCompleted: {$completedOn}"
         );
     }
 }
