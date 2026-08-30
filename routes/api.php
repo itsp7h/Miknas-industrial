@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\Inventory\ItemController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
@@ -16,6 +17,16 @@ Route::prefix('v1')->group(function () {
         Route::post('dashboard/ping', [DashboardController::class, 'ping']);
         Route::get('dashboard/summary', [DashboardController::class, 'summary']);
         Route::get('notifications/unread', [NotificationController::class, 'unread']);
+
+        Route::prefix('inventory')->group(function () {
+            Route::get('items', [ItemController::class, 'index']);
+            Route::post('items', [ItemController::class, 'store']);
+            Route::post('items/import', [ItemController::class, 'import']);
+            Route::get('items/template', [ItemController::class, 'downloadTemplate']);
+            Route::get('items/export-pdf', [ItemController::class, 'exportPdf']);
+            Route::put('items/{item}', [ItemController::class, 'update']);
+            Route::delete('items/{item}', [ItemController::class, 'destroy']);
+        });
 
         Route::prefix('purchase')->group(function () {
             Route::get('pipeline', [PurchasePipelineController::class, 'index']);

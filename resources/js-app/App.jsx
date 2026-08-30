@@ -6,6 +6,8 @@ import DesktopSupplierListPage from './pages/desktop/purchase/SupplierListPage';
 import MobileSupplierListPage from './pages/mobile/purchase/SupplierListPage';
 import DesktopPipelineBoardPage from './pages/desktop/purchase/PipelineBoardPage';
 import MobilePipelineBoardPage from './pages/mobile/purchase/PipelineBoardPage';
+import DesktopItemListPage from './pages/desktop/inventory/ItemListPage';
+import MobileItemListPage from './pages/mobile/inventory/ItemListPage';
 
 export default function App({
     currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken,
@@ -14,6 +16,7 @@ export default function App({
     const viewport = useViewport();
     const SupplierListPage = viewport === 'mobile' ? MobileSupplierListPage : DesktopSupplierListPage;
     const PipelineBoardPage = viewport === 'mobile' ? MobilePipelineBoardPage : DesktopPipelineBoardPage;
+    const ItemListPage = viewport === 'mobile' ? MobileItemListPage : DesktopItemListPage;
 
     return (
         <AppShell
@@ -35,6 +38,7 @@ export default function App({
                         canViewOwnPurchaseRequests={canViewOwnPurchaseRequests}
                     />
                 )} />
+                <Route path="/app/inventory/items" element={<ItemListPage />} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>
         </AppShell>

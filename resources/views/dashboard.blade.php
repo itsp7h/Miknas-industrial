@@ -170,7 +170,7 @@
             <p class="text-emerald-100 text-xs mt-0.5">Stock management</p>
         </div>
         <div class="p-4 space-y-1">
-            <a href="{{ route('inventory.items.index') }}" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-emerald-600 transition-colors">
+            <a href="/app/inventory/items" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-emerald-600 transition-colors">
                 <span>Item Master</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>

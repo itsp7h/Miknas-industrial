@@ -13,6 +13,17 @@ use Tests\TestCase;
  */
 class ResolveViewTest extends TestCase
 {
+    /**
+     * Fixture views rather than real app views: pages get migrated to React and
+     * deleted (Items already has been), and this test should not break each
+     * time that happens.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        View::addLocation(__DIR__.'/../fixtures/views');
+    }
+
     private function requestWithViewport(?string $viewport): void
     {
         $cookies = $viewport === null ? [] : ['viewport' => $viewport];
@@ -23,39 +34,39 @@ class ResolveViewTest extends TestCase
     {
         $this->requestWithViewport('mobile');
 
-        $this->assertSame('mobile.inventory.items.index', resolveView('inventory.items.index')->name());
+        $this->assertSame('mobile.probe.page', resolveView('probe.page')->name());
     }
 
     public function test_it_falls_back_to_desktop_when_no_mobile_counterpart_exists(): void
     {
         $this->requestWithViewport('mobile');
 
-        // Warehouses has no mobile/ counterpart — this is the incremental
-        // rollout case: unmigrated pages must keep rendering as before.
-        $this->assertFalse(View::exists('mobile.inventory.warehouses.index'));
-        $this->assertSame('inventory.warehouses.index', resolveView('inventory.warehouses.index')->name());
+        // No mobile counterpart — the incremental-rollout case: an unmigrated
+        // page must keep rendering exactly as before.
+        $this->assertFalse(View::exists('mobile.probe.desktop-only'));
+        $this->assertSame('probe.desktop-only', resolveView('probe.desktop-only')->name());
     }
 
     public function test_it_renders_desktop_when_the_cookie_says_desktop_even_if_a_mobile_view_exists(): void
     {
         $this->requestWithViewport('desktop');
 
-        $this->assertTrue(View::exists('mobile.inventory.items.index'));
-        $this->assertSame('inventory.items.index', resolveView('inventory.items.index')->name());
+        $this->assertTrue(View::exists('mobile.probe.page'));
+        $this->assertSame('probe.page', resolveView('probe.page')->name());
     }
 
     public function test_it_renders_desktop_when_no_viewport_cookie_is_set(): void
     {
         $this->requestWithViewport(null);
 
-        $this->assertSame('inventory.items.index', resolveView('inventory.items.index')->name());
+        $this->assertSame('probe.page', resolveView('probe.page')->name());
     }
 
     public function test_it_passes_data_through_to_the_resolved_view(): void
     {
         $this->requestWithViewport('mobile');
 
-        $view = resolveView('inventory.items.index', ['items' => collect(['a', 'b'])]);
+        $view = resolveView('probe.page', ['items' => collect(['a', 'b'])]);
 
         $this->assertSame(['a', 'b'], $view->getData()['items']->all());
     }

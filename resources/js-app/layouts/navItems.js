@@ -24,7 +24,7 @@ export const NAV_GROUPS = [
     {
         label: 'Inventory',
         items: [
-            { type: 'href', to: '/inventory/items', label: 'Items' },
+            { type: 'link', to: '/app/inventory/items', label: 'Items' },
             { type: 'href', to: '/inventory/warehouses', label: 'Warehouses' },
             { type: 'href', to: '/inventory/movements', label: 'Stock Movements' },
             { type: 'href', to: '/inventory/reports/summary', label: 'Stock Summary' },

@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Inventory\ItemController;
 use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Inventory\StockReportController;
 use App\Http\Controllers\Inventory\WarehouseController;
@@ -109,10 +108,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Inventory Module
     Route::prefix('inventory')->name('inventory.')->group(function () {
-        Route::post('items/import', [ItemController::class, 'import'])->name('items.import');
-        Route::get('items/template', [ItemController::class, 'downloadTemplate'])->name('items.template');
-        Route::get('items/export-pdf', [ItemController::class, 'exportPdf'])->name('items.export-pdf');
-        Route::resource('items', ItemController::class);
         Route::resource('warehouses', WarehouseController::class);
         Route::resource('movements', StockMovementController::class);
         Route::get('reports/summary', [StockReportController::class, 'summary'])->name('reports.summary');
