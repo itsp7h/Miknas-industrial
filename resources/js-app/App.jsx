@@ -32,6 +32,12 @@ import DesktopInvoiceListPage from './pages/desktop/sales/InvoiceListPage';
 import MobileInvoiceListPage from './pages/mobile/sales/InvoiceListPage';
 import DesktopPaymentListPage from './pages/desktop/sales/PaymentListPage';
 import MobilePaymentListPage from './pages/mobile/sales/PaymentListPage';
+import DesktopProductionOrderListPage from './pages/desktop/production/ProductionOrderListPage';
+import MobileProductionOrderListPage from './pages/mobile/production/ProductionOrderListPage';
+import DesktopBomListPage from './pages/desktop/production/BomListPage';
+import MobileBomListPage from './pages/mobile/production/BomListPage';
+import DesktopFlowListPage from './pages/desktop/production/FlowListPage';
+import MobileFlowListPage from './pages/mobile/production/FlowListPage';
 
 export default function App({
     currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken,
@@ -53,6 +59,9 @@ export default function App({
     const DeliveryNoteListPage = viewport === 'mobile' ? MobileDeliveryNoteListPage : DesktopDeliveryNoteListPage;
     const InvoiceListPage = viewport === 'mobile' ? MobileInvoiceListPage : DesktopInvoiceListPage;
     const PaymentListPage = viewport === 'mobile' ? MobilePaymentListPage : DesktopPaymentListPage;
+    const ProductionOrderListPage = viewport === 'mobile' ? MobileProductionOrderListPage : DesktopProductionOrderListPage;
+    const BomListPage = viewport === 'mobile' ? MobileBomListPage : DesktopBomListPage;
+    const FlowListPage = viewport === 'mobile' ? MobileFlowListPage : DesktopFlowListPage;
 
     return (
         <AppShell
@@ -87,6 +96,10 @@ export default function App({
                 <Route path="/app/sales/delivery-notes" element={<DeliveryNoteListPage />} />
                 <Route path="/app/sales/invoices" element={<InvoiceListPage />} />
                 <Route path="/app/sales/payments" element={<PaymentListPage />} />
+                <Route path="/app/production/orders" element={<ProductionOrderListPage />} />
+                <Route path="/app/production/bom" element={<BomListPage />} />
+                <Route path="/app/production/material-issues" element={<FlowListPage kind="material-issue" />} />
+                <Route path="/app/production/outputs" element={<FlowListPage kind="production-output" />} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>
         </AppShell>

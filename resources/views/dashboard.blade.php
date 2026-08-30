@@ -111,7 +111,7 @@
             </div>
         </a>
 
-        <a href="{{ route('production.orders.create') }}"
+        <a href="/app/production/orders"
            class="group bg-white rounded-xl p-4 border border-slate-200 hover:border-orange-300 hover:shadow-md transition-all duration-200 flex items-center gap-4">
             <div class="w-10 h-10 rounded-lg bg-orange-50 group-hover:bg-orange-100 flex items-center justify-center flex-shrink-0 transition-colors">
                 <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,15 +191,15 @@
             <p class="text-orange-100 text-xs mt-0.5">Manufacturing operations</p>
         </div>
         <div class="p-4 space-y-1">
-            <a href="{{ route('production.orders.index') }}" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-orange-600 transition-colors">
+            <a href="/app/production/orders" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-orange-600 transition-colors">
                 <span>Production Orders</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
-            <a href="{{ route('production.bom.index') }}" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-orange-600 transition-colors">
+            <a href="/app/production/bom" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-orange-600 transition-colors">
                 <span>Bill of Materials</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
-            <a href="{{ route('production.material-issues.index') }}" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-orange-600 transition-colors">
+            <a href="/app/production/material-issues" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-orange-600 transition-colors">
                 <span>Material Issues</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>

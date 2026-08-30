@@ -50,6 +50,10 @@ class BladePagesStillRenderTest extends TestCase
             '/app/sales/delivery-notes',
             '/app/sales/invoices',
             '/app/sales/payments',
+            '/app/production/orders',
+            '/app/production/bom',
+            '/app/production/material-issues',
+            '/app/production/outputs',
         ] as $url) {
             $response->assertSee($url, false);
         }
@@ -67,6 +71,10 @@ class BladePagesStillRenderTest extends TestCase
             '/sales/delivery-notes',
             '/sales/invoices',
             '/sales/payments',
+            '/production/orders',
+            '/production/bom',
+            '/production/material-issues',
+            '/production/outputs',
         ] as $url) {
             $this->actingAs($this->user())->get($url)->assertNotFound();
         }

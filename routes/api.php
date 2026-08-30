@@ -7,6 +7,10 @@ use App\Http\Controllers\Api\Inventory\StockMovementController;
 use App\Http\Controllers\Api\Inventory\StockReportController;
 use App\Http\Controllers\Api\Inventory\WarehouseController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\Production\BillOfMaterialController;
+use App\Http\Controllers\Api\Production\MaterialIssueController;
+use App\Http\Controllers\Api\Production\ProductionOrderController;
+use App\Http\Controllers\Api\Production\ProductionOutputController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
 use App\Http\Controllers\Api\Sales\CustomerController;
@@ -78,6 +82,31 @@ Route::prefix('v1')->group(function () {
             Route::get('payments', [PaymentReceiptController::class, 'index']);
             Route::get('payments/form-options', [PaymentReceiptController::class, 'formOptions']);
             Route::post('payments', [PaymentReceiptController::class, 'store']);
+        });
+
+        Route::prefix('production')->group(function () {
+            Route::get('orders', [ProductionOrderController::class, 'index']);
+            Route::get('orders/form-options', [ProductionOrderController::class, 'formOptions']);
+            Route::get('orders/{productionOrder}', [ProductionOrderController::class, 'show']);
+            Route::post('orders', [ProductionOrderController::class, 'store']);
+            Route::put('orders/{productionOrder}', [ProductionOrderController::class, 'update']);
+            Route::patch('orders/{productionOrder}/start', [ProductionOrderController::class, 'start']);
+            Route::patch('orders/{productionOrder}/complete', [ProductionOrderController::class, 'complete']);
+            Route::delete('orders/{productionOrder}', [ProductionOrderController::class, 'destroy']);
+
+            Route::get('bom', [BillOfMaterialController::class, 'index']);
+            Route::get('bom/form-options', [BillOfMaterialController::class, 'formOptions']);
+            Route::post('bom', [BillOfMaterialController::class, 'store']);
+            Route::put('bom/{bom}', [BillOfMaterialController::class, 'update']);
+            Route::delete('bom/{bom}', [BillOfMaterialController::class, 'destroy']);
+
+            Route::get('material-issues', [MaterialIssueController::class, 'index']);
+            Route::get('material-issues/form-options', [MaterialIssueController::class, 'formOptions']);
+            Route::post('material-issues', [MaterialIssueController::class, 'store']);
+
+            Route::get('outputs', [ProductionOutputController::class, 'index']);
+            Route::get('outputs/form-options', [ProductionOutputController::class, 'formOptions']);
+            Route::post('outputs', [ProductionOutputController::class, 'store']);
         });
 
         Route::prefix('purchase')->group(function () {

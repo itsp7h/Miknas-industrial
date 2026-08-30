@@ -2,10 +2,6 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MailAccountController;
-use App\Http\Controllers\Production\BillOfMaterialController;
-use App\Http\Controllers\Production\MaterialIssueController;
-use App\Http\Controllers\Production\ProductionOrderController;
-use App\Http\Controllers\Production\ProductionOutputController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
@@ -100,16 +96,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Inventory Module
     Route::prefix('inventory')->name('inventory.')->group(function () {});
-
-    // Production Module
-    Route::prefix('production')->name('production.')->group(function () {
-        Route::resource('orders', ProductionOrderController::class);
-        Route::patch('orders/{order}/start', [ProductionOrderController::class, 'start'])->name('orders.start');
-        Route::patch('orders/{order}/complete', [ProductionOrderController::class, 'complete'])->name('orders.complete');
-        Route::resource('bom', BillOfMaterialController::class);
-        Route::resource('material-issues', MaterialIssueController::class);
-        Route::resource('outputs', ProductionOutputController::class);
-    });
 
     // Sales Module
     // Settings (Admin only)

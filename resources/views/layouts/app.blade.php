@@ -179,16 +179,17 @@
                     Production
                 </span>
             </div>
+            {{-- Production now lives in the React app shell --}}
             @foreach([
-                ['production.orders.index',          'Production Orders'],
-                ['production.bom.index',             'Bill of Materials'],
-                ['production.material-issues.index', 'Material Issues'],
-                ['production.outputs.index',         'Production Output'],
-            ] as [$routeName, $label])
-            <a href="{{ route($routeName) }}" style="
+                ['/app/production/orders',          'Production Orders'],
+                ['/app/production/bom',             'Bill of Materials'],
+                ['/app/production/material-issues', 'Material Issues'],
+                ['/app/production/outputs',         'Production Output'],
+            ] as [$url, $label])
+            <a href="{{ $url }}" style="
                 display:block; padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
                 font-size:13px; text-decoration:none;
-                {{ request()->routeIs(str_replace('.index','',$routeName).'*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+                {{ request()->is(ltrim($url, '/')) ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
             " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
                 {{ $label }}
             </a>
@@ -417,7 +418,7 @@
              'icon' => 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'],
             ['route' => '/app/inventory/items', 'active' => request()->is('inventory*') || request()->is('app/inventory*'), 'label' => 'Inventory',
              'icon' => 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4'],
-            ['route' => route('production.orders.index'), 'active' => request()->is('production*'), 'label' => 'Production',
+            ['route' => '/app/production/orders', 'active' => request()->is('production*') || request()->is('app/production*'), 'label' => 'Production',
              'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z'],
             ['route' => '/app/sales/customers', 'active' => request()->is('sales*') || request()->is('app/sales*'), 'label' => 'Sales',
              'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'],

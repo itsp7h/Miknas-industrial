@@ -1,0 +1,85 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import ProductionOrderListPage from './ProductionOrderListPage';
+import BomListPage from './BomListPage';
+import FlowListPage from './FlowListPage';
+import { ToastProvider } from '../../../components/ui/Toast';
+import * as client from '../../../api/client';
+
+vi.mock('../../../echo', () => ({
+    echo: { private: () => ({ listen: () => ({ listen: () => {} }), stopListening: () => {} }), channel: () => ({ listen: () => {} }), leave: () => {} },
+}));
+
+const wrap = (ui) => render(<ToastProvider>{ui}</ToastProvider>);
+
+const ORDERS = [
+    { id: 1, order_number: 'PO-00001', product_name: 'Frame', quantity_to_produce: '10.00', quantity_produced: '4.00', outstanding: 6, production_date: '2026-08-01', status: 'in_progress' },
+    { id: 2, order_number: 'PO-00002', product_name: 'Panel', quantity_to_produce: '5.00', quantity_produced: '0.00', outstanding: 5, production_date: '2026-08-02', status: 'planned' },
+];
+
+describe('desktop production pages', () => {
+    beforeEach(() => vi.restoreAllMocks());
+
+    it('shows progress as produced over target', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: ORDERS });
+        wrap(<ProductionOrderListPage />);
+        await screen.findByText('PO-00001');
+        expect(screen.getByText('4 / 10')).toBeInTheDocument();
+    });
+
+    // The actions available depend on where the order is in its lifecycle.
+    it('offers Start only on a planned order and Complete only on one in progress', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: ORDERS });
+        wrap(<ProductionOrderListPage />);
+        await screen.findByText('PO-00001');
+        expect(screen.getAllByText('Start')).toHaveLength(1);
+        expect(screen.getAllByText('Complete')).toHaveLength(1);
+        expect(screen.getAllByText('Edit')).toHaveLength(1);
+    });
+
+    it('warns that completing cannot be reopened before doing it', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: ORDERS });
+        wrap(<ProductionOrderListPage />);
+        await screen.findByText('PO-00001');
+        fireEvent.click(screen.getByText('Complete'));
+        expect(await screen.findByText(/cannot be reopened/)).toBeInTheDocument();
+    });
+
+    it('surfaces a refused transition as an error toast', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: ORDERS });
+        vi.spyOn(client, 'apiPatch').mockRejectedValue({ message: 'Only a planned order can be started.' });
+        wrap(<ProductionOrderListPage />);
+        await screen.findByText('PO-00001');
+        fireEvent.click(screen.getByText('Start'));
+        await waitFor(() => {
+            expect(screen.getByText('Only a planned order can be started.')).toBeInTheDocument();
+        });
+    });
+
+    it('bill of materials lists product against raw material', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{ id: 1, product_name: 'Frame', raw_material_name: 'Steel Bar', quantity_required: '2.50', unit_of_measure: 'KG' }],
+        });
+        wrap(<BomListPage />);
+        await screen.findByText('Frame');
+        expect(screen.getByText('Steel Bar')).toBeInTheDocument();
+        expect(screen.getByText('2.5')).toBeInTheDocument();
+    });
+
+    it('material issues and output share a page but differ in title and columns', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{ id: 1, issue_number: 'MI-00001', issue_date: '2026-08-03', production_order_number: 'PO-00001', item_name: 'Steel Bar', warehouse_name: 'Main', quantity: '20.00', notes: null }],
+        });
+        const { unmount } = wrap(<FlowListPage kind="material-issue" />);
+        expect(await screen.findByText('Material Issues')).toBeInTheDocument();
+        expect(screen.getByText('MI-00001')).toBeInTheDocument();
+        unmount();
+
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{ id: 2, output_date: '2026-08-04', production_order_number: 'PO-00001', item_name: 'Frame', warehouse_name: 'Main', quantity: '4.00', notes: null }],
+        });
+        wrap(<FlowListPage kind="production-output" />);
+        expect(await screen.findByText('Production Output')).toBeInTheDocument();
+        expect(screen.getByText('Record Output')).toBeInTheDocument();
+    });
+});

@@ -36,10 +36,10 @@ export const NAV_GROUPS = [
     {
         label: 'Production',
         items: [
-            { type: 'href', to: '/production/orders', label: 'Production Orders' },
-            { type: 'href', to: '/production/bom', label: 'Bill of Materials' },
-            { type: 'href', to: '/production/material-issues', label: 'Material Issues' },
-            { type: 'href', to: '/production/outputs', label: 'Production Output' },
+            { type: 'link', to: '/app/production/orders', label: 'Production Orders' },
+            { type: 'link', to: '/app/production/bom', label: 'Bill of Materials' },
+            { type: 'link', to: '/app/production/material-issues', label: 'Material Issues' },
+            { type: 'link', to: '/app/production/outputs', label: 'Production Output' },
         ],
     },
     {
