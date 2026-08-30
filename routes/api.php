@@ -3,6 +3,9 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Inventory\ItemController;
+use App\Http\Controllers\Api\Inventory\StockMovementController;
+use App\Http\Controllers\Api\Inventory\StockReportController;
+use App\Http\Controllers\Api\Inventory\WarehouseController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
@@ -26,6 +29,20 @@ Route::prefix('v1')->group(function () {
             Route::get('items/export-pdf', [ItemController::class, 'exportPdf']);
             Route::put('items/{item}', [ItemController::class, 'update']);
             Route::delete('items/{item}', [ItemController::class, 'destroy']);
+
+            Route::get('warehouses', [WarehouseController::class, 'index']);
+            Route::post('warehouses', [WarehouseController::class, 'store']);
+            Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update']);
+            Route::delete('warehouses/{warehouse}', [WarehouseController::class, 'destroy']);
+
+            Route::get('movements', [StockMovementController::class, 'index']);
+            Route::get('movements/form-options', [StockMovementController::class, 'formOptions']);
+            Route::post('movements', [StockMovementController::class, 'store']);
+
+            Route::get('reports/summary', [StockReportController::class, 'summary']);
+            Route::get('reports/movement', [StockReportController::class, 'movement']);
+            Route::get('reports/low-stock', [StockReportController::class, 'lowStock']);
+            Route::get('reports/valuation', [StockReportController::class, 'valuation']);
         });
 
         Route::prefix('purchase')->group(function () {

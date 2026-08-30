@@ -141,23 +141,37 @@
             " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
                 Items
             </a>
-            @foreach([
-                ['inventory.warehouses.index',      'Warehouses'],
-                ['inventory.movements.index',       'Stock Movements'],
-                ['inventory.reports.summary',       'Stock Summary'],
-                ['inventory.reports.movement',      'Movement Report'],
-                ['inventory.reports.low-stock',     'Low Stock Alert'],
-                ['inventory.reports.valuation',     'Valuation'],
-            ] as [$routeName, $label])
-            <a href="{{ route($routeName) }}" style="
+            {{-- Warehouses now lives in the React app shell --}}
+            <a href="/app/inventory/warehouses" style="
                 display:block; padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
                 font-size:13px; text-decoration:none;
-                {{ request()->routeIs(rtrim($routeName,'y').'*') || request()->routeIs($routeName) ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+                {{ request()->is('app/inventory/warehouses*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+            " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
+                Warehouses
+            </a>
+            {{-- Stock Movements now lives in the React app shell --}}
+            <a href="/app/inventory/movements" style="
+                display:block; padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
+                font-size:13px; text-decoration:none;
+                {{ request()->is('app/inventory/movements*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+            " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
+                Stock Movements
+            </a>
+            {{-- Inventory reports now live in the React app shell --}}
+            @foreach([
+                ['/app/inventory/reports/summary',   'Stock Summary'],
+                ['/app/inventory/reports/movement',  'Movement Report'],
+                ['/app/inventory/reports/low-stock', 'Low Stock Alert'],
+                ['/app/inventory/reports/valuation', 'Valuation'],
+            ] as [$url, $label])
+            <a href="{{ $url }}" style="
+                display:block; padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
+                font-size:13px; text-decoration:none;
+                {{ request()->is(ltrim($url, '/')) ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
             " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
                 {{ $label }}
             </a>
             @endforeach
-
             {{-- ── PRODUCTION ── --}}
             <div style="margin-top:16px; margin-bottom:4px; padding:0 12px;">
                 <span style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#f97316;display:flex;align-items:center;gap:6px;">

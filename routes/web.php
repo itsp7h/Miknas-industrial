@@ -1,9 +1,6 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Inventory\StockMovementController;
-use App\Http\Controllers\Inventory\StockReportController;
-use App\Http\Controllers\Inventory\WarehouseController;
 use App\Http\Controllers\MailAccountController;
 use App\Http\Controllers\Production\BillOfMaterialController;
 use App\Http\Controllers\Production\MaterialIssueController;
@@ -107,14 +104,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Inventory Module
-    Route::prefix('inventory')->name('inventory.')->group(function () {
-        Route::resource('warehouses', WarehouseController::class);
-        Route::resource('movements', StockMovementController::class);
-        Route::get('reports/summary', [StockReportController::class, 'summary'])->name('reports.summary');
-        Route::get('reports/movement', [StockReportController::class, 'movement'])->name('reports.movement');
-        Route::get('reports/low-stock', [StockReportController::class, 'lowStock'])->name('reports.low-stock');
-        Route::get('reports/valuation', [StockReportController::class, 'valuation'])->name('reports.valuation');
-    });
+    Route::prefix('inventory')->name('inventory.')->group(function () {});
 
     // Production Module
     Route::prefix('production')->name('production.')->group(function () {

@@ -25,12 +25,12 @@ export const NAV_GROUPS = [
         label: 'Inventory',
         items: [
             { type: 'link', to: '/app/inventory/items', label: 'Items' },
-            { type: 'href', to: '/inventory/warehouses', label: 'Warehouses' },
-            { type: 'href', to: '/inventory/movements', label: 'Stock Movements' },
-            { type: 'href', to: '/inventory/reports/summary', label: 'Stock Summary' },
-            { type: 'href', to: '/inventory/reports/movement', label: 'Movement Report' },
-            { type: 'href', to: '/inventory/reports/low-stock', label: 'Low Stock Alert' },
-            { type: 'href', to: '/inventory/reports/valuation', label: 'Valuation' },
+            { type: 'link', to: '/app/inventory/warehouses', label: 'Warehouses' },
+            { type: 'link', to: '/app/inventory/movements', label: 'Stock Movements' },
+            { type: 'link', to: '/app/inventory/reports/summary', label: 'Stock Summary' },
+            { type: 'link', to: '/app/inventory/reports/movement', label: 'Movement Report' },
+            { type: 'link', to: '/app/inventory/reports/low-stock', label: 'Low Stock Alert' },
+            { type: 'link', to: '/app/inventory/reports/valuation', label: 'Valuation' },
         ],
     },
     {

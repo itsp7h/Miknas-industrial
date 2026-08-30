@@ -124,7 +124,7 @@
             </div>
         </a>
 
-        <a href="{{ route('inventory.reports.low-stock') }}"
+        <a href="/app/inventory/reports/low-stock"
            class="group bg-white rounded-xl p-4 border border-slate-200 hover:border-red-300 hover:shadow-md transition-all duration-200 flex items-center gap-4">
             <div class="w-10 h-10 rounded-lg bg-red-50 group-hover:bg-red-100 flex items-center justify-center flex-shrink-0 transition-colors">
                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,11 +174,11 @@
                 <span>Item Master</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
-            <a href="{{ route('inventory.reports.summary') }}" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-emerald-600 transition-colors">
+            <a href="/app/inventory/reports/summary" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-emerald-600 transition-colors">
                 <span>Stock Summary</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
-            <a href="{{ route('inventory.reports.valuation') }}" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-emerald-600 transition-colors">
+            <a href="/app/inventory/reports/valuation" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-emerald-600 transition-colors">
                 <span>Inventory Valuation</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
