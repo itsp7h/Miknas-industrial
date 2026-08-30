@@ -13,8 +13,8 @@ use PromoSeven\AzureMailer\Tests\TestCase;
 class TokenManagerTest extends TestCase
 {
     private array $config = [
-        'tenant_id'     => 'test-tenant',
-        'client_id'     => 'test-client-id',
+        'tenant_id' => 'test-tenant',
+        'client_id' => 'test-client-id',
         'client_secret' => 'test-secret',
     ];
 
@@ -29,13 +29,13 @@ class TokenManagerTest extends TestCase
         Http::fake([
             'login.microsoftonline.com/*' => Http::response([
                 'access_token' => 'my-access-token',
-                'expires_in'   => 3600,
-                'token_type'   => 'Bearer',
+                'expires_in' => 3600,
+                'token_type' => 'Bearer',
             ], 200),
         ]);
 
         $manager = new TokenManager($this->config);
-        $token   = $manager->getToken();
+        $token = $manager->getToken();
 
         $this->assertSame('my-access-token', $token);
         Http::assertSent(function ($request) {
@@ -52,7 +52,7 @@ class TokenManagerTest extends TestCase
         Http::fake([
             'login.microsoftonline.com/*' => Http::response([
                 'access_token' => 'first-token',
-                'expires_in'   => 3600,
+                'expires_in' => 3600,
             ], 200),
         ]);
 
@@ -85,7 +85,7 @@ class TokenManagerTest extends TestCase
         Http::fake([
             'login.microsoftonline.com/*' => Http::response([
                 'access_token' => 'ttl-token',
-                'expires_in'   => 120, // 120 - 60 = 60 second TTL
+                'expires_in' => 120, // 120 - 60 = 60 second TTL
             ], 200),
         ]);
 
@@ -106,7 +106,7 @@ class TokenManagerTest extends TestCase
     {
         Http::fake([
             'login.microsoftonline.com/*' => Http::response([
-                'error'             => 'invalid_client',
+                'error' => 'invalid_client',
                 'error_description' => 'The client secret supplied is incorrect.',
             ], 401),
         ]);

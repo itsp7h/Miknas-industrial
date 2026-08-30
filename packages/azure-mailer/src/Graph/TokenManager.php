@@ -33,10 +33,10 @@ class TokenManager
         $response = Http::asForm()->post(
             "https://login.microsoftonline.com/{$this->config['tenant_id']}/oauth2/v2.0/token",
             [
-                'grant_type'    => 'client_credentials',
-                'client_id'     => $this->config['client_id'],
+                'grant_type' => 'client_credentials',
+                'client_id' => $this->config['client_id'],
                 'client_secret' => $this->config['client_secret'],
-                'scope'         => 'https://graph.microsoft.com/.default',
+                'scope' => 'https://graph.microsoft.com/.default',
             ]
         );
 
@@ -49,7 +49,7 @@ class TokenManager
         }
 
         $body = $response->json();
-        $ttl  = max(1, ($body['expires_in'] ?? 3600) - 60);
+        $ttl = max(1, ($body['expires_in'] ?? 3600) - 60);
 
         Cache::put($key, $body['access_token'], $ttl);
 
@@ -58,6 +58,6 @@ class TokenManager
 
     private function cacheKey(): string
     {
-        return 'azure_mailer_token_' . $this->config['client_id'];
+        return 'azure_mailer_token_'.$this->config['client_id'];
     }
 }

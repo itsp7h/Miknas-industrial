@@ -23,15 +23,15 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'             => 'required|string|max:255',
-            'email'            => 'nullable|email|max:255',
-            'phone'            => 'nullable|string|max:50',
-            'whatsapp_number'  => 'nullable|string|max:20',
-            'address'          => 'nullable|string',
-            'contact_person'   => 'nullable|string|max:255',
-            'tax_number'       => 'nullable|string|max:50',
-            'credit_limit'     => 'nullable|numeric|min:0',
-            'is_active'        => 'nullable|boolean',
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'whatsapp_number' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'contact_person' => 'nullable|string|max:255',
+            'tax_number' => 'nullable|string|max:50',
+            'credit_limit' => 'nullable|numeric|min:0',
+            'is_active' => 'nullable|boolean',
         ]);
 
         $validated['is_active'] = (bool) $request->input('is_active', 1);
@@ -54,15 +54,15 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $validated = $request->validate([
-            'name'             => 'required|string|max:255',
-            'email'            => 'nullable|email|max:255',
-            'phone'            => 'nullable|string|max:50',
-            'whatsapp_number'  => 'nullable|string|max:20',
-            'address'          => 'nullable|string',
-            'contact_person'   => 'nullable|string|max:255',
-            'tax_number'       => 'nullable|string|max:50',
-            'credit_limit'     => 'nullable|numeric|min:0',
-            'is_active'        => 'nullable|boolean',
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'whatsapp_number' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'contact_person' => 'nullable|string|max:255',
+            'tax_number' => 'nullable|string|max:50',
+            'credit_limit' => 'nullable|numeric|min:0',
+            'is_active' => 'nullable|boolean',
         ]);
 
         $validated['is_active'] = (bool) $request->input('is_active', 0);

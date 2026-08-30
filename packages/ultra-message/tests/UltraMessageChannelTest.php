@@ -2,8 +2,8 @@
 
 namespace PromoSeven\UltraMessage\Tests;
 
-use Illuminate\Support\Facades\Http;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Http;
 use PromoSeven\UltraMessage\UltraMessageChannel;
 use PromoSeven\UltraMessage\UltraMessageClient;
 use PromoSeven\UltraMessage\UltraMessageMessage;
@@ -14,23 +14,26 @@ class UltraMessageChannelTest extends TestCase
     {
         Http::fake(['api.ultramsg.com/*' => Http::response(['sent' => 'true'], 200)]);
 
-        $client  = new UltraMessageClient([
+        $client = new UltraMessageClient([
             'instance_id' => 'instance123',
-            'token'       => 'test-token',
-            'timeout'     => 30,
-            'enabled'     => true,
+            'token' => 'test-token',
+            'timeout' => 30,
+            'enabled' => true,
         ]);
         $channel = new UltraMessageChannel($client);
 
-        $notifiable = new class {
+        $notifiable = new class
+        {
             public string $whatsapp_number = '+971501234567';
+
             public function routeNotificationFor(string $channel, $notification = null): string
             {
                 return $this->whatsapp_number;
             }
         };
 
-        $notification = new class extends Notification {
+        $notification = new class extends Notification
+        {
             public function toUltraMessage($notifiable): UltraMessageMessage
             {
                 return UltraMessageMessage::text('Test message');
@@ -50,22 +53,24 @@ class UltraMessageChannelTest extends TestCase
     {
         Http::fake(['api.ultramsg.com/*' => Http::response(['sent' => 'true'], 200)]);
 
-        $client  = new UltraMessageClient([
+        $client = new UltraMessageClient([
             'instance_id' => 'instance123',
-            'token'       => 'test-token',
-            'timeout'     => 30,
-            'enabled'     => true,
+            'token' => 'test-token',
+            'timeout' => 30,
+            'enabled' => true,
         ]);
         $channel = new UltraMessageChannel($client);
 
-        $notifiable = new class {
+        $notifiable = new class
+        {
             public function routeNotificationFor(string $channel, $notification = null): string
             {
                 return '+9710000000';
             }
         };
 
-        $notification = new class extends Notification {
+        $notification = new class extends Notification
+        {
             public function toUltraMessage($notifiable): UltraMessageMessage
             {
                 return UltraMessageMessage::text('Override test')->to('+971999999');
@@ -74,29 +79,31 @@ class UltraMessageChannelTest extends TestCase
 
         $channel->send($notifiable, $notification);
 
-        Http::assertSent(fn($r) => $r['to'] === '+971999999');
+        Http::assertSent(fn ($r) => $r['to'] === '+971999999');
     }
 
     public function test_channel_skips_when_no_recipient(): void
     {
         Http::fake();
 
-        $client  = new UltraMessageClient([
+        $client = new UltraMessageClient([
             'instance_id' => 'instance123',
-            'token'       => 'test-token',
-            'timeout'     => 30,
-            'enabled'     => true,
+            'token' => 'test-token',
+            'timeout' => 30,
+            'enabled' => true,
         ]);
         $channel = new UltraMessageChannel($client);
 
-        $notifiable = new class {
+        $notifiable = new class
+        {
             public function routeNotificationFor(string $channel, $notification = null): ?string
             {
                 return null;
             }
         };
 
-        $notification = new class extends Notification {
+        $notification = new class extends Notification
+        {
             public function toUltraMessage($notifiable): UltraMessageMessage
             {
                 return UltraMessageMessage::text('No recipient');

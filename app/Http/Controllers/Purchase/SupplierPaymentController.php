@@ -27,9 +27,9 @@ class SupplierPaymentController extends Controller
     {
         $request->validate([
             'supplier_invoice_id' => 'required|exists:supplier_invoices,id',
-            'payment_date'        => 'required|date',
-            'amount'              => 'required|numeric|min:0.01',
-            'payment_method'      => 'required|string|max:255',
+            'payment_date' => 'required|date',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|string|max:255',
         ]);
 
         $payment = SupplierPayment::create(array_merge($request->all(), [
@@ -37,13 +37,13 @@ class SupplierPaymentController extends Controller
         ]));
 
         // Refresh invoice and recompute paid status
-        $invoice     = SupplierInvoice::find($request->supplier_invoice_id);
+        $invoice = SupplierInvoice::find($request->supplier_invoice_id);
         $newPaidAmount = $invoice->paid_amount + $request->amount;
-        $status       = $newPaidAmount >= $invoice->total_amount ? 'paid' : 'partial';
+        $status = $newPaidAmount >= $invoice->total_amount ? 'paid' : 'partial';
 
         $invoice->update([
             'paid_amount' => $newPaidAmount,
-            'status'      => $status,
+            'status' => $status,
         ]);
 
         return redirect()->route('purchase.payments.index')->with('success', 'Payment recorded successfully.');
@@ -66,8 +66,8 @@ class SupplierPaymentController extends Controller
     public function update(Request $request, SupplierPayment $supplierPayment)
     {
         $request->validate([
-            'payment_date'   => 'required|date',
-            'amount'         => 'required|numeric|min:0.01',
+            'payment_date' => 'required|date',
+            'amount' => 'required|numeric|min:0.01',
             'payment_method' => 'required|string|max:255',
         ]);
 

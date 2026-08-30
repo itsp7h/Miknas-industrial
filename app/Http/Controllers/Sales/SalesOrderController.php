@@ -22,7 +22,7 @@ class SalesOrderController extends Controller
     public function create()
     {
         $customers = Customer::all();
-        $items     = Item::where('category', 'finished_good')->get();
+        $items = Item::where('category', 'finished_good')->get();
 
         return view('sales.orders.create', compact('customers', 'items'));
     }
@@ -30,33 +30,33 @@ class SalesOrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'customer_id'          => 'required|exists:customers,id',
-            'order_date'           => 'required|date',
-            'items'                => 'required|array|min:1',
-            'items.*.item_id'      => 'required|exists:items,id',
-            'items.*.quantity'     => 'required|numeric|min:1',
-            'items.*.unit_price'   => 'required|numeric|min:0',
+            'customer_id' => 'required|exists:customers,id',
+            'order_date' => 'required|date',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.quantity' => 'required|numeric|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        $orderNumber = 'SO-' . str_pad(SalesOrder::max('id') + 1, 5, '0', STR_PAD_LEFT);
-        $totalAmount = collect($request->items)->sum(fn($item) => $item['quantity'] * $item['unit_price']);
+        $orderNumber = 'SO-'.str_pad(SalesOrder::max('id') + 1, 5, '0', STR_PAD_LEFT);
+        $totalAmount = collect($request->items)->sum(fn ($item) => $item['quantity'] * $item['unit_price']);
 
         $order = SalesOrder::create([
             'order_number' => $orderNumber,
-            'customer_id'  => $request->customer_id,
-            'order_date'   => $request->order_date,
+            'customer_id' => $request->customer_id,
+            'order_date' => $request->order_date,
             'total_amount' => $totalAmount,
-            'status'       => 'draft',
-            'created_by'   => auth()->id(),
+            'status' => 'draft',
+            'created_by' => auth()->id(),
         ]);
 
         foreach ($request->items as $item) {
             SalesOrderItem::create([
-                'sales_order_id'    => $order->id,
-                'item_id'           => $item['item_id'],
-                'quantity'          => $item['quantity'],
-                'unit_price'        => $item['unit_price'],
-                'amount'            => $item['quantity'] * $item['unit_price'],
+                'sales_order_id' => $order->id,
+                'item_id' => $item['item_id'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['unit_price'],
+                'amount' => $item['quantity'] * $item['unit_price'],
                 'quantity_delivered' => 0,
             ]);
         }
@@ -74,7 +74,7 @@ class SalesOrderController extends Controller
     public function edit(SalesOrder $salesOrder)
     {
         $customers = Customer::all();
-        $items     = Item::where('category', 'finished_good')->get();
+        $items = Item::where('category', 'finished_good')->get();
 
         return view('sales.orders.edit', compact('salesOrder', 'customers', 'items'));
     }
@@ -83,7 +83,7 @@ class SalesOrderController extends Controller
     {
         $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'order_date'  => 'required|date',
+            'order_date' => 'required|date',
         ]);
 
         $salesOrder->update($request->only('customer_id', 'order_date', 'notes'));

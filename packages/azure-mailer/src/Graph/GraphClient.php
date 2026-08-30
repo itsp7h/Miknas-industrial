@@ -44,7 +44,7 @@ class GraphClient
     private function endpoint(): string
     {
         $version = $this->config['graph_api_version'] ?? 'v1.0';
-        $from    = $this->config['from_address'];
+        $from = $this->config['from_address'];
 
         return "https://graph.microsoft.com/{$version}/users/{$from}/sendMail";
     }

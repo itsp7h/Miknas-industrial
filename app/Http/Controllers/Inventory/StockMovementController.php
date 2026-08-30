@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\StockLevel;
 use App\Models\StockMovement;
+use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\Inventory\LowStockAlertNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 
 class StockMovementController extends Controller
 {
@@ -21,7 +23,7 @@ class StockMovementController extends Controller
 
     public function create()
     {
-        $items      = Item::all();
+        $items = Item::all();
         $warehouses = Warehouse::all();
 
         return view('inventory.movements.create', compact('items', 'warehouses'));
@@ -30,11 +32,11 @@ class StockMovementController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'item_id'      => 'required|exists:items,id',
+            'item_id' => 'required|exists:items,id',
             'warehouse_id' => 'required|exists:warehouses,id',
-            'type'         => 'required|in:in,out,adjustment',
-            'quantity'     => 'required|numeric|min:0.01',
-            'notes'        => 'nullable|string',
+            'type' => 'required|in:in,out,adjustment',
+            'quantity' => 'required|numeric|min:0.01',
+            'notes' => 'nullable|string',
         ]);
 
         $stockLevel = StockLevel::firstOrCreate(
@@ -51,19 +53,19 @@ class StockMovementController extends Controller
         }
 
         StockMovement::create([
-            'item_id'       => $request->item_id,
-            'warehouse_id'  => $request->warehouse_id,
-            'type'          => $request->type,
-            'quantity'      => $request->quantity,
-            'notes'         => $request->notes,
-            'created_by'    => auth()->id(),
+            'item_id' => $request->item_id,
+            'warehouse_id' => $request->warehouse_id,
+            'type' => $request->type,
+            'quantity' => $request->quantity,
+            'notes' => $request->notes,
+            'created_by' => auth()->id(),
         ]);
 
         $stockLevel->refresh();
         $item = Item::find($request->item_id);
         if ($request->type === 'out' && $item && $item->minimum_stock_level && $stockLevel->quantity <= $item->minimum_stock_level) {
-            $storeManagers = \App\Models\User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
-            \Illuminate\Support\Facades\Notification::send(
+            $storeManagers = User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
+            Notification::send(
                 $storeManagers,
                 new LowStockAlertNotification($item, $stockLevel)
             );

@@ -33,7 +33,7 @@ abstract class TestCase extends BaseTestCase
         }
 
         if (Schema::hasTable('permissions')) {
-            (new PurchaseAccessSeeder())->run();
+            (new PurchaseAccessSeeder)->run();
         }
     }
 }

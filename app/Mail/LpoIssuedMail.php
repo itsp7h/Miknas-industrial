@@ -19,7 +19,7 @@ class LpoIssuedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Purchase Order — ' . $this->order->po_number,
+            subject: 'Purchase Order — '.$this->order->po_number,
         );
     }
 
@@ -31,7 +31,7 @@ class LpoIssuedMail extends Mailable
     public function attachments(): array
     {
         return [
-            Attachment::fromData(fn () => $this->pdf, $this->order->po_number . '.pdf')
+            Attachment::fromData(fn () => $this->pdf, $this->order->po_number.'.pdf')
                 ->withMime('application/pdf'),
         ];
     }

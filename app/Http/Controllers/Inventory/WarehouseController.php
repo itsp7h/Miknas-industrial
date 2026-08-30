@@ -23,7 +23,7 @@ class WarehouseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'location' => 'nullable|string|max:255',
         ]);
 
@@ -45,7 +45,7 @@ class WarehouseController extends Controller
     public function update(Request $request, Warehouse $warehouse)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'location' => 'nullable|string|max:255',
         ]);
 

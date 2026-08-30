@@ -12,7 +12,7 @@ if (! function_exists('resolveView')) {
      */
     function resolveView(string $view, array $data = []): View
     {
-        $mobileView = 'mobile.' . $view;
+        $mobileView = 'mobile.'.$view;
 
         if (request()->cookie('viewport') === 'mobile' && view()->exists($mobileView)) {
             return view($mobileView, $data);

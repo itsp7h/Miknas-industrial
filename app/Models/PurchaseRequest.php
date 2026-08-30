@@ -17,7 +17,7 @@ class PurchaseRequest extends Model
     ];
 
     protected $casts = [
-        'date'        => 'date',
+        'date' => 'date',
         'approved_at' => 'datetime',
     ];
 
@@ -84,7 +84,7 @@ class PurchaseRequest extends Model
                 ->where('not_available', false)
                 ->exists();
 
-            if ($quoted && !in_array($item->id, $awardedItemIds)) {
+            if ($quoted && ! in_array($item->id, $awardedItemIds)) {
                 return false;
             }
         }

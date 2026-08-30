@@ -18,7 +18,7 @@ class RfqInvitationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Quote Request — ' . $this->invitation->purchaseRequest->request_number,
+            subject: 'Quote Request — '.$this->invitation->purchaseRequest->request_number,
         );
     }
 

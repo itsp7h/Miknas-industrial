@@ -35,7 +35,7 @@ class UserManagementControllerTest extends TestCase
         $target = User::factory()->create();
 
         $response = $this->actingAs($admin)->patchJson(route('settings.users.update', $target), [
-            'roles'       => ['Requester'],
+            'roles' => ['Requester'],
             'permissions' => [],
         ]);
 
@@ -50,7 +50,7 @@ class UserManagementControllerTest extends TestCase
         $target = User::factory()->create();
 
         $this->actingAs($admin)->patchJson(route('settings.users.update', $target), [
-            'roles'       => [],
+            'roles' => [],
             'permissions' => ['purchase-requests.view-all'],
         ]);
 
@@ -65,7 +65,7 @@ class UserManagementControllerTest extends TestCase
         $target->givePermissionTo('purchase-requests.view-all');
 
         $this->actingAs($admin)->patchJson(route('settings.users.update', $target), [
-            'roles'       => ['Requester'],
+            'roles' => ['Requester'],
             'permissions' => ['purchase-requests.view-all'],
         ]);
 
@@ -80,7 +80,7 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
 
         $response = $this->actingAs($admin)->patchJson(route('settings.users.update', $admin), [
-            'roles'       => [],
+            'roles' => [],
             'permissions' => [],
         ]);
 
@@ -94,7 +94,7 @@ class UserManagementControllerTest extends TestCase
         $target = User::factory()->create();
 
         $this->actingAs($user)->patchJson(route('settings.users.update', $target), [
-            'roles'       => ['Requester'],
+            'roles' => ['Requester'],
             'permissions' => [],
         ])->assertForbidden();
     }
@@ -104,7 +104,7 @@ class UserManagementControllerTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->postJson(route('settings.users.store'), [
-            'name'  => 'New Person',
+            'name' => 'New Person',
             'email' => 'new@example.test',
         ])->assertForbidden();
     }
@@ -117,7 +117,7 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
 
         $response = $this->actingAs($admin)->postJson(route('settings.users.store'), [
-            'name'  => 'New Person',
+            'name' => 'New Person',
             'email' => 'new@example.test',
             'roles' => ['Requester'],
         ]);
@@ -141,11 +141,11 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
 
         $response = $this->actingAs($admin)->postJson(route('settings.users.store'), [
-            'name'                  => 'New Person',
-            'email'                 => 'manual@example.test',
-            'roles'                 => ['Requester'],
-            'mode'                  => 'password',
-            'password'              => 'CorrectHorseBattery9!',
+            'name' => 'New Person',
+            'email' => 'manual@example.test',
+            'roles' => ['Requester'],
+            'mode' => 'password',
+            'password' => 'CorrectHorseBattery9!',
             'password_confirmation' => 'CorrectHorseBattery9!',
         ]);
 
@@ -167,9 +167,9 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
 
         $this->actingAs($admin)->postJson(route('settings.users.store'), [
-            'name'  => 'New Person',
+            'name' => 'New Person',
             'email' => 'badmode@example.test',
-            'mode'  => 'foo',
+            'mode' => 'foo',
         ])->assertStatus(422)->assertJsonValidationErrors('mode');
     }
 
@@ -181,10 +181,10 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
 
         $this->actingAs($admin)->postJson(route('settings.users.store'), [
-            'name'                  => 'New Person',
-            'email'                 => 'shortpass@example.test',
-            'mode'                  => 'password',
-            'password'              => 'short',
+            'name' => 'New Person',
+            'email' => 'shortpass@example.test',
+            'mode' => 'password',
+            'password' => 'short',
             'password_confirmation' => 'short',
         ])->assertStatus(422)->assertJsonValidationErrors('password');
     }
@@ -195,10 +195,10 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
 
         $this->actingAs($admin)->postJson(route('settings.users.store'), [
-            'name'                  => 'New Person',
-            'email'                 => 'mismatch@example.test',
-            'mode'                  => 'password',
-            'password'              => 'CorrectHorseBattery9!',
+            'name' => 'New Person',
+            'email' => 'mismatch@example.test',
+            'mode' => 'password',
+            'password' => 'CorrectHorseBattery9!',
             'password_confirmation' => 'DifferentPassword9!',
         ])->assertStatus(422)->assertJsonValidationErrors('password');
     }
@@ -209,9 +209,9 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
 
         $this->actingAs($admin)->postJson(route('settings.users.store'), [
-            'name'  => 'New Person',
+            'name' => 'New Person',
             'email' => 'nopassword@example.test',
-            'mode'  => 'password',
+            'mode' => 'password',
         ])->assertStatus(422)->assertJsonValidationErrors('password');
     }
 
@@ -222,7 +222,7 @@ class UserManagementControllerTest extends TestCase
         User::factory()->create(['email' => 'taken@example.test']);
 
         $this->actingAs($admin)->postJson(route('settings.users.store'), [
-            'name'  => 'New Person',
+            'name' => 'New Person',
             'email' => 'taken@example.test',
         ])->assertStatus(422);
     }
@@ -233,7 +233,7 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
 
         $this->actingAs($admin)->postJson(route('settings.users.store'), [
-            'name'  => 'New Person',
+            'name' => 'New Person',
             'email' => 'Mixed@Example.com',
         ])->assertStatus(422)->assertJsonValidationErrors('email');
     }

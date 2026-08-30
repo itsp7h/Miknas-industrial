@@ -15,6 +15,7 @@ class PurchaseSignatureController extends Controller
         $this->authorize('approve', $purchaseRequest);
 
         $purchaseRequest->load('signature.signedBy');
+
         return view('purchase.signature.show', ['request' => $purchaseRequest]);
     }
 
@@ -32,10 +33,10 @@ class PurchaseSignatureController extends Controller
 
         PurchaseSignature::create([
             'purchase_request_id' => $purchaseRequest->id,
-            'signed_by'           => auth()->id(),
-            'signature_image'     => $validated['signature_image'],
-            'signed_at'           => now(),
-            'ip_address'          => $request->ip(),
+            'signed_by' => auth()->id(),
+            'signature_image' => $validated['signature_image'],
+            'signed_at' => now(),
+            'ip_address' => $request->ip(),
         ]);
 
         $stages->advance($purchaseRequest);

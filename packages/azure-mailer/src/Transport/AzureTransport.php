@@ -39,16 +39,16 @@ class AzureTransport extends AbstractTransport
     {
         return [
             'message' => [
-                'subject'       => $email->getSubject() ?? '',
-                'body'          => [
+                'subject' => $email->getSubject() ?? '',
+                'body' => [
                     'contentType' => $email->getHtmlBody() !== null ? 'HTML' : 'Text',
-                    'content'     => $email->getHtmlBody() ?? $email->getTextBody() ?? '',
+                    'content' => $email->getHtmlBody() ?? $email->getTextBody() ?? '',
                 ],
-                'toRecipients'  => $this->mapAddresses($email->getTo()),
-                'ccRecipients'  => $this->mapAddresses($email->getCc()),
+                'toRecipients' => $this->mapAddresses($email->getTo()),
+                'ccRecipients' => $this->mapAddresses($email->getCc()),
                 'bccRecipients' => $this->mapAddresses($email->getBcc()),
-                'replyTo'       => $this->mapAddresses($email->getReplyTo()),
-                'attachments'   => $this->mapAttachments($email),
+                'replyTo' => $this->mapAddresses($email->getReplyTo()),
+                'attachments' => $this->mapAttachments($email),
             ],
             'saveToSentItems' => (bool) ($this->config['save_to_sent_items'] ?? false),
         ];
@@ -59,7 +59,7 @@ class AzureTransport extends AbstractTransport
         return array_map(fn ($addr) => [
             'emailAddress' => [
                 'address' => $addr->getAddress(),
-                'name'    => $addr->getName() ?? '',
+                'name' => $addr->getName() ?? '',
             ],
         ], $addresses);
     }
@@ -74,9 +74,9 @@ class AzureTransport extends AbstractTransport
             }
 
             $result[] = [
-                '@odata.type'  => '#microsoft.graph.fileAttachment',
-                'name'         => $attachment->getFilename() ?? 'attachment',
-                'contentType'  => $attachment->getMediaType() . '/' . $attachment->getMediaSubtype(),
+                '@odata.type' => '#microsoft.graph.fileAttachment',
+                'name' => $attachment->getFilename() ?? 'attachment',
+                'contentType' => $attachment->getMediaType().'/'.$attachment->getMediaSubtype(),
                 'contentBytes' => base64_encode($attachment->getBody()),
             ];
         }

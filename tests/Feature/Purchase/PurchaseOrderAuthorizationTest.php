@@ -17,13 +17,13 @@ class PurchaseOrderAuthorizationTest extends TestCase
     private function createItem(): Item
     {
         return Item::create([
-            'item_code'           => 'ITEM-' . random_int(1000, 9999),
-            'item_name'           => 'Test Item',
-            'category'            => 'raw_material',
-            'unit_of_measure'     => 'pcs',
+            'item_code' => 'ITEM-'.random_int(1000, 9999),
+            'item_name' => 'Test Item',
+            'category' => 'raw_material',
+            'unit_of_measure' => 'pcs',
             'minimum_stock_level' => 0,
-            'cost_price'          => 10,
-            'is_active'           => true,
+            'cost_price' => 10,
+            'is_active' => true,
         ]);
     }
 
@@ -31,8 +31,8 @@ class PurchaseOrderAuthorizationTest extends TestCase
     {
         return [
             'supplier_id' => $supplier->id,
-            'po_date'     => now()->format('Y-m-d'),
-            'items'       => [
+            'po_date' => now()->format('Y-m-d'),
+            'items' => [
                 ['item_id' => $item->id, 'quantity' => 2, 'rate' => 10],
             ],
         ];
@@ -99,11 +99,11 @@ class PurchaseOrderAuthorizationTest extends TestCase
         $user = User::factory()->create();
         $supplier = Supplier::factory()->create();
         $order = PurchaseOrder::create([
-            'po_number'    => 'PO-TEST-1',
-            'supplier_id'  => $supplier->id,
-            'po_date'      => now(),
+            'po_number' => 'PO-TEST-1',
+            'supplier_id' => $supplier->id,
+            'po_date' => now(),
             'total_amount' => 0,
-            'status'       => 'draft',
+            'status' => 'draft',
         ]);
 
         $this->actingAs($user)
@@ -116,11 +116,11 @@ class PurchaseOrderAuthorizationTest extends TestCase
         $user = User::factory()->create();
         $supplier = Supplier::factory()->create();
         $order = PurchaseOrder::create([
-            'po_number'    => 'PO-TEST-2',
-            'supplier_id'  => $supplier->id,
-            'po_date'      => now(),
+            'po_number' => 'PO-TEST-2',
+            'supplier_id' => $supplier->id,
+            'po_date' => now(),
             'total_amount' => 0,
-            'status'       => 'draft',
+            'status' => 'draft',
         ]);
 
         $this->actingAs($user)
@@ -137,12 +137,12 @@ class PurchaseOrderAuthorizationTest extends TestCase
         $supplier = Supplier::factory()->create();
         $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
         $order = PurchaseOrder::create([
-            'po_number'           => 'PO-TEST-3',
-            'supplier_id'         => $supplier->id,
+            'po_number' => 'PO-TEST-3',
+            'supplier_id' => $supplier->id,
             'purchase_request_id' => $atLpo->id,
-            'po_date'             => now(),
-            'total_amount'        => 0,
-            'status'              => 'draft',
+            'po_date' => now(),
+            'total_amount' => 0,
+            'status' => 'draft',
         ]);
 
         $this->actingAs($procurement)

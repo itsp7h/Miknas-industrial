@@ -5,12 +5,14 @@ namespace PromoSeven\UltraMessage;
 class UltraMessageMessage
 {
     public string $type;
+
     public string $to = '';
+
     public array $payload = [];
 
     private function __construct(string $type, array $payload)
     {
-        $this->type    = $type;
+        $this->type = $type;
         $this->payload = $payload;
     }
 
@@ -62,6 +64,7 @@ class UltraMessageMessage
     public function to(string $number): self
     {
         $this->to = $number;
+
         return $this;
     }
 }

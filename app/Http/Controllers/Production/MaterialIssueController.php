@@ -24,8 +24,8 @@ class MaterialIssueController extends Controller
     public function create()
     {
         $productionOrders = ProductionOrder::whereIn('status', ['planned', 'in_progress'])->get();
-        $items            = Item::where('category', 'raw_material')->get();
-        $warehouses       = Warehouse::all();
+        $items = Item::where('category', 'raw_material')->get();
+        $warehouses = Warehouse::all();
 
         return view('production.material-issues.create', compact('productionOrders', 'items', 'warehouses'));
     }
@@ -34,14 +34,14 @@ class MaterialIssueController extends Controller
     {
         $request->validate([
             'production_order_id' => 'required|exists:production_orders,id',
-            'item_id'             => 'required|exists:items,id',
-            'warehouse_id'        => 'required|exists:warehouses,id',
-            'quantity'            => 'required|numeric|min:0.01',
-            'issue_date'          => 'required|date',
+            'item_id' => 'required|exists:items,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'quantity' => 'required|numeric|min:0.01',
+            'issue_date' => 'required|date',
         ]);
 
         DB::transaction(function () use ($request) {
-            $issueNumber = 'MI-' . str_pad(MaterialIssue::max('id') + 1, 5, '0', STR_PAD_LEFT);
+            $issueNumber = 'MI-'.str_pad(MaterialIssue::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
             $stockLevel = StockLevel::firstOrCreate(
                 ['item_id' => $request->item_id, 'warehouse_id' => $request->warehouse_id],
@@ -53,23 +53,23 @@ class MaterialIssueController extends Controller
             $stockLevel->decrement('quantity', $decrement);
 
             StockMovement::create([
-                'item_id'             => $request->item_id,
-                'warehouse_id'        => $request->warehouse_id,
-                'type'                => 'out',
-                'quantity'            => $request->quantity,
-                'reference_type'      => 'MaterialIssue',
-                'reference_id'        => null, // will be updated after create
-                'created_by'          => auth()->id(),
+                'item_id' => $request->item_id,
+                'warehouse_id' => $request->warehouse_id,
+                'type' => 'out',
+                'quantity' => $request->quantity,
+                'reference_type' => 'MaterialIssue',
+                'reference_id' => null, // will be updated after create
+                'created_by' => auth()->id(),
             ]);
 
             $issue = MaterialIssue::create([
-                'issue_number'        => $issueNumber,
+                'issue_number' => $issueNumber,
                 'production_order_id' => $request->production_order_id,
-                'item_id'             => $request->item_id,
-                'warehouse_id'        => $request->warehouse_id,
-                'quantity'            => $request->quantity,
-                'issue_date'          => $request->issue_date,
-                'issued_by'           => auth()->id(),
+                'item_id' => $request->item_id,
+                'warehouse_id' => $request->warehouse_id,
+                'quantity' => $request->quantity,
+                'issue_date' => $request->issue_date,
+                'issued_by' => auth()->id(),
             ]);
 
             // Backfill reference_id on the movement just created

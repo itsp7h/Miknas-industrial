@@ -20,13 +20,14 @@ class QuoteReceived extends Notification
     public function toDatabase(object $notifiable): array
     {
         $pr = $this->invitation->purchaseRequest;
+
         return [
-            'type'             => 'quote_received',
-            'message'          => $this->invitation->supplier->name . ' submitted a quote for ' . $pr->request_number,
-            'supplier_name'    => $this->invitation->supplier->name,
-            'request_number'   => $pr->request_number,
+            'type' => 'quote_received',
+            'message' => $this->invitation->supplier->name.' submitted a quote for '.$pr->request_number,
+            'supplier_name' => $this->invitation->supplier->name,
+            'request_number' => $pr->request_number,
             'purchase_request_id' => $pr->id,
-            'url'              => route('purchase.pipeline.show', $pr),
+            'url' => route('purchase.pipeline.show', $pr),
         ];
     }
 }

@@ -33,6 +33,6 @@ class ProductionOutput extends Model
 
     public function recordedBy()
     {
-        return $this->belongsTo(\App\Models\User::class, 'recorded_by');
+        return $this->belongsTo(User::class, 'recorded_by');
     }
 }

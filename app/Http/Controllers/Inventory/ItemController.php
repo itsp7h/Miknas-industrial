@@ -36,16 +36,16 @@ class ItemController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'                 => 'required|string|max:255',
-            'type'                 => 'required|string|max:100',
-            'unit_of_measure'      => 'required|string|max:50',
-            'cost_price'           => 'nullable|numeric|min:0',
-            'selling_price'        => 'nullable|numeric|min:0',
-            'minimum_stock_level'  => 'nullable|numeric|min:0',
+            'name' => 'required|string|max:255',
+            'type' => 'required|string|max:100',
+            'unit_of_measure' => 'required|string|max:50',
+            'cost_price' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
+            'minimum_stock_level' => 'nullable|numeric|min:0',
         ]);
 
-        $data              = $request->all();
-        $data['item_code'] = 'ITEM-' . str_pad(Item::max('id') + 1, 5, '0', STR_PAD_LEFT);
+        $data = $request->all();
+        $data['item_code'] = 'ITEM-'.str_pad(Item::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
         Item::create($data);
 
@@ -65,11 +65,11 @@ class ItemController extends Controller
     public function update(Request $request, Item $item)
     {
         $request->validate([
-            'name'                => 'required|string|max:255',
-            'type'                => 'required|string|max:100',
-            'unit_of_measure'     => 'required|string|max:50',
-            'cost_price'          => 'nullable|numeric|min:0',
-            'selling_price'       => 'nullable|numeric|min:0',
+            'name' => 'required|string|max:255',
+            'type' => 'required|string|max:100',
+            'unit_of_measure' => 'required|string|max:50',
+            'cost_price' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
             'minimum_stock_level' => 'nullable|numeric|min:0',
         ]);
 
@@ -106,7 +106,7 @@ class ItemController extends Controller
             return redirect()->route('inventory.items.index')->with('success', $msg);
         } catch (\Exception $e) {
             return redirect()->route('inventory.items.index')
-                ->with('error', 'Import failed: ' . $e->getMessage());
+                ->with('error', 'Import failed: '.$e->getMessage());
         }
     }
 
@@ -114,7 +114,7 @@ class ItemController extends Controller
     {
         $path = storage_path('app/items_template.xlsx');
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             Artisan::call('items:template');
         }
 
@@ -128,6 +128,6 @@ class ItemController extends Controller
         $pdf = Pdf::loadView('inventory.items.pdf', compact('items'))
             ->setPaper('a4', 'landscape');
 
-        return $pdf->download('items_' . now()->format('Y-m-d') . '.pdf');
+        return $pdf->download('items_'.now()->format('Y-m-d').'.pdf');
     }
 }

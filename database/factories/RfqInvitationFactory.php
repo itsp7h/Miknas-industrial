@@ -12,10 +12,10 @@ class RfqInvitationFactory extends Factory
     {
         return [
             'purchase_request_id' => PurchaseRequest::factory(),
-            'supplier_id'         => Supplier::factory(),
-            'token'               => $this->faker->unique()->uuid(),
-            'channel'             => 'email',
-            'status'              => 'submitted',
+            'supplier_id' => Supplier::factory(),
+            'token' => $this->faker->unique()->uuid(),
+            'channel' => 'email',
+            'status' => 'submitted',
         ];
     }
 }

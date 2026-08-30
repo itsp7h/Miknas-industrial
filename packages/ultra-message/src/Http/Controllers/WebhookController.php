@@ -15,9 +15,9 @@ class WebhookController extends Controller
 
         if ($secret) {
             $signature = $request->header('X-Hub-Signature-256', '');
-            $expected  = 'sha256=' . hash_hmac('sha256', $request->getContent(), $secret);
+            $expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
 
-            if (!hash_equals($expected, $signature)) {
+            if (! hash_equals($expected, $signature)) {
                 abort(403, 'Invalid webhook signature.');
             }
         }

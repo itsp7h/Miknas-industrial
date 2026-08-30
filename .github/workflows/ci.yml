@@ -21,9 +21,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Full history so the Pint step can diff against the base commit.
-          fetch-depth: 0
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -60,25 +57,8 @@ jobs:
           done < <(find app database routes config tests packages -name '*.php' -not -path '*/vendor/*')
           exit $failed
 
-      # Scoped to files this push/PR actually touched. The repo carries
-      # pre-existing style drift across ~150 files; a one-time `vendor/bin/pint`
-      # would clear it, but until then a repo-wide --test would fail every run
-      # for reasons unrelated to the change under review.
-      - name: Check formatting (Pint, changed files only)
-        run: |
-          base="${{ github.event.pull_request.base.sha || github.event.before }}"
-          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
-            echo "No usable base commit — skipping scoped format check."
-            exit 0
-          fi
-          files=$(git diff --name-only --diff-filter=ACM "$base" HEAD -- '*.php')
-          if [ -z "$files" ]; then
-            echo "No PHP files changed."
-            exit 0
-          fi
-          echo "$files"
-          # shellcheck disable=SC2086
-          vendor/bin/pint --test $files
+      - name: Check formatting (Pint)
+        run: vendor/bin/pint --test
 
       - name: Run PHPUnit
         run: php artisan test

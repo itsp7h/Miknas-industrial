@@ -15,9 +15,9 @@ class UltraMessageClientTest extends TestCase
         parent::setUp();
         $this->client = new UltraMessageClient([
             'instance_id' => 'instance123',
-            'token'       => 'test-token',
-            'timeout'     => 30,
-            'enabled'     => true,
+            'token' => 'test-token',
+            'timeout' => 30,
+            'enabled' => true,
         ]);
     }
 
@@ -68,9 +68,9 @@ class UltraMessageClientTest extends TestCase
 
         $client = new UltraMessageClient([
             'instance_id' => 'instance123',
-            'token'       => 'test-token',
-            'timeout'     => 30,
-            'enabled'     => false,
+            'token' => 'test-token',
+            'timeout' => 30,
+            'enabled' => false,
         ]);
 
         $result = $client->sendText('+971501234567', 'Hello');

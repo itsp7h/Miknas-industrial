@@ -15,7 +15,7 @@ class UrgencyLevel extends Model
 
     protected $casts = [
         'show_date_picker' => 'boolean',
-        'is_active'        => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function scopeActive($query)

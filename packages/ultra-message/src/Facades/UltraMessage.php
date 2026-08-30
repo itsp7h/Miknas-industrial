@@ -23,7 +23,7 @@ use PromoSeven\UltraMessage\UltraMessageFake;
  * @method static array getContacts()
  * @method static array getGroups()
  *
- * @see \PromoSeven\UltraMessage\UltraMessageClient
+ * @see UltraMessageClient
  */
 class UltraMessage extends Facade
 {
@@ -34,8 +34,9 @@ class UltraMessage extends Facade
 
     public static function fake(): UltraMessageFake
     {
-        $fake = new UltraMessageFake();
+        $fake = new UltraMessageFake;
         static::swap($fake);
+
         return $fake;
     }
 

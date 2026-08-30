@@ -33,48 +33,85 @@ php artisan serve    # http://localhost:8000
 
 ---
 
+## Environments
+
+| | Production | Staging |
+|---|---|---|
+| URL | https://steelerp.p7h.me | http://192.168.0.38 |
+| Host | LXC `SteelERP`, 192.168.0.46 | LXC `steelERPstaging`, 192.168.0.38 |
+| Branch | `main` | `development` |
+| Deploys | tag `v*` or manual, behind approval | automatic, once CI is green |
+
+Public traffic reaches production through Cloudflare → a tunnel host on
+192.168.1.10 → Apache on port 80. Nothing inbound reaches either container
+directly, which is why deploys run on **self-hosted** GitHub Actions runners
+(`steelerp-production`, `steelerp-staging`) rather than GitHub-hosted ones.
+
+Both boxes run `steelerp-reverb`, `steelerp-queue` and `steelerp-scheduler`
+as systemd units. Staging has `ULTRAMSG_ENABLED=false` — it carries a copy of
+live customer data, so an enabled WhatsApp integration there would message
+real customers.
+
+---
+
+## Testing & CI/CD
+
+```bash
+php artisan test        # PHPUnit — in-memory SQLite
+npm test                # Vitest — React components
+vendor/bin/pint         # format; CI gates on `pint --test` repo-wide
+scripts/smoke-test.sh <base-url>   # black-box checks against a running site
+```
+
+CI (`.github/workflows/ci.yml`) runs a PHP syntax lint, Pint, PHPUnit on 8.2
+and 8.3, Vitest, and a Vite build. The syntax lint exists because three
+notification classes once shipped as invalid PHP (`??` inside `"{...}"`
+interpolation): a file that does not parse never gets far enough to fail a
+test, so no unit suite could have caught it.
+
+Deploy scripts live in `scripts/`; see `docs/ci-cd-setup.md` for runner setup
+and rollback. Every deploy backs up the SQLite database before migrating.
+
+---
+
 ## Controllers — `app/Http/Controllers/`
 
 ```
-Controller.php
-DashboardController.php
-ProfileController.php
-Auth/
-  AuthenticatedSessionController.php
-  ConfirmablePasswordController.php
-  EmailVerificationNotificationController.php
-  EmailVerificationPromptController.php
-  NewPasswordController.php
-  PasswordController.php
-  PasswordResetLinkController.php
-  RegisteredUserController.php
-  VerifyEmailController.php
+Controller.php            DashboardController.php   ProfileController.php
+SettingsController.php    MailAccountController.php
+Auth/                     (Breeze defaults)
+Api/                      ← React SPA's JSON API
+  AuthController.php              DashboardController.php
+  NotificationController.php
+  Purchase/PurchasePipelineController.php
+  Purchase/SupplierController.php
+Settings/
+  LocationController.php          ProjectSettingController.php
+  UrgencyLevelController.php      UserManagementController.php
+  VatSettingController.php
 Purchase/
-  SupplierController.php          import, downloadTemplate, exportPdf + CRUD
   PurchaseRequestController.php   + approve, reject, print
-  PurchaseOrderController.php
-  GoodsReceiptNoteController.php  + confirm
-  SupplierInvoiceController.php
-  SupplierPaymentController.php
+  PurchaseOrderController.php     PurchasePipelineController.php
+  PurchaseSignatureController.php RfqController.php
+  RfqPortalController.php         ← public, token-based, no auth
+  SupplierQuoteController.php     GoodsReceiptNoteController.php  + confirm
+  SupplierInvoiceController.php   SupplierPaymentController.php
 Inventory/
   ItemController.php              import, downloadTemplate, exportPdf + CRUD
-  WarehouseController.php
-  StockMovementController.php
+  WarehouseController.php         StockMovementController.php
   StockReportController.php       summary, movement, lowStock, valuation
 Production/
   ProductionOrderController.php   + start, complete
-  BillOfMaterialController.php
-  MaterialIssueController.php
+  BillOfMaterialController.php    MaterialIssueController.php
   ProductionOutputController.php
 Sales/
-  CustomerController.php
-  SalesOrderController.php        + confirm
+  CustomerController.php          SalesOrderController.php        + confirm
   DeliveryNoteController.php      + dispatch
-  SalesInvoiceController.php
-  PaymentReceiptController.php
+  SalesInvoiceController.php      PaymentReceiptController.php
 ```
 
----
+Note: `SupplierController` (Purchase) is gone — suppliers are served by the
+React SPA through `Api/Purchase/SupplierController`.
 
 ## Models — `app/Models/`
 
@@ -100,6 +137,10 @@ SalesInvoice.php      PaymentReceipt.php
 |------|---------|
 | `SupplierImportService.php` | Excel import — detects MRF vs template format, skips duplicates |
 | `ItemImportService.php` | Excel import — detects Forkoll vs template format, skips duplicates |
+| `ProjectImportService.php` | Excel import for projects |
+| `PurchaseStageService.php` | The purchase pipeline's stage machine (`draft → … → complete`). `setStageIfNotPast()` is the guard that stops a re-award rolling a request backwards. Covered by `tests/Unit/PurchaseStageServiceTest.php` |
+| `RfqInvitationService.php` | Builds tokenised RFQ invitations for the public supplier portal |
+| `LpoGenerationService.php` | Generates LPOs from awarded quote items |
 
 ---
 
@@ -115,9 +156,15 @@ Files: `ImportSuppliers.php`, `GenerateSupplierTemplate.php`, `GenerateItemTempl
 
 ---
 
-## Routes — `routes/web.php`
+## Routes
 
-All protected by `['auth', 'verified']`. Prefix groups:
+`routes/web.php` (Blade pages), `routes/api.php` (React SPA JSON, Sanctum),
+`routes/auth.php` (Breeze), `routes/channels.php` (broadcast auth),
+`routes/console.php`.
+
+`/up` is Laravel's built-in health route — the smoke tests key off it.
+
+### web.php — all protected by `['auth', 'verified']`. Prefix groups:
 
 ### Purchase — `prefix('purchase')->name('purchase.')`
 ```

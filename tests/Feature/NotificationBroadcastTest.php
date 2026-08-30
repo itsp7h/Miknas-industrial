@@ -51,26 +51,26 @@ class NotificationBroadcastTest extends TestCase
         $purchaseRequest = PurchaseRequest::factory()->create(['stage' => 'quoting']);
         $item = PurchaseRequestItem::create([
             'purchase_request_id' => $purchaseRequest->id,
-            'description'         => 'Steel rod',
-            'unit'                => 'kg',
-            'quantity_required'   => 10,
+            'description' => 'Steel rod',
+            'unit' => 'kg',
+            'quantity_required' => 10,
         ]);
 
         $invitation = RfqInvitation::factory()->create([
             'purchase_request_id' => $purchaseRequest->id,
-            'status'              => 'opened',
+            'status' => 'opened',
         ]);
 
         $confirmCode = 'ABCDE';
         $this->withSession(['rfq_confirm_'.$invitation->token => $confirmCode]);
 
         $response = $this->post('/rfq/'.$invitation->token, [
-            'terms'         => '1',
-            'confirm_code'  => $confirmCode,
+            'terms' => '1',
+            'confirm_code' => $confirmCode,
             'lead_time_days' => 5,
             'payment_terms' => 'Net 30',
-            'notes'         => null,
-            'items'         => [
+            'notes' => null,
+            'items' => [
                 ['unit_price' => 5, 'is_vatable' => false, 'not_available' => false],
             ],
         ]);

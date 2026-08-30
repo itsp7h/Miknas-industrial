@@ -20,9 +20,9 @@ class SupplierInvoiceController extends Controller
 
     public function create()
     {
-        $suppliers      = Supplier::all();
+        $suppliers = Supplier::all();
         $purchaseOrders = PurchaseOrder::where('status', 'received')->with('supplier')->get();
-        $grns           = GoodsReceiptNote::where('status', 'confirmed')->with('purchaseOrder.supplier')->get();
+        $grns = GoodsReceiptNote::where('status', 'confirmed')->with('purchaseOrder.supplier')->get();
 
         return view('purchase.invoices.create', compact('suppliers', 'purchaseOrders', 'grns'));
     }
@@ -30,16 +30,16 @@ class SupplierInvoiceController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'supplier_id'      => 'required|exists:suppliers,id',
-            'invoice_number'   => 'required|string|max:255',
-            'invoice_date'     => 'required|date',
-            'subtotal'         => 'required|numeric|min:0',
-            'vat_amount'       => 'required|numeric|min:0',
-            'total_amount'     => 'required|numeric|min:0',
+            'supplier_id' => 'required|exists:suppliers,id',
+            'invoice_number' => 'required|string|max:255',
+            'invoice_date' => 'required|date',
+            'subtotal' => 'required|numeric|min:0',
+            'vat_amount' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
         ]);
 
         SupplierInvoice::create(array_merge($request->all(), [
-            'status'     => 'unpaid',
+            'status' => 'unpaid',
             'paid_amount' => 0,
         ]));
 
@@ -63,12 +63,12 @@ class SupplierInvoiceController extends Controller
     public function update(Request $request, SupplierInvoice $supplierInvoice)
     {
         $request->validate([
-            'supplier_id'    => 'required|exists:suppliers,id',
+            'supplier_id' => 'required|exists:suppliers,id',
             'invoice_number' => 'required|string|max:255',
-            'invoice_date'   => 'required|date',
-            'subtotal'       => 'required|numeric|min:0',
-            'vat_amount'     => 'required|numeric|min:0',
-            'total_amount'   => 'required|numeric|min:0',
+            'invoice_date' => 'required|date',
+            'subtotal' => 'required|numeric|min:0',
+            'vat_amount' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
         ]);
 
         $supplierInvoice->update($request->all());

@@ -35,10 +35,10 @@ class PurchaseWorkflowEndToEndTest extends TestCase
 
         // 1) Requester creates the MPR — lands at stage=draft (DB default).
         $storeResponse = $this->actingAs($requester)->post(route('purchase.requests.store'), [
-            'date'              => now()->format('Y-m-d'),
-            'project_name'      => 'Test Project',
+            'date' => now()->format('Y-m-d'),
+            'project_name' => 'Test Project',
             'requested_by_name' => 'Test Person',
-            'items'             => [
+            'items' => [
                 ['description' => 'Widget', 'quantity_required' => 5],
             ],
         ]);

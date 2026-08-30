@@ -19,7 +19,7 @@ class PaymentReceiptController extends Controller
 
     public function create()
     {
-        $invoices  = SalesInvoice::whereIn('status', ['unpaid', 'partial'])->with('customer')->get();
+        $invoices = SalesInvoice::whereIn('status', ['unpaid', 'partial'])->with('customer')->get();
         $customers = Customer::all();
 
         return view('sales.payments.create', compact('invoices', 'customers'));
@@ -29,22 +29,22 @@ class PaymentReceiptController extends Controller
     {
         $request->validate([
             'sales_invoice_id' => 'required|exists:sales_invoices,id',
-            'receipt_date'     => 'required|date',
-            'amount'           => 'required|numeric|min:0.01',
-            'payment_method'   => 'required|string|max:255',
+            'receipt_date' => 'required|date',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|string|max:255',
         ]);
 
         $receipt = PaymentReceipt::create(array_merge($request->all(), [
             'created_by' => auth()->id(),
         ]));
 
-        $invoice       = SalesInvoice::find($request->sales_invoice_id);
+        $invoice = SalesInvoice::find($request->sales_invoice_id);
         $newPaidAmount = $invoice->paid_amount + $request->amount;
-        $status        = $newPaidAmount >= $invoice->total_amount ? 'paid' : 'partial';
+        $status = $newPaidAmount >= $invoice->total_amount ? 'paid' : 'partial';
 
         $invoice->update([
             'paid_amount' => $newPaidAmount,
-            'status'      => $status,
+            'status' => $status,
         ]);
 
         // Reduce the customer's outstanding balance by the amount received
@@ -68,7 +68,7 @@ class PaymentReceiptController extends Controller
     public function update(Request $request, PaymentReceipt $paymentReceipt)
     {
         $request->validate([
-            'receipt_date'   => 'required|date',
+            'receipt_date' => 'required|date',
             'payment_method' => 'required|string|max:255',
         ]);
 

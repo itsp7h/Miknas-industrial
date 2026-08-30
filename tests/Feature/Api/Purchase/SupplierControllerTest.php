@@ -4,10 +4,12 @@ namespace Tests\Feature\Api\Purchase;
 
 use App\Events\SupplierDeleted;
 use App\Events\SupplierSaved;
+use App\Models\RfqInvitation;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -19,6 +21,7 @@ class SupplierControllerTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
+
         return $user;
     }
 
@@ -130,7 +133,7 @@ class SupplierControllerTest extends TestCase
     {
         $this->actingUser();
         $supplier = Supplier::factory()->create();
-        \App\Models\RfqInvitation::factory()->create(['supplier_id' => $supplier->id]);
+        RfqInvitation::factory()->create(['supplier_id' => $supplier->id]);
 
         $response = $this->deleteJson("/api/v1/purchase/suppliers/{$supplier->id}");
 
@@ -155,7 +158,7 @@ class SupplierControllerTest extends TestCase
         $this->actingUser();
 
         $path = storage_path('app/test_suppliers_template.xlsx');
-        \Illuminate\Support\Facades\Artisan::call('suppliers:template', ['--output' => $path]);
+        Artisan::call('suppliers:template', ['--output' => $path]);
         $this->assertFileExists($path);
 
         $file = new UploadedFile($path, 'suppliers.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);

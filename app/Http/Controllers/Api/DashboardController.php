@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Events\DashboardPinged;
 use App\Http\Controllers\Controller;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -18,7 +19,7 @@ class DashboardController extends Controller
     public function summary()
     {
         return response()->json([
-            'suppliers_total' => \App\Models\Supplier::count(),
+            'suppliers_total' => Supplier::count(),
         ]);
     }
 }

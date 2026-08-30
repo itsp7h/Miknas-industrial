@@ -15,7 +15,7 @@ class PurchaseRequestPolicyTest extends TestCase
     {
         $requester = User::factory()->create();
         $requester->assignRole('Requester');
-        $own   = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
+        $own = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
         $other = PurchaseRequest::factory()->create();
 
         $this->assertTrue($requester->can('view', $own));
@@ -27,7 +27,7 @@ class PurchaseRequestPolicyTest extends TestCase
         $requester = User::factory()->create();
         $requester->assignRole('Requester');
         $ownDraft = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
-        $ownRfq   = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'rfq']);
+        $ownRfq = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'rfq']);
         $othersDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
 
         $this->assertTrue($requester->can('update', $ownDraft));
@@ -43,9 +43,9 @@ class PurchaseRequestPolicyTest extends TestCase
         // so a re-check against an already-advanced request still passes.
         $manager = User::factory()->create();
         $manager->assignRole('Purchase Manager');
-        $atDraft      = PurchaseRequest::factory()->create(['stage' => 'draft']);
+        $atDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
         $atGmApproval = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
-        $atRfq        = PurchaseRequest::factory()->create(['stage' => 'rfq']);
+        $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
 
         $this->assertTrue($manager->can('approve', $atDraft));
         $this->assertTrue($manager->can('approve', $atGmApproval));
@@ -81,8 +81,8 @@ class PurchaseRequestPolicyTest extends TestCase
         $procurement = User::factory()->create();
         $procurement->assignRole('Procurement Officer');
         $atGmApproval = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
-        $atRfq        = PurchaseRequest::factory()->create(['stage' => 'rfq']);
-        $atDraft      = PurchaseRequest::factory()->create(['stage' => 'draft']);
+        $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
+        $atDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
 
         $this->assertTrue($procurement->can('manageRfq', $atGmApproval));
         $this->assertTrue($procurement->can('manageRfq', $atRfq));
@@ -96,10 +96,10 @@ class PurchaseRequestPolicyTest extends TestCase
         // affordance becomes unreachable once award() itself allows 'lpo'.
         $procurement = User::factory()->create();
         $procurement->assignRole('Procurement Officer');
-        $atQuoting    = PurchaseRequest::factory()->create(['stage' => 'quoting']);
+        $atQuoting = PurchaseRequest::factory()->create(['stage' => 'quoting']);
         $atComparison = PurchaseRequest::factory()->create(['stage' => 'comparison']);
-        $atLpo        = PurchaseRequest::factory()->create(['stage' => 'lpo']);
-        $atRfq        = PurchaseRequest::factory()->create(['stage' => 'rfq']);
+        $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
+        $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
 
         $this->assertTrue($procurement->can('manageQuotes', $atQuoting));
         $this->assertTrue($procurement->can('manageQuotes', $atComparison));
@@ -111,8 +111,8 @@ class PurchaseRequestPolicyTest extends TestCase
     {
         $requester = User::factory()->create();
         $requester->assignRole('Requester');
-        $ownDraft    = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
-        $ownRfq      = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'rfq']);
+        $ownDraft = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
+        $ownRfq = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'rfq']);
         $othersDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
 
         $this->assertTrue($requester->can('delete', $ownDraft));
@@ -125,8 +125,8 @@ class PurchaseRequestPolicyTest extends TestCase
         $procurement = User::factory()->create();
         $procurement->assignRole('Procurement Officer');
         $atComparison = PurchaseRequest::factory()->create(['stage' => 'comparison']);
-        $atLpo        = PurchaseRequest::factory()->create(['stage' => 'lpo']);
-        $atRfq        = PurchaseRequest::factory()->create(['stage' => 'rfq']);
+        $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
+        $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
 
         $this->assertTrue($procurement->can('award', $atComparison));
         $this->assertTrue($procurement->can('award', $atLpo));

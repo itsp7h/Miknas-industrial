@@ -6,15 +6,16 @@ use App\Models\Settings\Company;
 use App\Models\Settings\Department;
 use App\Models\Settings\ProjectSetting;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ProjectImportService
 {
     private array $stats = [
-        'companies_created'   => 0,
-        'projects_created'    => 0,
-        'locations_created'   => 0,
+        'companies_created' => 0,
+        'projects_created' => 0,
+        'locations_created' => 0,
         'departments_created' => 0,
-        'skipped'             => 0,
+        'skipped' => 0,
     ];
 
     /** @var array<string,Company> */
@@ -25,7 +26,7 @@ class ProjectImportService
         $spreadsheet = IOFactory::load($filePath);
 
         $projectSheet = $this->findSheet($spreadsheet, ['projects', 'project']);
-        $deptSheet    = $this->findSheet($spreadsheet, ['departments', 'department', 'depts', 'dept']);
+        $deptSheet = $this->findSheet($spreadsheet, ['departments', 'department', 'depts', 'dept']);
 
         if ($projectSheet) {
             $this->importProjects($projectSheet);
@@ -35,45 +36,47 @@ class ProjectImportService
         }
 
         // Single-sheet file with no named tabs → treat as projects
-        if (!$projectSheet && !$deptSheet) {
+        if (! $projectSheet && ! $deptSheet) {
             $this->importProjects($spreadsheet->getActiveSheet());
         }
 
         return $this->stats;
     }
 
-    private function findSheet($spreadsheet, array $names): ?\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet
+    private function findSheet($spreadsheet, array $names): ?Worksheet
     {
         foreach ($spreadsheet->getSheetNames() as $i => $sheetName) {
             if (in_array(strtolower(trim($sheetName)), $names)) {
                 return $spreadsheet->getSheet($i);
             }
         }
+
         return null;
     }
 
-    private function importProjects(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet): void
+    private function importProjects(Worksheet $sheet): void
     {
-        $rows    = $sheet->toArray(null, true, true, false);
+        $rows = $sheet->toArray(null, true, true, false);
         $headers = $this->normalizeHeaders((array) array_shift($rows));
 
-        $coIdx   = $this->findCol($headers, ['company', 'company name', 'companyname']);
+        $coIdx = $this->findCol($headers, ['company', 'company name', 'companyname']);
         $projIdx = $this->findCol($headers, ['project', 'project name', 'projectname']);
-        $locIdx  = $this->findCol($headers, ['location', 'location name', 'locationname', 'loc', 'loc name']);
+        $locIdx = $this->findCol($headers, ['location', 'location name', 'locationname', 'loc', 'loc name']);
         $addrIdx = $this->findCol($headers, ['address', 'addr']);
-        $latIdx  = $this->findCol($headers, ['latitude', 'lat']);
-        $lngIdx  = $this->findCol($headers, ['longitude', 'lng', 'lon', 'long']);
+        $latIdx = $this->findCol($headers, ['latitude', 'lat']);
+        $lngIdx = $this->findCol($headers, ['longitude', 'lng', 'lon', 'long']);
 
         if ($coIdx === null || $projIdx === null) {
             return;
         }
 
         foreach ($rows as $row) {
-            $coName   = $this->str($row[$coIdx]   ?? null);
+            $coName = $this->str($row[$coIdx] ?? null);
             $projName = $this->str($row[$projIdx] ?? null);
 
-            if (!$coName || !$projName) {
+            if (! $coName || ! $projName) {
                 $this->stats['skipped']++;
+
                 continue;
             }
 
@@ -81,7 +84,7 @@ class ProjectImportService
             $project = ProjectSetting::whereRaw('LOWER(name) = ?', [strtolower($projName)])
                 ->where('company_id', $company->id)->first();
 
-            if (!$project) {
+            if (! $project) {
                 $project = ProjectSetting::create(['name' => $projName, 'company_id' => $company->id, 'is_active' => true]);
                 $this->stats['projects_created']++;
             }
@@ -96,13 +99,13 @@ class ProjectImportService
                     $this->stats['skipped']++;
                 } else {
                     $address = $addrIdx !== null ? $this->str($row[$addrIdx] ?? null) : null;
-                    $lat     = $latIdx  !== null ? $this->str($row[$latIdx]  ?? null) : null;
-                    $lng     = $lngIdx  !== null ? $this->str($row[$lngIdx]  ?? null) : null;
+                    $lat = $latIdx !== null ? $this->str($row[$latIdx] ?? null) : null;
+                    $lng = $lngIdx !== null ? $this->str($row[$lngIdx] ?? null) : null;
 
                     $project->locations()->create([
-                        'name'      => $locName,
-                        'address'   => $address,
-                        'latitude'  => is_numeric($lat) ? (float) $lat : null,
+                        'name' => $locName,
+                        'address' => $address,
+                        'latitude' => is_numeric($lat) ? (float) $lat : null,
                         'longitude' => is_numeric($lng) ? (float) $lng : null,
                         'is_active' => true,
                     ]);
@@ -112,12 +115,12 @@ class ProjectImportService
         }
     }
 
-    private function importDepartments(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet): void
+    private function importDepartments(Worksheet $sheet): void
     {
-        $rows    = $sheet->toArray(null, true, true, false);
+        $rows = $sheet->toArray(null, true, true, false);
         $headers = $this->normalizeHeaders((array) array_shift($rows));
 
-        $coIdx   = $this->findCol($headers, ['company', 'company name', 'companyname']);
+        $coIdx = $this->findCol($headers, ['company', 'company name', 'companyname']);
         $deptIdx = $this->findCol($headers, ['department', 'department name', 'departmentname', 'dept', 'dept name']);
 
         if ($coIdx === null || $deptIdx === null) {
@@ -125,20 +128,22 @@ class ProjectImportService
         }
 
         foreach ($rows as $row) {
-            $coName   = $this->str($row[$coIdx]   ?? null);
+            $coName = $this->str($row[$coIdx] ?? null);
             $deptName = $this->str($row[$deptIdx] ?? null);
 
-            if (!$coName || !$deptName) {
+            if (! $coName || ! $deptName) {
                 $this->stats['skipped']++;
+
                 continue;
             }
 
-            $company  = $this->findOrCreateCompany($coName);
+            $company = $this->findOrCreateCompany($coName);
             $existing = Department::whereRaw('LOWER(name) = ?', [strtolower($deptName)])
                 ->where('company_id', $company->id)->first();
 
             if ($existing) {
                 $this->stats['skipped']++;
+
                 continue;
             }
 
@@ -155,12 +160,13 @@ class ProjectImportService
         }
 
         $company = Company::whereRaw('LOWER(name) = ?', [$key])->first();
-        if (!$company) {
+        if (! $company) {
             $company = Company::create(['name' => $name, 'is_active' => true]);
             $this->stats['companies_created']++;
         }
 
         $this->companyCache[$key] = $company;
+
         return $company;
     }
 
@@ -179,12 +185,14 @@ class ProjectImportService
                 return $i;
             }
         }
+
         return null;
     }
 
     private function str(mixed $value): ?string
     {
         $v = trim((string) ($value ?? ''));
+
         return $v === '' ? null : $v;
     }
 }

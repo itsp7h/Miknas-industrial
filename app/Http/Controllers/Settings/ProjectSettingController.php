@@ -14,17 +14,18 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProjectSettingController extends Controller
 {
     public function projectsOverview()
     {
         $companies = Company::orderBy('name')->get();
-        $projects  = \App\Models\Settings\ProjectSetting::with('locations')
+        $projects = ProjectSetting::with('locations')
             ->orderBy('name')->get();
 
         $stats = [
-            'total_projects'  => $projects->count(),
+            'total_projects' => $projects->count(),
             'active_projects' => $projects->where('is_active', true)->count(),
             'total_locations' => $projects->sum(fn ($p) => $p->locations->count()),
             'total_companies' => $companies->count(),
@@ -37,17 +38,17 @@ class ProjectSettingController extends Controller
     {
         $companies = Company::with([
             'projects.locations' => fn ($q) => $q->orderBy('name'),
-            'departments'        => fn ($q) => $q->orderBy('name'),
+            'departments' => fn ($q) => $q->orderBy('name'),
         ])->orderBy('name')->get();
 
         $allProjects = $companies->flatMap(fn ($c) => $c->projects);
 
         $stats = [
-            'total_companies'    => $companies->count(),
-            'total_projects'     => $allProjects->count(),
-            'active_projects'    => $allProjects->where('is_active', true)->count(),
-            'total_locations'    => $allProjects->sum(fn ($p) => $p->locations->count()),
-            'total_departments'  => $companies->sum(fn ($c) => $c->departments->count()),
+            'total_companies' => $companies->count(),
+            'total_projects' => $allProjects->count(),
+            'active_projects' => $allProjects->where('is_active', true)->count(),
+            'total_locations' => $allProjects->sum(fn ($p) => $p->locations->count()),
+            'total_departments' => $companies->sum(fn ($c) => $c->departments->count()),
         ];
 
         return view('settings.projects.index', compact('companies', 'stats'));
@@ -56,14 +57,15 @@ class ProjectSettingController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'       => 'required|string|max:255|unique:settings_projects,name',
+            'name' => 'required|string|max:255|unique:settings_projects,name',
             'company_id' => 'required|exists:settings_companies,id',
         ]);
         $project = ProjectSetting::create(['name' => $validated['name'], 'company_id' => $validated['company_id'], 'is_active' => true]);
+
         return response()->json(['project' => [
-            'id'         => $project->id,
-            'name'       => $project->name,
-            'is_active'  => $project->is_active,
+            'id' => $project->id,
+            'name' => $project->name,
+            'is_active' => $project->is_active,
             'company_id' => $project->company_id,
         ]]);
     }
@@ -72,38 +74,42 @@ class ProjectSettingController extends Controller
     public function storeCompany(Request $request)
     {
         $validated = $request->validate(['name' => 'required|string|max:255|unique:settings_companies,name']);
-        $company   = Company::create(['name' => $validated['name'], 'is_active' => true]);
+        $company = Company::create(['name' => $validated['name'], 'is_active' => true]);
+
         return response()->json(['company' => ['id' => $company->id, 'name' => $company->name, 'is_active' => $company->is_active]]);
     }
 
     public function updateCompany(Request $request, Company $company)
     {
-        $validated = $request->validate(['name' => 'required|string|max:255|unique:settings_companies,name,' . $company->id]);
+        $validated = $request->validate(['name' => 'required|string|max:255|unique:settings_companies,name,'.$company->id]);
         $company->update(['name' => $validated['name'], 'is_active' => $request->boolean('is_active', true)]);
+
         return response()->json(['company' => ['id' => $company->id, 'name' => $company->name, 'is_active' => $company->is_active]]);
     }
 
     public function destroyCompany(Company $company)
     {
         $company->delete();
+
         return response()->json(['ok' => true]);
     }
 
     public function update(Request $request, ProjectSetting $project)
     {
         $validated = $request->validate([
-            'name'       => 'required|string|max:255|unique:settings_projects,name,' . $project->id,
+            'name' => 'required|string|max:255|unique:settings_projects,name,'.$project->id,
             'company_id' => 'nullable|exists:settings_companies,id',
         ]);
         $project->update([
-            'name'       => $validated['name'],
+            'name' => $validated['name'],
             'company_id' => $validated['company_id'] ?? $project->company_id,
-            'is_active'  => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active', true),
         ]);
+
         return response()->json(['project' => [
-            'id'         => $project->id,
-            'name'       => $project->name,
-            'is_active'  => $project->is_active,
+            'id' => $project->id,
+            'name' => $project->name,
+            'is_active' => $project->is_active,
             'company_id' => $project->company_id,
         ]]);
     }
@@ -111,29 +117,31 @@ class ProjectSettingController extends Controller
     public function destroy(ProjectSetting $project)
     {
         $project->delete();
+
         return response()->json(['ok' => true]);
     }
 
     public function storeLocation(Request $request, ProjectSetting $project)
     {
         $validated = $request->validate([
-            'name'      => 'required|string|max:255',
-            'address'   => 'nullable|string|max:500',
-            'latitude'  => 'nullable|numeric|between:-90,90',
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
         ]);
         $location = $project->locations()->create([
-            'name'      => $validated['name'],
-            'address'   => $validated['address'] ?? null,
-            'latitude'  => $validated['latitude'] ?? null,
+            'name' => $validated['name'],
+            'address' => $validated['address'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
             'is_active' => true,
         ]);
+
         return response()->json(['location' => [
-            'id'        => $location->id,
-            'name'      => $location->name,
-            'address'   => $location->address,
-            'latitude'  => $location->latitude,
+            'id' => $location->id,
+            'name' => $location->name,
+            'address' => $location->address,
+            'latitude' => $location->latitude,
             'longitude' => $location->longitude,
             'is_active' => $location->is_active,
         ]]);
@@ -142,23 +150,24 @@ class ProjectSettingController extends Controller
     public function updateLocation(Request $request, ProjectSetting $project, Location $location)
     {
         $validated = $request->validate([
-            'name'      => 'required|string|max:255',
-            'address'   => 'nullable|string|max:500',
-            'latitude'  => 'nullable|numeric|between:-90,90',
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
         ]);
         $location->update([
-            'name'      => $validated['name'],
-            'address'   => $validated['address'] ?? null,
-            'latitude'  => $validated['latitude'] ?? null,
+            'name' => $validated['name'],
+            'address' => $validated['address'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
             'is_active' => $request->boolean('is_active', true),
         ]);
+
         return response()->json(['location' => [
-            'id'        => $location->id,
-            'name'      => $location->name,
-            'address'   => $location->address,
-            'latitude'  => $location->latitude,
+            'id' => $location->id,
+            'name' => $location->name,
+            'address' => $location->address,
+            'latitude' => $location->latitude,
             'longitude' => $location->longitude,
             'is_active' => $location->is_active,
         ]]);
@@ -167,6 +176,7 @@ class ProjectSettingController extends Controller
     public function destroyLocation(ProjectSetting $project, Location $location)
     {
         $location->delete();
+
         return response()->json(['ok' => true]);
     }
 
@@ -174,6 +184,7 @@ class ProjectSettingController extends Controller
     {
         $validated = $request->validate(['name' => 'required|string|max:255']);
         $dept = $company->departments()->create(['name' => $validated['name'], 'is_active' => true]);
+
         return response()->json(['department' => ['id' => $dept->id, 'name' => $dept->name, 'is_active' => $dept->is_active]]);
     }
 
@@ -181,12 +192,14 @@ class ProjectSettingController extends Controller
     {
         $validated = $request->validate(['name' => 'required|string|max:255']);
         $department->update(['name' => $validated['name'], 'is_active' => $request->boolean('is_active', true)]);
+
         return response()->json(['department' => ['id' => $department->id, 'name' => $department->name, 'is_active' => $department->is_active]]);
     }
 
     public function destroyDepartment(Company $company, Department $department)
     {
         $department->delete();
+
         return response()->json(['ok' => true]);
     }
 
@@ -201,14 +214,22 @@ class ProjectSettingController extends Controller
             );
 
             $parts = [];
-            if ($stats['projects_created'])    $parts[] = "{$stats['projects_created']} project(s)";
-            if ($stats['locations_created'])   $parts[] = "{$stats['locations_created']} location(s)";
-            if ($stats['departments_created']) $parts[] = "{$stats['departments_created']} department(s)";
-            if ($stats['companies_created'])   $parts[] = "{$stats['companies_created']} new company(s)";
+            if ($stats['projects_created']) {
+                $parts[] = "{$stats['projects_created']} project(s)";
+            }
+            if ($stats['locations_created']) {
+                $parts[] = "{$stats['locations_created']} location(s)";
+            }
+            if ($stats['departments_created']) {
+                $parts[] = "{$stats['departments_created']} department(s)";
+            }
+            if ($stats['companies_created']) {
+                $parts[] = "{$stats['companies_created']} new company(s)";
+            }
 
             $message = $parts
-                ? 'Imported: ' . implode(', ', $parts) . ($stats['skipped'] ? " — {$stats['skipped']} row(s) skipped" : '')
-                : 'Nothing new to import' . ($stats['skipped'] ? " ({$stats['skipped']} rows already exist)" : '');
+                ? 'Imported: '.implode(', ', $parts).($stats['skipped'] ? " — {$stats['skipped']} row(s) skipped" : '')
+                : 'Nothing new to import'.($stats['skipped'] ? " ({$stats['skipped']} rows already exist)" : '');
 
             return response()->json(['success' => true, 'message' => $message, 'stats' => $stats]);
         } catch (\Exception $e) {
@@ -216,16 +237,17 @@ class ProjectSettingController extends Controller
         }
     }
 
-    public function downloadTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function downloadTemplate(): BinaryFileResponse
     {
         $path = storage_path('app/projects_template.xlsx');
         $this->buildTemplate($path);
+
         return response()->download($path, 'projects_template.xlsx');
     }
 
     private function buildTemplate(string $path): void
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         $headerStyle = [
             'font' => ['bold' => true, 'color' => ['rgb' => '1e293b']],
@@ -239,7 +261,7 @@ class ProjectSettingController extends Controller
         // ── Projects sheet ─────────────────────────────────────────────────
         $s1 = $spreadsheet->getActiveSheet()->setTitle('Projects');
         $s1->setCellValue('A1', 'Company Name')
-           ->setCellValue('B1', 'Project Name');
+            ->setCellValue('B1', 'Project Name');
         $s1->getStyle('A1:B1')->applyFromArray($headerStyle);
 
         $samples = [
@@ -249,8 +271,8 @@ class ProjectSettingController extends Controller
             ['Steel tech',        'Site Expansion'],
         ];
         foreach ($samples as $i => $row) {
-            $s1->setCellValue('A' . ($i + 2), $row[0]);
-            $s1->setCellValue('B' . ($i + 2), $row[1]);
+            $s1->setCellValue('A'.($i + 2), $row[0]);
+            $s1->setCellValue('B'.($i + 2), $row[1]);
         }
 
         $s1->setCellValue('A7', '* Company is created automatically if it does not exist. Duplicate project names are skipped.');

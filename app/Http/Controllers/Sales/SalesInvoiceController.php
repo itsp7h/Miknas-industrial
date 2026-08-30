@@ -21,7 +21,7 @@ class SalesInvoiceController extends Controller
     public function create()
     {
         $salesOrders = SalesOrder::where('status', 'dispatched')->with('customer')->get();
-        $customers   = Customer::all();
+        $customers = Customer::all();
 
         return view('sales.invoices.create', compact('salesOrders', 'customers'));
     }
@@ -30,21 +30,21 @@ class SalesInvoiceController extends Controller
     {
         $request->validate([
             'sales_order_id' => 'required|exists:sales_orders,id',
-            'customer_id'    => 'required|exists:customers,id',
-            'invoice_date'   => 'required|date',
-            'subtotal'       => 'required|numeric|min:0',
-            'vat_rate'       => 'required|numeric|min:0',
-            'vat_amount'     => 'required|numeric|min:0',
-            'total_amount'   => 'required|numeric|min:0',
+            'customer_id' => 'required|exists:customers,id',
+            'invoice_date' => 'required|date',
+            'subtotal' => 'required|numeric|min:0',
+            'vat_rate' => 'required|numeric|min:0',
+            'vat_amount' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
         ]);
 
-        $invoiceNumber = 'INV-' . str_pad(SalesInvoice::max('id') + 1, 5, '0', STR_PAD_LEFT);
+        $invoiceNumber = 'INV-'.str_pad(SalesInvoice::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
         $invoice = SalesInvoice::create(array_merge($request->all(), [
             'invoice_number' => $invoiceNumber,
-            'status'         => 'unpaid',
-            'paid_amount'    => 0,
-            'created_by'     => auth()->id(),
+            'status' => 'unpaid',
+            'paid_amount' => 0,
+            'created_by' => auth()->id(),
         ]));
 
         SalesOrder::where('id', $request->sales_order_id)->update(['status' => 'invoiced']);
@@ -74,9 +74,9 @@ class SalesInvoiceController extends Controller
     {
         $request->validate([
             'invoice_date' => 'required|date',
-            'subtotal'     => 'required|numeric|min:0',
-            'vat_rate'     => 'required|numeric|min:0',
-            'vat_amount'   => 'required|numeric|min:0',
+            'subtotal' => 'required|numeric|min:0',
+            'vat_rate' => 'required|numeric|min:0',
+            'vat_amount' => 'required|numeric|min:0',
             'total_amount' => 'required|numeric|min:0',
         ]);
 

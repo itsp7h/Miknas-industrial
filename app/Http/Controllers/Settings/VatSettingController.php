@@ -11,6 +11,7 @@ class VatSettingController extends Controller
     public function index()
     {
         $vatRate = Setting::get('vat_rate', '0');
+
         return view('settings.vat', compact('vatRate'));
     }
 

@@ -34,10 +34,10 @@ class NotificationPushed implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'id'         => $this->id,
-            'title'      => $this->title,
-            'body'       => $this->body,
-            'url'        => $this->url,
+            'id' => $this->id,
+            'title' => $this->title,
+            'body' => $this->body,
+            'url' => $this->url,
             'created_at' => $this->createdAt ?? now()->toIso8601String(),
         ];
     }

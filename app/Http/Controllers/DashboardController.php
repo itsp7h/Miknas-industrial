@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
-use App\Models\Item;
 use App\Models\ProductionOrder;
-use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\SalesInvoice;
 use App\Models\StockLevel;

@@ -21,7 +21,7 @@ class BillOfMaterialController extends Controller
     public function create()
     {
         $finishedGoods = Item::where('category', 'finished_good')->get();
-        $rawMaterials  = Item::where('category', 'raw_material')->get();
+        $rawMaterials = Item::where('category', 'raw_material')->get();
 
         return view('production.bom.create', compact('finishedGoods', 'rawMaterials'));
     }
@@ -29,10 +29,10 @@ class BillOfMaterialController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'product_id'        => 'required|exists:items,id',
-            'raw_material_id'   => 'required|exists:items,id',
+            'product_id' => 'required|exists:items,id',
+            'raw_material_id' => 'required|exists:items,id',
             'quantity_required' => 'required|numeric|min:0.01',
-            'unit_of_measure'   => 'required|string|max:50',
+            'unit_of_measure' => 'required|string|max:50',
         ]);
 
         BillOfMaterial::create($request->all());
@@ -50,7 +50,7 @@ class BillOfMaterialController extends Controller
     public function edit(BillOfMaterial $billOfMaterial)
     {
         $finishedGoods = Item::where('category', 'finished_good')->get();
-        $rawMaterials  = Item::where('category', 'raw_material')->get();
+        $rawMaterials = Item::where('category', 'raw_material')->get();
 
         return view('production.bom.edit', compact('billOfMaterial', 'finishedGoods', 'rawMaterials'));
     }
@@ -58,10 +58,10 @@ class BillOfMaterialController extends Controller
     public function update(Request $request, BillOfMaterial $billOfMaterial)
     {
         $request->validate([
-            'product_id'        => 'required|exists:items,id',
-            'raw_material_id'   => 'required|exists:items,id',
+            'product_id' => 'required|exists:items,id',
+            'raw_material_id' => 'required|exists:items,id',
             'quantity_required' => 'required|numeric|min:0.01',
-            'unit_of_measure'   => 'required|string|max:50',
+            'unit_of_measure' => 'required|string|max:50',
         ]);
 
         $billOfMaterial->update($request->all());

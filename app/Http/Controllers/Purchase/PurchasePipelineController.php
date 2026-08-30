@@ -51,8 +51,8 @@ class PurchasePipelineController extends Controller
         $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
 
         return view('purchase.pipeline.show', [
-            'pr'        => $purchaseRequest,
-            'stages'    => $stages,
+            'pr' => $purchaseRequest,
+            'stages' => $stages,
             'suppliers' => $suppliers,
         ]);
     }

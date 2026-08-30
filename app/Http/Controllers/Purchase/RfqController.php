@@ -15,8 +15,9 @@ class RfqController extends Controller
     {
         $this->authorize('view', $purchaseRequest);
 
-        $suppliers   = Supplier::where('is_active', true)->orderBy('name')->get();
+        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
         $invitations = $purchaseRequest->rfqInvitations()->with('supplier', 'quote')->get();
+
         return view('purchase.rfq.show', ['request' => $purchaseRequest, 'suppliers' => $suppliers, 'invitations' => $invitations]);
     }
 
@@ -43,6 +44,7 @@ class RfqController extends Controller
                 if ($request->expectsJson()) {
                     return response()->json(['message' => 'Please assign at least one supplier to an item.'], 422);
                 }
+
                 return redirect()->back()->with('error', 'Please assign at least one supplier to an item.');
             }
 
@@ -50,14 +52,14 @@ class RfqController extends Controller
                 if (in_array($supplierId, $alreadySelected)) {
                     continue;
                 }
-                $channel  = $request->input('channel_' . $supplierId, 'email');
+                $channel = $request->input('channel_'.$supplierId, 'email');
                 $supplier = Supplier::findOrFail($supplierId);
                 $service->select($purchaseRequest, $supplier, $channel, $itemIds);
                 $added++;
             }
         } else {
             $validated = $request->validate([
-                'supplier_ids'   => ['required', 'array', 'min:1'],
+                'supplier_ids' => ['required', 'array', 'min:1'],
                 'supplier_ids.*' => ['required', 'exists:suppliers,id'],
             ]);
 
@@ -65,7 +67,7 @@ class RfqController extends Controller
                 if (in_array($supplierId, $alreadySelected)) {
                     continue;
                 }
-                $channel  = $request->input('channel_' . $supplierId, 'email');
+                $channel = $request->input('channel_'.$supplierId, 'email');
                 $supplier = Supplier::findOrFail($supplierId);
                 $service->select($purchaseRequest, $supplier, $channel);
                 $added++;
@@ -78,20 +80,21 @@ class RfqController extends Controller
             $invitations = $purchaseRequest->rfqInvitations()->with('supplier')->get()->map(function ($inv) {
                 return [
                     'supplier_name' => $inv->supplier->name,
-                    'channel'       => $inv->channel,
-                    'url'           => route('rfq.show', $inv->token),
-                    'status'        => $inv->status,
+                    'channel' => $inv->channel,
+                    'url' => route('rfq.show', $inv->token),
+                    'status' => $inv->status,
                 ];
             });
+
             return response()->json([
-                'added'       => $added,
+                'added' => $added,
                 'invitations' => $invitations,
-                'redirect'    => route('purchase.pipeline.show', $purchaseRequest),
+                'redirect' => route('purchase.pipeline.show', $purchaseRequest),
             ]);
         }
 
         return redirect()->route('purchase.pipeline.show', $purchaseRequest)
-            ->with('success', $added . ' supplier(s) added. Now send them the quote request links.');
+            ->with('success', $added.' supplier(s) added. Now send them the quote request links.');
     }
 
     public function sendAll(PurchaseRequest $purchaseRequest, RfqInvitationService $service, PurchaseStageService $stages)
@@ -111,7 +114,7 @@ class RfqController extends Controller
         $stages->setStage($purchaseRequest, 'quoting');
 
         return redirect()->route('purchase.pipeline.show', $purchaseRequest)
-            ->with('success', $pending->count() . ' supplier(s) notified. Waiting for quotes.');
+            ->with('success', $pending->count().' supplier(s) notified. Waiting for quotes.');
     }
 
     public function store(Request $request, PurchaseRequest $purchaseRequest, RfqInvitationService $service, PurchaseStageService $stages)
@@ -119,7 +122,7 @@ class RfqController extends Controller
         $this->authorize('manageRfq', $purchaseRequest);
 
         $validated = $request->validate([
-            'supplier_ids'   => ['required', 'array', 'min:1'],
+            'supplier_ids' => ['required', 'array', 'min:1'],
             'supplier_ids.*' => ['required', 'exists:suppliers,id'],
         ]);
 
@@ -130,7 +133,7 @@ class RfqController extends Controller
             if (in_array($supplierId, $alreadyInvited)) {
                 continue;
             }
-            $channel  = $request->input('channel_' . $supplierId, 'both');
+            $channel = $request->input('channel_'.$supplierId, 'both');
             $supplier = Supplier::findOrFail($supplierId);
             $service->invite($purchaseRequest, $supplier, $channel);
             $sent++;
@@ -139,6 +142,6 @@ class RfqController extends Controller
         $stages->setStage($purchaseRequest, 'quoting');
 
         return redirect()->route('purchase.requests.rfq', $purchaseRequest)
-            ->with('success', $sent . ' invitation(s) sent. Waiting for supplier quotes.');
+            ->with('success', $sent.' invitation(s) sent. Waiting for supplier quotes.');
     }
 }

@@ -8,10 +8,12 @@ use App\Models\GrnItem;
 use App\Models\PurchaseOrder;
 use App\Models\StockLevel;
 use App\Models\StockMovement;
+use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\Purchase\GoodsReceiptConfirmedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class GoodsReceiptNoteController extends Controller
 {
@@ -24,8 +26,8 @@ class GoodsReceiptNoteController extends Controller
 
     public function create(Request $request)
     {
-        $purchaseOrders  = PurchaseOrder::whereIn('status', ['sent', 'partial'])->with('supplier')->get();
-        $warehouses      = Warehouse::all();
+        $purchaseOrders = PurchaseOrder::whereIn('status', ['sent', 'partial'])->with('supplier')->get();
+        $warehouses = Warehouse::all();
         $selectedOrderId = $request->query('purchase_order_id');
 
         return view('purchase.grns.create', compact('purchaseOrders', 'warehouses', 'selectedOrderId'));
@@ -34,36 +36,36 @@ class GoodsReceiptNoteController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'purchase_order_id'    => 'required|exists:purchase_orders,id',
-            'warehouse_id'         => 'required|exists:warehouses,id',
-            'received_date'        => 'required|date',
-            'items'                     => 'required|array|min:1',
-            'items.*.item_id'           => 'required|exists:items,id',
+            'purchase_order_id' => 'required|exists:purchase_orders,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'received_date' => 'required|date',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
             'items.*.quantity_received' => 'required|numeric|min:1',
         ]);
 
-        $grnNumber = 'GRN-' . str_pad(GoodsReceiptNote::max('id') + 1, 5, '0', STR_PAD_LEFT);
+        $grnNumber = 'GRN-'.str_pad(GoodsReceiptNote::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
         $po = PurchaseOrder::findOrFail($request->purchase_order_id);
 
         $grn = GoodsReceiptNote::create([
-            'grn_number'        => $grnNumber,
+            'grn_number' => $grnNumber,
             'purchase_order_id' => $request->purchase_order_id,
-            'supplier_id'       => $po->supplier_id,
-            'warehouse_id'      => $request->warehouse_id,
-            'received_date'     => $request->received_date,
-            'status'            => 'draft',
-            'received_by'       => auth()->id(),
+            'supplier_id' => $po->supplier_id,
+            'warehouse_id' => $request->warehouse_id,
+            'received_date' => $request->received_date,
+            'status' => 'draft',
+            'received_by' => auth()->id(),
         ]);
 
         foreach ($request->items as $item) {
             GrnItem::create([
-                'goods_receipt_note_id'  => $grn->id,
+                'goods_receipt_note_id' => $grn->id,
                 'purchase_order_item_id' => $item['po_item_id'] ?? $po->items()->where('item_id', $item['item_id'])->first()?->id ?? 0,
-                'item_id'                => $item['item_id'],
-                'quantity_received'      => $item['quantity_received'],
-                'unit_cost'              => $item['unit_cost'] ?? 0,
-                'type'                   => in_array($item['type'] ?? '', ['inventory', 'consumable']) ? $item['type'] : 'inventory',
+                'item_id' => $item['item_id'],
+                'quantity_received' => $item['quantity_received'],
+                'unit_cost' => $item['unit_cost'] ?? 0,
+                'type' => in_array($item['type'] ?? '', ['inventory', 'consumable']) ? $item['type'] : 'inventory',
             ]);
         }
 
@@ -88,7 +90,7 @@ class GoodsReceiptNoteController extends Controller
     {
         $request->validate([
             'received_date' => 'required|date',
-            'warehouse_id'  => 'required|exists:warehouses,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
         ]);
 
         $grn->update($request->only('received_date', 'warehouse_id'));
@@ -120,13 +122,13 @@ class GoodsReceiptNoteController extends Controller
                 $stockLevel->increment('quantity', $grnItem->quantity_received);
 
                 StockMovement::create([
-                    'item_id'        => $grnItem->item_id,
-                    'warehouse_id'   => $grn->warehouse_id,
-                    'type'           => 'in',
-                    'quantity'       => $grnItem->quantity_received,
+                    'item_id' => $grnItem->item_id,
+                    'warehouse_id' => $grn->warehouse_id,
+                    'type' => 'in',
+                    'quantity' => $grnItem->quantity_received,
                     'reference_type' => 'GoodsReceiptNote',
-                    'reference_id'   => $grn->id,
-                    'created_by'     => auth()->id(),
+                    'reference_id' => $grn->id,
+                    'created_by' => auth()->id(),
                 ]);
 
                 $grn->purchaseOrder->items()
@@ -137,9 +139,9 @@ class GoodsReceiptNoteController extends Controller
             $grn->update(['status' => 'confirmed']);
 
             // Check if all PO items have been fully received
-            $po              = $grn->purchaseOrder->fresh(['items']);
+            $po = $grn->purchaseOrder->fresh(['items']);
             $allFullyReceived = $po->items->every(
-                fn($poItem) => $poItem->quantity_received >= $poItem->quantity
+                fn ($poItem) => $poItem->quantity_received >= $poItem->quantity
             );
 
             if ($allFullyReceived) {
@@ -147,8 +149,8 @@ class GoodsReceiptNoteController extends Controller
             }
         });
 
-        $storeManagers = \App\Models\User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
-        \Illuminate\Support\Facades\Notification::send($storeManagers, new GoodsReceiptConfirmedNotification($grn));
+        $storeManagers = User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
+        Notification::send($storeManagers, new GoodsReceiptConfirmedNotification($grn));
 
         return redirect()->back()->with('success', 'GRN confirmed and stock updated.');
     }

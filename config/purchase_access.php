@@ -12,16 +12,16 @@ return [
     |
     */
     'permissions' => [
-        'purchase-requests.create'              => 'Create purchase requests',
-        'purchase-requests.edit'                => 'Edit purchase requests',
-        'purchase-requests.view-own'            => 'View own purchase requests',
+        'purchase-requests.create' => 'Create purchase requests',
+        'purchase-requests.edit' => 'Edit purchase requests',
+        'purchase-requests.view-own' => 'View own purchase requests',
         'purchase-requests.view-active-pipeline' => 'View active pipeline (RFQ onward)',
-        'purchase-requests.view-all'            => 'View all purchase requests (monitoring)',
-        'purchase-requests.approve'             => 'Approve/reject purchase requests (GM signature)',
-        'purchase-requests.manage-rfq'          => 'Select suppliers and send RFQ',
-        'purchase-requests.manage-quotes'       => 'View and manage supplier quotes',
-        'purchase-requests.award'               => 'Award items to suppliers',
-        'purchase-requests.generate-lpo'        => 'Generate LPO',
+        'purchase-requests.view-all' => 'View all purchase requests (monitoring)',
+        'purchase-requests.approve' => 'Approve/reject purchase requests (GM signature)',
+        'purchase-requests.manage-rfq' => 'Select suppliers and send RFQ',
+        'purchase-requests.manage-quotes' => 'View and manage supplier quotes',
+        'purchase-requests.award' => 'Award items to suppliers',
+        'purchase-requests.generate-lpo' => 'Generate LPO',
     ],
 
     /*

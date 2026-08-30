@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
 use App\Models\DeliveryNote;
 use App\Models\DeliveryNoteItem;
 use App\Models\SalesOrder;
@@ -27,7 +26,7 @@ class DeliveryNoteController extends Controller
     public function create()
     {
         $salesOrders = SalesOrder::where('status', 'confirmed')->with('customer')->get();
-        $warehouses  = Warehouse::all();
+        $warehouses = Warehouse::all();
 
         return view('sales.delivery-notes.create', compact('salesOrders', 'warehouses'));
     }
@@ -35,22 +34,22 @@ class DeliveryNoteController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'sales_order_id'       => 'required|exists:sales_orders,id',
-            'warehouse_id'         => 'required|exists:warehouses,id',
-            'delivery_date'        => 'required|date',
-            'items'                => 'required|array|min:1',
-            'items.*.item_id'      => 'required|exists:items,id',
-            'items.*.quantity'     => 'required|numeric|min:1',
+            'sales_order_id' => 'required|exists:sales_orders,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'delivery_date' => 'required|date',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.quantity' => 'required|numeric|min:1',
         ]);
 
-        $deliveryNumber = 'DN-' . str_pad(DeliveryNote::max('id') + 1, 5, '0', STR_PAD_LEFT);
+        $deliveryNumber = 'DN-'.str_pad(DeliveryNote::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
         $note = DeliveryNote::create([
             'delivery_number' => $deliveryNumber,
-            'sales_order_id'  => $request->sales_order_id,
-            'warehouse_id'    => $request->warehouse_id,
-            'delivery_date'   => $request->delivery_date,
-            'status'          => 'draft',
+            'sales_order_id' => $request->sales_order_id,
+            'warehouse_id' => $request->warehouse_id,
+            'delivery_date' => $request->delivery_date,
+            'status' => 'draft',
         ]);
 
         $salesOrder = SalesOrder::with('items')->findOrFail($request->sales_order_id);
@@ -58,10 +57,10 @@ class DeliveryNoteController extends Controller
         foreach ($request->items as $item) {
             $soItem = $salesOrder->items->firstWhere('item_id', $item['item_id']);
             DeliveryNoteItem::create([
-                'delivery_note_id'    => $note->id,
+                'delivery_note_id' => $note->id,
                 'sales_order_item_id' => $soItem?->id ?? 0,
-                'item_id'             => $item['item_id'],
-                'quantity_delivered'  => $item['quantity'],
+                'item_id' => $item['item_id'],
+                'quantity_delivered' => $item['quantity'],
             ]);
         }
 
@@ -86,7 +85,7 @@ class DeliveryNoteController extends Controller
     {
         $request->validate([
             'delivery_date' => 'required|date',
-            'warehouse_id'  => 'required|exists:warehouses,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
         ]);
 
         $deliveryNote->update($request->only('delivery_date', 'warehouse_id'));
@@ -116,13 +115,13 @@ class DeliveryNoteController extends Controller
                 $stockLevel->decrement('quantity', $decrement);
 
                 StockMovement::create([
-                    'item_id'        => $dnItem->item_id,
-                    'warehouse_id'   => $deliveryNote->warehouse_id,
-                    'type'           => 'out',
-                    'quantity'       => $dnItem->quantity_delivered,
+                    'item_id' => $dnItem->item_id,
+                    'warehouse_id' => $deliveryNote->warehouse_id,
+                    'type' => 'out',
+                    'quantity' => $dnItem->quantity_delivered,
                     'reference_type' => 'DeliveryNote',
-                    'reference_id'   => $deliveryNote->id,
-                    'created_by'     => auth()->id(),
+                    'reference_id' => $deliveryNote->id,
+                    'created_by' => auth()->id(),
                 ]);
 
                 SalesOrderItem::where('sales_order_id', $deliveryNote->sales_order_id)
@@ -131,14 +130,14 @@ class DeliveryNoteController extends Controller
             }
 
             $deliveryNote->update([
-                'status'        => 'dispatched',
+                'status' => 'dispatched',
                 'dispatched_by' => auth()->id(),
             ]);
 
             // Check if all sales order items are fully delivered
-            $salesOrder      = $deliveryNote->salesOrder->fresh(['items']);
+            $salesOrder = $deliveryNote->salesOrder->fresh(['items']);
             $allFullyDelivered = $salesOrder->items->every(
-                fn($soItem) => $soItem->quantity_delivered >= $soItem->quantity
+                fn ($soItem) => $soItem->quantity_delivered >= $soItem->quantity
             );
 
             if ($allFullyDelivered) {

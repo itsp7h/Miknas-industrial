@@ -16,10 +16,10 @@ class SupplierQuoteItem extends Model
     ];
 
     protected $casts = [
-        'is_vatable'    => 'boolean',
+        'is_vatable' => 'boolean',
         'not_available' => 'boolean',
-        'is_awarded'    => 'boolean',
-        'awarded_at'    => 'datetime',
+        'is_awarded' => 'boolean',
+        'awarded_at' => 'datetime',
     ];
 
     public function quote()

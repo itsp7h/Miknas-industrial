@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
@@ -30,19 +29,19 @@ class UserManagementController extends Controller
         $mode = $request->input('mode') ?: 'email';
 
         $validated = $request->validate([
-            'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
-            'roles'    => ['array'],
-            'roles.*'  => ['string', 'exists:roles,name'],
-            'mode'     => ['nullable', Rule::in(['email', 'password'])],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+            'roles' => ['array'],
+            'roles.*' => ['string', 'exists:roles,name'],
+            'mode' => ['nullable', Rule::in(['email', 'password'])],
             'password' => $mode === 'password'
                 ? ['required', 'confirmed', Rules\Password::defaults()]
                 : ['prohibited'],
         ]);
 
         $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
+            'name' => $validated['name'],
+            'email' => $validated['email'],
             'password' => $mode === 'password' ? $validated['password'] : Str::random(40),
         ]);
 
@@ -52,20 +51,20 @@ class UserManagementController extends Controller
 
         $user->syncRoles($validated['roles'] ?? []);
 
-        $message = $user->name . ' created.';
+        $message = $user->name.' created.';
 
         if ($mode === 'email') {
             Password::sendResetLink(['email' => $user->email]);
-            $message = $user->name . ' created. A password-setup email has been sent.';
+            $message = $user->name.' created. A password-setup email has been sent.';
         }
 
         return response()->json([
             'message' => $message,
             'user' => [
-                'id'          => $user->id,
-                'name'        => $user->name,
-                'email'       => $user->email,
-                'roles'       => $user->roles->pluck('name'),
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name'),
                 'permissions' => $user->permissions->pluck('name'),
             ],
         ], 201);
@@ -74,9 +73,9 @@ class UserManagementController extends Controller
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
-            'roles'         => ['array'],
-            'roles.*'       => ['string', 'exists:roles,name'],
-            'permissions'   => ['array'],
+            'roles' => ['array'],
+            'roles.*' => ['string', 'exists:roles,name'],
+            'permissions' => ['array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
         ]);
 
@@ -92,8 +91,8 @@ class UserManagementController extends Controller
         $user->syncPermissions($validated['permissions'] ?? []);
 
         return response()->json([
-            'message'     => 'Access updated for ' . $user->name . '.',
-            'roles'       => $user->roles->pluck('name'),
+            'message' => 'Access updated for '.$user->name.'.',
+            'roles' => $user->roles->pluck('name'),
             'permissions' => $user->permissions->pluck('name'),
         ]);
     }

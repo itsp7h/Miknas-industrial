@@ -1,36 +1,35 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Purchase\GoodsReceiptNoteController;
-use App\Http\Controllers\Purchase\PurchaseOrderController;
-use App\Http\Controllers\Purchase\PurchaseRequestController;
-use App\Http\Controllers\Purchase\SupplierInvoiceController;
-use App\Http\Controllers\Purchase\SupplierPaymentController;
-use App\Http\Controllers\Purchase\PurchasePipelineController;
-use App\Http\Controllers\Purchase\PurchaseSignatureController;
-use App\Http\Controllers\Purchase\RfqController;
-use App\Http\Controllers\Purchase\SupplierQuoteController;
-use App\Http\Controllers\Purchase\RfqPortalController;
 use App\Http\Controllers\Inventory\ItemController;
 use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Inventory\StockReportController;
 use App\Http\Controllers\Inventory\WarehouseController;
+use App\Http\Controllers\MailAccountController;
 use App\Http\Controllers\Production\BillOfMaterialController;
 use App\Http\Controllers\Production\MaterialIssueController;
 use App\Http\Controllers\Production\ProductionOrderController;
 use App\Http\Controllers\Production\ProductionOutputController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Purchase\GoodsReceiptNoteController;
+use App\Http\Controllers\Purchase\PurchaseOrderController;
+use App\Http\Controllers\Purchase\PurchasePipelineController;
+use App\Http\Controllers\Purchase\PurchaseRequestController;
+use App\Http\Controllers\Purchase\PurchaseSignatureController;
+use App\Http\Controllers\Purchase\RfqController;
+use App\Http\Controllers\Purchase\RfqPortalController;
+use App\Http\Controllers\Purchase\SupplierInvoiceController;
+use App\Http\Controllers\Purchase\SupplierPaymentController;
+use App\Http\Controllers\Purchase\SupplierQuoteController;
 use App\Http\Controllers\Sales\CustomerController;
 use App\Http\Controllers\Sales\DeliveryNoteController;
 use App\Http\Controllers\Sales\PaymentReceiptController;
 use App\Http\Controllers\Sales\SalesInvoiceController;
 use App\Http\Controllers\Sales\SalesOrderController;
-use App\Http\Controllers\MailAccountController;
-use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Settings\ProjectSettingController;
 use App\Http\Controllers\Settings\UserManagementController;
 use App\Http\Controllers\Settings\VatSettingController;
-use App\Models\Settings\Location;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -38,19 +37,19 @@ Route::get('/', function () {
 });
 
 // Public RFQ portal — no auth required
-Route::get('/rfq/{token}',  [RfqPortalController::class, 'show'])->name('rfq.show');
+Route::get('/rfq/{token}', [RfqPortalController::class, 'show'])->name('rfq.show');
 Route::post('/rfq/{token}', [RfqPortalController::class, 'submit'])->name('rfq.submit');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/notifications/unread',  fn() => response()->json([
+    Route::get('/notifications/unread', fn () => response()->json([
         'count' => auth()->user()->unreadNotifications()->count(),
-        'items' => auth()->user()->unreadNotifications()->latest()->take(10)->get()->map(fn($n) => [
-            'id'      => $n->id,
+        'items' => auth()->user()->unreadNotifications()->latest()->take(10)->get()->map(fn ($n) => [
+            'id' => $n->id,
             'message' => $n->data['message'] ?? '',
-            'go_url'  => route('notifications.go', $n->id),
-            'ago'     => $n->created_at->diffForHumans(),
+            'go_url' => route('notifications.go', $n->id),
+            'ago' => $n->created_at->diffForHumans(),
         ]),
     ]))->name('notifications.unread');
 
@@ -58,10 +57,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $n = auth()->user()->notifications()->findOrFail($id);
         $n->markAsRead();
         $dest = $n->data['url'] ?? route('dashboard');
+
         return redirect($dest);
     })->name('notifications.go');
 
-    Route::post('/notifications/read-all', fn() => response()->json(
+    Route::post('/notifications/read-all', fn () => response()->json(
         tap(auth()->user()->unreadNotifications()->update(['read_at' => now()]))
     ))->name('notifications.read-all');
 
@@ -78,19 +78,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show'])->name('pipeline.show');
 
         // GM Signature
-        Route::get('requests/{purchaseRequest}/sign',  [PurchaseSignatureController::class, 'show'])->name('requests.sign');
+        Route::get('requests/{purchaseRequest}/sign', [PurchaseSignatureController::class, 'show'])->name('requests.sign');
         Route::post('requests/{purchaseRequest}/sign', [PurchaseSignatureController::class, 'store'])->name('requests.sign.store');
 
         // RFQ
-        Route::post('requests/{purchaseRequest}/rfq/select',   [RfqController::class, 'selectSuppliers'])->name('requests.rfq.select');
+        Route::post('requests/{purchaseRequest}/rfq/select', [RfqController::class, 'selectSuppliers'])->name('requests.rfq.select');
         Route::post('requests/{purchaseRequest}/rfq/send-all', [RfqController::class, 'sendAll'])->name('requests.rfq.send-all');
-        Route::get('requests/{purchaseRequest}/rfq',  [RfqController::class, 'show'])->name('requests.rfq');
+        Route::get('requests/{purchaseRequest}/rfq', [RfqController::class, 'show'])->name('requests.rfq');
         Route::post('requests/{purchaseRequest}/rfq', [RfqController::class, 'store'])->name('requests.rfq.store');
 
         // Quotes
-        Route::get('requests/{purchaseRequest}/quotes',                    [SupplierQuoteController::class, 'index'])->name('requests.quotes');
-        Route::get('requests/{purchaseRequest}/compare',                   [SupplierQuoteController::class, 'compare'])->name('requests.compare');
-        Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award',   [SupplierQuoteController::class, 'awardItem'])->name('requests.quotes.items.award');
+        Route::get('requests/{purchaseRequest}/quotes', [SupplierQuoteController::class, 'index'])->name('requests.quotes');
+        Route::get('requests/{purchaseRequest}/compare', [SupplierQuoteController::class, 'compare'])->name('requests.compare');
+        Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award', [SupplierQuoteController::class, 'awardItem'])->name('requests.quotes.items.award');
         Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unawardItem'])->name('requests.quotes.items.unaward');
 
         Route::resource('requests', PurchaseRequestController::class)->parameters(['requests' => 'purchaseRequest']);
@@ -109,8 +109,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Inventory Module
     Route::prefix('inventory')->name('inventory.')->group(function () {
-        Route::post('items/import',    [ItemController::class, 'import'])->name('items.import');
-        Route::get('items/template',   [ItemController::class, 'downloadTemplate'])->name('items.template');
+        Route::post('items/import', [ItemController::class, 'import'])->name('items.import');
+        Route::get('items/template', [ItemController::class, 'downloadTemplate'])->name('items.template');
         Route::get('items/export-pdf', [ItemController::class, 'exportPdf'])->name('items.export-pdf');
         Route::resource('items', ItemController::class);
         Route::resource('warehouses', WarehouseController::class);
@@ -176,7 +176,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'destroyDepartment'])->name('settings.projects.companies.departments.destroy');
 
         // VAT settings
-        Route::get('settings/vat',  [VatSettingController::class, 'index'])->name('settings.vat');
+        Route::get('settings/vat', [VatSettingController::class, 'index'])->name('settings.vat');
         Route::post('settings/vat', [VatSettingController::class, 'update'])->name('settings.vat.update');
 
         // User management

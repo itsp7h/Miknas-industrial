@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Production;
 
 use App\Http\Controllers\Controller;
 use App\Models\Item;
-use App\Models\ProductionCost;
 use App\Models\ProductionOrder;
+use App\Models\User;
 use App\Notifications\Production\ProductionOrderCompletedNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 
 class ProductionOrderController extends Controller
 {
@@ -29,15 +30,15 @@ class ProductionOrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'product_id'          => 'required|exists:items,id',
+            'product_id' => 'required|exists:items,id',
             'quantity_to_produce' => 'required|numeric|min:1',
-            'production_date'     => 'required|date',
+            'production_date' => 'required|date',
         ]);
 
-        $data                  = $request->all();
-        $data['order_number']  = 'PRO-' . str_pad(ProductionOrder::max('id') + 1, 5, '0', STR_PAD_LEFT);
-        $data['created_by']    = auth()->id();
-        $data['status']        = 'planned';
+        $data = $request->all();
+        $data['order_number'] = 'PRO-'.str_pad(ProductionOrder::max('id') + 1, 5, '0', STR_PAD_LEFT);
+        $data['created_by'] = auth()->id();
+        $data['status'] = 'planned';
 
         $order = ProductionOrder::create($data);
 
@@ -86,12 +87,12 @@ class ProductionOrderController extends Controller
     public function complete(ProductionOrder $productionOrder)
     {
         $productionOrder->update([
-            'status'          => 'completed',
+            'status' => 'completed',
             'completion_date' => now(),
         ]);
 
-        $productionManagers = \App\Models\User::role('Production Manager')->whereNotNull('whatsapp_number')->get();
-        \Illuminate\Support\Facades\Notification::send(
+        $productionManagers = User::role('Production Manager')->whereNotNull('whatsapp_number')->get();
+        Notification::send(
             $productionManagers,
             new ProductionOrderCompletedNotification($productionOrder)
         );

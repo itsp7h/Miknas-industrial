@@ -4,17 +4,18 @@ namespace App\Services;
 
 use App\Models\Item;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class ItemImportService
 {
     /** Section-header text → category value */
     private array $sectionMap = [
         'material inventory for sale' => 'finished_good',
-        'chemical materials'          => 'raw_material',
-        'natural pigments'            => 'raw_material',
-        'raw materials'               => 'raw_material',
-        'forkoll bags'                => 'raw_material',
-        'others'                      => 'raw_material',
+        'chemical materials' => 'raw_material',
+        'natural pigments' => 'raw_material',
+        'raw materials' => 'raw_material',
+        'forkoll bags' => 'raw_material',
+        'others' => 'raw_material',
     ];
 
     /** Rows whose column-A value should be skipped entirely */
@@ -26,15 +27,15 @@ class ItemImportService
     public function import(string $filePath): array
     {
         $spreadsheet = IOFactory::load($filePath);
-        $format      = $this->detectFormat($spreadsheet);
+        $format = $this->detectFormat($spreadsheet);
 
         $rows = $format === 'forkoll'
             ? $this->extractFromForkoll($spreadsheet)
             : $this->extractFromTemplate($spreadsheet);
 
         $imported = 0;
-        $skipped  = 0;
-        $codeSeq  = (Item::max('id') ?? 0) + 1;
+        $skipped = 0;
+        $codeSeq = (Item::max('id') ?? 0) + 1;
 
         foreach ($rows as $data) {
             $name = trim($data['item_name'] ?? '');
@@ -46,22 +47,23 @@ class ItemImportService
 
             if ($exists) {
                 $skipped++;
+
                 continue;
             }
 
-            $active   = !str_contains(strtolower($name), 'not in use');
-            $itemCode = $data['item_code'] ?? ('ITEM-' . str_pad($codeSeq, 5, '0', STR_PAD_LEFT));
+            $active = ! str_contains(strtolower($name), 'not in use');
+            $itemCode = $data['item_code'] ?? ('ITEM-'.str_pad($codeSeq, 5, '0', STR_PAD_LEFT));
             $codeSeq++;
 
             Item::create([
-                'item_code'           => $itemCode,
-                'item_name'           => $name,
-                'category'            => $data['category']        ?? 'finished_good',
-                'unit_of_measure'     => $data['unit_of_measure'] ?? 'EA',
-                'cost_price'          => $data['cost_price']      ?? 0,
+                'item_code' => $itemCode,
+                'item_name' => $name,
+                'category' => $data['category'] ?? 'finished_good',
+                'unit_of_measure' => $data['unit_of_measure'] ?? 'EA',
+                'cost_price' => $data['cost_price'] ?? 0,
                 'minimum_stock_level' => $data['minimum_stock_level'] ?? 0,
-                'description'         => $data['description']     ?? null,
-                'is_active'           => $data['is_active']       ?? $active,
+                'description' => $data['description'] ?? null,
+                'is_active' => $data['is_active'] ?? $active,
             ]);
 
             $imported++;
@@ -70,31 +72,32 @@ class ItemImportService
         return ['imported' => $imported, 'skipped' => $skipped, 'format' => $format];
     }
 
-    private function detectFormat(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): string
+    private function detectFormat(Spreadsheet $spreadsheet): string
     {
         $sheet = $spreadsheet->getActiveSheet();
         // Forkoll sheets have "MATERIAL INVENTORY FOR SALE" somewhere in col A around row 3
         for ($r = 1; $r <= 5; $r++) {
-            $val = strtolower(trim((string) $sheet->getCell('A' . $r)->getValue()));
+            $val = strtolower(trim((string) $sheet->getCell('A'.$r)->getValue()));
             if (str_contains($val, 'material inventory for sale') || str_contains($val, 'forkoll')) {
                 return 'forkoll';
             }
         }
+
         return 'template';
     }
 
-    private function extractFromForkoll(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): array
+    private function extractFromForkoll(Spreadsheet $spreadsheet): array
     {
-        $sheet   = $spreadsheet->getActiveSheet();
-        $maxRow  = $sheet->getHighestRow();
-        $items   = [];
+        $sheet = $spreadsheet->getActiveSheet();
+        $maxRow = $sheet->getHighestRow();
+        $items = [];
         $category = 'finished_good';
 
         for ($r = 1; $r <= $maxRow; $r++) {
-            $colA = trim((string) $sheet->getCell('A' . $r)->getValue());
-            $colB = trim((string) $sheet->getCell('B' . $r)->getValue());
-            $colC = trim((string) $sheet->getCell('C' . $r)->getValue());
-            $colD = trim((string) $sheet->getCell('D' . $r)->getValue());
+            $colA = trim((string) $sheet->getCell('A'.$r)->getValue());
+            $colB = trim((string) $sheet->getCell('B'.$r)->getValue());
+            $colC = trim((string) $sheet->getCell('C'.$r)->getValue());
+            $colD = trim((string) $sheet->getCell('D'.$r)->getValue());
 
             // Detect section header (text in col A, empty col B)
             if ($colA !== '' && $colB === '') {
@@ -114,6 +117,7 @@ class ItemImportService
                         break;
                     }
                 }
+
                 continue;
             }
 
@@ -130,27 +134,27 @@ class ItemImportService
             $price = is_numeric($colD) ? (float) $colD : 0.0;
 
             $items[] = [
-                'item_name'       => $colB,
+                'item_name' => $colB,
                 'unit_of_measure' => $colC ?: 'EA',
-                'category'        => $category,
-                'cost_price'      => $price,
-                'is_active'       => !str_contains(strtolower($colB), 'not in use'),
+                'category' => $category,
+                'cost_price' => $price,
+                'is_active' => ! str_contains(strtolower($colB), 'not in use'),
             ];
         }
 
         return $items;
     }
 
-    private function extractFromTemplate(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): array
+    private function extractFromTemplate(Spreadsheet $spreadsheet): array
     {
-        $rows    = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+        $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
         $headers = array_map(
-            fn($h) => strtolower(trim(str_replace('*', '', (string) $h))),
+            fn ($h) => strtolower(trim(str_replace('*', '', (string) $h))),
             $rows[0] ?? []
         );
 
         $fields = ['item_name', 'unit_of_measure', 'category', 'cost_price', 'minimum_stock_level', 'description', 'is_active'];
-        $map    = [];
+        $map = [];
 
         foreach ($fields as $field) {
             $idx = array_search($field, $headers);
@@ -159,7 +163,7 @@ class ItemImportService
             }
         }
 
-        if (!isset($map['item_name'])) {
+        if (! isset($map['item_name'])) {
             return [];
         }
 
@@ -193,5 +197,4 @@ class ItemImportService
 
         return $items;
     }
-
 }

@@ -27,7 +27,7 @@ class ProductionOutputController extends Controller
     public function create()
     {
         $productionOrders = ProductionOrder::whereIn('status', ['in_progress'])->with('product')->get();
-        $warehouses       = Warehouse::all();
+        $warehouses = Warehouse::all();
 
         return view('production.outputs.create', compact('productionOrders', 'warehouses'));
     }
@@ -36,10 +36,10 @@ class ProductionOutputController extends Controller
     {
         $request->validate([
             'production_order_id' => 'required|exists:production_orders,id',
-            'item_id'             => 'required|exists:items,id',
-            'warehouse_id'        => 'required|exists:warehouses,id',
-            'quantity'            => 'required|numeric|min:0.01',
-            'output_date'         => 'required|date',
+            'item_id' => 'required|exists:items,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'quantity' => 'required|numeric|min:0.01',
+            'output_date' => 'required|date',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -51,21 +51,21 @@ class ProductionOutputController extends Controller
 
             $output = ProductionOutput::create([
                 'production_order_id' => $request->production_order_id,
-                'item_id'             => $request->item_id,
-                'warehouse_id'        => $request->warehouse_id,
-                'quantity'            => $request->quantity,
-                'output_date'         => $request->output_date,
-                'recorded_by'         => auth()->id(),
+                'item_id' => $request->item_id,
+                'warehouse_id' => $request->warehouse_id,
+                'quantity' => $request->quantity,
+                'output_date' => $request->output_date,
+                'recorded_by' => auth()->id(),
             ]);
 
             StockMovement::create([
-                'item_id'        => $request->item_id,
-                'warehouse_id'   => $request->warehouse_id,
-                'type'           => 'in',
-                'quantity'       => $request->quantity,
+                'item_id' => $request->item_id,
+                'warehouse_id' => $request->warehouse_id,
+                'type' => 'in',
+                'quantity' => $request->quantity,
                 'reference_type' => 'ProductionOutput',
-                'reference_id'   => $output->id,
-                'created_by'     => auth()->id(),
+                'reference_id' => $output->id,
+                'created_by' => auth()->id(),
             ]);
 
             // Accumulate quantity_produced on the production order
