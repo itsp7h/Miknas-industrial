@@ -17,11 +17,9 @@ use App\Http\Controllers\Purchase\RfqPortalController;
 use App\Http\Controllers\Purchase\SupplierInvoiceController;
 use App\Http\Controllers\Purchase\SupplierPaymentController;
 use App\Http\Controllers\Purchase\SupplierQuoteController;
-use App\Http\Controllers\Sales\CustomerController;
 use App\Http\Controllers\Sales\DeliveryNoteController;
 use App\Http\Controllers\Sales\PaymentReceiptController;
 use App\Http\Controllers\Sales\SalesInvoiceController;
-use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\Settings\ProjectSettingController;
 use App\Http\Controllers\Settings\UserManagementController;
 use App\Http\Controllers\Settings\VatSettingController;
@@ -118,9 +116,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Sales Module
     Route::prefix('sales')->name('sales.')->group(function () {
-        Route::resource('customers', CustomerController::class);
-        Route::resource('orders', SalesOrderController::class);
-        Route::patch('orders/{order}/confirm', [SalesOrderController::class, 'confirm'])->name('orders.confirm');
         Route::resource('delivery-notes', DeliveryNoteController::class);
         Route::patch('delivery-notes/{note}/dispatch', [DeliveryNoteController::class, 'dispatch'])->name('delivery-notes.dispatch');
         Route::resource('invoices', SalesInvoiceController::class);

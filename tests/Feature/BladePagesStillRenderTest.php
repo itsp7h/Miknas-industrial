@@ -33,7 +33,7 @@ class BladePagesStillRenderTest extends TestCase
      * The sidebar links for migrated Inventory pages must point at the React
      * shell, not at deleted Blade routes.
      */
-    public function test_the_sidebar_links_inventory_at_the_react_shell(): void
+    public function test_the_sidebar_links_migrated_pages_at_the_react_shell(): void
     {
         $response = $this->actingAs($this->user())->get(route('dashboard'))->assertOk();
 
@@ -45,18 +45,22 @@ class BladePagesStillRenderTest extends TestCase
             '/app/inventory/reports/movement',
             '/app/inventory/reports/low-stock',
             '/app/inventory/reports/valuation',
+            '/app/sales/customers',
+            '/app/sales/orders',
         ] as $url) {
             $response->assertSee($url, false);
         }
     }
 
-    public function test_no_blade_route_remains_for_migrated_inventory_pages(): void
+    public function test_no_blade_route_remains_for_migrated_pages(): void
     {
         foreach ([
             '/inventory/items',
             '/inventory/warehouses',
             '/inventory/movements',
             '/inventory/reports/summary',
+            '/sales/customers',
+            '/sales/orders',
         ] as $url) {
             $this->actingAs($this->user())->get($url)->assertNotFound();
         }

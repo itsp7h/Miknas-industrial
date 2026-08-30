@@ -20,6 +20,12 @@ import DesktopLowStockPage from './pages/desktop/inventory/reports/LowStockPage'
 import MobileLowStockPage from './pages/mobile/inventory/reports/LowStockPage';
 import DesktopValuationPage from './pages/desktop/inventory/reports/ValuationPage';
 import MobileValuationPage from './pages/mobile/inventory/reports/ValuationPage';
+import DesktopCustomerListPage from './pages/desktop/sales/CustomerListPage';
+import MobileCustomerListPage from './pages/mobile/sales/CustomerListPage';
+import DesktopSalesOrderListPage from './pages/desktop/sales/SalesOrderListPage';
+import MobileSalesOrderListPage from './pages/mobile/sales/SalesOrderListPage';
+import DesktopSalesOrderDetailPage from './pages/desktop/sales/SalesOrderDetailPage';
+import MobileSalesOrderDetailPage from './pages/mobile/sales/SalesOrderDetailPage';
 
 export default function App({
     currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken,
@@ -35,6 +41,9 @@ export default function App({
     const MovementReportPage = viewport === 'mobile' ? MobileMovementReportPage : DesktopMovementReportPage;
     const LowStockPage = viewport === 'mobile' ? MobileLowStockPage : DesktopLowStockPage;
     const ValuationPage = viewport === 'mobile' ? MobileValuationPage : DesktopValuationPage;
+    const CustomerListPage = viewport === 'mobile' ? MobileCustomerListPage : DesktopCustomerListPage;
+    const SalesOrderListPage = viewport === 'mobile' ? MobileSalesOrderListPage : DesktopSalesOrderListPage;
+    const SalesOrderDetailPage = viewport === 'mobile' ? MobileSalesOrderDetailPage : DesktopSalesOrderDetailPage;
 
     return (
         <AppShell
@@ -63,6 +72,9 @@ export default function App({
                 <Route path="/app/inventory/reports/movement" element={<MovementReportPage />} />
                 <Route path="/app/inventory/reports/low-stock" element={<LowStockPage />} />
                 <Route path="/app/inventory/reports/valuation" element={<ValuationPage />} />
+                <Route path="/app/sales/customers" element={<CustomerListPage />} />
+                <Route path="/app/sales/orders" element={<SalesOrderListPage />} />
+                <Route path="/app/sales/orders/:id" element={<SalesOrderDetailPage />} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>
         </AppShell>

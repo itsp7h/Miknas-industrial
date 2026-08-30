@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\Inventory\WarehouseController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
+use App\Http\Controllers\Api\Sales\CustomerController;
+use App\Http\Controllers\Api\Sales\SalesOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -43,6 +45,21 @@ Route::prefix('v1')->group(function () {
             Route::get('reports/movement', [StockReportController::class, 'movement']);
             Route::get('reports/low-stock', [StockReportController::class, 'lowStock']);
             Route::get('reports/valuation', [StockReportController::class, 'valuation']);
+        });
+
+        Route::prefix('sales')->group(function () {
+            Route::get('customers', [CustomerController::class, 'index']);
+            Route::post('customers', [CustomerController::class, 'store']);
+            Route::put('customers/{customer}', [CustomerController::class, 'update']);
+            Route::delete('customers/{customer}', [CustomerController::class, 'destroy']);
+
+            Route::get('orders', [SalesOrderController::class, 'index']);
+            Route::get('orders/form-options', [SalesOrderController::class, 'formOptions']);
+            Route::get('orders/{salesOrder}', [SalesOrderController::class, 'show']);
+            Route::post('orders', [SalesOrderController::class, 'store']);
+            Route::put('orders/{salesOrder}', [SalesOrderController::class, 'update']);
+            Route::patch('orders/{salesOrder}/confirm', [SalesOrderController::class, 'confirm']);
+            Route::delete('orders/{salesOrder}', [SalesOrderController::class, 'destroy']);
         });
 
         Route::prefix('purchase')->group(function () {

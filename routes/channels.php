@@ -14,3 +14,7 @@ Broadcast::channel('purchase', function (User $user) {
 Broadcast::channel('inventory', function (User $user) {
     return true; // any authenticated user, matching the /app/inventory/* routes (auth+verified only)
 });
+
+Broadcast::channel('sales', function (User $user) {
+    return true; // any authenticated user, matching the /app/sales/* routes (auth+verified only)
+});
