@@ -72,6 +72,12 @@ test, so no unit suite could have caught it.
 Deploy scripts live in `scripts/`; see `docs/ci-cd-setup.md` for runner setup
 and rollback. Every deploy backs up the SQLite database before migrating.
 
+**Any Vitest test that renders a component reaching Echo must `vi.mock` it.**
+`resources/js-app/echo.js` instantiates Pusher at import time, so without a
+`VITE_REVERB_APP_KEY` it throws and the whole suite file fails to load with
+zero tests run. CI has no `.env`, so this passes locally and fails there —
+mock `'../echo'` the way `NotificationBell.test.jsx` does.
+
 ---
 
 ## Controllers — `app/Http/Controllers/`
