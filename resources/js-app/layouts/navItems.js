@@ -47,9 +47,9 @@ export const NAV_GROUPS = [
         items: [
             { type: 'link', to: '/app/sales/customers', label: 'Customers' },
             { type: 'link', to: '/app/sales/orders', label: 'Sales Orders' },
-            { type: 'href', to: '/sales/delivery-notes', label: 'Delivery Notes' },
-            { type: 'href', to: '/sales/invoices', label: 'Sales Invoices' },
-            { type: 'href', to: '/sales/payments', label: 'Payment Receipts' },
+            { type: 'link', to: '/app/sales/delivery-notes', label: 'Delivery Notes' },
+            { type: 'link', to: '/app/sales/invoices', label: 'Sales Invoices' },
+            { type: 'link', to: '/app/sales/payments', label: 'Payment Receipts' },
         ],
     },
     {

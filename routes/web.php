@@ -17,9 +17,6 @@ use App\Http\Controllers\Purchase\RfqPortalController;
 use App\Http\Controllers\Purchase\SupplierInvoiceController;
 use App\Http\Controllers\Purchase\SupplierPaymentController;
 use App\Http\Controllers\Purchase\SupplierQuoteController;
-use App\Http\Controllers\Sales\DeliveryNoteController;
-use App\Http\Controllers\Sales\PaymentReceiptController;
-use App\Http\Controllers\Sales\SalesInvoiceController;
 use App\Http\Controllers\Settings\ProjectSettingController;
 use App\Http\Controllers\Settings\UserManagementController;
 use App\Http\Controllers\Settings\VatSettingController;
@@ -115,13 +112,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Sales Module
-    Route::prefix('sales')->name('sales.')->group(function () {
-        Route::resource('delivery-notes', DeliveryNoteController::class);
-        Route::patch('delivery-notes/{note}/dispatch', [DeliveryNoteController::class, 'dispatch'])->name('delivery-notes.dispatch');
-        Route::resource('invoices', SalesInvoiceController::class);
-        Route::resource('payments', PaymentReceiptController::class);
-    });
-
     // Settings (Admin only)
     Route::middleware('role:Admin')->group(function () {
         Route::get('settings/integrations', [SettingsController::class, 'integrations'])->name('settings.integrations');

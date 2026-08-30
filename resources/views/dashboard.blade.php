@@ -216,7 +216,7 @@
                 <span>Sales Orders</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
-            <a href="{{ route('sales.invoices.index') }}" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-violet-600 transition-colors">
+            <a href="/app/sales/invoices" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-violet-600 transition-colors">
                 <span>Sales Invoices</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>

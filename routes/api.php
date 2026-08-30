@@ -10,6 +10,9 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
 use App\Http\Controllers\Api\Sales\CustomerController;
+use App\Http\Controllers\Api\Sales\DeliveryNoteController;
+use App\Http\Controllers\Api\Sales\PaymentReceiptController;
+use App\Http\Controllers\Api\Sales\SalesInvoiceController;
 use App\Http\Controllers\Api\Sales\SalesOrderController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +63,21 @@ Route::prefix('v1')->group(function () {
             Route::put('orders/{salesOrder}', [SalesOrderController::class, 'update']);
             Route::patch('orders/{salesOrder}/confirm', [SalesOrderController::class, 'confirm']);
             Route::delete('orders/{salesOrder}', [SalesOrderController::class, 'destroy']);
+
+            Route::get('delivery-notes', [DeliveryNoteController::class, 'index']);
+            Route::get('delivery-notes/form-options', [DeliveryNoteController::class, 'formOptions']);
+            Route::get('delivery-notes/{deliveryNote}', [DeliveryNoteController::class, 'show']);
+            Route::post('delivery-notes', [DeliveryNoteController::class, 'store']);
+            Route::patch('delivery-notes/{deliveryNote}/dispatch', [DeliveryNoteController::class, 'dispatchNote']);
+
+            Route::get('invoices', [SalesInvoiceController::class, 'index']);
+            Route::get('invoices/form-options', [SalesInvoiceController::class, 'formOptions']);
+            Route::get('invoices/{salesInvoice}', [SalesInvoiceController::class, 'show']);
+            Route::post('invoices', [SalesInvoiceController::class, 'store']);
+
+            Route::get('payments', [PaymentReceiptController::class, 'index']);
+            Route::get('payments/form-options', [PaymentReceiptController::class, 'formOptions']);
+            Route::post('payments', [PaymentReceiptController::class, 'store']);
         });
 
         Route::prefix('purchase')->group(function () {

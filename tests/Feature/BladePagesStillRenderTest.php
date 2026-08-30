@@ -47,6 +47,9 @@ class BladePagesStillRenderTest extends TestCase
             '/app/inventory/reports/valuation',
             '/app/sales/customers',
             '/app/sales/orders',
+            '/app/sales/delivery-notes',
+            '/app/sales/invoices',
+            '/app/sales/payments',
         ] as $url) {
             $response->assertSee($url, false);
         }
@@ -61,6 +64,9 @@ class BladePagesStillRenderTest extends TestCase
             '/inventory/reports/summary',
             '/sales/customers',
             '/sales/orders',
+            '/sales/delivery-notes',
+            '/sales/invoices',
+            '/sales/payments',
         ] as $url) {
             $this->actingAs($this->user())->get($url)->assertNotFound();
         }
