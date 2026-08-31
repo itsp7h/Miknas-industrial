@@ -14,6 +14,16 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
         $this->seedRoles();
 
+        // Every layout calls @vite(...), which throws unless
+        // public/build/manifest.json exists — and that file is a build
+        // artifact, gitignored, absent in a fresh checkout. So any test that
+        // renders a page failed in CI while passing on a machine that happened
+        // to have run `npm run build` at some point. The PHP CI job has no
+        // Node in it by design (the JS job builds the bundle and would catch a
+        // broken build), so stub Vite out here instead: these tests are
+        // asserting on server-rendered HTML, never on asset URLs.
+        $this->withoutVite();
+
         // Sanctum's stateful-request detection (EnsureFrontendRequestsAreStateful)
         // only starts a session for requests carrying a Referer/Origin matching
         // SANCTUM_STATEFUL_DOMAINS — a real browser SPA request always has one,
