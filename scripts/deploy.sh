@@ -22,6 +22,24 @@ case "${1:-}" in
   *)          DEFAULT_REF="github/main" ;;
 esac
 REF="${2:-$DEFAULT_REF}"
+
+# The ref reaches `git reset --hard` inside a script that runs as root via a
+# NOPASSWD sudo rule, and in CI it originates from a workflow input. Validate it
+# here rather than trusting the caller: the workflow that passes it is itself
+# part of the deployable tree, so "the caller already validated it" is not a
+# property this script can rely on. Allowed shapes are the two tracked
+# branches, a `v*` release tag, and a commit SHA (what the production workflow
+# actually sends).
+case "$REF" in
+  github/main|github/development) ;;
+  *)
+    if ! printf '%s' "$REF" | grep -Eq '^([0-9a-fA-F]{7,40}|v[0-9][A-Za-z0-9._-]*)$'; then
+      echo "error: refusing to deploy ref '$REF' — expected github/main, github/development, a v* tag, or a commit SHA" >&2
+      exit 2
+    fi
+    ;;
+esac
+
 APP_DIR="${APP_DIR:-/var/www/ProjectsERP}"
 WEB_USER="${WEB_USER:-www-data}"
 
