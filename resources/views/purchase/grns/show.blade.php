@@ -24,7 +24,7 @@
             <div class="flex justify-between">
                 <dt class="text-gray-500">Purchase Order</dt>
                 <dd class="font-mono text-gray-800">
-                    <a href="{{ route('purchase.orders.show', $grn->purchaseOrder) }}" class="text-blue-600 hover:underline">
+                    <a href="/app/purchase/orders/{{ $grn->purchase_order_id }}" class="text-blue-600 hover:underline">
                         {{ $grn->purchaseOrder->po_number ?? 'PO-' . str_pad($grn->purchase_order_id, 5, '0', STR_PAD_LEFT) }}
                     </a>
                 </dd>

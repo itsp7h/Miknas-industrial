@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Production\BillOfMaterialController;
 use App\Http\Controllers\Api\Production\MaterialIssueController;
 use App\Http\Controllers\Api\Production\ProductionOrderController;
 use App\Http\Controllers\Api\Production\ProductionOutputController;
+use App\Http\Controllers\Api\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
 use App\Http\Controllers\Api\Sales\CustomerController;
@@ -118,6 +119,15 @@ Route::prefix('v1')->group(function () {
             Route::get('suppliers/export-pdf', [SupplierController::class, 'exportPdf']);
             Route::put('suppliers/{supplier}', [SupplierController::class, 'update']);
             Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy']);
+
+            // `orders/form-options` must precede `orders/{purchaseOrder}` or the
+            // wildcard swallows it.
+            Route::get('orders', [PurchaseOrderController::class, 'index']);
+            Route::get('orders/form-options', [PurchaseOrderController::class, 'formOptions']);
+            Route::get('orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
+            Route::post('orders', [PurchaseOrderController::class, 'store']);
+            Route::put('orders/{purchaseOrder}', [PurchaseOrderController::class, 'update']);
+            Route::delete('orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
         });
     });
 });

@@ -4,6 +4,10 @@ import useViewport from './hooks/useViewport';
 import DashboardPage from './pages/DashboardPage';
 import DesktopSupplierListPage from './pages/desktop/purchase/SupplierListPage';
 import MobileSupplierListPage from './pages/mobile/purchase/SupplierListPage';
+import DesktopPurchaseOrderListPage from './pages/desktop/purchase/PurchaseOrderListPage';
+import MobilePurchaseOrderListPage from './pages/mobile/purchase/PurchaseOrderListPage';
+import DesktopPurchaseOrderDetailPage from './pages/desktop/purchase/PurchaseOrderDetailPage';
+import MobilePurchaseOrderDetailPage from './pages/mobile/purchase/PurchaseOrderDetailPage';
 import DesktopPipelineBoardPage from './pages/desktop/purchase/PipelineBoardPage';
 import MobilePipelineBoardPage from './pages/mobile/purchase/PipelineBoardPage';
 import DesktopItemListPage from './pages/desktop/inventory/ItemListPage';
@@ -46,6 +50,8 @@ export default function App({
     const viewport = useViewport();
     const SupplierListPage = viewport === 'mobile' ? MobileSupplierListPage : DesktopSupplierListPage;
     const PipelineBoardPage = viewport === 'mobile' ? MobilePipelineBoardPage : DesktopPipelineBoardPage;
+    const PurchaseOrderListPage = viewport === 'mobile' ? MobilePurchaseOrderListPage : DesktopPurchaseOrderListPage;
+    const PurchaseOrderDetailPage = viewport === 'mobile' ? MobilePurchaseOrderDetailPage : DesktopPurchaseOrderDetailPage;
     const ItemListPage = viewport === 'mobile' ? MobileItemListPage : DesktopItemListPage;
     const WarehouseListPage = viewport === 'mobile' ? MobileWarehouseListPage : DesktopWarehouseListPage;
     const StockMovementPage = viewport === 'mobile' ? MobileStockMovementPage : DesktopStockMovementPage;
@@ -83,6 +89,8 @@ export default function App({
                         canViewOwnPurchaseRequests={canViewOwnPurchaseRequests}
                     />
                 )} />
+                <Route path="/app/purchase/orders" element={<PurchaseOrderListPage />} />
+                <Route path="/app/purchase/orders/:id" element={<PurchaseOrderDetailPage />} />
                 <Route path="/app/inventory/items" element={<ItemListPage />} />
                 <Route path="/app/inventory/warehouses" element={<WarehouseListPage />} />
                 <Route path="/app/inventory/movements" element={<StockMovementPage />} />

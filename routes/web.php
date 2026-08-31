@@ -85,9 +85,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('requests/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('requests.reject');
         Route::get('requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('requests.print');
         Route::post('requests/{purchaseRequest}/generate-lpo', [PurchaseOrderController::class, 'generateFromRequest'])->name('requests.generate-lpo');
+        // Purchase orders are served by the React SPA at /app/purchase/orders.
+        // Only the DomPDF-backed print/pdf documents stay server-rendered.
         Route::get('orders/{order}/print', [PurchaseOrderController::class, 'print'])->name('orders.print');
         Route::get('orders/{order}/pdf', [PurchaseOrderController::class, 'pdf'])->name('orders.pdf');
-        Route::resource('orders', PurchaseOrderController::class);
         Route::resource('grns', GoodsReceiptNoteController::class);
         Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm'])->name('grns.confirm');
         Route::resource('invoices', SupplierInvoiceController::class);

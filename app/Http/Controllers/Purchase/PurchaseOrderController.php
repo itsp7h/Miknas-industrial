@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Purchase;
 
 use App\Http\Controllers\Controller;
 use App\Mail\LpoIssuedMail;
-use App\Models\Item;
 use App\Models\MailAccount;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
 use App\Models\Setting;
 use App\Models\Settings\ProjectSetting;
@@ -23,66 +21,6 @@ use RuntimeException;
 
 class PurchaseOrderController extends Controller
 {
-    public function index()
-    {
-        $orders = PurchaseOrder::with('supplier')->paginate(15);
-
-        return view('purchase.orders.index', compact('orders'));
-    }
-
-    public function create()
-    {
-        $suppliers = Supplier::all();
-        $items = Item::all();
-        $purchaseRequests = PurchaseRequest::where('status', 'approved')->get();
-
-        return view('purchase.orders.create', compact('suppliers', 'items', 'purchaseRequests'));
-    }
-
-    public function store(Request $request)
-    {
-        $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'purchase_request_id' => 'nullable|exists:purchase_requests,id',
-            'po_date' => 'required|date',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
-            'items.*.quantity' => 'required|numeric|min:1',
-            'items.*.rate' => 'required|numeric|min:0',
-        ]);
-
-        $this->authorizeOrderAccess($request->input('purchase_request_id'));
-
-        $poNumber = 'PO-'.str_pad(PurchaseOrder::max('id') + 1, 5, '0', STR_PAD_LEFT);
-
-        $totalAmount = collect($request->items)->sum(fn ($item) => $item['quantity'] * $item['rate']);
-
-        $order = PurchaseOrder::create([
-            'po_number' => $poNumber,
-            'supplier_id' => $request->supplier_id,
-            'po_date' => $request->po_date,
-            'total_amount' => $totalAmount,
-            'status' => 'draft',
-            'created_by' => auth()->id(),
-        ]);
-
-        foreach ($request->items as $item) {
-            PurchaseOrderItem::create([
-                'purchase_order_id' => $order->id,
-                'item_id' => $item['item_id'],
-                'quantity' => $item['quantity'],
-                'rate' => $item['rate'],
-                'total_amount' => $item['quantity'] * $item['rate'],
-            ]);
-        }
-
-        if ($order->supplier && $order->supplier->whatsapp_number) {
-            $order->supplier->notify(new PurchaseOrderConfirmedNotification($order));
-        }
-
-        return redirect()->route('purchase.orders.show', $order)->with('success', 'Purchase order created successfully.');
-    }
-
     /**
      * Auto-generate the LPO(s) for a request straight from its awarded quote items —
      * one LPO per winning supplier, since items on the same request can be split
@@ -104,24 +42,15 @@ class PurchaseOrderController extends Controller
             $this->issueLpoToSupplier($order);
         }
 
+        // Purchase orders live in the React SPA now, so these are plain URLs
+        // rather than named Blade routes.
         if ($orders->count() === 1) {
-            return redirect()->route('purchase.orders.show', $orders->first())
+            return redirect('/app/purchase/orders/'.$orders->first()->id)
                 ->with('success', 'LPO '.$orders->first()->po_number.' generated.');
         }
 
-        return redirect()->route('purchase.orders.index')
+        return redirect('/app/purchase/orders')
             ->with('success', $orders->count().' LPOs generated: '.$orders->pluck('po_number')->implode(', '));
-    }
-
-    public function show(PurchaseOrder $order)
-    {
-        $order->load(['supplier', 'items.item', 'createdBy', 'purchaseRequest', 'goodsReceiptNotes.warehouse']);
-
-        $company = $order->purchaseRequest
-            ? ProjectSetting::where('name', $order->purchaseRequest->project_name)->with('company')->first()?->company
-            : null;
-
-        return view('purchase.orders.show', compact('order', 'company'));
     }
 
     public function print(PurchaseOrder $order)
@@ -198,67 +127,5 @@ class PurchaseOrderController extends Controller
         $total = $subtotal + $vatAmount - $discount;
 
         return compact('order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total');
-    }
-
-    public function edit(PurchaseOrder $order)
-    {
-        $suppliers = Supplier::all();
-        $items = Item::all();
-
-        return view('purchase.orders.edit', compact('order', 'suppliers', 'items'));
-    }
-
-    public function update(Request $request, PurchaseOrder $order)
-    {
-        $order->loadMissing('purchaseRequest');
-        $this->authorizeOrderAccess($order->purchase_request_id, $order->purchaseRequest);
-
-        $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'po_date' => 'required|date',
-        ]);
-
-        $order->update($request->only('supplier_id', 'po_date', 'status'));
-
-        return redirect()->route('purchase.orders.show', $order)->with('success', 'Purchase order updated successfully.');
-    }
-
-    public function destroy(PurchaseOrder $order)
-    {
-        $order->loadMissing('purchaseRequest');
-        $this->authorizeOrderAccess($order->purchase_request_id, $order->purchaseRequest);
-
-        $order->delete();
-
-        return redirect()->route('purchase.orders.index')->with('success', 'Purchase order deleted successfully.');
-    }
-
-    /**
-     * Authorize direct create/edit/delete access to a PurchaseOrder record.
-     *
-     * The `generateLpo` ability is instance-scoped to a PurchaseRequest (it
-     * checks the request's stage), so it cannot be used as a class-level
-     * check (`authorize('generateLpo', PurchaseRequest::class)` would pass a
-     * bare class string into a policy method that requires a PurchaseRequest
-     * instance and blow up with a TypeError). When the order is linked to a
-     * PurchaseRequest we authorize against that instance at the same trust
-     * level as generating an LPO from it. When there is no linked request
-     * (a manually-created PO with no request context to gate on) we fall
-     * back to a plain permission check so manual CRUD can't bypass
-     * authorization entirely just by omitting the link.
-     */
-    private function authorizeOrderAccess(?int $purchaseRequestId, ?PurchaseRequest $purchaseRequest = null): void
-    {
-        $purchaseRequest ??= $purchaseRequestId ? PurchaseRequest::findOrFail($purchaseRequestId) : null;
-
-        if ($purchaseRequest) {
-            $this->authorize('generateLpo', $purchaseRequest);
-
-            return;
-        }
-
-        if (! auth()->user() || ! auth()->user()->can('purchase-requests.generate-lpo')) {
-            abort(403);
-        }
     }
 }

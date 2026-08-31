@@ -276,7 +276,7 @@
               @elseif($stage === 'lpo' && $pr->purchaseOrders->isNotEmpty())
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                   @if($pr->purchaseOrders->count() === 1)
-                    <a href="{{ route('purchase.orders.show', $pr->purchaseOrders->first()) }}" class="action-btn" style="{{ $viewStyle }}">
+                    <a href="/app/purchase/orders/{{ $pr->purchaseOrders->first()->id }}" class="action-btn" style="{{ $viewStyle }}">
                       {!! $eyeSvg !!} View LPO
                     </a>
                     <a href="{{ route('purchase.orders.pdf', $pr->purchaseOrders->first()) }}" class="action-btn" style="{{ $viewStyle }}">
@@ -501,7 +501,7 @@
           ];
           $sc = $statusMap[$po->status] ?? $statusMap['draft'];
         @endphp
-        <a href="{{ route('purchase.orders.show', $po) }}"
+        <a href="/app/purchase/orders/{{ $po->id }}"
            style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;padding:8px 10px;border-radius:8px;text-decoration:none;background:#f8fafc;border:1px solid #f1f5f9;transition:box-shadow .15s;"
            onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)';"
            onmouseleave="this.style.boxShadow='';">

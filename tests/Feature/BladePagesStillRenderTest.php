@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -38,6 +39,7 @@ class BladePagesStillRenderTest extends TestCase
         $response = $this->actingAs($this->user())->get(route('dashboard'))->assertOk();
 
         foreach ([
+            '/app/purchase/orders',
             '/app/inventory/items',
             '/app/inventory/warehouses',
             '/app/inventory/movements',
@@ -59,9 +61,20 @@ class BladePagesStillRenderTest extends TestCase
         }
     }
 
+    /**
+     * The LPO print/PDF documents are DomPDF-backed and deliberately stay
+     * Blade, so the Purchase Orders cutover must not have taken them with it.
+     */
+    public function test_the_lpo_print_and_pdf_routes_survive_the_cutover(): void
+    {
+        $this->assertTrue(Route::has('purchase.orders.print'));
+        $this->assertTrue(Route::has('purchase.orders.pdf'));
+    }
+
     public function test_no_blade_route_remains_for_migrated_pages(): void
     {
         foreach ([
+            '/purchase/orders',
             '/inventory/items',
             '/inventory/warehouses',
             '/inventory/movements',

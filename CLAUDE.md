@@ -91,13 +91,15 @@ Api/                      ← React SPA's JSON API
   NotificationController.php
   Purchase/PurchasePipelineController.php
   Purchase/SupplierController.php
+  Purchase/PurchaseOrderController.php
 Settings/
   LocationController.php          ProjectSettingController.php
   UrgencyLevelController.php      UserManagementController.php
   VatSettingController.php
 Purchase/
   PurchaseRequestController.php   + approve, reject, print
-  PurchaseOrderController.php     PurchasePipelineController.php
+  PurchaseOrderController.php     ← only generateLpo + print/pdf survive
+  PurchasePipelineController.php
   PurchaseSignatureController.php RfqController.php
   RfqPortalController.php         ← public, token-based, no auth
   SupplierQuoteController.php     GoodsReceiptNoteController.php  + confirm
@@ -182,7 +184,9 @@ GET/POST  requests               purchase.requests.*
 PATCH     requests/{id}/approve  purchase.requests.approve
 PATCH     requests/{id}/reject   purchase.requests.reject
 GET       requests/{id}/print    purchase.requests.print
-GET/POST  orders                 purchase.orders.*
+GET       orders/{id}/print      purchase.orders.print   ← LPO document, Blade
+GET       orders/{id}/pdf        purchase.orders.pdf     ← LPO document, Blade
+POST      requests/{id}/generate-lpo  purchase.requests.generate-lpo
 GET/POST  grns                   purchase.grns.*
 PATCH     grns/{id}/confirm      purchase.grns.confirm
 GET/POST  invoices               purchase.invoices.*
@@ -242,7 +246,7 @@ profile/edit.blade.php   + partials/
 purchase/
   suppliers/   index, create, edit, pdf
   requests/    index, create, edit, show
-  orders/      index, create, edit, show
+  orders/      pdf, print          ← list/detail/forms are React
   grns/        index, create, show
   invoices/    index, create, edit
   payments/    index, create
@@ -458,6 +462,15 @@ This project is migrating from Blade/Alpine to a React SPA (`resources/js-app/`)
 - **Everything live, no polling.** Any change to the database that matters to a user on screen (new record, status change, notification) reaches them via Laravel Reverb broadcast + Laravel Echo, not a polling `setInterval`. If you add a feature that changes state other users can see, add a `ShouldBroadcast` event for it.
 - **Full cutover per module, no coexistence.** When converting a module to React, delete its Blade controllers/routes/views in the same change — never leave old and new versions of the same page both linked in the sidebar. (Lesson from commit `575eb7a`: a side-by-side React Suppliers page caused two confusing sidebar entries and was reverted.)
 - **Migration order:** Foundation/shell → Purchase → Inventory → Production → Sales. Each module is its own phase with its own spec.
+
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board, Suppliers, **Purchase Orders**, all of Inventory, all of Production, all of Sales. Still Blade: the rest of Purchase (requests, GRNs, supplier invoices, payments, quotes workspace, RFQ, signature, pipeline detail), all of Settings, Profile, and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+
+**The cutover checklist** (each step is a way a cutover has broken before):
+1. Add the `Api/` controller, an `App\Http\Resources\` resource, and `…Saved`/`…Deleted` broadcast events; wire routes in `routes/api.php` — custom paths like `orders/form-options` go **before** the `{wildcard}`.
+2. Build `pages/desktop/…` and `pages/mobile/…`, register both in `App.jsx` behind `useViewport()`, and flip the `navItems.js` entry from `type: 'href'` to `type: 'link'`.
+3. Repoint every Blade referrer: the `layouts/app.blade.php` sidebar (pull the entry out of the `route()` `@foreach` into a hardcoded `<a href="/app/…">` with `request()->is(...)` for active state), `dashboard.blade.php` quick links, and any deep link from a still-Blade page — those become plain `/app/...` URLs, since the named route is about to disappear.
+4. Delete the Blade views, routes, and controller methods. Keep `print`/`pdf` and re-point any controller redirect that named a deleted route.
+5. Port the deleted routes' authorization tests onto the new API endpoints — never just delete them — and add the module's URLs to `tests/Feature/BladePagesStillRenderTest.php`, which fails if the sidebar still names a dead route or a supposedly-deleted Blade URL still answers.
 
 ### 13. Still-Blade pages get a mobile counterpart too — same "separate files" rule, different mechanism
 Not every module is React yet (gotcha #12's migration order). Until a module converts, its pages still get a dedicated, professionally-designed mobile version — same principle as #12 (mobile and desktop are separate files, never one file branching on device), but Blade has no live `useViewport()` swap, so it uses a different mechanism. See `docs/superpowers/specs/2026-08-03-blade-mobile-desktop-split-design.md` for the full design and page rollout order (Production → Inventory → Sales → remaining Purchase).
