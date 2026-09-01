@@ -33,11 +33,11 @@ export default function PurchaseOrderDetailPage() {
                 cramped top-right button row. Print/PDF stay server-rendered. */}
             {order && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
-                    <a href={`/purchase/grns/create?purchase_order_id=${order.id}`}
-                       style={{ textAlign: 'center' }}
-                       className="px-4 py-3 rounded-md bg-green-600 text-white text-sm font-medium">
+                    <Link to={`/app/purchase/grns?purchase_order_id=${order.id}`}
+                          style={{ textAlign: 'center' }}
+                          className="px-4 py-3 rounded-md bg-green-600 text-white text-sm font-medium">
                         Create GRN
-                    </a>
+                    </Link>
                     <a href={`/purchase/orders/${order.id}/pdf`}
                        style={{ textAlign: 'center' }}
                        className="px-4 py-3 rounded-md bg-white text-gray-800 border border-gray-300 text-sm font-medium">

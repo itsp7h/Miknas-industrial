@@ -45,10 +45,10 @@ export default function PurchaseOrderDetailPage() {
                            className="px-4 py-2 rounded-md bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 text-sm font-medium">
                             Download PDF
                         </a>
-                        <a href={`/purchase/grns/create?purchase_order_id=${order.id}`}
-                           className="px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white text-sm font-medium">
+                        <Link to={`/app/purchase/grns?purchase_order_id=${order.id}`}
+                              className="px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white text-sm font-medium">
                             Create GRN
-                        </a>
+                        </Link>
                     </div>
                 )}
             </div>

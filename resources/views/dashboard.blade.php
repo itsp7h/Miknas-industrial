@@ -157,7 +157,7 @@
                 <span>Purchase Orders</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
-            <a href="{{ route('purchase.grns.index') }}" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-amber-600 transition-colors">
+            <a href="/app/purchase/grns" class="flex items-center justify-between py-1.5 text-sm text-slate-600 hover:text-amber-600 transition-colors">
                 <span>Goods Receipt (GRN)</span>
                 <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>

@@ -302,7 +302,7 @@
                 </div>
 
               @elseif($stage === 'receiving')
-                <a href="{{ route('purchase.grns.index') }}" class="action-btn" style="{{ $viewStyle }}">
+                <a href="/app/purchase/grns" class="action-btn" style="{{ $viewStyle }}">
                   {!! $eyeSvg !!} View GRNs
                 </a>
 

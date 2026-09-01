@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import PurchaseOrderDetail from './PurchaseOrderDetail';
 
 const ORDER = {
@@ -28,7 +29,7 @@ const ORDER = {
 
 describe('PurchaseOrderDetail', () => {
     it('heads the sheet with the project company and the LPO title', () => {
-        render(<PurchaseOrderDetail order={ORDER} />);
+        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
         expect(screen.getByText('Miknas Industrial')).toBeInTheDocument();
         expect(screen.getByText('Local Purchase Order')).toBeInTheDocument();
         expect(screen.getByText('PO-00007')).toBeInTheDocument();
@@ -36,20 +37,20 @@ describe('PurchaseOrderDetail', () => {
     });
 
     it('shows the full supplier block, not just the name', () => {
-        render(<PurchaseOrderDetail order={ORDER} />);
+        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
         ['Gulf Metals', 'Ali', 'Sitra', '17000000', 'ali@gulf.example'].forEach((text) => {
             expect(screen.getByText(text)).toBeInTheDocument();
         });
     });
 
     it('shows the reference MPR and the notes', () => {
-        render(<PurchaseOrderDetail order={ORDER} />);
+        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
         expect(screen.getByText('MPR-0004')).toBeInTheDocument();
         expect(screen.getByText('Deliver to gate 3.')).toBeInTheDocument();
     });
 
     it('renders lines in a table on desktop and totals them', () => {
-        render(<PurchaseOrderDetail order={ORDER} />);
+        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(screen.getByText('Steel Plate')).toBeInTheDocument();
         expect(screen.getByText('BD 345.00')).toBeInTheDocument();
@@ -57,30 +58,30 @@ describe('PurchaseOrderDetail', () => {
 
     // A five-column table cannot be read on a phone, so mobile stacks the lines.
     it('stacks lines instead of tabulating them when compact', () => {
-        render(<PurchaseOrderDetail order={ORDER} compact />);
+        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} compact /></MemoryRouter>);
         expect(screen.queryByRole('table')).not.toBeInTheDocument();
         expect(screen.getByText('1. Steel Plate')).toBeInTheDocument();
         expect(screen.getByText('Total Amount')).toBeInTheDocument();
     });
 
     it('lists linked GRNs with a link to each', () => {
-        render(<PurchaseOrderDetail order={ORDER} />);
+        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
         expect(screen.getByText('GRN-00003')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/purchase/grns/3');
+        expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/app/purchase/grns/3');
     });
 
     it('omits the GRN panel entirely when nothing has been received', () => {
-        render(<PurchaseOrderDetail order={{ ...ORDER, goods_receipt_notes: [] }} />);
+        render(<MemoryRouter><PurchaseOrderDetail order={{ ...ORDER, goods_receipt_notes: [] }} /></MemoryRouter>);
         expect(screen.queryByText('Goods Receipt Notes')).not.toBeInTheDocument();
     });
 
     it('renders nothing rather than crashing before the order loads', () => {
-        const { container } = render(<PurchaseOrderDetail order={null} />);
+        const { container } = render(<MemoryRouter><PurchaseOrderDetail order={null} /></MemoryRouter>);
         expect(container).toBeEmptyDOMElement();
     });
 
     it('falls back to an em dash for a missing delivery date', () => {
-        render(<PurchaseOrderDetail order={{ ...ORDER, expected_delivery_date: null }} />);
+        render(<MemoryRouter><PurchaseOrderDetail order={{ ...ORDER, expected_delivery_date: null }} /></MemoryRouter>);
         expect(screen.getByText('—')).toBeInTheDocument();
     });
 });

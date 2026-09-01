@@ -22,7 +22,7 @@
 
     <div style="flex:1;overflow-y:auto;overscroll-behavior:contain;padding:10px 0;">
       @forelse($receivablePOs as $po)
-      <a href="{{ route('purchase.grns.create', ['purchase_order_id' => $po->id]) }}"
+      <a href="/app/purchase/grns?purchase_order_id={{ $po->id }}"
          style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px;text-decoration:none;border-bottom:1px solid #f8fafc;transition:background .1s;"
          onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
         <div>

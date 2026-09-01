@@ -110,7 +110,7 @@ export const MODULES = [
         links: [
             { label: 'Purchase Requests', to: '/purchase/requests' },
             { label: 'Purchase Orders', to: '/app/purchase/orders' },
-            { label: 'Goods Receipt (GRN)', to: '/purchase/grns' },
+            { label: 'Goods Receipt (GRN)', to: '/app/purchase/grns' },
         ],
     },
     {

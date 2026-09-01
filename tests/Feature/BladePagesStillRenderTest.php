@@ -40,6 +40,7 @@ class BladePagesStillRenderTest extends TestCase
 
         foreach ([
             '/app/purchase/orders',
+            '/app/purchase/grns',
             '/app/inventory/items',
             '/app/inventory/warehouses',
             '/app/inventory/movements',
@@ -75,6 +76,7 @@ class BladePagesStillRenderTest extends TestCase
     {
         foreach ([
             '/purchase/orders',
+            '/purchase/grns',
             '/inventory/items',
             '/inventory/warehouses',
             '/inventory/movements',

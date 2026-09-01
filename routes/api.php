@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Production\BillOfMaterialController;
 use App\Http\Controllers\Api\Production\MaterialIssueController;
 use App\Http\Controllers\Api\Production\ProductionOrderController;
 use App\Http\Controllers\Api\Production\ProductionOutputController;
+use App\Http\Controllers\Api\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Api\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
@@ -130,6 +131,14 @@ Route::prefix('v1')->group(function () {
             Route::post('orders', [PurchaseOrderController::class, 'store']);
             Route::put('orders/{purchaseOrder}', [PurchaseOrderController::class, 'update']);
             Route::delete('orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
+
+            // `grns/form-options` must precede `grns/{grn}` or the wildcard eats it.
+            Route::get('grns', [GoodsReceiptNoteController::class, 'index']);
+            Route::get('grns/form-options', [GoodsReceiptNoteController::class, 'formOptions']);
+            Route::get('grns/{grn}', [GoodsReceiptNoteController::class, 'show']);
+            Route::post('grns', [GoodsReceiptNoteController::class, 'store']);
+            Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm']);
+            Route::delete('grns/{grn}', [GoodsReceiptNoteController::class, 'destroy']);
         });
     });
 });

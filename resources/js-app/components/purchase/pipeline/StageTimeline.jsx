@@ -212,7 +212,7 @@ function DoneActions({ stage, r }) {
             );
         }
         case 'receiving':
-            return <a href="/purchase/grns" style={VIEW}><EyeIcon /> View GRNs</a>;
+            return <Link to="/app/purchase/grns" style={VIEW}><EyeIcon /> View GRNs</Link>;
         case 'payment':
             return <a href="/purchase/payments" style={VIEW}><EyeIcon /> View Payments</a>;
         default:

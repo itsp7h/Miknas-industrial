@@ -3,7 +3,6 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MailAccountController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Purchase\PurchaseRequestController;
@@ -89,8 +88,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Only the DomPDF-backed print/pdf documents stay server-rendered.
         Route::get('orders/{order}/print', [PurchaseOrderController::class, 'print'])->name('orders.print');
         Route::get('orders/{order}/pdf', [PurchaseOrderController::class, 'pdf'])->name('orders.pdf');
-        Route::resource('grns', GoodsReceiptNoteController::class);
-        Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm'])->name('grns.confirm');
         Route::resource('invoices', SupplierInvoiceController::class);
         Route::resource('payments', SupplierPaymentController::class);
     });

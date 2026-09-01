@@ -92,6 +92,7 @@ Api/                      ← React SPA's JSON API
   Purchase/PurchasePipelineController.php
   Purchase/SupplierController.php
   Purchase/PurchaseOrderController.php
+  Purchase/GoodsReceiptNoteController.php
 Settings/
   LocationController.php          ProjectSettingController.php
   UrgencyLevelController.php      UserManagementController.php
@@ -102,7 +103,7 @@ Purchase/
   PurchasePipelineController.php
   PurchaseSignatureController.php RfqController.php
   RfqPortalController.php         ← public, token-based, no auth
-  SupplierQuoteController.php     GoodsReceiptNoteController.php  + confirm
+  SupplierQuoteController.php
   SupplierInvoiceController.php   SupplierPaymentController.php
 Inventory/
   ItemController.php              import, downloadTemplate, exportPdf + CRUD
@@ -187,8 +188,6 @@ GET       requests/{id}/print    purchase.requests.print
 GET       orders/{id}/print      purchase.orders.print   ← LPO document, Blade
 GET       orders/{id}/pdf        purchase.orders.pdf     ← LPO document, Blade
 POST      requests/{id}/generate-lpo  purchase.requests.generate-lpo
-GET/POST  grns                   purchase.grns.*
-PATCH     grns/{id}/confirm      purchase.grns.confirm
 GET/POST  invoices               purchase.invoices.*
 GET/POST  payments               purchase.payments.*
 ```
@@ -247,7 +246,7 @@ purchase/
   suppliers/   index, create, edit, pdf
   requests/    index, create, edit, show
   orders/      pdf, print          ← list/detail/forms are React
-  grns/        index, create, show
+                                   (grns/ is fully React)
   invoices/    index, create, edit
   payments/    index, create
 
@@ -463,7 +462,7 @@ This project is migrating from Blade/Alpine to a React SPA (`resources/js-app/`)
 - **Full cutover per module, no coexistence.** When converting a module to React, delete its Blade controllers/routes/views in the same change — never leave old and new versions of the same page both linked in the sidebar. (Lesson from commit `575eb7a`: a side-by-side React Suppliers page caused two confusing sidebar entries and was reverted.)
 - **Migration order:** Foundation/shell → Purchase → Inventory → Production → Sales. Each module is its own phase with its own spec.
 
-**Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board, Suppliers, **Purchase Orders**, all of Inventory, all of Production, all of Sales. Still Blade: the rest of Purchase (requests, GRNs, supplier invoices, payments, quotes workspace, RFQ, signature, pipeline detail), all of Settings, Profile, and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, all of Inventory, all of Production, all of Sales. Still Blade: the rest of Purchase (requests, supplier invoices, payments, quotes workspace, RFQ, signature), all of Settings, Profile, and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
 
 **The cutover checklist** (each step is a way a cutover has broken before):
 1. Add the `Api/` controller, an `App\Http\Resources\` resource, and `…Saved`/`…Deleted` broadcast events; wire routes in `routes/api.php` — custom paths like `orders/form-options` go **before** the `{wildcard}`.

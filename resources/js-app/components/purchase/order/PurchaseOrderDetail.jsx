@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { STATUS_BACKGROUNDS, STATUS_COLOURS, STATUS_LABELS, formatDate, money } from './statuses';
 
 function Badge({ status }) {
@@ -209,7 +210,7 @@ export default function PurchaseOrderDetail({ order, compact = false }) {
                                 <span style={{ fontFamily: 'monospace', color: '#334155' }}>{grn.grn_number}</span>
                                 <span style={{ color: '#64748b' }}>{grn.warehouse_name ?? '—'}</span>
                                 <span style={{ color: '#94a3b8' }}>{formatDate(grn.received_date)}</span>
-                                <a href={`/purchase/grns/${grn.id}`} style={{ color: '#2563eb' }}>View</a>
+                                <Link to={`/app/purchase/grns/${grn.id}`} style={{ color: '#2563eb' }}>View</Link>
                             </div>
                         ))}
                     </div>
