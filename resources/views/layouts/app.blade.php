@@ -70,12 +70,13 @@
         {{-- Nav --}}
         <nav style="padding:12px 12px; flex:1;">
 
-            {{-- Dashboard --}}
-            <a href="{{ route('dashboard') }}" style="
+            {{-- Dashboard. The React page, linked directly rather than through
+                 route('dashboard') so there is no redirect hop. --}}
+            <a href="/app" style="
                 display:flex; align-items:center; gap:10px;
                 padding:8px 12px; border-radius:8px; margin-bottom:2px;
                 font-size:13.5px; font-weight:500; text-decoration:none;
-                {{ request()->routeIs('dashboard') ? 'background:#2563eb;color:#fff;' : 'color:#94a3b8;' }}
+                {{ request()->is('app') ? 'background:#2563eb;color:#fff;' : 'color:#94a3b8;' }}
                 transition:background .15s,color .15s;
             " onmouseover="if(!this.style.background.includes('2563eb'))this.style.background='#1e293b'" onmouseout="if(!this.style.background.includes('2563eb'))this.style.background=''">
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -441,7 +442,7 @@
 ">
     <div style="display:flex;">
         @foreach([
-            ['route' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard',
+            ['route' => '/app', 'active' => request()->is('app'), 'label' => 'Dashboard',
              'icon' => 'M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM14 5a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 11a1 1 0 011-1h4a1 1 0 011 1v8a1 1 0 01-1 1h-4a1 1 0 01-1-1v-8z'],
             ['route' => '/app/purchase/pipeline', 'active' => request()->is('purchase*') || request()->is('app/purchase*'), 'label' => 'Purchase',
              'icon' => 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'],

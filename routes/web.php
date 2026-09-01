@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Purchase\PurchaseRequestController;
@@ -20,7 +19,10 @@ Route::get('/rfq/{token}', [RfqPortalController::class, 'show'])->name('rfq.show
 Route::post('/rfq/{token}', [RfqPortalController::class, 'submit'])->name('rfq.submit');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // The dashboard is the React page at /app. The named route stays as a
+    // redirect: Breeze's login and email-verification flows both send people to
+    // route('dashboard'), and so does `/`.
+    Route::redirect('/dashboard', '/app')->name('dashboard');
 
     Route::get('/notifications/unread', fn () => response()->json([
         'count' => auth()->user()->unreadNotifications()->count(),

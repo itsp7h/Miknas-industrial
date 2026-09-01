@@ -83,7 +83,7 @@ mock `'../echo'` the way `NotificationBell.test.jsx` does.
 ## Controllers — `app/Http/Controllers/`
 
 ```
-Controller.php            DashboardController.php
+Controller.php
 Auth/                     (Breeze defaults)
 Api/                      ← React SPA's JSON API
   AuthController.php              DashboardController.php
@@ -178,6 +178,10 @@ Files: `ImportSuppliers.php`, `GenerateSupplierTemplate.php`, `GenerateItemTempl
 
 `/up` is Laravel's built-in health route — the smoke tests key off it.
 
+`/dashboard` is a redirect to `/app`, not a page: the dashboard is React. The
+named route survives because Breeze's login and email-verification flows and the
+root route all send people to `route('dashboard')`.
+
 ### web.php — all protected by `['auth', 'verified']`. Prefix groups:
 
 ### Purchase — `prefix('purchase')->name('purchase.')`
@@ -235,7 +239,6 @@ GET/POST  payments               sales.payments.*
 ## Views — `resources/views/`
 
 ```
-dashboard.blade.php
 welcome.blade.php
 layouts/
   app.blade.php          main layout (sidebar + topbar)
@@ -479,12 +482,12 @@ page is finished. Every module has now been through this — Purchase, Inventory
 Production and Sales — so a React page here should be treated as ported, not
 merely present.
 
-**Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry) and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard (`/app`, and `/dashboard` redirects to it), Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry) and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
 
 **The cutover checklist** (each step is a way a cutover has broken before):
 1. Add the `Api/` controller, an `App\Http\Resources\` resource, and `…Saved`/`…Deleted` broadcast events; wire routes in `routes/api.php` — custom paths like `orders/form-options` go **before** the `{wildcard}`.
 2. Build `pages/desktop/…` and `pages/mobile/…`, register both in `App.jsx` behind `useViewport()`, and flip the `navItems.js` entry from `type: 'href'` to `type: 'link'`.
-3. Repoint every Blade referrer: the `layouts/app.blade.php` sidebar (pull the entry out of the `route()` `@foreach` into a hardcoded `<a href="/app/…">` with `request()->is(...)` for active state), `dashboard.blade.php` quick links, and any deep link from a still-Blade page — those become plain `/app/...` URLs, since the named route is about to disappear.
+3. Repoint every Blade referrer: the `layouts/app.blade.php` sidebar (pull the entry out of the `route()` `@foreach` into a hardcoded `<a href="/app/…">` with `request()->is(...)` for active state) and any deep link from a still-Blade page — those become plain `/app/...` URLs, since the named route is about to disappear.
 4. Delete the Blade views, routes, and controller methods. Keep `print`/`pdf` and re-point any controller redirect that named a deleted route.
 5. Port the deleted routes' authorization tests onto the new API endpoints — never just delete them — and add the module's URLs to `tests/Feature/BladePagesStillRenderTest.php`, which fails if the sidebar still names a dead route or a supposedly-deleted Blade URL still answers.
 

@@ -8,10 +8,14 @@ use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
- * Every React cutover deletes named Blade routes, and the shared layout and
- * dashboard call route() for the sidebar. A stale reference throws
- * RouteNotFoundException at render time — invisible to unit tests, and fatal
- * on a page every user sees. These render the surviving Blade pages for real.
+ * Every React cutover deletes named Blade routes, and the shared layout calls
+ * route() for its sidebar. A stale reference throws RouteNotFoundException at
+ * render time — invisible to unit tests, and fatal on a page users see. These
+ * render the surviving Blade pages for real.
+ *
+ * The dashboard used to be that page. It is React now, so the RFQ workflow's
+ * create-request page stands in: it is the remaining Blade page that renders the
+ * full `layouts/app` chrome without needing a model.
  */
 class BladePagesStillRenderTest extends TestCase
 {
@@ -22,12 +26,33 @@ class BladePagesStillRenderTest extends TestCase
         return User::factory()->create();
     }
 
-    public function test_the_dashboard_renders_with_the_full_sidebar(): void
+    /** The Blade page that still carries the shared chrome. */
+    private const BLADE_PAGE = '/purchase/requests/create';
+
+    public function test_a_surviving_blade_page_renders_with_the_full_sidebar(): void
     {
         $this->actingAs($this->user())
-            ->get(route('dashboard'))
+            ->get(self::BLADE_PAGE)
             ->assertOk()
             ->assertSee('Stock Summary', false);
+    }
+
+    /**
+     * The Blade dashboard is gone; /dashboard redirects into the shell. The named
+     * route has to survive, because Breeze's login and email-verification flows
+     * and the root route all send people to it.
+     */
+    public function test_the_dashboard_moved_into_the_react_shell(): void
+    {
+        $this->assertTrue(Route::has('dashboard'));
+
+        $this->actingAs($this->user())->get('/dashboard')->assertRedirect('/app');
+        $this->get('/')->assertRedirect(route('dashboard'));
+
+        // The chrome links the shell directly rather than hopping through the
+        // redirect.
+        $this->actingAs($this->user())->get(self::BLADE_PAGE)->assertOk()
+            ->assertSee('href="/app"', false);
     }
 
     /**
@@ -36,7 +61,7 @@ class BladePagesStillRenderTest extends TestCase
      */
     public function test_the_sidebar_links_migrated_pages_at_the_react_shell(): void
     {
-        $response = $this->actingAs($this->user())->get(route('dashboard'))->assertOk();
+        $response = $this->actingAs($this->user())->get(self::BLADE_PAGE)->assertOk();
 
         foreach ([
             '/app/purchase/orders',
@@ -73,7 +98,7 @@ class BladePagesStillRenderTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $this->actingAs($admin)->get(route('dashboard'))->assertOk()
+        $this->actingAs($admin)->get(self::BLADE_PAGE)->assertOk()
             ->assertSee('/app/settings/companies', false);
     }
 
@@ -86,7 +111,7 @@ class BladePagesStillRenderTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $response = $this->actingAs($admin)->get(route('dashboard'))->assertOk();
+        $response = $this->actingAs($admin)->get(self::BLADE_PAGE)->assertOk();
 
         $response->assertSee('/app/settings/companies', false);
         $response->assertSee('/app/settings/projects', false);
@@ -119,7 +144,7 @@ class BladePagesStillRenderTest extends TestCase
         $user = $this->user();
 
         $this->actingAs($user)->get('/profile')->assertRedirect('/app/profile');
-        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('/app/profile', false);
+        $this->actingAs($user)->get(self::BLADE_PAGE)->assertOk()->assertSee('/app/profile', false);
 
         foreach (['profile.update', 'profile.destroy'] as $name) {
             $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");
