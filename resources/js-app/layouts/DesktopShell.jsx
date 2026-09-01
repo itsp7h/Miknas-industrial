@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import NotificationBell from '../components/NotificationBell';
+import TopBar from './TopBar';
 import LogoutForm from '../components/LogoutForm';
 import { DASHBOARD_ITEM, NAV_GROUPS } from './navItems';
 
@@ -74,13 +74,11 @@ export default function DesktopShell({ children, currentUserId, userName, userEm
                 </div>
             </aside>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <header style={{
-                    height: 60, borderBottom: '1px solid #e2e8f0',
-                    display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 24px',
-                }}>
-                    <NotificationBell currentUserId={currentUserId} />
-                </header>
-                <main style={{ flex: 1, padding: 24 }}>{children}</main>
+                <TopBar userName={userName} currentUserId={currentUserId} />
+                {/* Matches the Blade layout's <main>: 28px padding on a #f1f5f9 ground. */}
+                <main style={{ flex: 1, padding: 28, background: '#f1f5f9', minWidth: 0, overflowX: 'hidden' }}>
+                    {children}
+                </main>
             </div>
         </div>
     );

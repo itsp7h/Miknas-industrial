@@ -30,6 +30,7 @@ Route::prefix('v1')->group(function () {
         Route::post('dashboard/ping', [DashboardController::class, 'ping']);
         Route::get('dashboard/summary', [DashboardController::class, 'summary']);
         Route::get('notifications/unread', [NotificationController::class, 'unread']);
+        Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
 
         Route::prefix('inventory')->group(function () {
             Route::get('items', [ItemController::class, 'index']);

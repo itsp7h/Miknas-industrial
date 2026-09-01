@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import NotificationBell from '../components/NotificationBell';
+import TopBar from './TopBar';
 import LogoutForm from '../components/LogoutForm';
 import { DASHBOARD_ITEM, NAV_GROUPS } from './navItems';
 
@@ -81,16 +81,12 @@ export default function MobileShell({ children, currentUserId, userName, userEma
 
     return (
         <div data-testid="mobile-shell" style={{ minHeight: '100vh' }}>
-            <header style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '12px 16px', borderBottom: '1px solid #e2e8f0',
-            }}>
-                <button aria-label="Menu" onClick={() => setMenuOpen((v) => !v)} style={{ fontSize: 20 }}>
-                    ☰
-                </button>
-                <span style={{ fontWeight: 700 }}>SteelERP</span>
-                <NotificationBell currentUserId={currentUserId} />
-            </header>
+            <TopBar
+                userName={userName}
+                currentUserId={currentUserId}
+                compact
+                onToggleMenu={() => setMenuOpen((v) => !v)}
+            />
 
             {menuOpen && (
                 <nav style={{ borderBottom: '1px solid #e2e8f0' }}>
