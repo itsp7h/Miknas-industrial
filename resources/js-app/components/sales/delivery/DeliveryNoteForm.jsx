@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import FormField from '../../ui/FormField';
-import Button from '../../ui/Button';
 import { apiGet, apiPost } from '../../../api/client';
 
+const NO_OPTIONS = { orders: [], warehouses: [] };
+
+/**
+ * Blade's create page: a "Delivery Details" card two-up, then an "Items to
+ * Deliver" table whose rows load from the chosen order (Product / SO Qty /
+ * Deliver Qty). Restyled onto the shared form classes it used.
+ *
+ * One behavioural difference kept from the React version: Blade capped each row
+ * at the ordered quantity, ignoring what had already been delivered, so a second
+ * delivery could ship the full amount twice. Rows here show what is still
+ * outstanding and cap on that, and a fully delivered line drops out.
+ */
 export default function DeliveryNoteForm({ presetOrderId, onSaved, onCancel }) {
-    const [options, setOptions] = useState({ orders: [], warehouses: [] });
+    const [options, setOptions] = useState(NO_OPTIONS);
     const [values, setValues] = useState({
         sales_order_id: presetOrderId ?? '',
         warehouse_id: '',
@@ -16,7 +26,9 @@ export default function DeliveryNoteForm({ presetOrderId, onSaved, onCancel }) {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        apiGet('/sales/delivery-notes/form-options').then(setOptions).catch(() => {});
+        apiGet('/sales/delivery-notes/form-options')
+            .then((response) => setOptions({ ...NO_OPTIONS, ...response }))
+            .catch(() => {});
     }, []);
 
     const order = useMemo(
@@ -24,7 +36,6 @@ export default function DeliveryNoteForm({ presetOrderId, onSaved, onCancel }) {
         [options.orders, values.sales_order_id]
     );
 
-    // Only lines with something left to deliver are worth showing.
     const deliverable = useMemo(
         () => (order?.items ?? []).filter((line) => Number(line.outstanding) > 0),
         [order]
@@ -54,82 +65,133 @@ export default function DeliveryNoteForm({ presetOrderId, onSaved, onCancel }) {
         }
     }
 
+    const messages = Object.entries(errors)
+        .filter(([key]) => !key.startsWith('items.'))
+        .map(([, message]) => message);
+
     return (
         <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-                <label htmlFor="sales_order_id" className="block text-sm font-medium text-gray-700 mb-1">Sales Order</label>
-                <select
-                    id="sales_order_id"
-                    value={values.sales_order_id}
-                    onChange={(e) => setField('sales_order_id', e.target.value)}
-                    className={`border rounded-md px-3 py-2 text-sm w-full ${errors.sales_order_id ? 'border-red-400' : 'border-gray-300'}`}
-                >
-                    <option value="">Select a confirmed order…</option>
-                    {options.orders.map((o) => (
-                        <option key={o.id} value={o.id}>{o.order_number} — {o.customer_name}</option>
-                    ))}
-                </select>
-                {errors.sales_order_id && <p className="text-sm text-red-600 mt-1">{errors.sales_order_id}</p>}
-            </div>
-
-            <div className="mb-4">
-                <label htmlFor="warehouse_id" className="block text-sm font-medium text-gray-700 mb-1">Dispatch From</label>
-                <select
-                    id="warehouse_id"
-                    value={values.warehouse_id}
-                    onChange={(e) => setField('warehouse_id', e.target.value)}
-                    className={`border rounded-md px-3 py-2 text-sm w-full ${errors.warehouse_id ? 'border-red-400' : 'border-gray-300'}`}
-                >
-                    <option value="">Select a warehouse…</option>
-                    {options.warehouses.map((w) => (
-                        <option key={w.id} value={w.id}>{w.name}</option>
-                    ))}
-                </select>
-                {errors.warehouse_id && <p className="text-sm text-red-600 mt-1">{errors.warehouse_id}</p>}
-            </div>
-
-            <FormField label="Delivery Date" name="delivery_date" type="date" value={values.delivery_date} onChange={setField} error={errors.delivery_date} />
-
-            {order && (
-                <div className="mb-4">
-                    <span className="text-sm font-medium text-gray-700">Quantities to deliver</span>
-                    {deliverable.length === 0 && (
-                        <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>
-                            Every line on this order has already been delivered.
-                        </p>
-                    )}
-                    {deliverable.map((line, index) => (
-                        <div key={line.item_id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, marginTop: 8 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                                <div>
-                                    <div style={{ fontWeight: 600 }}>{line.item_name}</div>
-                                    <div style={{ fontSize: 12, color: '#64748b' }}>
-                                        {line.outstanding} of {line.quantity} outstanding
-                                    </div>
-                                </div>
-                                <input
-                                    type="number" step="0.01" min="0" max={line.outstanding}
-                                    aria-label={`Quantity for ${line.item_name}`}
-                                    value={quantities[line.item_id] ?? ''}
-                                    onChange={(e) => setQuantities((prev) => ({ ...prev, [line.item_id]: e.target.value }))}
-                                    className="border border-gray-300 rounded-md px-3 py-2 text-sm"
-                                    style={{ width: 110 }}
-                                />
-                            </div>
-                            {errors[`items.${index}.quantity`] && (
-                                <p className="text-sm text-red-600 mt-1">{errors[`items.${index}.quantity`]}</p>
-                            )}
-                        </div>
-                    ))}
-                    {errors.items && <p className="text-sm text-red-600 mt-1">{errors.items}</p>}
+            {messages.length > 0 && (
+                <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                    <ul className="list-disc list-inside space-y-1">
+                        {messages.map((message) => <li key={message}>{message}</li>)}
+                    </ul>
                 </div>
             )}
 
-            <FormField label="Notes" name="notes" type="textarea" value={values.notes} onChange={setField} error={errors.notes} />
+            <div className="card card-body mb-4">
+                <h2 className="text-base font-semibold text-gray-700 mb-4">Delivery Details</h2>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div>
+                        <label htmlFor="sales_order_id" className="form-label">
+                            Sales Order <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="sales_order_id" className="form-select" required
+                            value={values.sales_order_id}
+                            onChange={(e) => setField('sales_order_id', e.target.value)}
+                        >
+                            <option value="">-- Select Confirmed Order --</option>
+                            {options.orders.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                    {o.order_number}{o.customer_name ? ` - ${o.customer_name}` : ''}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-                <Button type="submit" loading={saving}>Create Delivery Note</Button>
+                    <div>
+                        <label htmlFor="warehouse_id" className="form-label">
+                            Warehouse <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="warehouse_id" className="form-select" required
+                            value={values.warehouse_id}
+                            onChange={(e) => setField('warehouse_id', e.target.value)}
+                        >
+                            <option value="">-- Select Warehouse --</option>
+                            {options.warehouses.map((w) => (
+                                <option key={w.id} value={w.id}>{w.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label htmlFor="delivery_date" className="form-label">
+                            Delivery Date <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            id="delivery_date" className="form-input" type="date" required
+                            value={values.delivery_date}
+                            onChange={(e) => setField('delivery_date', e.target.value)}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="notes" className="form-label">Notes</label>
+                        <textarea
+                            id="notes" className="form-textarea" rows={2}
+                            value={values.notes}
+                            onChange={(e) => setField('notes', e.target.value)}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="card card-body mb-4">
+                <h2 className="text-base font-semibold text-gray-700 mb-4">Items to Deliver</h2>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-200">
+                                <th className="pb-2 text-left font-semibold text-gray-600">Product</th>
+                                <th className="pb-2 text-left font-semibold text-gray-600" style={{ width: 112 }}>Outstanding</th>
+                                <th className="pb-2 text-left font-semibold text-gray-600" style={{ width: 112 }}>Deliver Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {!order && (
+                                <tr>
+                                    <td colSpan={3} className="py-4 text-center text-gray-400">Select a Sales Order to load items.</td>
+                                </tr>
+                            )}
+                            {order && deliverable.length === 0 && (
+                                <tr>
+                                    <td colSpan={3} className="py-4 text-center text-gray-400">
+                                        Every line on this order has already been delivered.
+                                    </td>
+                                </tr>
+                            )}
+                            {deliverable.map((line, index) => (
+                                <tr key={line.item_id} className="border-b border-gray-100">
+                                    <td className="py-2 pr-2 text-gray-800">{line.item_name}</td>
+                                    <td className="py-2 pr-2 text-gray-500">
+                                        {line.outstanding} of {line.quantity}
+                                    </td>
+                                    <td className="py-2 pr-2">
+                                        <input
+                                            type="number" step="0.01" min="0" max={line.outstanding}
+                                            aria-label={`Quantity for ${line.item_name}`}
+                                            value={quantities[line.item_id] ?? ''}
+                                            onChange={(e) => setQuantities((prev) => ({ ...prev, [line.item_id]: e.target.value }))}
+                                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                        />
+                                        {errors[`items.${index}.quantity`] && (
+                                            <p className="text-sm text-red-600 mt-1">{errors[`items.${index}.quantity`]}</p>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+                <button type="submit" className="btn-primary" disabled={saving}>
+                    {saving ? 'Creating…' : 'Create Delivery Note'}
+                </button>
+                <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
             </div>
         </form>
     );

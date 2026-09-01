@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Sales;
 
+use App\Events\DeliveryNoteDeleted;
 use App\Events\DeliveryNoteSaved;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DeliveryNoteResource;
@@ -112,6 +113,45 @@ class DeliveryNoteController extends Controller
 
         return (new DeliveryNoteResource($note->load(['salesOrder', 'customer', 'warehouse', 'items.item'])))
             ->response()->setStatusCode(201);
+    }
+
+    /**
+     * Blade offered Edit and Delete on every note, dispatched ones included.
+     * Both are restored here, but only while the note is still a draft: once it
+     * is dispatched the stock has moved and the order's delivered quantities have
+     * been raised, so changing the warehouse or removing the note would leave
+     * both wrong with nothing to reconcile against.
+     *
+     * Blade's own update also silently dropped the notes field its form posted.
+     */
+    public function update(Request $request, DeliveryNote $deliveryNote)
+    {
+        abort_unless($deliveryNote->status === 'draft', 422, 'A dispatched delivery note can no longer be changed.');
+
+        $deliveryNote->update($request->validate([
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'delivery_date' => 'required|date',
+            'notes' => 'nullable|string',
+        ]));
+
+        event(new DeliveryNoteSaved($deliveryNote));
+
+        return new DeliveryNoteResource(
+            $deliveryNote->load(['salesOrder', 'customer', 'warehouse', 'items.item'])
+        );
+    }
+
+    public function destroy(DeliveryNote $deliveryNote)
+    {
+        abort_unless($deliveryNote->status === 'draft', 422, 'A dispatched delivery note cannot be deleted.');
+
+        $id = $deliveryNote->id;
+        $deliveryNote->items()->delete();
+        $deliveryNote->delete();
+
+        event(new DeliveryNoteDeleted($id));
+
+        return response()->json(['deleted' => true]);
     }
 
     public function dispatchNote(DeliveryNote $deliveryNote)

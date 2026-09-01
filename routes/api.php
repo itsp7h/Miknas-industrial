@@ -77,7 +77,9 @@ Route::prefix('v1')->group(function () {
             Route::get('delivery-notes/form-options', [DeliveryNoteController::class, 'formOptions']);
             Route::get('delivery-notes/{deliveryNote}', [DeliveryNoteController::class, 'show']);
             Route::post('delivery-notes', [DeliveryNoteController::class, 'store']);
+            Route::put('delivery-notes/{deliveryNote}', [DeliveryNoteController::class, 'update']);
             Route::patch('delivery-notes/{deliveryNote}/dispatch', [DeliveryNoteController::class, 'dispatchNote']);
+            Route::delete('delivery-notes/{deliveryNote}', [DeliveryNoteController::class, 'destroy']);
 
             Route::get('invoices', [SalesInvoiceController::class, 'index']);
             Route::get('invoices/form-options', [SalesInvoiceController::class, 'formOptions']);

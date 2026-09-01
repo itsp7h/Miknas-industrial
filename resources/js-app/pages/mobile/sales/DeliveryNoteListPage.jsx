@@ -1,58 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
 import DeliveryNoteForm from '../../../components/sales/delivery/DeliveryNoteForm';
-import useLiveList from '../../../hooks/useLiveList';
+import DeliveryNoteEditForm from '../../../components/sales/delivery/DeliveryNoteEditForm';
+import useDeliveryNoteList from '../../../components/sales/delivery/useDeliveryNoteList';
+import { badgeClassFor, statusLabel } from '../../../components/sales/delivery/statuses';
+import { formatDate } from '../../../components/sales/order/statuses';
 import { apiPatch } from '../../../api/client';
 import { useToast } from '../../../components/ui/Toast';
 
-const STATUS_COLOURS = { draft: '#64748b', dispatched: '#7c3aed' };
-const STATUS_LABELS = { draft: 'Draft', dispatched: 'Dispatched' };
-
 export default function DeliveryNoteListPage() {
-    const { items: notes, upsertItem } = useLiveList({
-        endpoint: '/sales/delivery-notes',
-        channel: 'sales',
-        event: '.delivery-note.saved',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load delivery notes.',
-    });
-    const [query, setQuery] = useState('');
-    const [modalOpen, setModalOpen] = useState(false);
-    const [dispatching, setDispatching] = useState(null);
+    const d = useDeliveryNoteList();
     const { showToast } = useToast();
-    // The sales order detail page links here with ?sales_order_id=, the way
-    // Blade's "Create Delivery Note" button pointed at the create page.
-    const [params] = useSearchParams();
-    const presetOrderId = params.get('sales_order_id');
-
-    useEffect(() => {
-        if (presetOrderId) setModalOpen(true);
-    }, [presetOrderId]);
-
-    const filtered = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return notes;
-        return notes.filter((n) =>
-            [n.delivery_number, n.order_number, n.customer_name, STATUS_LABELS[n.status] ?? n.status]
-                .some((field) => String(field ?? '').toLowerCase().includes(q))
-        );
-    }, [notes, query]);
-
-    function handleSaved(note) {
-        upsertItem(note);
-        setModalOpen(false);
-        showToast('Delivery note created.', 'success');
-    }
 
     async function handleDispatch() {
-        const note = dispatching;
-        setDispatching(null);
+        const note = d.dispatching;
+        d.setDispatching(null);
         try {
             const response = await apiPatch(`/sales/delivery-notes/${note.id}/dispatch`);
-            upsertItem(response.data);
+            d.upsertItem(response.data);
             showToast(`${note.delivery_number} dispatched.`, 'success');
         } catch (err) {
             showToast(err.message || 'Failed to dispatch that note.', 'error');
@@ -61,57 +27,94 @@ export default function DeliveryNoteListPage() {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h1 style={{ fontSize: 18, fontWeight: 700 }}>Delivery Notes</h1>
-                <Button onClick={() => setModalOpen(true)}>New</Button>
+            <div style={{ marginBottom: 12 }}>
+                <h1 className="page-title">Delivery Notes</h1>
+                <p className="page-subtitle">Manage goods dispatch to customers</p>
             </div>
+
+            <button
+                type="button" onClick={d.openCreate} className="btn-primary"
+                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+            >
+                + New Delivery Note
+            </button>
 
             <div style={{ marginBottom: 12 }}>
                 <input
-                    type="search" value={query} onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search delivery notes…" aria-label="Search delivery notes"
+                    type="search"
+                    value={d.query}
+                    onChange={(e) => d.setQuery(e.target.value)}
+                    placeholder="Search DN #, order, customer…"
+                    aria-label="Search delivery notes"
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
                 />
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    {query ? `${filtered.length} of ${notes.length} notes` : `${notes.length} notes`}
+                    {d.query ? `${d.filtered.length} of ${d.notes.length} notes` : `${d.notes.length} notes`}
                 </div>
             </div>
 
-            {filtered.length === 0 && (
+            {d.filtered.length === 0 && (
                 <p style={{ fontSize: 14, color: '#64748b' }}>
-                    {query ? 'No delivery notes match that search.' : 'No delivery notes yet.'}
+                    {d.query ? 'No delivery notes match that search.' : 'No delivery notes found.'}
                 </p>
             )}
 
-            {filtered.map((note) => (
-                <div key={note.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 8 }}>
+            {d.filtered.map((note) => (
+                <div key={note.id} style={{
+                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
+                    padding: 12, marginBottom: 8,
+                }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                        <span style={{ fontWeight: 600 }}>{note.delivery_number}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: STATUS_COLOURS[note.status] }}>
-                            {STATUS_LABELS[note.status] ?? note.status}
-                        </span>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14 }}>{note.customer_name ?? ''}</div>
+                            <div className="font-mono" style={{ fontSize: 11, color: '#94a3b8' }}>{note.delivery_number}</div>
+                        </div>
+                        <span className={badgeClassFor(note.status)} style={{ flexShrink: 0 }}>{statusLabel(note.status)}</span>
                     </div>
-                    <div style={{ fontSize: 13, color: '#64748b' }}>{note.customer_name ?? '—'}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                        {note.order_number ?? '—'} · {note.delivery_date}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: '#64748b', marginTop: 6, gap: 8 }}>
+                        <Link to={`/app/sales/orders/${note.sales_order_id}`} className="text-blue-600 font-mono">
+                            {note.order_number}
+                        </Link>
+                        <span>{note.warehouse_name ?? ''}</span>
                     </div>
+
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{formatDate(note.delivery_date)}</div>
+
                     {note.status === 'draft' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                            <Button variant="link" onClick={() => setDispatching(note)}>Dispatch</Button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                            <button type="button" onClick={() => d.setDispatching(note)} className="btn-success btn-sm">Dispatch</button>
+                            <button type="button" onClick={() => d.openEdit(note)} className="btn-secondary btn-sm">Edit</button>
+                            <button type="button" onClick={() => d.setDeleting(note)} className="btn-danger btn-sm">Delete</button>
                         </div>
                     )}
                 </div>
             ))}
 
-            <Modal open={modalOpen} title="New Delivery Note" onClose={() => setModalOpen(false)}>
-                <DeliveryNoteForm presetOrderId={presetOrderId} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <Modal
+                open={d.modalOpen}
+                title={d.editing ? `Edit ${d.editing.delivery_number}` : 'New Delivery Note'}
+                onClose={() => d.setModalOpen(false)}
+            >
+                {d.editing
+                    ? <DeliveryNoteEditForm note={d.editing} onSaved={d.handleSaved} onCancel={() => d.setModalOpen(false)} />
+                    : <DeliveryNoteForm presetOrderId={d.presetOrderId} onSaved={d.handleSaved} onCancel={() => d.setModalOpen(false)} />}
             </Modal>
             <ConfirmModal
-                open={!!dispatching}
+                open={!!d.dispatching}
                 title="Dispatch this delivery note?"
-                body={dispatching ? `${dispatching.delivery_number} will be dispatched and stock decremented. This cannot be undone.` : ''}
+                body={d.dispatching
+                    ? `${d.dispatching.delivery_number} will be dispatched and stock decremented at ${d.dispatching.warehouse_name}. This cannot be undone.`
+                    : ''}
                 onConfirm={handleDispatch}
-                onCancel={() => setDispatching(null)}
+                onCancel={() => d.setDispatching(null)}
+            />
+            <ConfirmModal
+                open={!!d.deleting}
+                title="Delete this delivery note?"
+                body={d.deleting ? `${d.deleting.delivery_number} will be permanently removed.` : ''}
+                onConfirm={d.handleDelete}
+                onCancel={() => d.setDeleting(null)}
             />
         </div>
     );

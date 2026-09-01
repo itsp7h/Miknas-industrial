@@ -165,6 +165,60 @@ class DeliveryNoteControllerTest extends TestCase
         $this->assertEquals(18, StockLevel::first()->quantity);
     }
 
+    /**
+     * Blade offered Edit and Delete on every note; the React port offered
+     * neither. Both are back, restricted to drafts — a dispatched note has moved
+     * stock and raised the order's delivered quantities.
+     */
+    public function test_a_draft_note_can_be_edited(): void
+    {
+        $yard = Warehouse::create(['code' => 'WH-2', 'name' => 'Yard']);
+        $note = $this->actingAs($this->actingUser())
+            ->postJson('/api/v1/sales/delivery-notes', $this->payload())->assertCreated();
+
+        $response = $this->actingAs($this->actingUser())
+            ->putJson("/api/v1/sales/delivery-notes/{$note->json('data.id')}", [
+                'warehouse_id' => $yard->id,
+                'delivery_date' => '2026-09-09',
+                'notes' => 'Gate 3',
+            ])->assertOk();
+
+        $this->assertSame('Yard', $response->json('data.warehouse_name'));
+        $this->assertSame('2026-09-09', $response->json('data.delivery_date'));
+        // Blade's own update saved only date and warehouse, silently dropping
+        // the notes its form posted.
+        $this->assertSame('Gate 3', $response->json('data.notes'));
+    }
+
+    public function test_a_dispatched_note_cannot_be_edited_or_deleted(): void
+    {
+        $user = $this->actingUser();
+        $id = $this->actingAs($user)
+            ->postJson('/api/v1/sales/delivery-notes', $this->payload())->json('data.id');
+        $this->actingAs($user)->patchJson("/api/v1/sales/delivery-notes/{$id}/dispatch")->assertOk();
+
+        $this->actingAs($user)->putJson("/api/v1/sales/delivery-notes/{$id}", [
+            'warehouse_id' => $this->warehouse->id, 'delivery_date' => '2026-09-09',
+        ])->assertStatus(422);
+        $this->actingAs($user)->deleteJson("/api/v1/sales/delivery-notes/{$id}")->assertStatus(422);
+        $this->assertDatabaseCount('delivery_notes', 1);
+    }
+
+    public function test_a_draft_note_is_deleted_with_its_lines(): void
+    {
+        $id = $this->actingAs($this->actingUser())
+            ->postJson('/api/v1/sales/delivery-notes', $this->payload())->json('data.id');
+
+        $this->actingAs($this->actingUser())
+            ->deleteJson("/api/v1/sales/delivery-notes/{$id}")->assertOk();
+
+        $this->assertDatabaseCount('delivery_notes', 0);
+        $this->assertDatabaseCount('delivery_note_items', 0);
+        // Deleting a draft must not touch stock or the order's delivered totals.
+        $this->assertEquals(20, StockLevel::first()->quantity);
+        $this->assertEquals(0, $this->orderLine->fresh()->quantity_delivered);
+    }
+
     public function test_form_options_reports_the_outstanding_quantity_per_line(): void
     {
         $response = $this->actingAs($this->actingUser())

@@ -1,98 +1,93 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import Card from '../../../components/ui/Card';
-import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
 import DeliveryNoteForm from '../../../components/sales/delivery/DeliveryNoteForm';
-import useLiveList from '../../../hooks/useLiveList';
+import DeliveryNoteEditForm from '../../../components/sales/delivery/DeliveryNoteEditForm';
+import DeliveryNoteTable from '../../../components/sales/delivery/DeliveryNoteTable';
+import useDeliveryNoteList from '../../../components/sales/delivery/useDeliveryNoteList';
 import { apiPatch } from '../../../api/client';
 import { useToast } from '../../../components/ui/Toast';
 
-const STATUS_COLOURS = { draft: '#64748b', dispatched: '#7c3aed' };
-const STATUS_LABELS = { draft: 'Draft', dispatched: 'Dispatched' };
-
 export default function DeliveryNoteListPage() {
-    const { items: notes, upsertItem } = useLiveList({
-        endpoint: '/sales/delivery-notes',
-        channel: 'sales',
-        event: '.delivery-note.saved',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load delivery notes.',
-    });
-    const [modalOpen, setModalOpen] = useState(false);
-    const [dispatching, setDispatching] = useState(null);
+    const d = useDeliveryNoteList();
     const { showToast } = useToast();
-    // The sales order detail page links here with ?sales_order_id=, the way
-    // Blade's "Create Delivery Note" button pointed at the create page.
-    const [params] = useSearchParams();
-    const presetOrderId = params.get('sales_order_id');
-
-    useEffect(() => {
-        if (presetOrderId) setModalOpen(true);
-    }, [presetOrderId]);
-
-    function handleSaved(note) {
-        upsertItem(note);
-        setModalOpen(false);
-        showToast('Delivery note created.', 'success');
-    }
 
     async function handleDispatch() {
-        const note = dispatching;
-        setDispatching(null);
+        const note = d.dispatching;
+        d.setDispatching(null);
         try {
             const response = await apiPatch(`/sales/delivery-notes/${note.id}/dispatch`);
-            upsertItem(response.data);
+            d.upsertItem(response.data);
             showToast(`${note.delivery_number} dispatched and stock decremented.`, 'success');
         } catch (err) {
             showToast(err.message || 'Failed to dispatch that note.', 'error');
         }
     }
 
-    const columns = useMemo(() => [
-        { key: 'delivery_number', label: 'Note #' },
-        { key: 'order_number', label: 'Order', render: (row) => row.order_number ?? '—' },
-        { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? '—' },
-        { key: 'warehouse_name', label: 'From', render: (row) => row.warehouse_name ?? '—' },
-        { key: 'delivery_date', label: 'Date' },
-        {
-            key: 'status',
-            label: 'Status',
-            render: (row) => (
-                <span style={{ color: STATUS_COLOURS[row.status], fontWeight: 600 }}>
-                    {STATUS_LABELS[row.status] ?? row.status}
-                </span>
-            ),
-        },
-        {
-            key: 'actions',
-            label: '',
-            render: (row) => (row.status === 'draft'
-                ? <Button variant="link" onClick={() => setDispatching(row)}>Dispatch</Button>
-                : null),
-        },
-    ], []);
-
     return (
-        <Card title="Delivery Notes">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <Button onClick={() => setModalOpen(true)}>New Delivery Note</Button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Delivery Notes</h1>
+                    <p className="page-subtitle">Manage goods dispatch to customers</p>
+                </div>
+                <button type="button" onClick={d.openCreate} className="btn-primary">+ New Delivery Note</button>
             </div>
 
-            <Table columns={columns} rows={notes} rowKey={(row) => row.id} searchPlaceholder="Search delivery notes…" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                    <svg
+                        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                        width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={d.query}
+                        onChange={(e) => d.setQuery(e.target.value)}
+                        placeholder="Search DN #, order, customer…"
+                        aria-label="Search delivery notes"
+                        autoComplete="off"
+                        style={{ padding: '8px 14px 8px 34px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13.5, width: 340, outline: 'none' }}
+                    />
+                </div>
+                <div style={{ fontSize: 12.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {d.query ? `${d.filtered.length} of ${d.notes.length} notes` : `${d.notes.length} notes`}
+                </div>
+            </div>
 
-            <Modal open={modalOpen} title="New Delivery Note" onClose={() => setModalOpen(false)}>
-                <DeliveryNoteForm presetOrderId={presetOrderId} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <DeliveryNoteTable
+                notes={d.filtered}
+                onDispatch={d.setDispatching}
+                onEdit={d.openEdit}
+                onDelete={d.setDeleting}
+            />
+
+            <Modal
+                open={d.modalOpen}
+                title={d.editing ? `Edit ${d.editing.delivery_number}` : 'New Delivery Note'}
+                onClose={() => d.setModalOpen(false)}
+            >
+                {d.editing
+                    ? <DeliveryNoteEditForm note={d.editing} onSaved={d.handleSaved} onCancel={() => d.setModalOpen(false)} />
+                    : <DeliveryNoteForm presetOrderId={d.presetOrderId} onSaved={d.handleSaved} onCancel={() => d.setModalOpen(false)} />}
             </Modal>
             <ConfirmModal
-                open={!!dispatching}
+                open={!!d.dispatching}
                 title="Dispatch this delivery note?"
-                body={dispatching ? `${dispatching.delivery_number} will be dispatched, stock will be decremented at ${dispatching.warehouse_name}, and the customer is notified if they have a WhatsApp number. This cannot be undone.` : ''}
+                body={d.dispatching
+                    ? `${d.dispatching.delivery_number} will be dispatched, stock will be decremented at ${d.dispatching.warehouse_name}, and the customer is notified if they have a WhatsApp number. This cannot be undone.`
+                    : ''}
                 onConfirm={handleDispatch}
-                onCancel={() => setDispatching(null)}
+                onCancel={() => d.setDispatching(null)}
             />
-        </Card>
+            <ConfirmModal
+                open={!!d.deleting}
+                title="Delete this delivery note?"
+                body={d.deleting ? `${d.deleting.delivery_number} will be permanently removed.` : ''}
+                onConfirm={d.handleDelete}
+                onCancel={() => d.setDeleting(null)}
+            />
+        </div>
     );
 }

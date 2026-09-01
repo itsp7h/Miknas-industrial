@@ -14,8 +14,8 @@ vi.mock('../../../echo', () => ({
 const wrap = (ui) => render(<MemoryRouter><ToastProvider>{ui}</ToastProvider></MemoryRouter>);
 
 const NOTES = [
-    { id: 1, delivery_number: 'DN-00001', order_number: 'SO-00001', customer_name: 'Gulf Steel', warehouse_name: 'Main', delivery_date: '2026-08-05', status: 'draft' },
-    { id: 2, delivery_number: 'DN-00002', order_number: 'SO-00002', customer_name: 'Zenith', warehouse_name: 'Yard', delivery_date: '2026-08-06', status: 'dispatched' },
+    { id: 1, delivery_number: 'DN-00001', sales_order_id: 11, order_number: 'SO-00001', customer_name: 'Gulf Steel', warehouse_id: 1, warehouse_name: 'Main', delivery_date: '2026-08-05', status: 'draft', notes: null },
+    { id: 2, delivery_number: 'DN-00002', sales_order_id: 12, order_number: 'SO-00002', customer_name: 'Zenith', warehouse_name: 'Yard', delivery_date: '2026-08-06', status: 'dispatched' },
 ];
 
 const INVOICES = [
@@ -57,6 +57,58 @@ describe('desktop sales flow pages', () => {
         await waitFor(() => {
             expect(screen.getByText('This delivery note has already been dispatched.')).toBeInTheDocument();
         });
+    });
+
+    // Blade's seven columns, with the date as `d M Y` and badged statuses.
+    it('delivery notes list Blade\u2019s seven columns', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: NOTES });
+        wrap(<DeliveryNoteListPage />);
+
+        await screen.findByText('DN-00001');
+        expect(screen.getAllByRole('columnheader').map((th) => th.textContent))
+            .toEqual(['DN #', 'Sales Order', 'Customer', 'Warehouse', 'Date', 'Status', 'Actions']);
+        expect(screen.getByText('05 Aug 2026')).toBeInTheDocument();
+        // The status enum is draft/dispatched; Blade badged 'pending', which the
+        // column cannot hold, so a real draft note badged grey.
+        expect(screen.getByText('Draft')).toHaveClass('badge-yellow');
+        expect(screen.getByText('Dispatched')).toHaveClass('badge-green');
+        expect(screen.getByText('SO-00001')).toHaveAttribute('href', '/app/sales/orders/11');
+    });
+
+    // Blade offered both on every note; the React port offered neither.
+    it('delivery notes offer Edit and Delete on a draft note only', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: NOTES });
+        wrap(<DeliveryNoteListPage />);
+
+        await screen.findByText('DN-00001');
+        expect(screen.getAllByText('Edit')).toHaveLength(1);
+        expect(screen.getAllByText('Delete')).toHaveLength(1);
+        expect(screen.getByText('Edit')).toHaveClass('btn-secondary');
+        expect(screen.getByText('Dispatch')).toHaveClass('btn-success');
+    });
+
+    it('delivery notes edit warehouse, date and notes', async () => {
+        vi.spyOn(client, 'apiGet').mockImplementation((url) => (
+            url.endsWith('/form-options')
+                ? Promise.resolve({ orders: [], warehouses: [{ id: 1, name: 'Main' }] })
+                : Promise.resolve({ data: NOTES })
+        ));
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({ data: { ...NOTES[0], notes: 'Gate 3' } });
+        wrap(<DeliveryNoteListPage />);
+
+        await screen.findByText('DN-00001');
+        fireEvent.click(screen.getByText('Edit'));
+        // Blade's own update dropped the notes field its form posted.
+        fireEvent.change(await screen.findByLabelText('Notes'), { target: { value: 'Gate 3' } });
+        fireEvent.click(screen.getByText('Update Delivery Note'));
+
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/sales/delivery-notes/1', expect.objectContaining({ notes: 'Gate 3' })));
+    });
+
+    it('delivery notes say so when there are none', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<DeliveryNoteListPage />);
+        expect(await screen.findByText('No delivery notes found.')).toBeInTheDocument();
     });
 
     it('invoices show the outstanding balance and status', async () => {
