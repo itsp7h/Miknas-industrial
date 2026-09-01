@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import ProductionOrderListPage from './ProductionOrderListPage';
 import FlowListPage from './FlowListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
@@ -9,7 +10,7 @@ vi.mock('../../../echo', () => ({
     echo: { private: () => ({ listen: () => ({ listen: () => {} }), stopListening: () => {} }), channel: () => ({ listen: () => {} }), leave: () => {} },
 }));
 
-const wrap = (ui) => render(<ToastProvider>{ui}</ToastProvider>);
+const wrap = (ui) => render(<MemoryRouter><ToastProvider>{ui}</ToastProvider></MemoryRouter>);
 
 const ORDERS = [
     { id: 1, order_number: 'PO-00001', product_name: 'Frame', quantity_to_produce: '10.00', quantity_produced: '4.00', production_date: '2026-08-01', status: 'in_progress' },
@@ -24,7 +25,7 @@ describe('mobile production pages', () => {
         const { container } = wrap(<ProductionOrderListPage />);
         await screen.findByText('PO-00001');
         expect(container.querySelector('table')).toBeNull();
-        expect(screen.getByText(/4 of 10 made/)).toBeInTheDocument();
+        expect(screen.getByText(/4\.00 of 10\.00 produced/)).toBeInTheDocument();
     });
 
     it('filters client-side with a live count', async () => {

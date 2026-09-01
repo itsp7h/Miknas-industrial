@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Production;
 use App\Events\ProductionOrderDeleted;
 use App\Events\ProductionOrderSaved;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductionOrderDetailResource;
 use App\Http\Resources\ProductionOrderResource;
 use App\Models\Item;
 use App\Models\ProductionOrder;
@@ -26,7 +27,11 @@ class ProductionOrderController extends Controller
 
     public function show(ProductionOrder $productionOrder)
     {
-        return new ProductionOrderResource($productionOrder->load('product'));
+        return new ProductionOrderDetailResource($productionOrder->load([
+            'product',
+            'materialIssues.item', 'materialIssues.warehouse',
+            'outputs.item', 'outputs.warehouse',
+        ]));
     }
 
     public function formOptions()

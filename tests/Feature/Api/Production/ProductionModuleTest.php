@@ -121,6 +121,54 @@ class ProductionModuleTest extends TestCase
         $this->actingAs($user)->deleteJson("/api/v1/production/orders/{$order->id}")->assertStatus(422);
     }
 
+    /**
+     * The Blade show page laid out four sections — order details, the product's
+     * BOM, material issues and output — but its controller passed only
+     * compact('productionOrder'), so $bom, $materialIssues and $outputs were
+     * never set and three of them never rendered. The detail endpoint the React
+     * page reads has to actually carry them.
+     */
+    public function test_the_detail_endpoint_carries_bom_material_issues_and_output(): void
+    {
+        BillOfMaterial::create([
+            'product_id' => $this->product->id, 'raw_material_id' => $this->rawMaterial->id,
+            'quantity_required' => 2.5, 'unit_of_measure' => 'KG',
+        ]);
+        StockLevel::create(['item_id' => $this->rawMaterial->id, 'warehouse_id' => $this->warehouse->id, 'quantity' => 50]);
+        $order = $this->makeOrder('in_progress');
+        $user = $this->actingUser();
+
+        $this->actingAs($user)->postJson('/api/v1/production/material-issues', [
+            'production_order_id' => $order->id, 'item_id' => $this->rawMaterial->id,
+            'warehouse_id' => $this->warehouse->id, 'quantity' => 20, 'issue_date' => now()->toDateString(),
+        ])->assertCreated();
+        $this->actingAs($user)->postJson('/api/v1/production/outputs', [
+            'production_order_id' => $order->id, 'item_id' => $this->product->id,
+            'warehouse_id' => $this->warehouse->id, 'quantity' => 4, 'output_date' => now()->toDateString(),
+        ])->assertCreated();
+
+        $response = $this->actingAs($user)->getJson("/api/v1/production/orders/{$order->id}")->assertOk();
+
+        $this->assertSame('Frame', $response->json('data.product_name'));
+        $this->assertSame('Steel Bar', $response->json('data.bom.0.material_name'));
+        $this->assertEquals(2.5, $response->json('data.bom.0.quantity_required'));
+        $this->assertSame('Steel Bar', $response->json('data.material_issues.0.item_name'));
+        $this->assertSame('Main', $response->json('data.material_issues.0.warehouse_name'));
+        $this->assertSame('Frame', $response->json('data.outputs.0.item_name'));
+        $this->assertEquals(6, $response->json('data.outstanding'));
+    }
+
+    public function test_the_detail_endpoint_returns_empty_sections_rather_than_omitting_them(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->actingUser())->getJson("/api/v1/production/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.bom', [])
+            ->assertJsonPath('data.material_issues', [])
+            ->assertJsonPath('data.outputs', []);
+    }
+
     // ---------------- bill of materials ----------------
 
     public function test_it_creates_a_bom_line(): void

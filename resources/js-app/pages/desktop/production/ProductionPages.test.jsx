@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import ProductionOrderListPage from './ProductionOrderListPage';
 import BomListPage from './BomListPage';
 import FlowListPage from './FlowListPage';
@@ -10,7 +11,7 @@ vi.mock('../../../echo', () => ({
     echo: { private: () => ({ listen: () => ({ listen: () => {} }), stopListening: () => {} }), channel: () => ({ listen: () => {} }), leave: () => {} },
 }));
 
-const wrap = (ui) => render(<ToastProvider>{ui}</ToastProvider>);
+const wrap = (ui) => render(<MemoryRouter><ToastProvider>{ui}</ToastProvider></MemoryRouter>);
 
 const ORDERS = [
     { id: 1, order_number: 'PO-00001', product_name: 'Frame', quantity_to_produce: '10.00', quantity_produced: '4.00', outstanding: 6, production_date: '2026-08-01', status: 'in_progress' },
@@ -20,11 +21,30 @@ const ORDERS = [
 describe('desktop production pages', () => {
     beforeEach(() => vi.restoreAllMocks());
 
-    it('shows progress as produced over target', async () => {
+    // Blade gave target and produced their own right-aligned columns rather than
+    // merging them into one "4 / 10" progress cell.
+    it('lists qty to produce and produced as separate columns', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: ORDERS });
         wrap(<ProductionOrderListPage />);
         await screen.findByText('PO-00001');
-        expect(screen.getByText('4 / 10')).toBeInTheDocument();
+        const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+        expect(headers).toEqual(['Order #', 'Product', 'Qty to Produce', 'Produced', 'Date', 'Status', 'Actions']);
+        expect(screen.getByText('10.00')).toBeInTheDocument();
+        expect(screen.getByText('4.00')).toBeInTheDocument();
+        expect(screen.queryByText('4 / 10')).not.toBeInTheDocument();
+    });
+
+    it('badges the status and formats the date the way Blade did', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [ORDERS[0]] });
+        wrap(<ProductionOrderListPage />);
+        expect(await screen.findByText('In Progress')).toHaveClass('badge-blue');
+        expect(screen.getByText('01 Aug 2026')).toBeInTheDocument();
+    });
+
+    it('links each order to its detail page', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [ORDERS[0]] });
+        wrap(<ProductionOrderListPage />);
+        expect(await screen.findByText('View')).toHaveAttribute('href', '/app/production/orders/1');
     });
 
     // The actions available depend on where the order is in its lifecycle.
@@ -35,6 +55,9 @@ describe('desktop production pages', () => {
         expect(screen.getAllByText('Start')).toHaveLength(1);
         expect(screen.getAllByText('Complete')).toHaveLength(1);
         expect(screen.getAllByText('Edit')).toHaveLength(1);
+        // Blade guarded Start on 'pending', which the status enum never contains,
+        // so the button could never appear.
+        expect(screen.getAllByText('View')).toHaveLength(2);
     });
 
     it('warns that completing cannot be reopened before doing it', async () => {
@@ -51,6 +74,7 @@ describe('desktop production pages', () => {
         wrap(<ProductionOrderListPage />);
         await screen.findByText('PO-00001');
         fireEvent.click(screen.getByText('Start'));
+        fireEvent.click(await screen.findByText('Confirm'));
         await waitFor(() => {
             expect(screen.getByText('Only a planned order can be started.')).toBeInTheDocument();
         });

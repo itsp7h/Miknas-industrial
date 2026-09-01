@@ -49,6 +49,8 @@ import DesktopPaymentListPage from './pages/desktop/sales/PaymentListPage';
 import MobilePaymentListPage from './pages/mobile/sales/PaymentListPage';
 import DesktopProductionOrderListPage from './pages/desktop/production/ProductionOrderListPage';
 import MobileProductionOrderListPage from './pages/mobile/production/ProductionOrderListPage';
+import DesktopProductionOrderDetailPage from './pages/desktop/production/ProductionOrderDetailPage';
+import MobileProductionOrderDetailPage from './pages/mobile/production/ProductionOrderDetailPage';
 import DesktopBomListPage from './pages/desktop/production/BomListPage';
 import MobileBomListPage from './pages/mobile/production/BomListPage';
 import DesktopFlowListPage from './pages/desktop/production/FlowListPage';
@@ -83,6 +85,7 @@ export default function App({
     const InvoiceListPage = viewport === 'mobile' ? MobileInvoiceListPage : DesktopInvoiceListPage;
     const PaymentListPage = viewport === 'mobile' ? MobilePaymentListPage : DesktopPaymentListPage;
     const ProductionOrderListPage = viewport === 'mobile' ? MobileProductionOrderListPage : DesktopProductionOrderListPage;
+    const ProductionOrderDetailPage = viewport === 'mobile' ? MobileProductionOrderDetailPage : DesktopProductionOrderDetailPage;
     const BomListPage = viewport === 'mobile' ? MobileBomListPage : DesktopBomListPage;
     const FlowListPage = viewport === 'mobile' ? MobileFlowListPage : DesktopFlowListPage;
 
@@ -127,6 +130,7 @@ export default function App({
                 <Route path="/app/sales/invoices" element={<InvoiceListPage />} />
                 <Route path="/app/sales/payments" element={<PaymentListPage />} />
                 <Route path="/app/production/orders" element={<ProductionOrderListPage />} />
+                <Route path="/app/production/orders/:id" element={<ProductionOrderDetailPage />} />
                 <Route path="/app/production/bom" element={<BomListPage />} />
                 <Route path="/app/production/material-issues" element={<FlowListPage kind="material-issue" />} />
                 <Route path="/app/production/outputs" element={<FlowListPage kind="production-output" />} />
