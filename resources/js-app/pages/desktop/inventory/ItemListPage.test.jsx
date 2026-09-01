@@ -38,17 +38,19 @@ describe('desktop ItemListPage', () => {
         expect(screen.queryByText('raw_material')).not.toBeInTheDocument();
     });
 
-    it('shows active state per row', async () => {
+    // The Blade table badged status and category rather than printing Yes/No.
+    it('badges status and category per row', async () => {
         renderPage();
         await screen.findByText('Steel Rod');
-        expect(screen.getByText('Yes')).toBeInTheDocument();
-        expect(screen.getByText('No')).toBeInTheDocument();
+        expect(screen.getByText('Active')).toHaveClass('badge-green');
+        expect(screen.getByText('Inactive')).toHaveClass('badge-gray');
+        expect(screen.getByText('Raw Material')).toHaveClass('badge-blue');
     });
 
-    it('opens the create modal from the New Item button', async () => {
+    it('opens the create modal from the Add Item button', async () => {
         renderPage();
         await screen.findByText('Steel Rod');
-        fireEvent.click(screen.getByText('New Item'));
+        fireEvent.click(screen.getByText('+ Add Item'));
         expect(await screen.findByText('New Item', { selector: 'h2, h3, div' })).toBeTruthy();
         expect(screen.getByLabelText('Item Name')).toBeInTheDocument();
     });
@@ -57,7 +59,7 @@ describe('desktop ItemListPage', () => {
         renderPage();
         await screen.findByText('Steel Rod');
         fireEvent.click(screen.getAllByText('Delete')[0]);
-        expect(await screen.findByText(/permanently remove "Steel Rod"/)).toBeInTheDocument();
+        expect(await screen.findByText(/"Steel Rod" will be permanently removed/)).toBeInTheDocument();
     });
 
     it('keeps the row and explains when the API deactivates instead of deleting', async () => {

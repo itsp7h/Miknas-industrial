@@ -1,128 +1,70 @@
-import { useMemo, useRef, useState } from 'react';
-import Card from '../../../components/ui/Card';
-import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
-import ItemForm, { CATEGORIES } from '../../../components/inventory/item/ItemForm';
-import useLiveList from '../../../hooks/useLiveList';
-import { apiDelete, apiPostForm } from '../../../api/client';
-import { useToast } from '../../../components/ui/Toast';
-
-const CATEGORY_LABELS = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
+import ItemForm from '../../../components/inventory/item/ItemForm';
+import ItemTable from '../../../components/inventory/item/ItemTable';
+import ItemToolbar from '../../../components/inventory/item/ItemToolbar';
+import ItemImportModal from '../../../components/inventory/item/ItemImportModal';
+import useItemList from '../../../components/inventory/item/useItemList';
 
 export default function ItemListPage() {
-    const { items, upsertItem, removeItem, refetch } = useLiveList({
-        endpoint: '/inventory/items',
-        channel: 'inventory',
-        event: '.item.saved',
-        deleteEvent: '.item.deleted',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load items.',
-    });
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState(null);
-    const [deleting, setDeleting] = useState(null);
-    const fileInputRef = useRef(null);
-    const { showToast } = useToast();
-
-    function handleSaved(item) {
-        upsertItem(item);
-        setModalOpen(false);
-        showToast('Item saved.', 'success');
-    }
-
-    async function handleDeleteConfirmed() {
-        const item = deleting;
-        setDeleting(null);
-        try {
-            const result = await apiDelete(`/inventory/items/${item.id}`);
-            if (result.deactivated) {
-                // Items with stock history are deactivated, not removed — keep
-                // the row and let the broadcast refresh it.
-                showToast(result.message, 'info');
-                await refetch();
-            } else {
-                removeItem(item.id);
-                showToast('Item deleted.', 'success');
-            }
-        } catch (err) {
-            showToast(err.message || 'Failed to delete item.', 'error');
-        }
-    }
-
-    async function handleImport(e) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-            const result = await apiPostForm('/inventory/items/import', formData);
-            showToast(`${result.imported} added, ${result.skipped} skipped.`, 'success');
-            await refetch();
-        } catch (err) {
-            showToast(err.message || 'Failed to import items.', 'error');
-        } finally {
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
-    }
-
-    const columns = useMemo(
-        () => [
-            { key: 'item_code', label: 'Code' },
-            { key: 'item_name', label: 'Name' },
-            { key: 'category', label: 'Category', render: (row) => CATEGORY_LABELS[row.category] ?? row.category },
-            { key: 'unit_of_measure', label: 'Unit' },
-            { key: 'minimum_stock_level', label: 'Min. Stock' },
-            { key: 'cost_price', label: 'Cost' },
-            { key: 'is_active', label: 'Active', render: (row) => (row.is_active ? 'Yes' : 'No') },
-            {
-                key: 'actions',
-                label: '',
-                render: (row) => (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <Button variant="link" onClick={() => { setEditing(row); setModalOpen(true); }}>Edit</Button>
-                        <Button variant="link-danger" onClick={() => setDeleting(row)}>Delete</Button>
-                    </div>
-                ),
-            },
-        ],
-        []
-    );
+    const it = useItemList();
 
     return (
-        <Card title="Items">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <label style={{ cursor: 'pointer' }} className="text-sm text-blue-600 hover:text-blue-800">
-                        Import
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".xlsx,.xls"
-                            style={{ display: 'none' }}
-                            onChange={handleImport}
-                            aria-label="Import"
-                        />
-                    </label>
-                    <a className="text-sm text-blue-600 hover:text-blue-800" href="/api/v1/inventory/items/template">Download Template</a>
-                    <a className="text-sm text-blue-600 hover:text-blue-800" href="/api/v1/inventory/items/export-pdf">Export PDF</a>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Inventory Items</h1>
+                    <p className="page-subtitle">Manage all stock items</p>
                 </div>
-                <Button onClick={() => { setEditing(null); setModalOpen(true); }}>New Item</Button>
+                <ItemToolbar onImportClick={() => it.setImportOpen(true)} onCreate={it.openCreate} />
             </div>
 
-            <Table columns={columns} rows={items} rowKey={(row) => row.id} searchPlaceholder="Search items…" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                    <svg
+                        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                        width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={it.query}
+                        onChange={(e) => it.setQuery(e.target.value)}
+                        placeholder="Search code, name, category, unit…"
+                        aria-label="Search items"
+                        autoComplete="off"
+                        style={{ padding: '8px 14px 8px 34px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13.5, width: 340, outline: 'none' }}
+                    />
+                </div>
+                <div style={{ fontSize: 12.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {it.query ? `${it.filtered.length} of ${it.items.length} items` : `${it.items.length} items`}
+                </div>
+            </div>
 
-            <Modal open={modalOpen} title={editing ? 'Edit Item' : 'New Item'} onClose={() => setModalOpen(false)}>
-                <ItemForm item={editing} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <ItemTable items={it.filtered} onEdit={it.openEdit} onDelete={it.setDeleting} />
+
+            <Modal
+                open={it.modalOpen}
+                title={it.editing ? `Edit ${it.editing.item_name}` : 'New Item'}
+                onClose={() => it.setModalOpen(false)}
+            >
+                <ItemForm item={it.editing} onSaved={it.handleSaved} onCancel={() => it.setModalOpen(false)} />
             </Modal>
-            <ConfirmModal
-                open={!!deleting}
-                title="Delete item?"
-                body={deleting ? `This will permanently remove "${deleting.item_name}". Items with stock history are deactivated instead.` : ''}
-                onConfirm={handleDeleteConfirmed}
-                onCancel={() => setDeleting(null)}
+            <ItemImportModal
+                open={it.importOpen}
+                onClose={() => it.setImportOpen(false)}
+                onImport={it.handleImport}
             />
-        </Card>
+            <ConfirmModal
+                open={!!it.deleting}
+                title="Delete this item?"
+                body={it.deleting
+                    ? `"${it.deleting.item_name}" will be permanently removed. An item with stock history is deactivated instead.`
+                    : ''}
+                onConfirm={it.handleDeleteConfirmed}
+                onCancel={() => it.setDeleting(null)}
+            />
+        </div>
     );
 }

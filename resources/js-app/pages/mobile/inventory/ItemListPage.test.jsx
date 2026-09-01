@@ -72,9 +72,11 @@ describe('mobile ItemListPage', () => {
     it('puts import and export behind an Actions sheet to keep the header clean', async () => {
         renderPage();
         await screen.findByText('Steel Rod');
-        expect(screen.queryByText('Download Template')).not.toBeInTheDocument();
+        // Labels now match the Blade toolbar: Export PDF / Template / Import Excel.
+        expect(screen.queryByText('Template')).not.toBeInTheDocument();
         fireEvent.click(screen.getByText('Actions'));
-        expect(await screen.findByText('Download Template')).toBeInTheDocument();
+        expect(await screen.findByText('Template')).toBeInTheDocument();
         expect(screen.getByText('Export PDF')).toBeInTheDocument();
+        expect(screen.getByText('Import Excel')).toBeInTheDocument();
     });
 });
