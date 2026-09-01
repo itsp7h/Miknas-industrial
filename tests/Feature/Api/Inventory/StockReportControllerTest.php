@@ -60,6 +60,24 @@ class StockReportControllerTest extends TestCase
         $this->assertSame('Main', $response->json('data.0.warehouse_name'));
     }
 
+    /**
+     * The Blade summary report painted a below-minimum line red with a LOW
+     * badge. The endpoint sent neither the minimum nor a flag, so the React
+     * page could not reproduce either.
+     */
+    public function test_summary_reports_the_minimum_and_flags_lines_below_it(): void
+    {
+        $response = $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/inventory/reports/summary')->assertOk();
+
+        $rows = collect($response->json('data'))->keyBy('item_name');
+
+        $this->assertNotNull($rows['Rod']['minimum_stock_level']);
+        $this->assertTrue($rows['Rod']['is_low']);
+        $this->assertFalse($rows['Widget']['is_low']);
+        $this->assertSame(1, $response->json('meta.below_minimum'));
+    }
+
     public function test_low_stock_returns_only_lines_below_the_items_minimum(): void
     {
         $response = $this->actingAs($this->actingUser())

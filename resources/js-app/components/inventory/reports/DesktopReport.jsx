@@ -1,13 +1,21 @@
-import Card from '../../ui/Card';
-import Table from '../../ui/Table';
+import ReportTable from './ReportTable';
 
 /**
- * Desktop report frame: title, an optional summary strip, and the shared
- * Table (which brings client-side search and the live count with it).
+ * Desktop report frame: page header, an optional summary strip, and the
+ * .table-base report table the Blade reports used — which, unlike the shared
+ * `Table` primitive, supports per-row emphasis.
  */
-export default function DesktopReport({ title, summary, columns, rows, loading, emptyMessage, children }) {
+export default function DesktopReport({
+    title, subtitle, summary, columns, rows, loading,
+    emptyMessage, noun = 'lines', rowClassName, children,
+}) {
     return (
-        <Card title={title}>
+        <div>
+            <div className="mb-6">
+                <h1 className="page-title">{title}</h1>
+                {subtitle && <p className="page-subtitle">{subtitle}</p>}
+            </div>
+
             {children}
 
             {summary && (
@@ -35,8 +43,14 @@ export default function DesktopReport({ title, summary, columns, rows, loading, 
             )}
 
             {!loading && rows.length > 0 && (
-                <Table columns={columns} rows={rows} rowKey={(row) => row.id} searchPlaceholder={`Search ${title.toLowerCase()}…`} />
+                <ReportTable
+                    columns={columns}
+                    rows={rows}
+                    noun={noun}
+                    rowClassName={rowClassName}
+                    emptyMessage={emptyMessage}
+                />
             )}
-        </Card>
+        </div>
     );
 }

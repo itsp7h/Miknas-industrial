@@ -5,7 +5,10 @@ import { useMemo, useState } from 'react';
  * client-side search + live count contract as every other mobile list
  * (CLAUDE.md gotcha #6).
  */
-export default function MobileReport({ title, summary, rows, loading, searchKeys, renderCard, emptyMessage, children }) {
+export default function MobileReport({
+    title, subtitle, summary, rows, loading, searchKeys,
+    renderCard, cardClassName, emptyMessage, children,
+}) {
     const [query, setQuery] = useState('');
 
     const filtered = useMemo(() => {
@@ -20,7 +23,10 @@ export default function MobileReport({ title, summary, rows, loading, searchKeys
 
     return (
         <div>
-            <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>{title}</h1>
+            <div style={{ marginBottom: 12 }}>
+                <h1 className="page-title">{title}</h1>
+                {subtitle && <p className="page-subtitle">{subtitle}</p>}
+            </div>
 
             {children}
 
@@ -60,7 +66,11 @@ export default function MobileReport({ title, summary, rows, loading, searchKeys
             )}
 
             {!loading && filtered.map((row) => (
-                <div key={row.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 8 }}>
+                <div
+                    key={row.id}
+                    className={cardClassName ? cardClassName(row) : undefined}
+                    style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 12, marginBottom: 8, background: '#fff' }}
+                >
                     {renderCard(row)}
                 </div>
             ))}

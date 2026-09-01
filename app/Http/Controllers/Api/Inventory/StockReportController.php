@@ -13,18 +13,30 @@ class StockReportController extends Controller
 {
     public function summary()
     {
-        $rows = StockLevel::with(['item', 'warehouse'])->get()->map(fn ($level) => [
-            'id' => $level->id,
-            'item_code' => $level->item?->item_code,
-            'item_name' => $level->item?->item_name,
-            'warehouse_name' => $level->warehouse?->name,
-            'unit_of_measure' => $level->item?->unit_of_measure,
-            'quantity' => $level->quantity,
-        ])->values();
+        $rows = StockLevel::with(['item', 'warehouse'])->get()->map(function ($level) {
+            $minimum = (float) ($level->item?->minimum_stock_level ?? 0);
+
+            return [
+                'id' => $level->id,
+                'item_code' => $level->item?->item_code,
+                'item_name' => $level->item?->item_name,
+                'warehouse_name' => $level->warehouse?->name,
+                'unit_of_measure' => $level->item?->unit_of_measure,
+                'quantity' => $level->quantity,
+                // The Blade report's whole point was flagging a line below its
+                // minimum, in red with a LOW badge. Neither the minimum nor the
+                // flag was being sent, so the React page could not show either.
+                'minimum_stock_level' => $level->item?->minimum_stock_level,
+                'is_low' => (float) $level->quantity < $minimum,
+            ];
+        })->values();
 
         return response()->json([
             'data' => $rows,
-            'meta' => ['total_lines' => $rows->count()],
+            'meta' => [
+                'total_lines' => $rows->count(),
+                'below_minimum' => $rows->where('is_low', true)->count(),
+            ],
         ]);
     }
 

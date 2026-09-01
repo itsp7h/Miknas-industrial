@@ -33,7 +33,7 @@ describe('mobile inventory reports', () => {
         await screen.findByText('Rod');
         expect(screen.getByText('2 lines')).toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Search stock summary'), { target: { value: 'widget' } });
+        fireEvent.change(screen.getByLabelText('Search inventory summary'), { target: { value: 'widget' } });
 
         expect(screen.getByText('1 of 2 lines')).toBeInTheDocument();
         expect(screen.queryByText('Rod')).not.toBeInTheDocument();
@@ -43,8 +43,8 @@ describe('mobile inventory reports', () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: SUMMARY_ROWS, meta: { total_lines: 2 } });
         wrap(<StockSummaryPage />);
         await screen.findByText('Rod');
-        fireEvent.change(screen.getByLabelText('Search stock summary'), { target: { value: 'zzz' } });
-        expect(screen.getByText('No stock summary match that search.')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search inventory summary'), { target: { value: 'zzz' } });
+        expect(screen.getByText('No inventory summary match that search.')).toBeInTheDocument();
     });
 
     it('low stock shows the shortfall on each card', async () => {
