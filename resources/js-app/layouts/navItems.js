@@ -3,7 +3,9 @@
 // `type: 'link'` items are React-Router-owned routes (rendered with <Link>,
 // client-side navigation, no full page load).
 // `type: 'href'` items are still Blade pages — they MUST use a plain <a> so
-// the browser does a real navigation; React Router doesn't own these URLs.
+// the browser does a real navigation; React Router doesn't own these URLs. No
+// entry needs it any more (every sidebar page is in the shell), but the shells
+// still honour it, so a not-yet-migrated page can be added back at any time.
 //
 // Mirrors the top-level sidebar links in resources/views/layouts/app.blade.php,
 // including each section's heading colour and icon and the Pipeline link's
@@ -78,7 +80,7 @@ export const NAV_GROUPS = [
             { type: 'link', to: '/app/settings/projects', label: 'Projects', icon: FOLDER },
             { type: 'link', to: '/app/settings/users', label: 'Users', icon: USERS },
             { type: 'link', to: '/app/settings/integrations', label: 'Integrations', icon: COG },
-            { type: 'href', to: '/settings/vat', label: 'VAT Settings', icon: RECEIPT },
+            { type: 'link', to: '/app/settings/vat', label: 'VAT Settings', icon: RECEIPT },
         ],
     },
 ];

@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\Settings\IntegrationController;
 use App\Http\Controllers\Api\Settings\MailAccountController;
 use App\Http\Controllers\Api\Settings\ProjectController;
 use App\Http\Controllers\Api\Settings\UserController;
+use App\Http\Controllers\Api\Settings\VatController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -163,6 +164,9 @@ Route::prefix('v1')->group(function () {
             Route::patch('mail-accounts/{mailAccount}/toggle', [MailAccountController::class, 'toggleEnabled']);
             Route::post('mail-accounts/{mailAccount}/test', [MailAccountController::class, 'testConnection']);
             Route::post('mail-accounts/{mailAccount}/send-test', [MailAccountController::class, 'sendTestEmail']);
+
+            Route::get('vat', [VatController::class, 'show']);
+            Route::put('vat', [VatController::class, 'update']);
         });
 
         Route::prefix('purchase')->group(function () {

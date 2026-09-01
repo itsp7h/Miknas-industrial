@@ -9,7 +9,6 @@ use App\Http\Controllers\Purchase\PurchaseSignatureController;
 use App\Http\Controllers\Purchase\RfqController;
 use App\Http\Controllers\Purchase\RfqPortalController;
 use App\Http\Controllers\Purchase\SupplierQuoteController;
-use App\Http\Controllers\Settings\VatSettingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -134,9 +133,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::redirect('settings/projects', '/app/settings/companies')->name('settings.projects.index');
         Route::redirect('settings/projects-overview', '/app/settings/projects')->name('settings.projects.overview');
 
-        // VAT settings
-        Route::get('settings/vat', [VatSettingController::class, 'index'])->name('settings.vat');
-        Route::post('settings/vat', [VatSettingController::class, 'update'])->name('settings.vat.update');
+        // VAT is served by the React shell at /app/settings/vat; the rate itself
+        // lives behind GET/PUT /api/v1/settings/vat.
+        Route::redirect('settings/vat', '/app/settings/vat')->name('settings.vat');
 
         // User management is served by the React shell at /app/settings/users;
         // its endpoints live in routes/api.php.

@@ -92,6 +92,7 @@ class BladePagesStillRenderTest extends TestCase
         $response->assertSee('/app/settings/projects', false);
         $response->assertSee('/app/settings/users', false);
         $response->assertSee('/app/settings/integrations', false);
+        $response->assertSee('/app/settings/vat', false);
     }
 
     public function test_the_old_settings_urls_redirect_into_the_react_shell(): void
@@ -103,6 +104,7 @@ class BladePagesStillRenderTest extends TestCase
         $this->actingAs($admin)->get('/settings/projects-overview')->assertRedirect('/app/settings/projects');
         $this->actingAs($admin)->get('/settings/users')->assertRedirect('/app/settings/users');
         $this->actingAs($admin)->get('/settings/integrations')->assertRedirect('/app/settings/integrations');
+        $this->actingAs($admin)->get('/settings/vat')->assertRedirect('/app/settings/vat');
     }
 
     /**
@@ -173,7 +175,7 @@ class BladePagesStillRenderTest extends TestCase
         foreach (['settings.projects.store', 'settings.projects.import', 'settings.projects.template',
             'settings.projects.locations.store', 'settings.users.store', 'settings.users.update',
             'settings.integrations.whatsapp', 'settings.mail-accounts.index', 'settings.mail-accounts.store',
-            'settings.mail-accounts.test'] as $name) {
+            'settings.mail-accounts.test', 'settings.vat.update'] as $name) {
             $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");
         }
     }

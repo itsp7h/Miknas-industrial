@@ -311,7 +311,9 @@
                 </svg>
                 Integrations
             </a>
-            <a href="{{ route('settings.vat') }}" style="
+            {{-- VAT lives in the React shell now, and with it the last of the
+                 Blade settings pages. --}}
+            <a href="/app/settings/vat" style="
                 display:flex; align-items:center; gap:8px;
                 padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
                 font-size:13px; text-decoration:none;
