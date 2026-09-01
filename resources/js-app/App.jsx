@@ -61,6 +61,8 @@ import DesktopProjectSettingsPage from './pages/desktop/settings/ProjectListPage
 import MobileProjectSettingsPage from './pages/mobile/settings/ProjectListPage';
 import DesktopUserListPage from './pages/desktop/settings/UserListPage';
 import MobileUserListPage from './pages/mobile/settings/UserListPage';
+import DesktopIntegrationsPage from './pages/desktop/settings/IntegrationsPage';
+import MobileIntegrationsPage from './pages/mobile/settings/IntegrationsPage';
 import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
 import MobileProductionOutputListPage from './pages/mobile/production/ProductionOutputListPage';
 
@@ -100,6 +102,7 @@ export default function App({
     const CompanyListPage = viewport === 'mobile' ? MobileCompanyListPage : DesktopCompanyListPage;
     const ProjectSettingsPage = viewport === 'mobile' ? MobileProjectSettingsPage : DesktopProjectSettingsPage;
     const UserListPage = viewport === 'mobile' ? MobileUserListPage : DesktopUserListPage;
+    const IntegrationsPage = viewport === 'mobile' ? MobileIntegrationsPage : DesktopIntegrationsPage;
 
     return (
         <AppShell
@@ -149,6 +152,7 @@ export default function App({
                 <Route path="/app/settings/companies" element={<CompanyListPage />} />
                 <Route path="/app/settings/projects" element={<ProjectSettingsPage />} />
                 <Route path="/app/settings/users" element={<UserListPage />} />
+                <Route path="/app/settings/integrations" element={<IntegrationsPage />} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>
         </AppShell>

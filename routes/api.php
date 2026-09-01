@@ -23,6 +23,8 @@ use App\Http\Controllers\Api\Sales\PaymentReceiptController;
 use App\Http\Controllers\Api\Sales\SalesInvoiceController;
 use App\Http\Controllers\Api\Sales\SalesOrderController;
 use App\Http\Controllers\Api\Settings\CompanyController;
+use App\Http\Controllers\Api\Settings\IntegrationController;
+use App\Http\Controllers\Api\Settings\MailAccountController;
 use App\Http\Controllers\Api\Settings\ProjectController;
 use App\Http\Controllers\Api\Settings\UserController;
 use Illuminate\Support\Facades\Route;
@@ -147,6 +149,20 @@ Route::prefix('v1')->group(function () {
             Route::get('users', [UserController::class, 'index']);
             Route::post('users', [UserController::class, 'store']);
             Route::put('users/{user}', [UserController::class, 'update']);
+
+            Route::get('integrations/whatsapp', [IntegrationController::class, 'whatsapp']);
+            Route::put('integrations/whatsapp', [IntegrationController::class, 'updateWhatsapp']);
+            Route::post('integrations/whatsapp/test', [IntegrationController::class, 'testConnection']);
+            Route::post('integrations/whatsapp/test-message', [IntegrationController::class, 'sendTestMessage']);
+
+            Route::get('mail-accounts', [MailAccountController::class, 'index']);
+            Route::get('mail-accounts/{mailAccount}', [MailAccountController::class, 'show']);
+            Route::post('mail-accounts', [MailAccountController::class, 'store']);
+            Route::put('mail-accounts/{mailAccount}', [MailAccountController::class, 'update']);
+            Route::delete('mail-accounts/{mailAccount}', [MailAccountController::class, 'destroy']);
+            Route::patch('mail-accounts/{mailAccount}/toggle', [MailAccountController::class, 'toggleEnabled']);
+            Route::post('mail-accounts/{mailAccount}/test', [MailAccountController::class, 'testConnection']);
+            Route::post('mail-accounts/{mailAccount}/send-test', [MailAccountController::class, 'sendTestEmail']);
         });
 
         Route::prefix('purchase')->group(function () {

@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Settings;
 
+use App\Http\Controllers\Controller;
 use App\Models\MailAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,41 +12,62 @@ use PromoSeven\AzureMailer\Graph\TokenManager;
 
 class MailAccountController extends Controller
 {
+    /** Config keys that must never travel to the browser. */
+    private const SECRET_KEYS = ['client_secret', 'password'];
+
     public function index(): JsonResponse
     {
-        $accounts = MailAccount::orderBy('name')->get()->map(fn ($a) => $this->accountData($a));
-
-        return response()->json(['accounts' => $accounts]);
+        return response()->json([
+            'data' => MailAccount::orderBy('label')->get()->map(fn (MailAccount $account) => $this->summary($account))->values(),
+        ]);
     }
 
+    /**
+     * The Blade page's show endpoint returned the whole config, Azure client
+     * secret and SMTP password included, so opening the edit form shipped live
+     * credentials to the browser. They are stripped here and the form treats a
+     * blank secret as "unchanged".
+     */
     public function show(MailAccount $mailAccount): JsonResponse
     {
+        $config = $mailAccount->config ?? [];
+
         return response()->json([
-            'account' => array_merge($this->accountData($mailAccount), ['config' => $mailAccount->config]),
+            'data' => $this->summary($mailAccount) + [
+                'config' => collect($config)->except(self::SECRET_KEYS)->all(),
+                'secrets_set' => collect(self::SECRET_KEYS)
+                    ->mapWithKeys(fn ($key) => [$key => ($config[$key] ?? '') !== ''])
+                    ->all(),
+            ],
         ]);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $data = $this->validated($request);
-        $account = MailAccount::create($data);
+        $account = MailAccount::create($this->validated($request));
 
-        return response()->json(['success' => true, 'account' => $this->accountData($account)], 201);
+        return response()->json(['data' => $this->summary($account)], 201);
     }
 
     public function update(Request $request, MailAccount $mailAccount): JsonResponse
     {
-        $data = $this->validated($request, $mailAccount->id);
-        $mailAccount->update($data);
+        $mailAccount->update($this->validated($request, $mailAccount));
 
-        return response()->json(['success' => true, 'account' => $this->accountData($mailAccount->fresh())]);
+        return response()->json(['data' => $this->summary($mailAccount->fresh())]);
     }
 
     public function destroy(MailAccount $mailAccount): JsonResponse
     {
         $mailAccount->delete();
 
-        return response()->json(['success' => true]);
+        return response()->json(['deleted' => true]);
+    }
+
+    public function toggleEnabled(MailAccount $mailAccount): JsonResponse
+    {
+        $mailAccount->update(['enabled' => ! $mailAccount->enabled]);
+
+        return response()->json(['data' => $this->summary($mailAccount->fresh())]);
     }
 
     public function testConnection(MailAccount $mailAccount): JsonResponse
@@ -55,13 +77,15 @@ class MailAccountController extends Controller
                 $config = array_merge($mailAccount->config, ['from_address' => $mailAccount->from_address]);
                 (new TokenManager($config))->getToken();
             } else {
-                $cfg = $mailAccount->config;
-                $host = $cfg['host'] ?? '';
-                $port = (int) ($cfg['port'] ?? 587);
+                $config = $mailAccount->config;
+                $host = $config['host'] ?? '';
+                $port = (int) ($config['port'] ?? 587);
                 $socket = @fsockopen($host, $port, $errno, $errstr, 5);
+
                 if (! $socket) {
                     throw new \RuntimeException("Cannot connect to {$host}:{$port} — {$errstr}");
                 }
+
                 fclose($socket);
             }
 
@@ -73,18 +97,14 @@ class MailAccountController extends Controller
 
     public function sendTestEmail(Request $request, MailAccount $mailAccount): JsonResponse
     {
-        $request->validate(['to' => ['required', 'email', 'max:255']]);
+        $data = $request->validate(['to' => ['required', 'email', 'max:255']]);
+
         try {
-            $mailer = new Mailer(
-                $mailAccount->name,
-                app('view'),
-                $mailAccount->buildTransport(),
-                app('events')
-            );
+            $mailer = new Mailer($mailAccount->name, app('view'), $mailAccount->buildTransport(), app('events'));
             $mailer->raw(
                 'This is a test email from SteelERP. Your mail account "'.$mailAccount->label.'" is working correctly.',
-                function ($message) use ($request, $mailAccount) {
-                    $message->to($request->to)
+                function ($message) use ($data, $mailAccount) {
+                    $message->to($data['to'])
                         ->from($mailAccount->from_address, $mailAccount->from_name ?: 'SteelERP')
                         ->subject('Test Email from SteelERP');
                 }
@@ -96,23 +116,16 @@ class MailAccountController extends Controller
                 'account' => $mailAccount->name,
                 'from' => $mailAccount->from_address,
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 
-    public function toggleEnabled(MailAccount $mailAccount): JsonResponse
+    private function validated(Request $request, ?MailAccount $existing = null): array
     {
-        $mailAccount->update(['enabled' => ! $mailAccount->enabled]);
+        $nameUnique = 'unique:mail_accounts,name'.($existing ? ",{$existing->id}" : '');
 
-        return response()->json(['success' => true, 'enabled' => $mailAccount->fresh()->enabled]);
-    }
-
-    private function validated(Request $request, ?int $ignoreId = null): array
-    {
-        $nameUnique = 'unique:mail_accounts,name'.($ignoreId ? ",{$ignoreId}" : '');
         $rules = [
             'name' => ['required', 'string', 'max:100', 'regex:/^[a-z0-9\-]+$/', $nameUnique],
             'label' => ['required', 'string', 'max:150'],
@@ -125,7 +138,8 @@ class MailAccountController extends Controller
         if ($request->input('type') === 'azure') {
             $rules['config.tenant_id'] = ['required', 'string', 'max:100'];
             $rules['config.client_id'] = ['required', 'string', 'max:100'];
-            $rules['config.client_secret'] = ['required', 'string', 'max:500'];
+            // Required on create; on edit a blank field keeps the stored one.
+            $rules['config.client_secret'] = [$this->secretRule($existing, 'client_secret'), 'string', 'max:500'];
         } else {
             $rules['config.host'] = ['required', 'string', 'max:255'];
             $rules['config.port'] = ['required', 'integer', 'min:1', 'max:65535'];
@@ -134,20 +148,39 @@ class MailAccountController extends Controller
             $rules['config.password'] = ['nullable', 'string', 'max:500'];
         }
 
-        $v = $request->validate($rules);
+        $validated = $request->validate($rules);
+        $config = $validated['config'];
+
+        // A secret left blank on edit means "unchanged", so carry the stored one
+        // forward rather than wiping it.
+        foreach (self::SECRET_KEYS as $key) {
+            if (($config[$key] ?? '') === '' && $existing) {
+                $stored = $existing->config[$key] ?? null;
+                if ($stored !== null) {
+                    $config[$key] = $stored;
+                } else {
+                    unset($config[$key]);
+                }
+            }
+        }
 
         return [
-            'name' => $v['name'],
-            'label' => $v['label'],
-            'type' => $v['type'],
-            'from_address' => $v['from_address'],
-            'from_name' => $v['from_name'] ?? null,
-            'config' => $v['config'],
-            'enabled' => $v['enabled'] ?? true,
+            'name' => $validated['name'],
+            'label' => $validated['label'],
+            'type' => $validated['type'],
+            'from_address' => $validated['from_address'],
+            'from_name' => $validated['from_name'] ?? null,
+            'config' => $config,
+            'enabled' => $validated['enabled'] ?? true,
         ];
     }
 
-    private function accountData(MailAccount $account): array
+    private function secretRule(?MailAccount $existing, string $key): string
+    {
+        return ($existing && ($existing->config[$key] ?? '') !== '') ? 'nullable' : 'required';
+    }
+
+    private function summary(MailAccount $account): array
     {
         return [
             'id' => $account->id,
