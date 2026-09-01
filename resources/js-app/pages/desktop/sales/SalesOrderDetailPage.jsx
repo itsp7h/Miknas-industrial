@@ -1,32 +1,67 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import Card from '../../../components/ui/Card';
+import Modal from '../../../components/ui/Modal';
+import ConfirmModal from '../../../components/ui/ConfirmModal';
 import OrderDetail from '../../../components/sales/order/OrderDetail';
-import { apiGet } from '../../../api/client';
-import { useToast } from '../../../components/ui/Toast';
+import SalesOrderForm from '../../../components/sales/order/SalesOrderForm';
+import useSalesOrderDetail from '../../../components/sales/order/useSalesOrderDetail';
+import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 
 export default function SalesOrderDetailPage() {
     const { id } = useParams();
-    const [order, setOrder] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const { showToast } = useToast();
+    const s = useSalesOrderDetail(id);
+    const [editing, setEditing] = useState(false);
 
-    useEffect(() => {
-        apiGet(`/sales/orders/${id}`)
-            .then((response) => setOrder(response.data))
-            .catch(() => showToast('Failed to load that sales order.', 'error'))
-            .finally(() => setLoading(false));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id]);
+    useSetPageTitle(s.order ? `Sales Order — ${s.order.order_number}` : null);
 
     return (
-        <Card title="Sales Order">
-            <div style={{ marginBottom: 12 }}>
-                <Link to="/app/sales/orders" className="text-sm text-blue-600 hover:text-blue-800">← Back to sales orders</Link>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Sales Order</h1>
+                    <p className="page-subtitle">
+                        <Link to="/app/sales/orders" className="text-blue-600 hover:underline">Sales Orders</Link>
+                        {' / '}{s.order?.order_number ?? '…'}
+                    </p>
+                </div>
+                {/* Blade's header actions, which the port had dropped entirely —
+                    there was no way to confirm or edit from this page. */}
+                <div className="flex gap-2">
+                    {s.order?.status === 'draft' && (
+                        <button type="button" onClick={() => s.setConfirming(true)} className="btn-primary">Confirm Order</button>
+                    )}
+                    {s.order?.status === 'confirmed' && (
+                        <Link to={`/app/sales/delivery-notes?sales_order_id=${s.order.id}`} className="btn-primary">
+                            Create Delivery Note
+                        </Link>
+                    )}
+                    {s.order?.status === 'draft' && (
+                        <button type="button" onClick={() => setEditing(true)} className="btn-secondary">Edit</button>
+                    )}
+                </div>
             </div>
-            {loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
-            {!loading && !order && <p style={{ fontSize: 14, color: '#64748b' }}>That sales order could not be found.</p>}
-            <OrderDetail order={order} />
-        </Card>
+
+            {s.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
+            {!s.loading && !s.order && <p style={{ fontSize: 14, color: '#64748b' }}>That sales order could not be found.</p>}
+
+            <OrderDetail order={s.order} />
+
+            <Modal open={editing} title={`Edit ${s.order?.order_number ?? ''}`} onClose={() => setEditing(false)}>
+                <SalesOrderForm
+                    order={s.order}
+                    onSaved={() => { setEditing(false); s.reload(); }}
+                    onCancel={() => setEditing(false)}
+                />
+            </Modal>
+            <ConfirmModal
+                open={s.confirming}
+                title="Confirm this order?"
+                body={s.order
+                    ? `${s.order.order_number} will be confirmed and can no longer be edited. The customer is notified if they have a WhatsApp number.`
+                    : ''}
+                onConfirm={s.confirm}
+                onCancel={() => s.setConfirming(false)}
+            />
+        </div>
     );
 }

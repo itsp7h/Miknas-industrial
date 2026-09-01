@@ -38,6 +38,43 @@ describe('desktop SalesOrderListPage', () => {
         expect(screen.getByText('Confirmed')).toBeInTheDocument();
     });
 
+    // Blade's six columns, with the date as `d M Y` and badged statuses rather
+    // than the coloured text the first React port used.
+    it('lists Blade\u2019s six columns, badged and date-formatted', async () => {
+        renderPage();
+        await screen.findByText('SO-00001');
+        expect(screen.getAllByRole('columnheader').map((th) => th.textContent))
+            .toEqual(['Order #', 'Customer', 'Date', 'Total', 'Status', 'Actions']);
+        expect(screen.getByText('01 Aug 2026')).toBeInTheDocument();
+        expect(screen.getByText('Draft')).toHaveClass('badge-gray');
+        expect(screen.getByText('Confirmed')).toHaveClass('badge-blue');
+    });
+
+    // Blade led the actions with View; the port had dropped it, leaving a
+    // confirmed order with no actions at all and no way in from the list.
+    it('offers View on every order, whatever its status', async () => {
+        renderPage();
+        await screen.findByText('SO-00001');
+        const views = screen.getAllByText('View');
+        expect(views).toHaveLength(2);
+        expect(views[0]).toHaveAttribute('href', '/app/sales/orders/1');
+    });
+
+    it('says so when there are no orders', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        renderPage();
+        expect(await screen.findByText('No sales orders found.')).toBeInTheDocument();
+    });
+
+    it('filters client-side with a live count', async () => {
+        renderPage();
+        await screen.findByText('SO-00001');
+        expect(screen.getByText('2 orders')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search sales orders'), { target: { value: 'zenith' } });
+        expect(screen.getByText('1 of 2 orders')).toBeInTheDocument();
+        expect(screen.queryByText('SO-00001')).not.toBeInTheDocument();
+    });
+
     // A confirmed order is an agreement with the customer: the UI must not
     // offer edit or delete on it, matching the API's 422.
     it('offers edit, confirm and delete only on draft orders', async () => {

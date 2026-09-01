@@ -3,10 +3,10 @@ import FormField from '../../ui/FormField';
 import Button from '../../ui/Button';
 import { apiGet, apiPost } from '../../../api/client';
 
-export default function DeliveryNoteForm({ onSaved, onCancel }) {
+export default function DeliveryNoteForm({ presetOrderId, onSaved, onCancel }) {
     const [options, setOptions] = useState({ orders: [], warehouses: [] });
     const [values, setValues] = useState({
-        sales_order_id: '',
+        sales_order_id: presetOrderId ?? '',
         warehouse_id: '',
         delivery_date: new Date().toISOString().slice(0, 10),
         notes: '',

@@ -14,6 +14,15 @@ class SalesOrderResource extends JsonResource
             'order_number' => $this->order_number,
             'customer_id' => $this->customer_id,
             'customer_name' => $this->whenLoaded('customer', fn () => $this->customer?->name),
+            // The detail page carries a Customer card — name, contact, email,
+            // phone — which the port had dropped along with the card.
+            'customer' => $this->whenLoaded('customer', fn () => $this->customer ? [
+                'id' => $this->customer->id,
+                'name' => $this->customer->name,
+                'contact_person' => $this->customer->contact_person,
+                'email' => $this->customer->email,
+                'phone' => $this->customer->phone,
+            ] : null),
             'order_date' => $this->order_date?->toDateString(),
             'delivery_date' => $this->delivery_date?->toDateString(),
             'total_amount' => $this->total_amount,
@@ -25,6 +34,7 @@ class SalesOrderResource extends JsonResource
             'delivery_notes' => $this->whenLoaded('deliveryNotes', fn () => $this->deliveryNotes->map(fn ($note) => [
                 'id' => $note->id,
                 'delivery_number' => $note->delivery_number,
+                'warehouse_name' => $note->warehouse?->name,
                 'delivery_date' => $note->delivery_date?->toDateString(),
                 'status' => $note->status,
             ])),

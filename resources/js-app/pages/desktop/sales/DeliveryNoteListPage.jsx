@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Card from '../../../components/ui/Card';
 import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
@@ -23,6 +24,14 @@ export default function DeliveryNoteListPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [dispatching, setDispatching] = useState(null);
     const { showToast } = useToast();
+    // The sales order detail page links here with ?sales_order_id=, the way
+    // Blade's "Create Delivery Note" button pointed at the create page.
+    const [params] = useSearchParams();
+    const presetOrderId = params.get('sales_order_id');
+
+    useEffect(() => {
+        if (presetOrderId) setModalOpen(true);
+    }, [presetOrderId]);
 
     function handleSaved(note) {
         upsertItem(note);
@@ -75,7 +84,7 @@ export default function DeliveryNoteListPage() {
             <Table columns={columns} rows={notes} rowKey={(row) => row.id} searchPlaceholder="Search delivery notes…" />
 
             <Modal open={modalOpen} title="New Delivery Note" onClose={() => setModalOpen(false)}>
-                <DeliveryNoteForm onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+                <DeliveryNoteForm presetOrderId={presetOrderId} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
             </Modal>
             <ConfirmModal
                 open={!!dispatching}

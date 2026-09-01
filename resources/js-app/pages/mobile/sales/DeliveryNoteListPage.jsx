@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import Button from '../../../components/ui/Button';
@@ -22,6 +23,14 @@ export default function DeliveryNoteListPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [dispatching, setDispatching] = useState(null);
     const { showToast } = useToast();
+    // The sales order detail page links here with ?sales_order_id=, the way
+    // Blade's "Create Delivery Note" button pointed at the create page.
+    const [params] = useSearchParams();
+    const presetOrderId = params.get('sales_order_id');
+
+    useEffect(() => {
+        if (presetOrderId) setModalOpen(true);
+    }, [presetOrderId]);
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -95,7 +104,7 @@ export default function DeliveryNoteListPage() {
             ))}
 
             <Modal open={modalOpen} title="New Delivery Note" onClose={() => setModalOpen(false)}>
-                <DeliveryNoteForm onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+                <DeliveryNoteForm presetOrderId={presetOrderId} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
             </Modal>
             <ConfirmModal
                 open={!!dispatching}

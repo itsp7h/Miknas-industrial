@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import DeliveryNoteListPage from './DeliveryNoteListPage';
 import InvoiceListPage from './InvoiceListPage';
@@ -10,7 +11,7 @@ vi.mock('../../../echo', () => ({
     echo: { private: () => ({ listen: () => ({ listen: () => {} }), stopListening: () => {} }), channel: () => ({ listen: () => {} }), leave: () => {} },
 }));
 
-const wrap = (ui) => render(<ToastProvider>{ui}</ToastProvider>);
+const wrap = (ui) => render(<MemoryRouter><ToastProvider>{ui}</ToastProvider></MemoryRouter>);
 
 const NOTES = [
     { id: 1, delivery_number: 'DN-00001', order_number: 'SO-00001', customer_name: 'Gulf Steel', warehouse_name: 'Main', delivery_date: '2026-08-05', status: 'draft' },

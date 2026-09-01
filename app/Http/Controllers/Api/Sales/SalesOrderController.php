@@ -30,7 +30,7 @@ class SalesOrderController extends Controller
 
     public function show(SalesOrder $salesOrder)
     {
-        return new SalesOrderResource($salesOrder->load(['customer', 'items.item', 'deliveryNotes', 'invoices']));
+        return new SalesOrderResource($salesOrder->load(['customer', 'items.item', 'deliveryNotes.warehouse', 'invoices']));
     }
 
     public function formOptions()

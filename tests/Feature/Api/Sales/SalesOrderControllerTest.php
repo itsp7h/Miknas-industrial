@@ -45,6 +45,27 @@ class SalesOrderControllerTest extends TestCase
         ], $overrides);
     }
 
+    /**
+     * The detail page carries a Customer card — name, contact, email, phone —
+     * which the React port had dropped along with the fields that feed it.
+     */
+    public function test_the_detail_endpoint_carries_the_customers_contact_details(): void
+    {
+        $this->customer->update([
+            'contact_person' => 'A. Buyer', 'email' => 'a@gulf.example', 'phone' => '111',
+        ]);
+        $order = $this->actingAs($this->actingUser())
+            ->postJson('/api/v1/sales/orders', $this->payload())->assertCreated();
+
+        $response = $this->actingAs($this->actingUser())
+            ->getJson("/api/v1/sales/orders/{$order->json('data.id')}")->assertOk();
+
+        $this->assertSame('Gulf Steel', $response->json('data.customer.name'));
+        $this->assertSame('A. Buyer', $response->json('data.customer.contact_person'));
+        $this->assertSame('a@gulf.example', $response->json('data.customer.email'));
+        $this->assertSame('111', $response->json('data.customer.phone'));
+    }
+
     public function test_it_requires_authentication(): void
     {
         $this->getJson('/api/v1/sales/orders')->assertUnauthorized();
