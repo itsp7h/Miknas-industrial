@@ -83,11 +83,11 @@ mock `'../echo'` the way `NotificationBell.test.jsx` does.
 ## Controllers — `app/Http/Controllers/`
 
 ```
-Controller.php            DashboardController.php   ProfileController.php
+Controller.php            DashboardController.php
 Auth/                     (Breeze defaults)
 Api/                      ← React SPA's JSON API
   AuthController.php              DashboardController.php
-  NotificationController.php
+  NotificationController.php      ProfileController.php
   Purchase/PurchasePipelineController.php
   Purchase/SupplierController.php
   Purchase/PurchaseOrderController.php
@@ -239,11 +239,9 @@ dashboard.blade.php
 welcome.blade.php
 layouts/
   app.blade.php          main layout (sidebar + topbar)
-  navigation.blade.php
-  guest.blade.php
+  guest.blade.php        (Breeze auth pages)
 components/              (Breeze defaults: modal, dropdown, buttons, inputs, etc.)
 auth/                    (login, register, forgot-password, reset-password, verify-email, confirm-password)
-profile/edit.blade.php   + partials/
 (no settings/ views — the whole of Settings is React)
 
 purchase/
@@ -481,7 +479,7 @@ page is finished. Every module has now been through this — Purchase, Inventory
 Production and Sales — so a React page here should be treated as ported, not
 merely present.
 
-**Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings**, so every page the sidebar links now lives in the shell. Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry), Profile, and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry) and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
 
 **The cutover checklist** (each step is a way a cutover has broken before):
 1. Add the `Api/` controller, an `App\Http\Resources\` resource, and `…Saved`/`…Deleted` broadcast events; wire routes in `routes/api.php` — custom paths like `orders/form-options` go **before** the `{wildcard}`.

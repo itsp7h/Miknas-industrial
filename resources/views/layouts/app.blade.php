@@ -411,12 +411,14 @@
                 </div>
 
                 <div id="topbar-user-divider" style="width:1px;height:20px;background:#e2e8f0;"></div>
-                <div style="display:flex;align-items:center;gap:8px;">
+                {{-- The user block opens the profile page, which lives in the React
+                     shell. Nothing linked to it before, from either chrome. --}}
+                <a href="/app/profile" title="Your profile" style="display:flex;align-items:center;gap:8px;text-decoration:none;">
                     <div style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:#2563eb;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">
                         {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
                     </div>
                     <span id="topbar-username" style="font-size:13px;color:#475569;font-weight:500;white-space:nowrap;">{{ Auth::user()->name ?? 'User' }}</span>
-                </div>
+                </a>
             </div>
         </header>
 

@@ -108,6 +108,25 @@ class BladePagesStillRenderTest extends TestCase
     }
 
     /**
+     * The profile page was a Blade page that rendered nothing: its view used
+     * `<x-app-layout>` slots against a `@yield('content')` layout, so every
+     * visitor got the shell with an empty body. It is a React route now, the old
+     * URL redirects, and the sidebar user card is the way in — nothing linked to
+     * it before.
+     */
+    public function test_the_profile_page_moved_into_the_react_shell(): void
+    {
+        $user = $this->user();
+
+        $this->actingAs($user)->get('/profile')->assertRedirect('/app/profile');
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('/app/profile', false);
+
+        foreach (['profile.update', 'profile.destroy'] as $name) {
+            $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");
+        }
+    }
+
+    /**
      * The LPO print/PDF documents are DomPDF-backed and deliberately stay
      * Blade, so the Purchase Orders cutover must not have taken them with it.
      */

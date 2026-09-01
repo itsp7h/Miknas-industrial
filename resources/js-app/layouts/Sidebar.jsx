@@ -147,27 +147,34 @@ export function SidebarFooter({ userName, userEmail, logoutUrl, csrfToken }) {
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '8px 10px', borderRadius: 8, background: '#1e293b',
             }}>
-                <div style={{
-                    width: 32, height: 32, borderRadius: '50%', background: '#2563eb',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    fontSize: 13, fontWeight: 700, color: '#fff',
-                }}>
-                    {(userName || 'U').charAt(0).toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                {/* The card is the way into the profile page. Nothing linked to
+                    /profile before, in either shell. */}
+                <Link
+                    to="/app/profile" title="Your profile"
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, textDecoration: 'none' }}
+                >
                     <div style={{
-                        color: '#e2e8f0', fontSize: 12.5, fontWeight: 600,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        width: 32, height: 32, borderRadius: '50%', background: '#2563eb',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        fontSize: 13, fontWeight: 700, color: '#fff',
                     }}>
-                        {userName || 'User'}
+                        {(userName || 'U').charAt(0).toUpperCase()}
                     </div>
-                    <div style={{
-                        color: '#64748b', fontSize: 11,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>
-                        {userEmail || ''}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                            color: '#e2e8f0', fontSize: 12.5, fontWeight: 600,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                            {userName || 'User'}
+                        </div>
+                        <div style={{
+                            color: '#64748b', fontSize: 11,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                            {userEmail || ''}
+                        </div>
                     </div>
-                </div>
+                </Link>
                 {/* Icon-only sign-out, reddening on hover like the Blade button. */}
                 <LogoutForm logoutUrl={logoutUrl} csrfToken={csrfToken} style={{ display: 'flex' }}>
                     <span

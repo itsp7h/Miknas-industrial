@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Purchase\PurchaseRequestController;
@@ -45,9 +44,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         tap(auth()->user()->unreadNotifications()->update(['read_at' => now()]))
     ))->name('notifications.read-all');
 
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // The profile page is served by the React shell at /app/profile; its writes
+    // live in routes/api.php. The named route stays as a redirect because Breeze
+    // still points at it after a password update.
+    Route::redirect('/profile', '/app/profile')->name('profile.edit');
 
     // Purchase Module
     Route::prefix('purchase')->name('purchase.')->group(function () {

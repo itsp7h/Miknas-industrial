@@ -77,7 +77,11 @@ export default function MobileShell({ children, currentUserId, userName, userEma
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         gap: 10, padding: '8px 10px', borderRadius: 8, background: '#1e293b',
                     }}>
-                        <div style={{ minWidth: 0 }}>
+                        {/* Tapping the name opens the profile page, as on desktop. */}
+                        <Link
+                            to="/app/profile" onClick={() => setMenuOpen(false)}
+                            style={{ minWidth: 0, flex: 1, textDecoration: 'none' }}
+                        >
                             <div style={{
                                 color: '#e2e8f0', fontSize: 12.5, fontWeight: 600,
                                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -90,7 +94,7 @@ export default function MobileShell({ children, currentUserId, userName, userEma
                             }}>
                                 {userEmail || ''}
                             </div>
-                        </div>
+                        </Link>
                         <LogoutForm logoutUrl={logoutUrl} csrfToken={csrfToken} style={{ display: 'flex' }}>
                             <span style={{ display: 'flex', color: '#64748b' }}>
                                 <NavIcon paths={LOGOUT} size={15} />

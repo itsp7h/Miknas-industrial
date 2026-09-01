@@ -64,5 +64,8 @@ export const apiPost = (path, data) => request(path, { method: 'POST', body: JSO
 export const apiPut = (path, data) => request(path, { method: 'PUT', body: JSON.stringify(data) });
 export const apiPatch = (path, data) =>
     request(path, { method: 'PATCH', ...(data ? { body: JSON.stringify(data) } : {}) });
-export const apiDelete = (path) => request(path, { method: 'DELETE' });
+// Deleting your own account has to carry the confirming password, so DELETE
+// takes an optional body — the same shape as apiPatch.
+export const apiDelete = (path, data) =>
+    request(path, { method: 'DELETE', ...(data ? { body: JSON.stringify(data) } : {}) });
 export const apiPostForm = (path, formData) => requestForm(path, formData, { method: 'POST' });

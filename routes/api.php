@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Production\BillOfMaterialController;
 use App\Http\Controllers\Api\Production\MaterialIssueController;
 use App\Http\Controllers\Api\Production\ProductionOrderController;
 use App\Http\Controllers\Api\Production\ProductionOutputController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Api\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
@@ -40,6 +41,13 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard/summary', [DashboardController::class, 'summary']);
         Route::get('notifications/unread', [NotificationController::class, 'unread']);
         Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+        // Every user's own profile — not behind role:Admin, unlike settings.
+        Route::get('profile', [ProfileController::class, 'show']);
+        Route::put('profile', [ProfileController::class, 'update']);
+        Route::put('profile/password', [ProfileController::class, 'updatePassword']);
+        Route::delete('profile', [ProfileController::class, 'destroy']);
+        Route::post('profile/verification-notification', [ProfileController::class, 'sendVerificationNotification']);
 
         Route::prefix('inventory')->group(function () {
             Route::get('items', [ItemController::class, 'index']);

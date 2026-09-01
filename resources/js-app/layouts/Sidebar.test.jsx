@@ -134,4 +134,11 @@ describe('SidebarLink', () => {
         expect(screen.getByText('Users').tagName).toBe('A');
         expect(screen.getByText('Users')).toHaveAttribute('href', '/settings/users');
     });
+
+    // Nothing linked to the profile page before, in either chrome.
+    it('links the user card to the profile page', () => {
+        renderSidebar();
+
+        expect(screen.getByTitle('Your profile')).toHaveAttribute('href', '/app/profile');
+    });
 });
