@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import FormField from '../../ui/FormField';
-import Button from '../../ui/Button';
 import { apiGet, apiPost } from '../../../api/client';
 import { money } from '../order/statuses';
+import { METHOD_LABELS } from './methods';
 
-export const METHOD_LABELS = {
-    cash: 'Cash',
-    bank_transfer: 'Bank Transfer',
-    cheque: 'Cheque',
-    other: 'Other',
-};
+const NO_OPTIONS = { invoices: [], payment_methods: [] };
 
-export default function PaymentForm({ onSaved, onCancel }) {
-    const [options, setOptions] = useState({ invoices: [], payment_methods: [] });
+/**
+ * Blade's create page, two-up in a card: invoice across the top, then date,
+ * amount, method, reference and notes. Each invoice option names its
+ * outstanding figure, as Blade's did, and the amount is capped at it — the
+ * server refuses an overpayment because it would drive the customer's balance
+ * negative.
+ */
+export default function PaymentForm({ presetInvoiceId, onSaved, onCancel }) {
+    const [options, setOptions] = useState(NO_OPTIONS);
     const [values, setValues] = useState({
-        sales_invoice_id: '',
+        sales_invoice_id: presetInvoiceId ?? '',
         receipt_date: new Date().toISOString().slice(0, 10),
         amount: '',
         payment_method: 'cash',
@@ -25,7 +26,9 @@ export default function PaymentForm({ onSaved, onCancel }) {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        apiGet('/sales/payments/form-options').then(setOptions).catch(() => {});
+        apiGet('/sales/payments/form-options')
+            .then((response) => setOptions({ ...NO_OPTIONS, ...response }))
+            .catch(() => {});
     }, []);
 
     const invoice = useMemo(
@@ -53,59 +56,108 @@ export default function PaymentForm({ onSaved, onCancel }) {
         }
     }
 
+    const messages = Object.values(errors);
+    const methods = options.payment_methods.length ? options.payment_methods : Object.keys(METHOD_LABELS);
+
     return (
         <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-                <label htmlFor="sales_invoice_id" className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
-                <select
-                    id="sales_invoice_id"
-                    value={values.sales_invoice_id}
-                    onChange={(e) => setField('sales_invoice_id', e.target.value)}
-                    className={`border rounded-md px-3 py-2 text-sm w-full ${errors.sales_invoice_id ? 'border-red-400' : 'border-gray-300'}`}
-                >
-                    <option value="">Select an unsettled invoice…</option>
-                    {options.invoices.map((i) => (
-                        <option key={i.id} value={i.id}>
-                            {i.invoice_number} — {i.customer_name} ({money(i.balance_due)} due)
-                        </option>
-                    ))}
-                </select>
-                {errors.sales_invoice_id && <p className="text-sm text-red-600 mt-1">{errors.sales_invoice_id}</p>}
-                {options.invoices.length === 0 && (
-                    <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>Every invoice is settled.</p>
-                )}
-            </div>
-
-            {invoice && (
-                <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
-                    Outstanding on this invoice: <strong>{money(invoice.balance_due)}</strong>
-                </p>
+            {messages.length > 0 && (
+                <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                    <ul className="list-disc list-inside space-y-1">
+                        {messages.map((message) => <li key={message}>{message}</li>)}
+                    </ul>
+                </div>
             )}
 
-            <FormField label="Receipt Date" name="receipt_date" type="date" value={values.receipt_date} onChange={setField} error={errors.receipt_date} />
-            <FormField label="Amount" name="amount" type="number" value={values.amount} onChange={setField} error={errors.amount} />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                    <label htmlFor="sales_invoice_id" className="form-label">
+                        Invoice <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                        id="sales_invoice_id" className="form-select" required
+                        value={values.sales_invoice_id}
+                        onChange={(e) => setField('sales_invoice_id', e.target.value)}
+                    >
+                        <option value="">-- Select Unpaid Invoice --</option>
+                        {options.invoices.map((i) => (
+                            <option key={i.id} value={i.id}>
+                                {i.invoice_number} - {i.customer_name} (Outstanding: {money(i.balance_due)})
+                            </option>
+                        ))}
+                    </select>
+                    {options.invoices.length === 0 && (
+                        <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>Every invoice is settled.</p>
+                    )}
+                </div>
 
-            <div className="mb-4">
-                <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                <select
-                    id="payment_method"
-                    value={values.payment_method}
-                    onChange={(e) => setField('payment_method', e.target.value)}
-                    className={`border rounded-md px-3 py-2 text-sm w-full ${errors.payment_method ? 'border-red-400' : 'border-gray-300'}`}
-                >
-                    {(options.payment_methods.length ? options.payment_methods : Object.keys(METHOD_LABELS)).map((method) => (
-                        <option key={method} value={method}>{METHOD_LABELS[method] ?? method}</option>
-                    ))}
-                </select>
-                {errors.payment_method && <p className="text-sm text-red-600 mt-1">{errors.payment_method}</p>}
+                <div>
+                    <label htmlFor="receipt_date" className="form-label">
+                        Receipt Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        id="receipt_date" className="form-input" type="date" required
+                        value={values.receipt_date}
+                        onChange={(e) => setField('receipt_date', e.target.value)}
+                    />
+                </div>
+
+                <div>
+                    <label htmlFor="amount" className="form-label">
+                        Amount <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        id="amount" className="form-input" type="number" min="0.01" step="0.01" required
+                        max={invoice ? invoice.balance_due : undefined}
+                        value={values.amount}
+                        onChange={(e) => setField('amount', e.target.value)}
+                    />
+                    {invoice && (
+                        <p style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                            {money(invoice.balance_due)} outstanding on this invoice.
+                        </p>
+                    )}
+                </div>
+
+                <div>
+                    <label htmlFor="payment_method" className="form-label">
+                        Payment Method <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                        id="payment_method" className="form-select" required
+                        value={values.payment_method}
+                        onChange={(e) => setField('payment_method', e.target.value)}
+                    >
+                        {methods.map((method) => (
+                            <option key={method} value={method}>{METHOD_LABELS[method] ?? method}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label htmlFor="reference_number" className="form-label">Reference Number</label>
+                    <input
+                        id="reference_number" className="form-input" type="text"
+                        value={values.reference_number}
+                        onChange={(e) => setField('reference_number', e.target.value)}
+                    />
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label htmlFor="notes" className="form-label">Notes</label>
+                    <textarea
+                        id="notes" className="form-textarea" rows={2}
+                        value={values.notes}
+                        onChange={(e) => setField('notes', e.target.value)}
+                    />
+                </div>
             </div>
 
-            <FormField label="Reference Number" name="reference_number" value={values.reference_number} onChange={setField} error={errors.reference_number} />
-            <FormField label="Notes" name="notes" type="textarea" value={values.notes} onChange={setField} error={errors.notes} />
-
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-                <Button type="submit" loading={saving}>Record Payment</Button>
+            <div className="mt-6 flex items-center gap-3">
+                <button type="submit" className="btn-primary" disabled={saving}>
+                    {saving ? 'Recording…' : 'Record Receipt'}
+                </button>
+                <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
             </div>
         </form>
     );

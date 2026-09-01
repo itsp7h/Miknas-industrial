@@ -60,6 +60,23 @@ describe('mobile sales flow pages', () => {
     it('payments say so plainly when there are none', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
         wrap(<PaymentListPage />);
-        expect(await screen.findByText('No payments recorded yet.')).toBeInTheDocument();
+        expect(await screen.findByText('No receipts recorded.')).toBeInTheDocument();
+    });
+
+    it('receipts render as cards with the amount in green', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{
+                id: 1, invoice_number: 'INV-00001', customer_name: 'Gulf Steel',
+                receipt_date: '2026-08-07', amount: '40.00', payment_method: 'bank_transfer', reference_number: 'TT-9',
+            }],
+        });
+        const { container } = wrap(<PaymentListPage />);
+
+        await screen.findByText('Gulf Steel');
+        expect(container.querySelector('table')).toBeNull();
+        expect(screen.getByText('40.00')).toHaveStyle({ color: '#16a34a' });
+        expect(screen.getByText('Bank Transfer')).toBeInTheDocument();
+        expect(screen.getByText('07 Aug 2026')).toBeInTheDocument();
+        expect(screen.getByText('Ref TT-9')).toBeInTheDocument();
     });
 });

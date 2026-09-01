@@ -1,78 +1,77 @@
-import { useMemo, useState } from 'react';
 import Modal from '../../../components/ui/Modal';
-import Button from '../../../components/ui/Button';
-import PaymentForm, { METHOD_LABELS } from '../../../components/sales/payment/PaymentForm';
-import { money } from '../../../components/sales/order/statuses';
-import useLiveList from '../../../hooks/useLiveList';
-import { useToast } from '../../../components/ui/Toast';
+import PaymentForm from '../../../components/sales/payment/PaymentForm';
+import useReceiptList from '../../../components/sales/payment/useReceiptList';
+import { methodLabel } from '../../../components/sales/payment/methods';
+import { formatDate, money } from '../../../components/sales/order/statuses';
 
 export default function PaymentListPage() {
-    const { items: receipts, upsertItem } = useLiveList({
-        endpoint: '/sales/payments',
-        channel: 'sales',
-        event: '.payment-receipt.recorded',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load payment receipts.',
-    });
-    const [query, setQuery] = useState('');
-    const [modalOpen, setModalOpen] = useState(false);
-    const { showToast } = useToast();
-
-    const filtered = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return receipts;
-        return receipts.filter((r) =>
-            [r.invoice_number, r.customer_name, r.reference_number, METHOD_LABELS[r.payment_method] ?? r.payment_method]
-                .some((field) => String(field ?? '').toLowerCase().includes(q))
-        );
-    }, [receipts, query]);
-
-    function handleSaved(receipt) {
-        upsertItem(receipt);
-        setModalOpen(false);
-        showToast('Payment recorded.', 'success');
-    }
+    const r = useReceiptList();
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h1 style={{ fontSize: 18, fontWeight: 700 }}>Payment Receipts</h1>
-                <Button onClick={() => setModalOpen(true)}>New</Button>
+            <div style={{ marginBottom: 12 }}>
+                <h1 className="page-title">Customer Receipts</h1>
+                <p className="page-subtitle">Payment receipts from customers</p>
             </div>
+
+            <button
+                type="button" onClick={() => r.setModalOpen(true)} className="btn-primary"
+                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+            >
+                + Record Receipt
+            </button>
 
             <div style={{ marginBottom: 12 }}>
                 <input
-                    type="search" value={query} onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search receipts…" aria-label="Search receipts"
+                    type="search"
+                    value={r.query}
+                    onChange={(e) => r.setQuery(e.target.value)}
+                    placeholder="Search customer, invoice #, reference…"
+                    aria-label="Search receipts"
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
                 />
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    {query ? `${filtered.length} of ${receipts.length} receipts` : `${receipts.length} receipts`}
+                    {r.query ? `${r.filtered.length} of ${r.receipts.length} receipts` : `${r.receipts.length} receipts`}
                 </div>
             </div>
 
-            {filtered.length === 0 && (
+            {r.filtered.length === 0 && (
                 <p style={{ fontSize: 14, color: '#64748b' }}>
-                    {query ? 'No receipts match that search.' : 'No payments recorded yet.'}
+                    {r.query ? 'No receipts match that search.' : 'No receipts recorded.'}
                 </p>
             )}
 
-            {filtered.map((receipt) => (
-                <div key={receipt.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 8 }}>
+            {r.filtered.map((receipt) => (
+                <div key={receipt.id} style={{
+                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
+                    padding: 12, marginBottom: 8,
+                }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                        <span style={{ fontWeight: 600 }}>{receipt.invoice_number ?? '—'}</span>
-                        <span style={{ fontWeight: 700, color: '#16a34a' }}>{money(receipt.amount)}</span>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14 }}>{receipt.customer_name ?? ''}</div>
+                            <div className="font-mono" style={{ fontSize: 11, color: '#94a3b8' }}>{receipt.invoice_number ?? '-'}</div>
+                        </div>
+                        {/* Money coming in — read as a credit. */}
+                        <div style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>{money(receipt.amount)}</div>
                     </div>
-                    <div style={{ fontSize: 13, color: '#64748b' }}>{receipt.customer_name ?? '—'}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                        {receipt.receipt_date} · {METHOD_LABELS[receipt.payment_method] ?? receipt.payment_method}
-                        {receipt.reference_number ? ` · ${receipt.reference_number}` : ''}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: '#64748b', marginTop: 6, gap: 8 }}>
+                        <span>{methodLabel(receipt.payment_method)}</span>
+                        <span>{formatDate(receipt.receipt_date)}</span>
                     </div>
+
+                    {receipt.reference_number && (
+                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Ref {receipt.reference_number}</div>
+                    )}
                 </div>
             ))}
 
-            <Modal open={modalOpen} title="Record Payment" onClose={() => setModalOpen(false)}>
-                <PaymentForm onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <Modal open={r.modalOpen} title="Record Customer Receipt" onClose={() => r.setModalOpen(false)}>
+                <PaymentForm
+                    presetInvoiceId={r.presetInvoiceId}
+                    onSaved={r.handleSaved}
+                    onCancel={() => r.setModalOpen(false)}
+                />
             </Modal>
         </div>
     );

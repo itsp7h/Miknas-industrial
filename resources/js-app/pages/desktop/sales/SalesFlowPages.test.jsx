@@ -185,6 +185,50 @@ describe('desktop sales flow pages', () => {
         expect(await screen.findByText('No invoices found.')).toBeInTheDocument();
     });
 
+    // Blade's six columns, led by the customer rather than the date.
+    it('receipts list Blade\u2019s six columns', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: RECEIPTS });
+        wrap(<PaymentListPage />);
+
+        await screen.findByText('Gulf Steel');
+        expect(screen.getAllByRole('columnheader').map((th) => th.textContent))
+            .toEqual(['Customer', 'Invoice #', 'Date', 'Amount', 'Method', 'Reference']);
+        expect(screen.getByText('07 Aug 2026')).toBeInTheDocument();
+        expect(screen.getByText('TT-9')).toBeInTheDocument();
+    });
+
+    it('receipts say so when there are none', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<PaymentListPage />);
+        expect(await screen.findByText('No receipts recorded.')).toBeInTheDocument();
+    });
+
+    // The invoices page's Receive button links here with ?invoice_id=; the form
+    // must open with that invoice already chosen, as Blade's create page did.
+    it('opens the form with the invoice from the query string preselected', async () => {
+        vi.spyOn(client, 'apiGet').mockImplementation((url) => (
+            url.endsWith('/form-options')
+                ? Promise.resolve({
+                    invoices: [
+                        { id: 3, invoice_number: 'INV-00003', customer_name: 'Zenith', balance_due: 50 },
+                        { id: 4, invoice_number: 'INV-00004', customer_name: 'Gulf Steel', balance_due: 70 },
+                    ],
+                    payment_methods: ['cash', 'bank_transfer', 'cheque', 'other'],
+                })
+                : Promise.resolve({ data: [] })
+        ));
+        render(
+            <MemoryRouter initialEntries={['/app/sales/payments?invoice_id=4']}>
+                <ToastProvider><PaymentListPage /></ToastProvider>
+            </MemoryRouter>
+        );
+
+        expect(await screen.findByText('Record Customer Receipt')).toBeInTheDocument();
+        expect(screen.getByLabelText(/Invoice/)).toHaveValue('4');
+        // Blade named the outstanding figure on each option, and beside Amount.
+        expect(screen.getByText('70.00 outstanding on this invoice.')).toBeInTheDocument();
+    });
+
     it('payments label the method rather than showing the raw enum', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: RECEIPTS });
         wrap(<PaymentListPage />);

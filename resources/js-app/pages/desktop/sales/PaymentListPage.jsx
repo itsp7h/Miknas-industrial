@@ -1,50 +1,53 @@
-import { useMemo, useState } from 'react';
-import Card from '../../../components/ui/Card';
-import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
-import Button from '../../../components/ui/Button';
-import PaymentForm, { METHOD_LABELS } from '../../../components/sales/payment/PaymentForm';
-import { money } from '../../../components/sales/order/statuses';
-import useLiveList from '../../../hooks/useLiveList';
-import { useToast } from '../../../components/ui/Toast';
+import PaymentForm from '../../../components/sales/payment/PaymentForm';
+import ReceiptTable from '../../../components/sales/payment/ReceiptTable';
+import useReceiptList from '../../../components/sales/payment/useReceiptList';
 
 export default function PaymentListPage() {
-    const { items: receipts, upsertItem } = useLiveList({
-        endpoint: '/sales/payments',
-        channel: 'sales',
-        event: '.payment-receipt.recorded',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load payment receipts.',
-    });
-    const [modalOpen, setModalOpen] = useState(false);
-    const { showToast } = useToast();
-
-    function handleSaved(receipt) {
-        upsertItem(receipt);
-        setModalOpen(false);
-        showToast('Payment recorded.', 'success');
-    }
-
-    const columns = useMemo(() => [
-        { key: 'receipt_date', label: 'Date' },
-        { key: 'invoice_number', label: 'Invoice', render: (row) => row.invoice_number ?? '—' },
-        { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? '—' },
-        { key: 'amount', label: 'Amount', render: (row) => <strong>{money(row.amount)}</strong> },
-        { key: 'payment_method', label: 'Method', render: (row) => METHOD_LABELS[row.payment_method] ?? row.payment_method },
-        { key: 'reference_number', label: 'Reference', render: (row) => row.reference_number || '—' },
-    ], []);
+    const r = useReceiptList();
 
     return (
-        <Card title="Payment Receipts">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <Button onClick={() => setModalOpen(true)}>Record Payment</Button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Customer Receipts</h1>
+                    <p className="page-subtitle">Payment receipts from customers</p>
+                </div>
+                <button type="button" onClick={() => r.setModalOpen(true)} className="btn-primary">+ Record Receipt</button>
             </div>
 
-            <Table columns={columns} rows={receipts} rowKey={(row) => row.id} searchPlaceholder="Search receipts…" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                    <svg
+                        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                        width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={r.query}
+                        onChange={(e) => r.setQuery(e.target.value)}
+                        placeholder="Search customer, invoice #, reference…"
+                        aria-label="Search receipts"
+                        autoComplete="off"
+                        style={{ padding: '8px 14px 8px 34px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13.5, width: 340, outline: 'none' }}
+                    />
+                </div>
+                <div style={{ fontSize: 12.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {r.query ? `${r.filtered.length} of ${r.receipts.length} receipts` : `${r.receipts.length} receipts`}
+                </div>
+            </div>
 
-            <Modal open={modalOpen} title="Record Payment" onClose={() => setModalOpen(false)}>
-                <PaymentForm onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <ReceiptTable receipts={r.filtered} />
+
+            <Modal open={r.modalOpen} title="Record Customer Receipt" onClose={() => r.setModalOpen(false)}>
+                <PaymentForm
+                    presetInvoiceId={r.presetInvoiceId}
+                    onSaved={r.handleSaved}
+                    onCancel={() => r.setModalOpen(false)}
+                />
             </Modal>
-        </Card>
+        </div>
     );
 }

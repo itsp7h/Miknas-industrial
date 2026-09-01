@@ -472,8 +472,9 @@ dropped real function (a whole column, a drag-and-drop import, low-stock
 signalling). When touching one of these pages, recover its Blade original from
 the commit that deleted it (`git log --diff-filter=D -- 'resources/views/<path>'`
 then `git show <sha>^:<path>`) and diff against it before assuming the React
-page is finished. Purchase, Inventory and Production have all been through
-this; **Sales has not.**
+page is finished. Every module has now been through this — Purchase, Inventory,
+Production and Sales — so a React page here should be treated as ported, not
+merely present.
 
 **Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales. Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry), all of Settings, Profile, and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
 
