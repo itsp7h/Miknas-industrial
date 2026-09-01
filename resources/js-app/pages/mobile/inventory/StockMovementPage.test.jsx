@@ -30,11 +30,17 @@ describe('mobile StockMovementPage', () => {
         expect(container.querySelector('table')).toBeNull();
     });
 
-    it('labels movement types in plain language rather than raw enum values', async () => {
+    /**
+     * The Blade table badged type as a green IN / red OUT pill, which this now
+     * matches. The original intent of this test — never render the raw `in` /
+     * `out` enum value — still holds.
+     */
+    it('badges movement types as IN and OUT, never the raw enum value', async () => {
         renderPage();
         await screen.findByText('Steel Rod');
-        expect(screen.getByText(/Stock In/)).toBeInTheDocument();
-        expect(screen.getByText(/Stock Out/)).toBeInTheDocument();
+        expect(screen.getByText('IN')).toHaveClass('badge-green');
+        expect(screen.getByText('OUT')).toHaveClass('badge-red');
+        expect(screen.queryByText('in')).not.toBeInTheDocument();
     });
 
     it('filters client-side with a live count', async () => {

@@ -3,7 +3,9 @@ import FormField from '../../ui/FormField';
 import Button from '../../ui/Button';
 import { apiGet, apiPost } from '../../../api/client';
 
-export const TYPE_LABELS = { in: 'Stock In', out: 'Stock Out', adjustment: 'Adjustment' };
+// 'adjustment' is not a value the stock_movements enum accepts — see
+// StockMovementController::TYPES.
+export const TYPE_LABELS = { in: 'Stock In', out: 'Stock Out' };
 
 const EMPTY = { item_id: '', warehouse_id: '', type: 'in', quantity: '', notes: '' };
 
@@ -89,7 +91,7 @@ export default function StockMovementForm({ onSaved, onCancel }) {
                     onChange={(e) => setField('type', e.target.value)}
                     className={`border rounded-md px-3 py-2 text-sm w-full ${errors.type ? 'border-red-400' : 'border-gray-300'}`}
                 >
-                    {(options.types.length ? options.types : ['in', 'out', 'adjustment']).map((type) => (
+                    {(options.types.length ? options.types : ['in', 'out']).map((type) => (
                         <option key={type} value={type}>{TYPE_LABELS[type] ?? type}</option>
                     ))}
                 </select>

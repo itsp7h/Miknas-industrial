@@ -1,66 +1,58 @@
-import { useMemo, useState } from 'react';
-import Card from '../../../components/ui/Card';
-import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
-import Button from '../../../components/ui/Button';
-import StockMovementForm, { TYPE_LABELS } from '../../../components/inventory/movement/StockMovementForm';
-import useLiveList from '../../../hooks/useLiveList';
+import StockMovementForm from '../../../components/inventory/movement/StockMovementForm';
+import MovementTable from '../../../components/inventory/movement/MovementTable';
+import useMovementList from '../../../components/inventory/movement/useMovementList';
 import { useToast } from '../../../components/ui/Toast';
 
-const TYPE_COLOURS = { in: '#16a34a', out: '#dc2626', adjustment: '#ca8a04' };
-
-function formatDate(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleString(undefined, {
-        year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit',
-    });
-}
-
 export default function StockMovementPage() {
-    const { items: movements, upsertItem } = useLiveList({
-        endpoint: '/inventory/movements',
-        channel: 'inventory',
-        event: '.stock-movement.recorded',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load stock movements.',
-    });
-    const [modalOpen, setModalOpen] = useState(false);
+    const m = useMovementList();
     const { showToast } = useToast();
 
     function handleSaved(movement) {
-        upsertItem(movement);
-        setModalOpen(false);
+        m.handleSaved(movement);
         showToast('Stock movement recorded.', 'success');
     }
 
-    const columns = useMemo(() => [
-        { key: 'created_at', label: 'Date', render: (row) => formatDate(row.created_at) },
-        { key: 'item_name', label: 'Item', render: (row) => row.item_name ?? '—' },
-        { key: 'warehouse_name', label: 'Warehouse', render: (row) => row.warehouse_name ?? '—' },
-        {
-            key: 'type',
-            label: 'Type',
-            render: (row) => (
-                <span style={{ color: TYPE_COLOURS[row.type], fontWeight: 600 }}>
-                    {TYPE_LABELS[row.type] ?? row.type}
-                </span>
-            ),
-        },
-        { key: 'quantity', label: 'Quantity' },
-        { key: 'notes', label: 'Notes', render: (row) => row.notes || '—' },
-    ], []);
-
     return (
-        <Card title="Stock Movements">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <Button onClick={() => setModalOpen(true)}>New Movement</Button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Stock Movements</h1>
+                    <p className="page-subtitle">Track all inventory movements</p>
+                </div>
+                <button type="button" onClick={() => m.setModalOpen(true)} className="btn-primary">
+                    + Manual Adjustment
+                </button>
             </div>
 
-            <Table columns={columns} rows={movements} rowKey={(row) => row.id} searchPlaceholder="Search movements…" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                    <svg
+                        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                        width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={m.query}
+                        onChange={(e) => m.setQuery(e.target.value)}
+                        placeholder="Search item, warehouse, type, reference…"
+                        aria-label="Search movements"
+                        autoComplete="off"
+                        style={{ padding: '8px 14px 8px 34px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13.5, width: 340, outline: 'none' }}
+                    />
+                </div>
+                <div style={{ fontSize: 12.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {m.query ? `${m.filtered.length} of ${m.movements.length} movements` : `${m.movements.length} movements`}
+                </div>
+            </div>
 
-            <Modal open={modalOpen} title="Record Stock Movement" onClose={() => setModalOpen(false)}>
-                <StockMovementForm onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <MovementTable movements={m.filtered} />
+
+            <Modal open={m.modalOpen} title="Manual Stock Adjustment" onClose={() => m.setModalOpen(false)}>
+                <StockMovementForm onSaved={handleSaved} onCancel={() => m.setModalOpen(false)} />
             </Modal>
-        </Card>
+        </div>
     );
 }

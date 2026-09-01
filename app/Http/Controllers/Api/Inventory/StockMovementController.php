@@ -17,7 +17,21 @@ use Illuminate\Support\Facades\Notification;
 
 class StockMovementController extends Controller
 {
-    public const TYPES = ['in', 'out', 'adjustment'];
+    /**
+     * The stock_movements.type enum is ['in', 'out', 'transfer'].
+     *
+     * 'adjustment' used to be offered here and is NOT in that enum, so choosing
+     * it passed validation and then died on a CHECK constraint — recording one
+     * was impossible. A manual adjustment is an 'in' or an 'out' recorded by
+     * hand, which is what the page's button does.
+     *
+     * 'transfer' is a valid enum value but is deliberately not offered: store()
+     * increments for anything that is not 'out', and the form has a single
+     * warehouse, so a "transfer" would add stock with no source to take it
+     * from. Offering it would silently invent inventory. Supporting transfers
+     * properly needs a destination warehouse on the model.
+     */
+    public const TYPES = ['in', 'out'];
 
     public function index()
     {

@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\Inventory;
 use App\Events\StockMovementRecorded;
 use App\Models\Item;
 use App\Models\StockLevel;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -129,6 +130,41 @@ class StockMovementControllerTest extends TestCase
         $this->assertSame('Main', $response->json('data.0.warehouse_name'));
     }
 
+    /**
+     * The Blade table's "Reference" column read $movement->reference, which is
+     * neither a column nor an accessor, so it always printed "-". The real link
+     * is reference_type + reference_id.
+     */
+    public function test_it_labels_the_linked_document_behind_each_movement(): void
+    {
+        $user = User::factory()->create();
+        $item = Item::create([
+            'item_code' => 'RM-9', 'item_name' => 'Bar',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG',
+        ]);
+        $warehouse = Warehouse::create(['name' => 'Main', 'code' => 'WH-9']);
+
+        StockMovement::create([
+            'item_id' => $item->id, 'warehouse_id' => $warehouse->id,
+            'type' => 'in', 'quantity' => 5,
+            'reference_type' => 'GoodsReceiptNote', 'reference_id' => 7,
+        ]);
+        StockMovement::create([
+            'item_id' => $item->id, 'warehouse_id' => $warehouse->id,
+            'type' => 'out', 'quantity' => 1,
+        ]);
+
+        $rows = collect($this->actingAs($user)
+            ->getJson('/api/v1/inventory/movements')
+            ->assertOk()
+            ->json('data'))
+            ->keyBy('quantity');
+
+        $this->assertSame('Goods Receipt #7', $rows['5.00']['reference']);
+        // A manual movement has no linked document.
+        $this->assertNull($rows['1.00']['reference']);
+    }
+
     public function test_form_options_returns_only_active_items_and_warehouses(): void
     {
         Item::create(['item_code' => 'ITEM-2', 'item_name' => 'Retired', 'category' => 'wip', 'unit_of_measure' => 'PCS', 'is_active' => false]);
@@ -139,6 +175,8 @@ class StockMovementControllerTest extends TestCase
 
         $this->assertSame(['Rod'], array_column($response->json('items'), 'item_name'));
         $this->assertSame(['Main'], array_column($response->json('warehouses'), 'name'));
-        $this->assertSame(['in', 'out', 'adjustment'], $response->json('types'));
+        // Only values the stock_movements enum actually accepts; 'adjustment'
+        // used to be offered and failed on a CHECK constraint.
+        $this->assertSame(['in', 'out'], $response->json('types'));
     }
 }

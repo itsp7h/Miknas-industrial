@@ -24,7 +24,7 @@ describe('desktop StockMovementPage', () => {
         vi.spyOn(client, 'apiGet').mockImplementation((path) =>
             path === '/inventory/movements'
                 ? Promise.resolve({ data: MOVEMENTS })
-                : Promise.resolve({ items: [], warehouses: [], types: ['in', 'out', 'adjustment'] })
+                : Promise.resolve({ items: [], warehouses: [], types: ['in', 'out'] })
         );
     });
 
@@ -40,10 +40,10 @@ describe('desktop StockMovementPage', () => {
         expect(screen.getByText('—')).toBeInTheDocument();
     });
 
-    it('opens the record-movement form with item and warehouse pickers', async () => {
+    it('opens the adjustment form with item and warehouse pickers', async () => {
         renderPage();
         await screen.findByText('Steel Rod');
-        fireEvent.click(screen.getByText('New Movement'));
+        fireEvent.click(screen.getByText('+ Manual Adjustment'));
         expect(await screen.findByLabelText('Item')).toBeInTheDocument();
         expect(screen.getByLabelText('Warehouse')).toBeInTheDocument();
         expect(screen.getByLabelText('Movement Type')).toBeInTheDocument();
