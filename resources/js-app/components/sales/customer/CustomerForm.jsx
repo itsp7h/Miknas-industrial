@@ -1,20 +1,23 @@
 import { useState } from 'react';
-import FormField from '../../ui/FormField';
-import Button from '../../ui/Button';
 import { apiPost, apiPut } from '../../../api/client';
 
 const EMPTY = {
     name: '', contact_person: '', email: '', phone: '', whatsapp_number: '',
-    address: '', tax_number: '', credit_limit: '', is_active: true,
+    address: '', tax_number: '', credit_limit: '0', is_active: true,
 };
 
+/**
+ * Blade's two-up form, restyled onto the shared `.form-label` / `.form-input`
+ * classes it used: name and address span the full width, the rest pair up.
+ */
 export default function CustomerForm({ customer, onSaved, onCancel }) {
     const [values, setValues] = useState(() => ({
         ...EMPTY,
         ...(customer ?? {}),
+        // A null column would put React's inputs into uncontrolled mode.
         ...Object.fromEntries(
             ['contact_person', 'email', 'phone', 'whatsapp_number', 'address', 'tax_number', 'credit_limit']
-                .map((key) => [key, customer?.[key] ?? ''])
+                .map((key) => [key, customer?.[key] ?? EMPTY[key]])
         ),
     }));
     const [errors, setErrors] = useState({});
@@ -42,27 +45,104 @@ export default function CustomerForm({ customer, onSaved, onCancel }) {
         }
     }
 
+    const messages = Object.values(errors);
+
     return (
         <form onSubmit={handleSubmit}>
-            <FormField label="Customer Name" name="name" value={values.name} onChange={setField} error={errors.name} />
-            <FormField label="Contact Person" name="contact_person" value={values.contact_person} onChange={setField} error={errors.contact_person} />
-            <FormField label="Email" name="email" type="email" value={values.email} onChange={setField} error={errors.email} />
-            <FormField label="Phone" name="phone" value={values.phone} onChange={setField} error={errors.phone} />
-            <FormField label="WhatsApp Number" name="whatsapp_number" value={values.whatsapp_number} onChange={setField} error={errors.whatsapp_number} />
-            <FormField label="Tax Number" name="tax_number" value={values.tax_number} onChange={setField} error={errors.tax_number} />
-            <FormField label="Credit Limit" name="credit_limit" type="number" value={values.credit_limit} onChange={setField} error={errors.credit_limit} />
-            <FormField label="Address" name="address" type="textarea" value={values.address} onChange={setField} error={errors.address} />
+            {messages.length > 0 && (
+                <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                    <ul className="list-disc list-inside space-y-1">
+                        {messages.map((message) => <li key={message}>{message}</li>)}
+                    </ul>
+                </div>
+            )}
 
-            <div className="mb-4">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <input type="checkbox" checked={!!values.is_active} onChange={(e) => setField('is_active', e.target.checked)} />
-                    Active
-                </label>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                    <label htmlFor="name" className="form-label">
+                        Customer Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        id="name" className="form-input" type="text" required
+                        value={values.name} onChange={(e) => setField('name', e.target.value)}
+                    />
+                </div>
+
+                <div>
+                    <label htmlFor="contact_person" className="form-label">Contact Person</label>
+                    <input
+                        id="contact_person" className="form-input" type="text"
+                        value={values.contact_person} onChange={(e) => setField('contact_person', e.target.value)}
+                    />
+                </div>
+
+                <div>
+                    <label htmlFor="email" className="form-label">Email</label>
+                    <input
+                        id="email" className="form-input" type="email"
+                        value={values.email} onChange={(e) => setField('email', e.target.value)}
+                    />
+                </div>
+
+                <div>
+                    <label htmlFor="phone" className="form-label">Phone</label>
+                    <input
+                        id="phone" className="form-input" type="text"
+                        value={values.phone} onChange={(e) => setField('phone', e.target.value)}
+                    />
+                </div>
+
+                <div>
+                    <label htmlFor="whatsapp_number" className="form-label">WhatsApp Number</label>
+                    <input
+                        id="whatsapp_number" className="form-input" type="text" placeholder="+971501234567"
+                        value={values.whatsapp_number} onChange={(e) => setField('whatsapp_number', e.target.value)}
+                    />
+                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                        International format. Used for WhatsApp notifications.
+                    </p>
+                </div>
+
+                <div>
+                    <label htmlFor="tax_number" className="form-label">Tax Number</label>
+                    <input
+                        id="tax_number" className="form-input" type="text"
+                        value={values.tax_number} onChange={(e) => setField('tax_number', e.target.value)}
+                    />
+                </div>
+
+                <div>
+                    <label htmlFor="credit_limit" className="form-label">Credit Limit</label>
+                    <input
+                        id="credit_limit" className="form-input" type="number" min="0" step="0.01"
+                        value={values.credit_limit} onChange={(e) => setField('credit_limit', e.target.value)}
+                    />
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label htmlFor="address" className="form-label">Address</label>
+                    <textarea
+                        id="address" className="form-textarea" rows={3}
+                        value={values.address} onChange={(e) => setField('address', e.target.value)}
+                    />
+                </div>
+
+                <div className="sm:col-span-2 flex items-center gap-2">
+                    <input
+                        type="checkbox" id="is_active"
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        checked={!!values.is_active}
+                        onChange={(e) => setField('is_active', e.target.checked)}
+                    />
+                    <label htmlFor="is_active" className="form-label mb-0">Active</label>
+                </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-                <Button type="submit" loading={saving}>{customer ? 'Save Changes' : 'Create Customer'}</Button>
+            <div className="mt-6 flex items-center gap-3">
+                <button type="submit" className="btn-primary" disabled={saving}>
+                    {saving ? 'Saving…' : (customer ? 'Update Customer' : 'Save Customer')}
+                </button>
+                <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
             </div>
         </form>
     );

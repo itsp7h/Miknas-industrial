@@ -1,117 +1,99 @@
-import { useMemo, useState } from 'react';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
 import CustomerForm from '../../../components/sales/customer/CustomerForm';
-import useLiveList from '../../../hooks/useLiveList';
-import { apiDelete } from '../../../api/client';
-import { useToast } from '../../../components/ui/Toast';
-
-const money = (value) => Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+import useCustomerList from '../../../components/sales/customer/useCustomerList';
+import { money } from '../../../components/sales/order/statuses';
 
 export default function CustomerListPage() {
-    const { items: customers, upsertItem, removeItem, refetch } = useLiveList({
-        endpoint: '/sales/customers',
-        channel: 'sales',
-        event: '.customer.saved',
-        deleteEvent: '.customer.deleted',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load customers.',
-    });
-    const [query, setQuery] = useState('');
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState(null);
-    const [deleting, setDeleting] = useState(null);
-    const { showToast } = useToast();
-
-    const filtered = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return customers;
-        return customers.filter((c) =>
-            [c.name, c.contact_person, c.phone, c.email].some((field) => String(field ?? '').toLowerCase().includes(q))
-        );
-    }, [customers, query]);
-
-    function handleSaved(customer) {
-        upsertItem(customer);
-        setModalOpen(false);
-        showToast('Customer saved.', 'success');
-    }
-
-    async function handleDeleteConfirmed() {
-        const customer = deleting;
-        setDeleting(null);
-        try {
-            const result = await apiDelete(`/sales/customers/${customer.id}`);
-            if (result.deactivated) {
-                showToast(result.message, 'info');
-                await refetch();
-            } else {
-                removeItem(customer.id);
-                showToast('Customer deleted.', 'success');
-            }
-        } catch (err) {
-            showToast(err.message || 'Failed to delete customer.', 'error');
-        }
-    }
+    const c = useCustomerList();
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h1 style={{ fontSize: 18, fontWeight: 700 }}>Customers</h1>
-                <Button onClick={() => { setEditing(null); setModalOpen(true); }}>New</Button>
+            <div style={{ marginBottom: 12 }}>
+                <h1 className="page-title">Customers</h1>
+                <p className="page-subtitle">Manage your customer directory</p>
             </div>
+
+            <button
+                type="button" onClick={c.openCreate} className="btn-primary"
+                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+            >
+                + Add Customer
+            </button>
 
             <div style={{ marginBottom: 12 }}>
                 <input
                     type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search customers…"
+                    value={c.query}
+                    onChange={(e) => c.setQuery(e.target.value)}
+                    placeholder="Search name, contact, email, phone…"
                     aria-label="Search customers"
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
                 />
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    {query ? `${filtered.length} of ${customers.length} customers` : `${customers.length} customers`}
+                    {c.query ? `${c.filtered.length} of ${c.customers.length} customers` : `${c.customers.length} customers`}
                 </div>
             </div>
 
-            {filtered.length === 0 && (
+            {c.filtered.length === 0 && (
                 <p style={{ fontSize: 14, color: '#64748b' }}>
-                    {query ? 'No customers match that search.' : 'No customers yet.'}
+                    {c.query ? 'No customers match that search.' : 'No customers found.'}
                 </p>
             )}
 
-            {filtered.map((customer) => (
-                <div key={customer.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                    <div onClick={() => { setEditing(customer); setModalOpen(true); }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                            <span style={{ fontWeight: 600 }}>{customer.name}</span>
-                            <span style={{ fontSize: 13, color: Number(customer.outstanding_balance) > 0 ? '#dc2626' : '#64748b' }}>
-                                {money(customer.outstanding_balance)}
-                            </span>
+            {c.filtered.map((customer) => (
+                <div key={customer.id} style={{
+                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
+                    padding: 12, marginBottom: 8,
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14 }}>{customer.name}</div>
+                            {customer.contact_person && (
+                                <div style={{ fontSize: 13, color: '#64748b' }}>{customer.contact_person}</div>
+                            )}
                         </div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>{customer.contact_person || '—'}</div>
-                        <div style={{ fontSize: 12, color: '#94a3b8' }}>{customer.phone || 'No phone'}</div>
-                        <div style={{ fontSize: 12, color: customer.is_active ? '#16a34a' : '#dc2626' }}>
+                        <span className={customer.is_active ? 'badge-green' : 'badge-gray'} style={{ flexShrink: 0 }}>
                             {customer.is_active ? 'Active' : 'Inactive'}
-                        </div>
+                        </span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                        <Button variant="link-danger" onClick={() => setDeleting(customer)}>Delete</Button>
+
+                    {(customer.email || customer.phone) && (
+                        <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 6 }}>
+                            {[customer.email, customer.phone].filter(Boolean).join(' · ')}
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginTop: 6, gap: 8 }}>
+                        <span style={{ color: '#94a3b8' }}>Limit {money(customer.credit_limit)}</span>
+                        {/* Money owed is the number worth colouring. */}
+                        <span className={Number(customer.outstanding_balance ?? 0) > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}>
+                            {money(customer.outstanding_balance)}
+                        </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                        <button type="button" onClick={() => c.openEdit(customer)} className="btn-secondary btn-sm">Edit</button>
+                        <button type="button" onClick={() => c.setDeleting(customer)} className="btn-danger btn-sm">Delete</button>
                     </div>
                 </div>
             ))}
 
-            <Modal open={modalOpen} title={editing ? 'Edit Customer' : 'New Customer'} onClose={() => setModalOpen(false)}>
-                <CustomerForm customer={editing} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <Modal
+                open={c.modalOpen}
+                title={c.editing ? `Edit ${c.editing.name}` : 'Add Customer'}
+                onClose={() => c.setModalOpen(false)}
+            >
+                <CustomerForm customer={c.editing} onSaved={c.handleSaved} onCancel={() => c.setModalOpen(false)} />
             </Modal>
             <ConfirmModal
-                open={!!deleting}
-                title="Delete customer?"
-                body={deleting ? `This will permanently remove "${deleting.name}". Customers with sales history are deactivated instead.` : ''}
-                onConfirm={handleDeleteConfirmed}
-                onCancel={() => setDeleting(null)}
+                open={!!c.deleting}
+                title="Delete this customer?"
+                body={c.deleting
+                    ? `"${c.deleting.name}" will be permanently removed. A customer with sales history is deactivated instead.`
+                    : ''}
+                onConfirm={c.handleDeleteConfirmed}
+                onCancel={() => c.setDeleting(null)}
             />
         </div>
     );

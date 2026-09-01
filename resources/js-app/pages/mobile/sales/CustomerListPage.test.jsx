@@ -38,7 +38,14 @@ describe('mobile CustomerListPage', () => {
     it('flags a non-zero outstanding balance in red', async () => {
         renderPage();
         await screen.findByText('Gulf Steel');
-        expect(screen.getByText('250.00')).toHaveStyle({ color: '#dc2626' });
+        expect(screen.getByText('250.00')).toHaveClass('text-red-600', 'font-semibold');
+    });
+
+    it('badges the status rather than colouring a word', async () => {
+        renderPage();
+        await screen.findByText('Gulf Steel');
+        expect(screen.getByText('Active')).toHaveClass('badge-green');
+        expect(screen.getByText('Inactive')).toHaveClass('badge-gray');
     });
 
     it('shows a no-results message', async () => {
