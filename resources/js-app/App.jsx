@@ -53,6 +53,8 @@ import DesktopProductionOrderDetailPage from './pages/desktop/production/Product
 import MobileProductionOrderDetailPage from './pages/mobile/production/ProductionOrderDetailPage';
 import DesktopBomListPage from './pages/desktop/production/BomListPage';
 import MobileBomListPage from './pages/mobile/production/BomListPage';
+import DesktopMaterialIssueListPage from './pages/desktop/production/MaterialIssueListPage';
+import MobileMaterialIssueListPage from './pages/mobile/production/MaterialIssueListPage';
 import DesktopFlowListPage from './pages/desktop/production/FlowListPage';
 import MobileFlowListPage from './pages/mobile/production/FlowListPage';
 
@@ -87,6 +89,7 @@ export default function App({
     const ProductionOrderListPage = viewport === 'mobile' ? MobileProductionOrderListPage : DesktopProductionOrderListPage;
     const ProductionOrderDetailPage = viewport === 'mobile' ? MobileProductionOrderDetailPage : DesktopProductionOrderDetailPage;
     const BomListPage = viewport === 'mobile' ? MobileBomListPage : DesktopBomListPage;
+    const MaterialIssueListPage = viewport === 'mobile' ? MobileMaterialIssueListPage : DesktopMaterialIssueListPage;
     const FlowListPage = viewport === 'mobile' ? MobileFlowListPage : DesktopFlowListPage;
 
     return (
@@ -132,7 +135,7 @@ export default function App({
                 <Route path="/app/production/orders" element={<ProductionOrderListPage />} />
                 <Route path="/app/production/orders/:id" element={<ProductionOrderDetailPage />} />
                 <Route path="/app/production/bom" element={<BomListPage />} />
-                <Route path="/app/production/material-issues" element={<FlowListPage kind="material-issue" />} />
+                <Route path="/app/production/material-issues" element={<MaterialIssueListPage />} />
                 <Route path="/app/production/outputs" element={<FlowListPage kind="production-output" />} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>

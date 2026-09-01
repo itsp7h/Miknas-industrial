@@ -257,6 +257,20 @@ class ProductionModuleTest extends TestCase
         ]);
     }
 
+    /** The order select is labelled "order number - product", so both are needed. */
+    public function test_material_issue_form_options_name_the_product_of_each_open_order(): void
+    {
+        $this->makeOrder('in_progress');
+        $this->makeOrder('completed');
+
+        $response = $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/production/material-issues/form-options')->assertOk();
+
+        // A completed order has nothing left to issue against.
+        $this->assertCount(1, $response->json('production_orders'));
+        $this->assertSame('Frame', $response->json('production_orders.0.product_name'));
+    }
+
     /**
      * The Blade version clamped the decrement at zero and issued anyway, so the
      * ledger recorded material that was never in the warehouse.

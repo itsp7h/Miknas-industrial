@@ -26,8 +26,18 @@ class MaterialIssueController extends Controller
     public function formOptions()
     {
         return response()->json([
-            'production_orders' => ProductionOrder::whereIn('status', ['planned', 'in_progress'])
-                ->latest()->get(['id', 'order_number', 'status']),
+            // Blade labelled each option "order number - product", so the
+            // product has to come along.
+            'production_orders' => ProductionOrder::with('product')
+                ->whereIn('status', ['planned', 'in_progress'])
+                ->latest()
+                ->get()
+                ->map(fn ($order) => [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'product_name' => $order->product?->item_name,
+                    'status' => $order->status,
+                ])->values(),
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             // Stock on hand, so the form can show what is actually available.
             'stock' => StockLevel::with('item')->get()->map(fn ($level) => [

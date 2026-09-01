@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import ProductionOrderListPage from './ProductionOrderListPage';
 import FlowListPage from './FlowListPage';
 import BomListPage from './BomListPage';
+import MaterialIssueListPage from './MaterialIssueListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import * as client from '../../../api/client';
 
@@ -66,11 +67,26 @@ describe('mobile production pages', () => {
 
     it('material issues render as cards with a live count', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, issue_number: 'MI-00001', issue_date: '2026-08-03', production_order_number: 'PO-00001', item_name: 'Steel Bar', warehouse_name: 'Main', quantity: '20.00' }],
+            data: [{ id: 1, issue_number: 'MI-00001', production_order_id: 4, issue_date: '2026-08-03', production_order_number: 'PO-00001', item_name: 'Steel Bar', warehouse_name: 'Main', quantity: '20.00' }],
         });
-        const { container } = wrap(<FlowListPage kind="material-issue" />);
+        const { container } = wrap(<MaterialIssueListPage />);
+
         await screen.findByText('Steel Bar');
         expect(container.querySelector('table')).toBeNull();
         expect(screen.getByText('1 issues')).toBeInTheDocument();
+        expect(screen.getByText('MI-00001')).toBeInTheDocument();
+        expect(screen.getByText('03 Aug 2026')).toBeInTheDocument();
+    });
+
+    // Inline under the table on desktop; on a phone that sits below every issue,
+    // so it opens as a sheet.
+    it('material issues open the create form as a sheet', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<MaterialIssueListPage />);
+
+        expect(await screen.findByText('No material issues found.')).toBeInTheDocument();
+        expect(screen.queryByText('Issue New Material')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByText('+ Issue Material'));
+        expect(await screen.findByText('Issue New Material')).toBeInTheDocument();
     });
 });

@@ -8,6 +8,9 @@ import { qty } from '../../../components/production/statuses';
 import useLiveList from '../../../hooks/useLiveList';
 import { useToast } from '../../../components/ui/Toast';
 
+// Material issues have their own page now (its Blade design put the create form
+// inline under the table); this config entry stays only for the tests that cover
+// the shared component until output gets its own page too.
 const CONFIG = {
     'material-issue': {
         title: 'Material Issues',

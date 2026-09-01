@@ -118,7 +118,10 @@ export default function ProductionOrderDetail({ order, compact = false }) {
                 reach the first issue or output from here. */}
             <FlowTable
                 title="Material Issues" rows={issues} dateKey="issue_date"
-                actionLabel="+ Issue Material" actionTo="/app/production/material-issues"
+                actionLabel="+ Issue Material"
+                // The issues page reads this and preselects the order, the way
+                // Blade's create link did.
+                actionTo={`/app/production/material-issues?production_order_id=${order.id}`}
             />
             <FlowTable
                 title="Production Output" rows={outputs} dateKey="output_date"

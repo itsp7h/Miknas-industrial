@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import ProductionOrderListPage from './ProductionOrderListPage';
 import BomListPage from './BomListPage';
 import FlowListPage from './FlowListPage';
+import MaterialIssueListPage from './MaterialIssueListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import * as client from '../../../api/client';
 
@@ -134,6 +135,61 @@ describe('desktop production pages', () => {
 
         expect(await screen.findByText(/No BOM entries found/)).toBeInTheDocument();
         expect(screen.getByText('Add the first one')).toBeInTheDocument();
+    });
+
+    // Blade's material issues page was a six-column table (order, item,
+    // warehouse, quantity, date, notes) with the create form inline underneath —
+    // not a generic table with an Issue # column and a modal.
+    it('material issues list Blade\u2019s six columns with the order linked', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{
+                id: 1, issue_number: 'MI-00001', production_order_id: 4, production_order_number: 'PO-00004',
+                item_name: 'Steel Bar', warehouse_name: 'Main', quantity: '20.00', issue_date: '2026-08-03', notes: null,
+            }],
+        });
+        wrap(<MaterialIssueListPage />);
+
+        await screen.findByText('Steel Bar');
+        expect(screen.getAllByRole('columnheader').map((th) => th.textContent))
+            .toEqual(['Production Order', 'Item', 'Warehouse', 'Quantity', 'Issue Date', 'Notes']);
+        expect(screen.getByText('PO-00004')).toHaveAttribute('href', '/app/production/orders/4');
+        expect(screen.getByText('20.00')).toBeInTheDocument();
+        expect(screen.getByText('03 Aug 2026')).toBeInTheDocument();
+        // Blade printed a dash for an empty note rather than leaving the cell bare.
+        expect(screen.getByText('-')).toBeInTheDocument();
+    });
+
+    it('material issues keep the create form on the page, not behind a modal', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<MaterialIssueListPage />);
+
+        expect(await screen.findByText('Issue New Material')).toBeInTheDocument();
+        expect(screen.getByLabelText(/Production Order/)).toBeInTheDocument();
+        expect(screen.getByText('Issue Material')).toHaveClass('btn-primary');
+        expect(screen.getByText('No material issues found.')).toBeInTheDocument();
+    });
+
+    it('material issues offer only material actually on hand in the chosen warehouse', async () => {
+        vi.spyOn(client, 'apiGet').mockImplementation((url) => (
+            url.endsWith('/form-options')
+                ? Promise.resolve({
+                    production_orders: [{ id: 4, order_number: 'PO-00004', product_name: 'Frame' }],
+                    warehouses: [{ id: 1, name: 'Main' }, { id: 2, name: 'Yard' }],
+                    stock: [
+                        { item_id: 7, item_name: 'Steel Bar', warehouse_id: 1, quantity: '50.00' },
+                        { item_id: 8, item_name: 'Bolt', warehouse_id: 2, quantity: '10.00' },
+                    ],
+                })
+                : Promise.resolve({ data: [] })
+        ));
+        wrap(<MaterialIssueListPage />);
+
+        // Nothing to choose until a warehouse is picked — Blade listed every item
+        // in the system and let the request fail.
+        expect(await screen.findByText('-- Choose a warehouse first --')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '1' } });
+        expect(screen.getByText('Steel Bar (50.00 on hand)')).toBeInTheDocument();
+        expect(screen.queryByText(/Bolt/)).not.toBeInTheDocument();
     });
 
     it('material issues and output share a page but differ in title and columns', async () => {
