@@ -72,11 +72,33 @@ class BladePagesStillRenderTest extends TestCase
         $this->assertTrue(Route::has('purchase.orders.pdf'));
     }
 
+    /**
+     * The Purchase pages carry a redirect rather than a 404, following the
+     * precedent set for /purchase/pipeline: the URLs were live long enough to be
+     * bookmarked, and a dead end is worse than a hop. The DomPDF documents sit
+     * under the same prefix, so this also proves the wildcard redirects were
+     * declared after them and do not swallow them.
+     */
+    public function test_moved_purchase_urls_redirect_into_the_react_shell(): void
+    {
+        $user = $this->user();
+
+        foreach ([
+            '/purchase/pipeline' => '/app/purchase/pipeline',
+            '/purchase/orders' => '/app/purchase/orders',
+            '/purchase/orders/7' => '/app/purchase/orders/7',
+            '/purchase/grns' => '/app/purchase/grns',
+            '/purchase/grns/7' => '/app/purchase/grns/7',
+            '/purchase/grns/create' => '/app/purchase/grns',
+            '/purchase/grns/create?purchase_order_id=4' => '/app/purchase/grns?purchase_order_id=4',
+        ] as $from => $to) {
+            $this->actingAs($user)->get($from)->assertRedirect($to);
+        }
+    }
+
     public function test_no_blade_route_remains_for_migrated_pages(): void
     {
         foreach ([
-            '/purchase/orders',
-            '/purchase/grns',
             '/inventory/items',
             '/inventory/warehouses',
             '/inventory/movements',

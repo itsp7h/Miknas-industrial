@@ -16,6 +16,7 @@ use App\Http\Controllers\Settings\ProjectSettingController;
 use App\Http\Controllers\Settings\UserManagementController;
 use App\Http\Controllers\Settings\VatSettingController;
 use App\Http\Controllers\SettingsController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -57,9 +58,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Purchase Module
     Route::prefix('purchase')->name('purchase.')->group(function () {
-        // Pipeline — the index view was replaced by the React board at
-        // /app/purchase/pipeline; this route is now a safety net for anyone with the
-        // old URL bookmarked. The per-request detail page stays Blade.
+        // ── Bookmark safety nets ────────────────────────────────────────────
+        // These pages all live in the React shell now. Rather than 404 anyone
+        // holding an old link, each redirects to its /app equivalent. Only the
+        // DomPDF print/pdf documents are still served here, and they must be
+        // declared BEFORE the wildcard redirects or those would swallow them.
         Route::redirect('pipeline', '/app/purchase/pipeline')->name('pipeline.index');
         Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show'])->name('pipeline.show');
 
@@ -88,6 +91,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Only the DomPDF-backed print/pdf documents stay server-rendered.
         Route::get('orders/{order}/print', [PurchaseOrderController::class, 'print'])->name('orders.print');
         Route::get('orders/{order}/pdf', [PurchaseOrderController::class, 'pdf'])->name('orders.pdf');
+
+        Route::redirect('orders', '/app/purchase/orders');
+        Route::get('orders/{order}', fn ($order) => redirect("/app/purchase/orders/{$order}"))
+            ->whereNumber('order');
+
+        // grns/create carried a ?purchase_order_id=… the React list also accepts,
+        // so the query string is forwarded rather than dropped.
+        Route::get('grns/create', fn (Request $request) => redirect()->to(
+            '/app/purchase/grns'.($request->query('purchase_order_id')
+                ? '?purchase_order_id='.$request->query('purchase_order_id')
+                : '')
+        ));
+        Route::redirect('grns', '/app/purchase/grns');
+        Route::get('grns/{grn}', fn ($grn) => redirect("/app/purchase/grns/{$grn}"))
+            ->whereNumber('grn');
         Route::resource('invoices', SupplierInvoiceController::class);
         Route::resource('payments', SupplierPaymentController::class);
     });
