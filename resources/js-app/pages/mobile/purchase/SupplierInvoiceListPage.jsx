@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import SupplierInvoiceForm from '../../../components/purchase/invoice/SupplierInvoiceForm';
@@ -83,7 +84,7 @@ export default function SupplierInvoiceListPage() {
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-                            <a href={`/purchase/payments/create?invoice_id=${invoice.id}`} className="btn-success btn-sm">Pay</a>
+                            <Link to={`/app/purchase/payments?invoice_id=${invoice.id}`} className="btn-success btn-sm">Pay</Link>
                             <button type="button" onClick={() => v.openEdit(invoice)} className="btn-secondary btn-sm">Edit</button>
                             <button type="button" onClick={() => v.setDeleting(invoice)} className="btn-danger btn-sm">Delete</button>
                         </div>

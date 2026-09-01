@@ -155,9 +155,9 @@ function CurrentActions({ stage, r }) {
             );
         case 'payment':
             return (
-                <a href="/purchase/payments/create" style={{ ...ACTION, background: '#0f172a', color: '#fff' }}>
+                <Link to="/app/purchase/payments" style={{ ...ACTION, background: '#0f172a', color: '#fff' }}>
                     Issue Payment →
-                </a>
+                </Link>
             );
         default:
             return null;
@@ -214,7 +214,7 @@ function DoneActions({ stage, r }) {
         case 'receiving':
             return <Link to="/app/purchase/grns" style={VIEW}><EyeIcon /> View GRNs</Link>;
         case 'payment':
-            return <a href="/purchase/payments" style={VIEW}><EyeIcon /> View Payments</a>;
+            return <Link to="/app/purchase/payments" style={VIEW}><EyeIcon /> View Payments</Link>;
         default:
             return null;
     }

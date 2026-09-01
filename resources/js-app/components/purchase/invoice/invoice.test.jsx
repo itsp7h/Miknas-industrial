@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import SupplierInvoiceTable from './SupplierInvoiceTable';
 import { badgeClassFor, formatDate, money } from './invoiceStyles';
 
@@ -37,11 +38,11 @@ describe('invoiceStyles', () => {
 
 describe('SupplierInvoiceTable', () => {
     const renderTable = (rows = INVOICES, handlers = {}) =>
-        render(<SupplierInvoiceTable
+        render(<MemoryRouter><SupplierInvoiceTable
             invoices={rows}
             onEdit={handlers.onEdit ?? (() => {})}
             onDelete={handlers.onDelete ?? (() => {})}
-        />);
+        /></MemoryRouter>);
 
     it('renders all nine Blade columns', () => {
         renderTable();
@@ -83,11 +84,11 @@ describe('SupplierInvoiceTable', () => {
         expect(screen.getByText('-')).toBeInTheDocument();
     });
 
-    /** Payments are still Blade, so Pay must be a real navigation carrying the id. */
-    it('links Pay at the Blade payments page with the invoice id', () => {
+    /** Pay hands the invoice id to the payments page, which preselects it. */
+    it('links Pay at the React payments page with the invoice id', () => {
         renderTable([INVOICES[2]]);
         expect(screen.getByText('Pay').closest('a'))
-            .toHaveAttribute('href', '/purchase/payments/create?invoice_id=3');
+            .toHaveAttribute('href', '/app/purchase/payments?invoice_id=3');
     });
 
     it('calls back with the row on edit and delete', () => {

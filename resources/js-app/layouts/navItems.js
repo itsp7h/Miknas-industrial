@@ -26,7 +26,7 @@ export const NAV_GROUPS = [
             { type: 'link', to: '/app/purchase/orders', label: 'Purchase Orders' },
             { type: 'link', to: '/app/purchase/grns', label: 'Goods Receipt (GRN)' },
             { type: 'link', to: '/app/purchase/invoices', label: 'Supplier Invoices' },
-            { type: 'href', to: '/purchase/payments', label: 'Payments' },
+            { type: 'link', to: '/app/purchase/payments', label: 'Payments' },
         ],
     },
     {

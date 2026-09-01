@@ -9,7 +9,6 @@ use App\Http\Controllers\Purchase\PurchaseRequestController;
 use App\Http\Controllers\Purchase\PurchaseSignatureController;
 use App\Http\Controllers\Purchase\RfqController;
 use App\Http\Controllers\Purchase\RfqPortalController;
-use App\Http\Controllers\Purchase\SupplierPaymentController;
 use App\Http\Controllers\Purchase\SupplierQuoteController;
 use App\Http\Controllers\Settings\ProjectSettingController;
 use App\Http\Controllers\Settings\UserManagementController;
@@ -109,7 +108,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('invoices/{invoice}', fn ($invoice) => redirect('/app/purchase/invoices'))
             ->whereNumber('invoice');
         Route::get('invoices/create', fn () => redirect('/app/purchase/invoices'));
-        Route::resource('payments', SupplierPaymentController::class);
+        Route::redirect('payments', '/app/purchase/payments');
+        // The invoices page linked here with ?invoice_id=…; the React page accepts
+        // the same parameter, so it is forwarded rather than dropped.
+        Route::get('payments/create', fn (Request $request) => redirect()->to(
+            '/app/purchase/payments'.($request->query('invoice_id')
+                ? '?invoice_id='.$request->query('invoice_id')
+                : '')
+        ));
+        Route::get('payments/{payment}', fn ($payment) => redirect('/app/purchase/payments'))
+            ->whereNumber('payment');
     });
 
     // Inventory Module

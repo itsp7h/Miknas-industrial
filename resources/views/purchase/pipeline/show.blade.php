@@ -230,7 +230,7 @@
                 </button>
 
               @elseif($stage === 'payment')
-                <a href="{{ route('purchase.payments.create') }}"
+                <a href="/app/purchase/payments"
                    class="action-btn" style="background:#0f172a;color:#fff;">
                   Issue Payment →
                 </a>
@@ -307,7 +307,7 @@
                 </a>
 
               @elseif($stage === 'payment')
-                <a href="{{ route('purchase.payments.index') }}" class="action-btn" style="{{ $viewStyle }}">
+                <a href="/app/purchase/payments" class="action-btn" style="{{ $viewStyle }}">
                   {!! $eyeSvg !!} View Payments
                 </a>
               @endif

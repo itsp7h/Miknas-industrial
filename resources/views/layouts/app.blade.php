@@ -135,17 +135,15 @@
             " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
                 Supplier Invoices
             </a>
-            @foreach([
-                ['purchase.payments.index',   'Payments'],
-            ] as [$routeName, $label])
-            <a href="{{ route($routeName) }}" style="
+            {{-- Payments now lives in the React app shell — the whole Purchase group
+                 is React except the RFQ/quote workflow pages, which have no sidebar entry. --}}
+            <a href="/app/purchase/payments" style="
                 display:block; padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
                 font-size:13px; text-decoration:none;
-                {{ request()->routeIs(str_replace('.index','',$routeName).'*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+                {{ request()->is('app/purchase/payments*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
             " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
-                {{ $label }}
+                Payments
             </a>
-            @endforeach
 
             {{-- ── INVENTORY ── --}}
             <div style="margin-top:16px; margin-bottom:4px; padding:0 12px;">

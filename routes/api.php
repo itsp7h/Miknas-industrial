@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
 use App\Http\Controllers\Api\Purchase\SupplierInvoiceController as PurchaseInvoiceController;
+use App\Http\Controllers\Api\Purchase\SupplierPaymentController as PurchasePaymentController;
 use App\Http\Controllers\Api\Sales\CustomerController;
 use App\Http\Controllers\Api\Sales\DeliveryNoteController;
 use App\Http\Controllers\Api\Sales\PaymentReceiptController;
@@ -148,6 +149,14 @@ Route::prefix('v1')->group(function () {
             Route::post('invoices', [PurchaseInvoiceController::class, 'store']);
             Route::put('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'update']);
             Route::delete('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'destroy']);
+
+            // `payments/form-options` must precede `payments/{supplierPayment}`.
+            Route::get('payments', [PurchasePaymentController::class, 'index']);
+            Route::get('payments/form-options', [PurchasePaymentController::class, 'formOptions']);
+            Route::get('payments/{supplierPayment}', [PurchasePaymentController::class, 'show']);
+            Route::post('payments', [PurchasePaymentController::class, 'store']);
+            Route::put('payments/{supplierPayment}', [PurchasePaymentController::class, 'update']);
+            Route::delete('payments/{supplierPayment}', [PurchasePaymentController::class, 'destroy']);
         });
     });
 });

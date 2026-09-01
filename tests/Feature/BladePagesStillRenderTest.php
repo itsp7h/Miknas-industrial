@@ -42,6 +42,7 @@ class BladePagesStillRenderTest extends TestCase
             '/app/purchase/orders',
             '/app/purchase/grns',
             '/app/purchase/invoices',
+            '/app/purchase/payments',
             '/app/inventory/items',
             '/app/inventory/warehouses',
             '/app/inventory/movements',
@@ -95,6 +96,10 @@ class BladePagesStillRenderTest extends TestCase
             '/purchase/invoices' => '/app/purchase/invoices',
             '/purchase/invoices/create' => '/app/purchase/invoices',
             '/purchase/invoices/7' => '/app/purchase/invoices',
+            '/purchase/payments' => '/app/purchase/payments',
+            '/purchase/payments/create' => '/app/purchase/payments',
+            '/purchase/payments/create?invoice_id=9' => '/app/purchase/payments?invoice_id=9',
+            '/purchase/payments/7' => '/app/purchase/payments',
         ] as $from => $to) {
             $this->actingAs($user)->get($from)->assertRedirect($to);
         }

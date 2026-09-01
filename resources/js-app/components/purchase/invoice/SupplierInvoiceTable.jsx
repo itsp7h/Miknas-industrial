@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { STATUS_LABELS, badgeClassFor, formatDate, money } from './invoiceStyles';
 
 /** The Blade supplier-invoices table, same classes and column alignment. */
@@ -46,8 +47,7 @@ export default function SupplierInvoiceTable({ invoices, onEdit, onDelete }) {
                                 </td>
                                 <td>
                                     <div className="flex items-center gap-2">
-                                        {/* Payments are still Blade, so this stays a real navigation. */}
-                                        <a href={`/purchase/payments/create?invoice_id=${invoice.id}`} className="btn-success btn-sm">Pay</a>
+                                        <Link to={`/app/purchase/payments?invoice_id=${invoice.id}`} className="btn-success btn-sm">Pay</Link>
                                         <button type="button" onClick={() => onEdit(invoice)} className="btn-secondary btn-sm">Edit</button>
                                         <button type="button" onClick={() => onDelete(invoice)} className="btn-danger btn-sm">Delete</button>
                                     </div>
