@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Settings;
+namespace Tests\Feature\Api\Settings;
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -9,23 +9,41 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
-class UserManagementControllerTest extends TestCase
+/**
+ * Ported from the deleted Blade UserManagementController: same behaviour, same
+ * guards, now against /api/v1/settings/users.
+ */
+class UserControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_non_admin_cannot_view_the_users_page(): void
+    public function test_the_endpoints_require_an_admin(): void
     {
-        $user = User::factory()->create();
+        $this->getJson('/api/v1/settings/users')->assertUnauthorized();
 
-        $this->actingAs($user)->get(route('settings.users.index'))->assertForbidden();
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/v1/settings/users')->assertForbidden();
     }
 
-    public function test_admin_can_view_the_users_page(): void
+    public function test_it_lists_users_with_their_roles_permissions_and_the_pickers(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['name' => 'Zoe Admin']);
         $admin->assignRole('Admin');
+        $requester = User::factory()->create(['name' => 'Alan Requester']);
+        $requester->assignRole('Requester');
+        $requester->givePermissionTo('purchase-requests.view-all');
 
-        $this->actingAs($admin)->get(route('settings.users.index'))->assertOk();
+        $response = $this->actingAs($admin)->getJson('/api/v1/settings/users')->assertOk();
+
+        // Alphabetical, as the page listed them.
+        $this->assertSame(['Alan Requester', 'Zoe Admin'], array_column($response->json('data'), 'name'));
+        $this->assertSame(['Requester'], $response->json('data.0.roles'));
+        $this->assertSame(['purchase-requests.view-all'], $response->json('data.0.permissions'));
+
+        // The role checkboxes and the permission toggles are both driven by this.
+        $this->assertContains('Admin', $response->json('roles'));
+        $this->assertSame('purchase-requests.create', $response->json('permissions.0.name'));
+        $this->assertSame('Create purchase requests', $response->json('permissions.0.label'));
     }
 
     public function test_admin_can_assign_a_profile_to_a_user(): void
@@ -34,7 +52,7 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
         $target = User::factory()->create();
 
-        $response = $this->actingAs($admin)->patchJson(route('settings.users.update', $target), [
+        $response = $this->actingAs($admin)->putJson("/api/v1/settings/users/{$target->id}", [
             'roles' => ['Requester'],
             'permissions' => [],
         ]);
@@ -49,7 +67,7 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
         $target = User::factory()->create();
 
-        $this->actingAs($admin)->patchJson(route('settings.users.update', $target), [
+        $this->actingAs($admin)->putJson("/api/v1/settings/users/{$target->id}", [
             'roles' => [],
             'permissions' => ['purchase-requests.view-all'],
         ]);
@@ -64,7 +82,7 @@ class UserManagementControllerTest extends TestCase
         $target = User::factory()->create();
         $target->givePermissionTo('purchase-requests.view-all');
 
-        $this->actingAs($admin)->patchJson(route('settings.users.update', $target), [
+        $this->actingAs($admin)->putJson("/api/v1/settings/users/{$target->id}", [
             'roles' => ['Requester'],
             'permissions' => ['purchase-requests.view-all'],
         ]);
@@ -79,7 +97,7 @@ class UserManagementControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $response = $this->actingAs($admin)->patchJson(route('settings.users.update', $admin), [
+        $response = $this->actingAs($admin)->putJson("/api/v1/settings/users/{$admin->id}", [
             'roles' => [],
             'permissions' => [],
         ]);
@@ -93,7 +111,7 @@ class UserManagementControllerTest extends TestCase
         $user = User::factory()->create();
         $target = User::factory()->create();
 
-        $this->actingAs($user)->patchJson(route('settings.users.update', $target), [
+        $this->actingAs($user)->putJson("/api/v1/settings/users/{$target->id}", [
             'roles' => ['Requester'],
             'permissions' => [],
         ])->assertForbidden();
@@ -103,7 +121,7 @@ class UserManagementControllerTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->postJson(route('settings.users.store'), [
+        $this->actingAs($user)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'new@example.test',
         ])->assertForbidden();
@@ -116,7 +134,7 @@ class UserManagementControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $response = $this->actingAs($admin)->postJson(route('settings.users.store'), [
+        $response = $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'new@example.test',
             'roles' => ['Requester'],
@@ -140,7 +158,7 @@ class UserManagementControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $response = $this->actingAs($admin)->postJson(route('settings.users.store'), [
+        $response = $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'manual@example.test',
             'roles' => ['Requester'],
@@ -166,7 +184,7 @@ class UserManagementControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'badmode@example.test',
             'mode' => 'foo',
@@ -180,7 +198,7 @@ class UserManagementControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'shortpass@example.test',
             'mode' => 'password',
@@ -194,7 +212,7 @@ class UserManagementControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'mismatch@example.test',
             'mode' => 'password',
@@ -208,7 +226,7 @@ class UserManagementControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'nopassword@example.test',
             'mode' => 'password',
@@ -221,10 +239,31 @@ class UserManagementControllerTest extends TestCase
         $admin->assignRole('Admin');
         User::factory()->create(['email' => 'taken@example.test']);
 
-        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'taken@example.test',
         ])->assertStatus(422);
+    }
+
+    /**
+     * `prohibited` rather than ignored: a password sent in email mode is a
+     * mistake, and swallowing it would leave the admin believing they had set
+     * one when a setup link went out instead.
+     */
+    public function test_a_password_sent_in_email_mode_is_rejected(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
+            'name' => 'New Person',
+            'email' => 'confused@example.test',
+            'mode' => 'email',
+            'password' => 'CorrectHorseBattery9!',
+            'password_confirmation' => 'CorrectHorseBattery9!',
+        ])->assertStatus(422)->assertJsonValidationErrors('password');
+
+        $this->assertDatabaseMissing('users', ['email' => 'confused@example.test']);
     }
 
     public function test_creating_a_user_with_an_uppercase_email_fails_validation(): void
@@ -232,7 +271,7 @@ class UserManagementControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $this->actingAs($admin)->postJson(route('settings.users.store'), [
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'Mixed@Example.com',
         ])->assertStatus(422)->assertJsonValidationErrors('email');

@@ -286,7 +286,8 @@
                 </svg>
                 Projects
             </a>
-            <a href="{{ route('settings.users.index') }}" style="
+            {{-- Users lives in the React shell now. --}}
+            <a href="/app/settings/users" style="
                 display:flex; align-items:center; gap:8px;
                 padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
                 font-size:13px; text-decoration:none;

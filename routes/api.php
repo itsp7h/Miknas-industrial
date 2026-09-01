@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\Sales\SalesInvoiceController;
 use App\Http\Controllers\Api\Sales\SalesOrderController;
 use App\Http\Controllers\Api\Settings\CompanyController;
 use App\Http\Controllers\Api\Settings\ProjectController;
+use App\Http\Controllers\Api\Settings\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -142,6 +143,10 @@ Route::prefix('v1')->group(function () {
             Route::post('projects/{project}/locations', [ProjectController::class, 'storeLocation']);
             Route::put('projects/{project}/locations/{location}', [ProjectController::class, 'updateLocation']);
             Route::delete('projects/{project}/locations/{location}', [ProjectController::class, 'destroyLocation']);
+
+            Route::get('users', [UserController::class, 'index']);
+            Route::post('users', [UserController::class, 'store']);
+            Route::put('users/{user}', [UserController::class, 'update']);
         });
 
         Route::prefix('purchase')->group(function () {

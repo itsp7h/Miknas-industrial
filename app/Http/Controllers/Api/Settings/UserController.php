@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings;
+namespace App\Http\Controllers\Api\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -11,17 +11,20 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Spatie\Permission\Models\Role;
 
-class UserManagementController extends Controller
+class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with(['roles', 'permissions'])->orderBy('name')->get();
-        $roles = Role::orderBy('name')->pluck('name');
-        $permissions = collect(config('purchase_access.permissions'))
-            ->map(fn ($label, $name) => ['name' => $name, 'label' => $label])
-            ->values();
-
-        return view('settings.users.index', compact('users', 'roles', 'permissions'));
+        return response()->json([
+            'data' => User::with(['roles', 'permissions'])->orderBy('name')->get()
+                ->map(fn (User $user) => $this->payload($user))->values(),
+            'roles' => Role::orderBy('name')->pluck('name'),
+            // Label and name both travel: the page shows the label and posts
+            // the name.
+            'permissions' => collect(config('purchase_access.permissions'))
+                ->map(fn ($label, $name) => ['name' => $name, 'label' => $label])
+                ->values(),
+        ]);
     }
 
     public function store(Request $request)
@@ -34,6 +37,9 @@ class UserManagementController extends Controller
             'roles' => ['array'],
             'roles.*' => ['string', 'exists:roles,name'],
             'mode' => ['nullable', Rule::in(['email', 'password'])],
+            // `prohibited` rather than `nullable`: in email mode a password in
+            // the request is a mistake, and silently ignoring it would leave the
+            // admin thinking they had set one.
             'password' => $mode === 'password'
                 ? ['required', 'confirmed', Rules\Password::defaults()]
                 : ['prohibited'],
@@ -42,6 +48,8 @@ class UserManagementController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            // An unguessable placeholder, replaced when they follow the setup
+            // link. Never a known default.
             'password' => $mode === 'password' ? $validated['password'] : Str::random(40),
         ]);
 
@@ -60,13 +68,7 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => $message,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->roles->pluck('name'),
-                'permissions' => $user->permissions->pluck('name'),
-            ],
+            'data' => $this->payload($user->load(['roles', 'permissions'])),
         ], 201);
     }
 
@@ -79,6 +81,8 @@ class UserManagementController extends Controller
             'permissions.*' => ['string', 'exists:permissions,name'],
         ]);
 
+        // Otherwise an admin can lock themselves — and possibly everyone — out
+        // of this page.
         if (
             $request->user()->id === $user->id
             && $user->hasRole('Admin')
@@ -92,8 +96,18 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => 'Access updated for '.$user->name.'.',
+            'data' => $this->payload($user->load(['roles', 'permissions'])),
+        ]);
+    }
+
+    private function payload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
             'roles' => $user->roles->pluck('name'),
             'permissions' => $user->permissions->pluck('name'),
-        ]);
+        ];
     }
 }

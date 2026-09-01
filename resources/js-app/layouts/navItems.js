@@ -76,7 +76,7 @@ export const NAV_GROUPS = [
         items: [
             { type: 'link', to: '/app/settings/companies', label: 'Companies', icon: BUILDING },
             { type: 'link', to: '/app/settings/projects', label: 'Projects', icon: FOLDER },
-            { type: 'href', to: '/settings/users', label: 'Users', icon: USERS },
+            { type: 'link', to: '/app/settings/users', label: 'Users', icon: USERS },
             { type: 'href', to: '/settings/integrations', label: 'Integrations', icon: COG },
             { type: 'href', to: '/settings/vat', label: 'VAT Settings', icon: RECEIPT },
         ],

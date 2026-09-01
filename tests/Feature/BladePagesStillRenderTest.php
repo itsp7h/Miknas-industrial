@@ -90,6 +90,7 @@ class BladePagesStillRenderTest extends TestCase
 
         $response->assertSee('/app/settings/companies', false);
         $response->assertSee('/app/settings/projects', false);
+        $response->assertSee('/app/settings/users', false);
     }
 
     public function test_the_old_settings_urls_redirect_into_the_react_shell(): void
@@ -99,6 +100,7 @@ class BladePagesStillRenderTest extends TestCase
 
         $this->actingAs($admin)->get('/settings/projects')->assertRedirect('/app/settings/companies');
         $this->actingAs($admin)->get('/settings/projects-overview')->assertRedirect('/app/settings/projects');
+        $this->actingAs($admin)->get('/settings/users')->assertRedirect('/app/settings/users');
     }
 
     /**
@@ -167,7 +169,7 @@ class BladePagesStillRenderTest extends TestCase
     public function test_the_project_settings_writes_moved_to_the_api(): void
     {
         foreach (['settings.projects.store', 'settings.projects.import', 'settings.projects.template',
-            'settings.projects.locations.store'] as $name) {
+            'settings.projects.locations.store', 'settings.users.store', 'settings.users.update'] as $name) {
             $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");
         }
     }

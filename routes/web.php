@@ -10,7 +10,6 @@ use App\Http\Controllers\Purchase\PurchaseSignatureController;
 use App\Http\Controllers\Purchase\RfqController;
 use App\Http\Controllers\Purchase\RfqPortalController;
 use App\Http\Controllers\Purchase\SupplierQuoteController;
-use App\Http\Controllers\Settings\UserManagementController;
 use App\Http\Controllers\Settings\VatSettingController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Http\Request;
@@ -149,10 +148,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('settings/vat', [VatSettingController::class, 'index'])->name('settings.vat');
         Route::post('settings/vat', [VatSettingController::class, 'update'])->name('settings.vat.update');
 
-        // User management
-        Route::get('settings/users', [UserManagementController::class, 'index'])->name('settings.users.index');
-        Route::post('settings/users', [UserManagementController::class, 'store'])->name('settings.users.store');
-        Route::patch('settings/users/{user}', [UserManagementController::class, 'update'])->name('settings.users.update');
+        // User management is served by the React shell at /app/settings/users;
+        // its endpoints live in routes/api.php.
+        Route::redirect('settings/users', '/app/settings/users')->name('settings.users.index');
     });
 
     // React SPA shell (catch-all — must stay last so it never shadows a more specific route)
