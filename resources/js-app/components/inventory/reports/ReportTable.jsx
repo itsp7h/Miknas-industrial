@@ -12,6 +12,7 @@ export default function ReportTable({
     rows,
     noun = 'rows',
     rowClassName,
+    footer,
     emptyMessage = 'No data available.',
 }) {
     const [query, setQuery] = useState('');
@@ -86,6 +87,7 @@ export default function ReportTable({
                             </tr>
                         ))}
                     </tbody>
+                    {footer && filtered.length > 0 && footer(filtered)}
                 </table>
             </div>
         </div>

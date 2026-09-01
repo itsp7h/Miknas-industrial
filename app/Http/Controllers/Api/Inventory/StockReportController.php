@@ -109,24 +109,36 @@ class StockReportController extends Controller
         ]);
     }
 
+    /**
+     * Grouped per item, not per stock line: the Blade report's headers read
+     * "Total Qty" and "Total Value" and it carried no warehouse column, so it
+     * was a per-item valuation. The per-warehouse split lives on the stock
+     * summary report.
+     *
+     * (That Blade view never actually rendered these figures — it read
+     * $row->total_qty / $row->total_value / $row->category / $grandTotal, none
+     * of which its controller provided, so every row showed 0.00 with a blank
+     * category and the grand-total footer never appeared.)
+     */
     public function valuation()
     {
         $rows = StockLevel::join('items', 'items.id', '=', 'stock_levels.item_id')
-            ->join('warehouses', 'warehouses.id', '=', 'stock_levels.warehouse_id')
+            ->groupBy('items.id', 'items.item_code', 'items.item_name', 'items.category', 'items.cost_price')
             ->select(
-                'stock_levels.id as id',
+                'items.id as id',
                 'items.item_code',
                 'items.item_name',
-                'warehouses.name as warehouse_name',
-                'stock_levels.quantity',
+                'items.category',
                 'items.cost_price',
-                DB::raw('stock_levels.quantity * items.cost_price as valuation')
+                DB::raw('SUM(stock_levels.quantity) as total_qty'),
+                DB::raw('SUM(stock_levels.quantity) * items.cost_price as total_value')
             )
+            ->orderBy('items.item_name')
             ->get();
 
         return response()->json([
             'data' => $rows,
-            'meta' => ['total_valuation' => round((float) $rows->sum('valuation'), 2)],
+            'meta' => ['total_valuation' => round((float) $rows->sum('total_value'), 2)],
         ]);
     }
 }

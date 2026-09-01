@@ -7,7 +7,7 @@ import ReportTable from './ReportTable';
  */
 export default function DesktopReport({
     title, subtitle, summary, columns, rows, loading,
-    emptyMessage, noun = 'lines', rowClassName, children, emptyTone,
+    emptyMessage, noun = 'lines', rowClassName, footer, children, emptyTone,
 }) {
     return (
         <div>
@@ -50,6 +50,7 @@ export default function DesktopReport({
                     rows={rows}
                     noun={noun}
                     rowClassName={rowClassName}
+                    footer={footer}
                     emptyMessage={emptyMessage}
                 />
             )}

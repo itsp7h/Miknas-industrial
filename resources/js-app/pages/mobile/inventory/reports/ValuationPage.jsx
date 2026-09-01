@@ -1,8 +1,7 @@
 import MobileReport from '../../../../components/inventory/reports/MobileReport';
 import useReport from '../../../../components/inventory/reports/useReport';
-
-const money = (value) => Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const SEARCH_KEYS = ['item_code', 'item_name', 'warehouse_name'];
+import { num } from '../../../../components/inventory/reports/valuationColumns';
+import { categoryBadgeClass, categoryLabel } from '../../../../components/inventory/item/itemStyles';
 
 export default function ValuationPage() {
     const { rows, meta, loading } = useReport('/inventory/reports/valuation', {
@@ -11,24 +10,30 @@ export default function ValuationPage() {
 
     return (
         <MobileReport
-            title="Stock Valuation"
-            summary={[
-                { label: 'Stock lines', value: rows.length },
-                { label: 'Total value', value: money(meta.total_valuation) },
-            ]}
+            title="Inventory Valuation"
+            subtitle="Total value of current stock"
+            // A card list has no footer row, so the grand total leads instead.
+            summary={[{ label: 'Grand total', value: num(meta.total_valuation), tone: '#1d4ed8' }]}
             rows={rows}
             loading={loading}
-            searchKeys={SEARCH_KEYS}
-            emptyMessage="Nothing to value — no stock on hand."
+            searchKeys={['item_code', 'item_name']}
+            emptyMessage="No valuation data available."
             renderCard={(row) => (
                 <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                        <span style={{ fontWeight: 600 }}>{row.item_name}</span>
-                        <span style={{ fontWeight: 700 }}>{money(row.valuation)}</span>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a' }}>{row.item_name}</div>
+                            <div className="font-mono" style={{ fontSize: 11, color: '#94a3b8' }}>{row.item_code}</div>
+                        </div>
+                        <div style={{ fontWeight: 700, color: '#1d4ed8', flexShrink: 0 }}>{num(row.total_value)}</div>
                     </div>
-                    <div style={{ fontSize: 13, color: '#64748b' }}>{row.warehouse_name}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                        {row.quantity} × {money(row.cost_price)}
+
+                    <div style={{ marginTop: 6 }}>
+                        <span className={categoryBadgeClass(row.category)}>{categoryLabel(row.category)}</span>
+                    </div>
+
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
+                        {num(row.total_qty)} × {num(row.cost_price)}
                     </div>
                 </>
             )}

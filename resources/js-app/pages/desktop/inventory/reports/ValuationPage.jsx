@@ -1,33 +1,24 @@
 import DesktopReport from '../../../../components/inventory/reports/DesktopReport';
 import useReport from '../../../../components/inventory/reports/useReport';
-
-const money = (value) => Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const COLUMNS = [
-    { key: 'item_code', label: 'Code' },
-    { key: 'item_name', label: 'Item' },
-    { key: 'warehouse_name', label: 'Warehouse' },
-    { key: 'quantity', label: 'Quantity' },
-    { key: 'cost_price', label: 'Cost', render: (row) => money(row.cost_price) },
-    { key: 'valuation', label: 'Value', render: (row) => <strong>{money(row.valuation)}</strong> },
-];
+import { VALUATION_COLUMNS, valuationFooter } from '../../../../components/inventory/reports/valuationColumns';
 
 export default function ValuationPage() {
-    const { rows, meta, loading } = useReport('/inventory/reports/valuation', {
+    const { rows, loading } = useReport('/inventory/reports/valuation', {
         errorMessage: 'Failed to load the valuation report.',
     });
 
     return (
         <DesktopReport
-            title="Stock Valuation"
-            summary={[
-                { label: 'Stock lines', value: rows.length },
-                { label: 'Total value', value: money(meta.total_valuation) },
-            ]}
-            columns={COLUMNS}
+            title="Inventory Valuation"
+            subtitle="Total value of current stock"
+            columns={VALUATION_COLUMNS}
             rows={rows}
+            noun="items"
+            // The grand total is the table's own footer row, as in Blade, rather
+            // than a separate strip above it.
+            footer={valuationFooter}
             loading={loading}
-            emptyMessage="Nothing to value — no stock on hand."
+            emptyMessage="No valuation data available."
         />
     );
 }

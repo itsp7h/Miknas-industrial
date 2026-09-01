@@ -114,6 +114,30 @@ class StockReportControllerTest extends TestCase
         $this->assertEquals(310, $response->json('meta.total_valuation'));
     }
 
+    /**
+     * Grouped per item, and carrying the category the Blade view tried to badge.
+     * Its controller selected neither `total_qty` nor `category`, so that report
+     * showed 0.00 with a blank badge on every row.
+     */
+    public function test_valuation_groups_per_item_with_its_category(): void
+    {
+        // A second warehouse holding the same item must fold into one row.
+        $other = Warehouse::create(['name' => 'Annex', 'code' => 'WH-2']);
+        StockLevel::create(['item_id' => $this->rod->id, 'warehouse_id' => $other->id, 'quantity' => 6]);
+
+        $response = $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/inventory/reports/valuation')->assertOk();
+
+        $rows = collect($response->json('data'))->keyBy('item_name');
+
+        $this->assertCount(2, $rows);
+        // Rod: 4 in Main + 6 in Annex = 10, at 2.50 = 25.
+        $this->assertEquals(10, $rows['Rod']['total_qty']);
+        $this->assertEquals(25, $rows['Rod']['total_value']);
+        $this->assertSame('raw_material', $rows['Rod']['category']);
+        $this->assertEquals(325, $response->json('meta.total_valuation'));
+    }
+
     public function test_movement_report_returns_all_movements_and_the_item_filter_list(): void
     {
         $this->makeMovement($this->rod, 'in', 5);

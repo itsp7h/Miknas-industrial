@@ -63,15 +63,46 @@ describe('desktop inventory reports', () => {
         expect(await screen.findByText('All items are above minimum stock levels.')).toBeInTheDocument();
     });
 
-    it('valuation formats money and shows the total', async () => {
+    /**
+     * Grouped per item now, with the Blade headers: Total Qty / Cost Price /
+     * Total Value, a category badge, and the grand total as the table's own
+     * blue footer row rather than a strip above it.
+     */
+    it('valuation formats money, badges category and totals in a footer row', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, item_code: 'ITEM-1', item_name: 'Rod', warehouse_name: 'Main', quantity: '4', cost_price: '2.5', valuation: '10' }],
+            data: [
+                { id: 1, item_code: 'ITEM-1', item_name: 'Rod', category: 'raw_material', total_qty: '4', cost_price: '2.5', total_value: '10' },
+                { id: 2, item_code: 'ITEM-2', item_name: 'Widget', category: 'finished_good', total_qty: '3', cost_price: '100', total_value: '300' },
+            ],
             meta: { total_valuation: 310 },
         });
         wrap(<ValuationPage />);
         expect(await screen.findByText('Rod')).toBeInTheDocument();
-        expect(screen.getByText('310.00')).toBeInTheDocument();
+
         expect(screen.getByText('2.50')).toBeInTheDocument();
+        expect(screen.getByText('Raw Material')).toHaveClass('badge-blue');
+
+        // The footer totals the rows shown, so it stays truthful under search.
+        expect(screen.getByText('Grand Total')).toBeInTheDocument();
+        expect(screen.getByText('310.00')).toBeInTheDocument();
+    });
+
+    it('valuation re-totals the footer when a search narrows the table', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [
+                { id: 1, item_code: 'ITEM-1', item_name: 'Rod', category: 'raw_material', total_qty: '4', cost_price: '2.5', total_value: '10' },
+                { id: 2, item_code: 'ITEM-2', item_name: 'Widget', category: 'finished_good', total_qty: '3', cost_price: '100', total_value: '300' },
+            ],
+            meta: { total_valuation: 310 },
+        });
+        wrap(<ValuationPage />);
+        await screen.findByText('Rod');
+
+        fireEvent.change(screen.getByLabelText('Search items'), { target: { value: 'widget' } });
+
+        // 300.00 twice: the surviving row, and the footer now totalling only it.
+        expect(screen.getAllByText('300.00')).toHaveLength(2);
+        expect(screen.queryByText('310.00')).not.toBeInTheDocument();
     });
 
     // The date/item filters narrow server-side, so applying them must re-query

@@ -461,6 +461,20 @@ This project is migrating from Blade/Alpine to a React SPA (`resources/js-app/`)
 - **Full cutover per module, no coexistence.** When converting a module to React, delete its Blade controllers/routes/views in the same change — never leave old and new versions of the same page both linked in the sidebar. (Lesson from commit `575eb7a`: a side-by-side React Suppliers page caused two confusing sidebar entries and was reverted.)
 - **Migration order:** Foundation/shell → Purchase → Inventory → Production → Sales. Each module is its own phase with its own spec.
 
+**A page being React is not the same as it being ported.** The Inventory, Sales
+and Production modules were cut over to React in one sweep each (`0aaad1b`,
+`8cb2cc9`, `c494fbe`, `d6ae2f2`, `5834b68`), built on the generic `Card` +
+`Table` primitives rather than reproducing the Blade page each replaced. The
+result renders the right data with the wrong design — green primaries where
+Blade used blue `.btn-primary`, `Yes`/`No` where Blade badged, text links where
+Blade used `.btn-sm`, missing page headers and subtitles — and in several cases
+dropped real function (a whole column, a drag-and-drop import, low-stock
+signalling). When touching one of these pages, recover its Blade original from
+the commit that deleted it (`git log --diff-filter=D -- 'resources/views/<path>'`
+then `git show <sha>^:<path>`) and diff against it before assuming the React
+page is finished. Purchase and Inventory have been through this; **Sales and
+Production have not.**
+
 **Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales. Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry), all of Settings, Profile, and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
 
 **The cutover checklist** (each step is a way a cutover has broken before):
