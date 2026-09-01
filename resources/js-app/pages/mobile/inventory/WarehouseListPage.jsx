@@ -1,112 +1,86 @@
-import { useMemo, useState } from 'react';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
 import WarehouseForm from '../../../components/inventory/warehouse/WarehouseForm';
-import useLiveList from '../../../hooks/useLiveList';
-import { apiDelete } from '../../../api/client';
-import { useToast } from '../../../components/ui/Toast';
+import useWarehouseList from '../../../components/inventory/warehouse/useWarehouseList';
 
 export default function WarehouseListPage() {
-    const { items: warehouses, upsertItem, removeItem, refetch } = useLiveList({
-        endpoint: '/inventory/warehouses',
-        channel: 'inventory',
-        event: '.warehouse.saved',
-        deleteEvent: '.warehouse.deleted',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load warehouses.',
-    });
-    const [query, setQuery] = useState('');
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState(null);
-    const [deleting, setDeleting] = useState(null);
-    const { showToast } = useToast();
-
-    const filtered = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return warehouses;
-        return warehouses.filter((w) =>
-            [w.code, w.name, w.location].some((field) => String(field ?? '').toLowerCase().includes(q))
-        );
-    }, [warehouses, query]);
-
-    function handleSaved(warehouse) {
-        upsertItem(warehouse);
-        setModalOpen(false);
-        showToast('Warehouse saved.', 'success');
-    }
-
-    async function handleDeleteConfirmed() {
-        const warehouse = deleting;
-        setDeleting(null);
-        try {
-            const result = await apiDelete(`/inventory/warehouses/${warehouse.id}`);
-            if (result.deactivated) {
-                showToast(result.message, 'info');
-                await refetch();
-            } else {
-                removeItem(warehouse.id);
-                showToast('Warehouse deleted.', 'success');
-            }
-        } catch (err) {
-            showToast(err.message || 'Failed to delete warehouse.', 'error');
-        }
-    }
+    const w = useWarehouseList();
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h1 style={{ fontSize: 18, fontWeight: 700 }}>Warehouses</h1>
-                <Button onClick={() => { setEditing(null); setModalOpen(true); }}>New</Button>
+            <div style={{ marginBottom: 12 }}>
+                <h1 className="page-title">Warehouses</h1>
+                <p className="page-subtitle">Manage storage locations</p>
             </div>
+
+            <button
+                type="button" onClick={w.openCreate} className="btn-primary"
+                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+            >
+                + Add Warehouse
+            </button>
 
             <div style={{ marginBottom: 12 }}>
                 <input
                     type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search warehouses…"
+                    value={w.query}
+                    onChange={(e) => w.setQuery(e.target.value)}
+                    placeholder="Search code, name, location…"
                     aria-label="Search warehouses"
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
                 />
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    {query ? `${filtered.length} of ${warehouses.length} warehouses` : `${warehouses.length} warehouses`}
+                    {w.query ? `${w.filtered.length} of ${w.warehouses.length} warehouses` : `${w.warehouses.length} warehouses`}
                 </div>
             </div>
 
-            {filtered.length === 0 && (
+            {w.filtered.length === 0 && (
                 <p style={{ fontSize: 14, color: '#64748b' }}>
-                    {query ? 'No warehouses match that search.' : 'No warehouses yet.'}
+                    {w.query ? 'No warehouses match that search.' : 'No warehouses found.'}
                 </p>
             )}
 
-            {filtered.map((warehouse) => (
-                <div key={warehouse.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                    <div onClick={() => { setEditing(warehouse); setModalOpen(true); }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                            <span style={{ fontWeight: 600 }}>{warehouse.name}</span>
-                            <span style={{ fontSize: 12, color: '#64748b' }}>{warehouse.code}</span>
+            {w.filtered.map((warehouse) => (
+                <div key={warehouse.id} style={{
+                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
+                    padding: 12, marginBottom: 8,
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14 }}>{warehouse.name}</div>
+                            <div className="font-mono" style={{ fontSize: 11, color: '#94a3b8' }}>{warehouse.code}</div>
                         </div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>{warehouse.location || '—'}</div>
-                        <div style={{ fontSize: 12, color: warehouse.is_active ? '#16a34a' : '#dc2626' }}>
+                        <span className={warehouse.is_active ? 'badge-green' : 'badge-gray'} style={{ flexShrink: 0 }}>
                             {warehouse.is_active ? 'Active' : 'Inactive'}
-                        </div>
+                        </span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                        <Button variant="link-danger" onClick={() => setDeleting(warehouse)}>Delete</Button>
+
+                    {warehouse.location && (
+                        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{warehouse.location}</div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                        <button type="button" onClick={() => w.openEdit(warehouse)} className="btn-secondary btn-sm">Edit</button>
+                        <button type="button" onClick={() => w.setDeleting(warehouse)} className="btn-danger btn-sm">Delete</button>
                     </div>
                 </div>
             ))}
 
-            <Modal open={modalOpen} title={editing ? 'Edit Warehouse' : 'New Warehouse'} onClose={() => setModalOpen(false)}>
-                <WarehouseForm warehouse={editing} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <Modal
+                open={w.modalOpen}
+                title={w.editing ? `Edit ${w.editing.name}` : 'New Warehouse'}
+                onClose={() => w.setModalOpen(false)}
+            >
+                <WarehouseForm warehouse={w.editing} onSaved={w.handleSaved} onCancel={() => w.setModalOpen(false)} />
             </Modal>
             <ConfirmModal
-                open={!!deleting}
-                title="Delete warehouse?"
-                body={deleting ? `This will permanently remove "${deleting.name}". Warehouses holding stock are deactivated instead.` : ''}
-                onConfirm={handleDeleteConfirmed}
-                onCancel={() => setDeleting(null)}
+                open={!!w.deleting}
+                title="Delete this warehouse?"
+                body={w.deleting
+                    ? `"${w.deleting.name}" will be permanently removed. A warehouse holding stock is deactivated instead.`
+                    : ''}
+                onConfirm={w.handleDeleteConfirmed}
+                onCancel={() => w.setDeleting(null)}
             />
         </div>
     );

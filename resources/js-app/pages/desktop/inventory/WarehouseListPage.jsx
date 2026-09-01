@@ -1,86 +1,63 @@
-import { useMemo, useState } from 'react';
-import Card from '../../../components/ui/Card';
-import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
 import WarehouseForm from '../../../components/inventory/warehouse/WarehouseForm';
-import useLiveList from '../../../hooks/useLiveList';
-import { apiDelete } from '../../../api/client';
-import { useToast } from '../../../components/ui/Toast';
+import WarehouseTable from '../../../components/inventory/warehouse/WarehouseTable';
+import useWarehouseList from '../../../components/inventory/warehouse/useWarehouseList';
 
 export default function WarehouseListPage() {
-    const { items: warehouses, upsertItem, removeItem, refetch } = useLiveList({
-        endpoint: '/inventory/warehouses',
-        channel: 'inventory',
-        event: '.warehouse.saved',
-        deleteEvent: '.warehouse.deleted',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load warehouses.',
-    });
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState(null);
-    const [deleting, setDeleting] = useState(null);
-    const { showToast } = useToast();
-
-    function handleSaved(warehouse) {
-        upsertItem(warehouse);
-        setModalOpen(false);
-        showToast('Warehouse saved.', 'success');
-    }
-
-    async function handleDeleteConfirmed() {
-        const warehouse = deleting;
-        setDeleting(null);
-        try {
-            const result = await apiDelete(`/inventory/warehouses/${warehouse.id}`);
-            if (result.deactivated) {
-                showToast(result.message, 'info');
-                await refetch();
-            } else {
-                removeItem(warehouse.id);
-                showToast('Warehouse deleted.', 'success');
-            }
-        } catch (err) {
-            showToast(err.message || 'Failed to delete warehouse.', 'error');
-        }
-    }
-
-    const columns = useMemo(() => [
-        { key: 'code', label: 'Code' },
-        { key: 'name', label: 'Name' },
-        { key: 'location', label: 'Location', render: (row) => row.location || '—' },
-        { key: 'is_active', label: 'Active', render: (row) => (row.is_active ? 'Yes' : 'No') },
-        {
-            key: 'actions',
-            label: '',
-            render: (row) => (
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <Button variant="link" onClick={() => { setEditing(row); setModalOpen(true); }}>Edit</Button>
-                    <Button variant="link-danger" onClick={() => setDeleting(row)}>Delete</Button>
-                </div>
-            ),
-        },
-    ], []);
+    const w = useWarehouseList();
 
     return (
-        <Card title="Warehouses">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <Button onClick={() => { setEditing(null); setModalOpen(true); }}>New Warehouse</Button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Warehouses</h1>
+                    <p className="page-subtitle">Manage storage locations</p>
+                </div>
+                <button type="button" onClick={w.openCreate} className="btn-primary">+ Add Warehouse</button>
             </div>
 
-            <Table columns={columns} rows={warehouses} rowKey={(row) => row.id} searchPlaceholder="Search warehouses…" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                    <svg
+                        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                        width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={w.query}
+                        onChange={(e) => w.setQuery(e.target.value)}
+                        placeholder="Search code, name, location…"
+                        aria-label="Search warehouses"
+                        autoComplete="off"
+                        style={{ padding: '8px 14px 8px 34px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13.5, width: 340, outline: 'none' }}
+                    />
+                </div>
+                <div style={{ fontSize: 12.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {w.query ? `${w.filtered.length} of ${w.warehouses.length} warehouses` : `${w.warehouses.length} warehouses`}
+                </div>
+            </div>
 
-            <Modal open={modalOpen} title={editing ? 'Edit Warehouse' : 'New Warehouse'} onClose={() => setModalOpen(false)}>
-                <WarehouseForm warehouse={editing} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <WarehouseTable warehouses={w.filtered} onEdit={w.openEdit} onDelete={w.setDeleting} />
+
+            <Modal
+                open={w.modalOpen}
+                title={w.editing ? `Edit ${w.editing.name}` : 'New Warehouse'}
+                onClose={() => w.setModalOpen(false)}
+            >
+                <WarehouseForm warehouse={w.editing} onSaved={w.handleSaved} onCancel={() => w.setModalOpen(false)} />
             </Modal>
             <ConfirmModal
-                open={!!deleting}
-                title="Delete warehouse?"
-                body={deleting ? `This will permanently remove "${deleting.name}". Warehouses holding stock are deactivated instead.` : ''}
-                onConfirm={handleDeleteConfirmed}
-                onCancel={() => setDeleting(null)}
+                open={!!w.deleting}
+                title="Delete this warehouse?"
+                body={w.deleting
+                    ? `"${w.deleting.name}" will be permanently removed. A warehouse holding stock is deactivated instead.`
+                    : ''}
+                onConfirm={w.handleDeleteConfirmed}
+                onCancel={() => w.setDeleting(null)}
             />
-        </Card>
+        </div>
     );
 }

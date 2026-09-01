@@ -39,8 +39,40 @@ describe('desktop WarehouseListPage', () => {
     it('opens the create form', async () => {
         renderPage();
         await screen.findByText('Main Store');
-        fireEvent.click(screen.getByText('New Warehouse'));
+        // Button label now matches the Blade header: "+ Add Warehouse".
+        fireEvent.click(screen.getByText('+ Add Warehouse'));
         expect(await screen.findByLabelText('Code')).toBeInTheDocument();
+    });
+
+    /**
+     * The Blade table badged status and used btn-sm row actions; the earlier
+     * React table printed Yes/No with plain text links.
+     */
+    it('badges status and renders row actions as small buttons', async () => {
+        renderPage();
+        await screen.findByText('Main Store');
+        expect(screen.getByText('Active')).toHaveClass('badge-green');
+        expect(screen.queryByText('Yes')).not.toBeInTheDocument();
+        expect(screen.getAllByText('Edit')[0]).toHaveClass('btn-secondary', 'btn-sm');
+        expect(screen.getAllByText('Delete')[0]).toHaveClass('btn-danger', 'btn-sm');
+    });
+
+    it('shows the page header and its subtitle', async () => {
+        renderPage();
+        await screen.findByText('Main Store');
+        expect(screen.getByText('Warehouses')).toHaveClass('page-title');
+        expect(screen.getByText('Manage storage locations')).toHaveClass('page-subtitle');
+    });
+
+    it('filters client-side with a live count', async () => {
+        renderPage();
+        await screen.findByText('Main Store');
+        const before = client.apiGet.mock.calls.length;
+
+        fireEvent.change(screen.getByLabelText('Search warehouses'), { target: { value: 'zzz' } });
+
+        expect(screen.getByText('No warehouses found.')).toBeInTheDocument();
+        expect(client.apiGet.mock.calls.length).toBe(before);
     });
 
     it('explains when the API deactivates instead of deleting', async () => {
