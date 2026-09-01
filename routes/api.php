@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
 use App\Http\Controllers\Api\Purchase\SupplierInvoiceController as PurchaseInvoiceController;
 use App\Http\Controllers\Api\Purchase\SupplierPaymentController as PurchasePaymentController;
+use App\Http\Controllers\Api\Purchase\SupplierQuoteController;
 use App\Http\Controllers\Api\Sales\CustomerController;
 use App\Http\Controllers\Api\Sales\DeliveryNoteController;
 use App\Http\Controllers\Api\Sales\PaymentReceiptController;
@@ -188,6 +189,12 @@ Route::prefix('v1')->group(function () {
             Route::post('pipeline/{purchaseRequest}/send-invitations', [PurchasePipelineController::class, 'sendInvitations']);
             Route::post('pipeline/{purchaseRequest}/lpo', [PurchasePipelineController::class, 'generateLpo']);
             Route::post('pipeline/{purchaseRequest}/signature', [PurchasePipelineController::class, 'storeSignature']);
+
+            // The quotes workspace: one page for "view quotes" and "compare &
+            // award", as in Blade.
+            Route::get('requests/{purchaseRequest}/quotes', [SupplierQuoteController::class, 'index']);
+            Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award', [SupplierQuoteController::class, 'award']);
+            Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unaward']);
             Route::get('suppliers', [SupplierController::class, 'index']);
             Route::post('suppliers', [SupplierController::class, 'store']);
             Route::post('suppliers/import', [SupplierController::class, 'import']);

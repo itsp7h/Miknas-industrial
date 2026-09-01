@@ -130,15 +130,17 @@ function CurrentActions({ stage, r, on }) {
             );
         case 'quoting':
             return p.manageQuotes ? (
-                <a href={`/purchase/requests/${r.id}/quotes`} style={{ ...ACTION, background: '#f59e0b', color: '#fff' }}>
+                <Link to={`/app/purchase/requests/${r.id}/quotes`} style={{ ...ACTION, background: '#f59e0b', color: '#fff' }}>
                     View Quotes ({r.supplier_quotes.length}) →
-                </a>
+                </Link>
             ) : null;
         case 'comparison':
+            // "Compare & award" was a second Blade URL onto the same workspace;
+            // one React route serves both.
             return p.manageQuotes ? (
-                <a href={`/purchase/requests/${r.id}/compare`} style={{ ...ACTION, background: '#f59e0b', color: '#fff' }}>
+                <Link to={`/app/purchase/requests/${r.id}/quotes`} style={{ ...ACTION, background: '#f59e0b', color: '#fff' }}>
                     Compare &amp; Award →
-                </a>
+                </Link>
             ) : null;
         case 'lpo':
             if (r.purchase_orders.length) {
@@ -180,11 +182,11 @@ function DoneActions({ stage, r, on }) {
             return <ActionButton onClick={() => on('view-suppliers')} style={VIEW}><EyeIcon /> View Suppliers</ActionButton>;
         case 'quoting':
             return p.manageQuotes
-                ? <a href={`/purchase/requests/${r.id}/quotes`} style={VIEW}><EyeIcon /> View Quotes ({r.supplier_quotes.length})</a>
+                ? <Link to={`/app/purchase/requests/${r.id}/quotes`} style={VIEW}><EyeIcon /> View Quotes ({r.supplier_quotes.length})</Link>
                 : null;
         case 'comparison':
             return p.manageQuotes
-                ? <a href={`/purchase/requests/${r.id}/compare`} style={VIEW}><EyeIcon /> View Comparison</a>
+                ? <Link to={`/app/purchase/requests/${r.id}/quotes`} style={VIEW}><EyeIcon /> View Comparison</Link>
                 : null;
         case 'lpo': {
             if (!r.purchase_orders.length) return null;

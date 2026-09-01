@@ -5,7 +5,6 @@ use App\Http\Controllers\Purchase\PurchaseRequestController;
 use App\Http\Controllers\Purchase\PurchaseSignatureController;
 use App\Http\Controllers\Purchase\RfqController;
 use App\Http\Controllers\Purchase\RfqPortalController;
-use App\Http\Controllers\Purchase\SupplierQuoteController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -73,11 +72,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('requests/{purchaseRequest}/rfq', [RfqController::class, 'show'])->name('requests.rfq');
         Route::post('requests/{purchaseRequest}/rfq', [RfqController::class, 'store'])->name('requests.rfq.store');
 
-        // Quotes
-        Route::get('requests/{purchaseRequest}/quotes', [SupplierQuoteController::class, 'index'])->name('requests.quotes');
-        Route::get('requests/{purchaseRequest}/compare', [SupplierQuoteController::class, 'compare'])->name('requests.compare');
-        Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award', [SupplierQuoteController::class, 'awardItem'])->name('requests.quotes.items.award');
-        Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unawardItem'])->name('requests.quotes.items.unaward');
+        // The quotes workspace is React now — one page for both of the old URLs,
+        // with the award writes in routes/api.php. Both redirect, since either
+        // could have been bookmarked.
+        Route::get('requests/{purchaseRequest}/quotes', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}/quotes"))
+            ->whereNumber('purchaseRequest')->name('requests.quotes');
+        Route::get('requests/{purchaseRequest}/compare', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}/quotes"))
+            ->whereNumber('purchaseRequest')->name('requests.compare');
 
         Route::resource('requests', PurchaseRequestController::class)->parameters(['requests' => 'purchaseRequest']);
         Route::patch('requests/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('requests.approve');

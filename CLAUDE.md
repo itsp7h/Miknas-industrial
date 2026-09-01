@@ -93,7 +93,8 @@ Api/                              ← the React SPA's JSON API
   NotificationController.php      ProfileController.php
   Purchase/  SupplierController, PurchaseOrderController,
              GoodsReceiptNoteController, SupplierInvoiceController,
-             SupplierPaymentController, PurchasePipelineController
+             SupplierPaymentController, PurchasePipelineController,
+             SupplierQuoteController (quotes workspace, award/unaward)
   Inventory/ ItemController (import, template, exportPdf), WarehouseController,
              StockMovementController, StockReportController
              (summary, movement, lowStock, valuation)
@@ -115,8 +116,6 @@ Auth/                             (Breeze defaults, session-establishing)
 
 Purchase/                         ← the RFQ workflow, still Blade
   PurchaseRequestController.php   + approve, reject, print
-  PurchasePipelineController.php  request detail
-  SupplierQuoteController.php     quotes workspace, award/unaward
   RfqController.php               supplier selection, send
   PurchaseSignatureController.php GM signature
   RfqPortalController.php         ← public, token-based, no auth
@@ -209,9 +208,8 @@ GET  purchase/requests/{purchaseRequest}/print    MPR document
 POST purchase/requests/{purchaseRequest}/generate-lpo
 GET  purchase/pipeline/{purchaseRequest}          request detail
 GET/POST purchase/requests/{purchaseRequest}/rfq  + /rfq/select, /rfq/send-all
-GET  purchase/requests/{purchaseRequest}/quotes   quotes workspace
-GET  purchase/requests/{purchaseRequest}/compare
-POST purchase/requests/{purchaseRequest}/quotes/items/{quoteItem}/award|unaward
+GET  purchase/requests/{purchaseRequest}/quotes   → redirect to /app/…/quotes
+GET  purchase/requests/{purchaseRequest}/compare  → redirect to the same page
 GET/POST purchase/requests/{purchaseRequest}/sign GM signature
 GET  purchase/orders/{order}/print|pdf            LPO documents (DomPDF)
 GET/POST rfq/{token}                              public portal, no auth
@@ -242,14 +240,11 @@ components/                the 6 Breeze partials the auth pages still use:
                            input-label, primary-button, text-input
 
 ── Still to migrate: the RFQ workflow ──────────────────────────────────────
-purchase/pipeline/show     request detail (977 lines)
-purchase/quotes/workspace  quotes + award (559)
 purchase/requests/         create, edit, show
 purchase/rfq/show          supplier selection
 purchase/signature/show    GM signature
 components/purchase/       request-modal, edit-request-modal,
-                           supplier-select-modal, view-rfq-modal,
-                           select-grn-modal, supplier-invite-list
+                           supplier-invite-list
 
 ── Blade permanently ───────────────────────────────────────────────────────
 purchase/orders/print, purchase/orders/pdf      LPO documents (DomPDF)
@@ -465,7 +460,7 @@ page is finished. Every module has now been through this — Purchase, Inventory
 Production and Sales — so a React page here should be treated as ported, not
 merely present.
 
-**Where the migration stands.** React (desktop + mobile pair each): Dashboard (`/app`, and `/dashboard` redirects to it), Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry) and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard (`/app`, and `/dashboard` redirects to it), Purchase Pipeline board **and detail**, the **supplier quotes workspace** (`/app/purchase/requests/{id}/quotes`, which the old `/quotes` and `/compare` Blade URLs both redirect to), Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). Still Blade: the rest of Purchase (requests, RFQ, signature — the RFQ workflow, none of which has a sidebar entry) and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
 
 **The cutover checklist** (each step is a way a cutover has broken before):
 1. Add the `Api/` controller, an `App\Http\Resources\` resource, and `…Saved`/`…Deleted` broadcast events; wire routes in `routes/api.php` — custom paths like `orders/form-options` go **before** the `{wildcard}`.

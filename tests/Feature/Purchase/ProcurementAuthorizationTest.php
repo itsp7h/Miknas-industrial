@@ -49,6 +49,10 @@ class ProcurementAuthorizationTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * The award endpoints moved to the API with the quotes workspace; the gate
+     * is the same policy. QuoteWorkspaceTest covers the rest of the flow.
+     */
     public function test_user_without_award_permission_cannot_award_an_item(): void
     {
         $user = User::factory()->create();
@@ -57,8 +61,9 @@ class ProcurementAuthorizationTest extends TestCase
         $quoteItem = SupplierQuoteItem::factory()->create(['supplier_quote_id' => $quote->id]);
 
         $this->actingAs($user)
-            ->post(route('purchase.requests.quotes.items.award', [$pr, $quoteItem]))
-            ->assertForbidden();
+            ->postJson("/api/v1/purchase/requests/{$pr->id}/quotes/items/{$quoteItem->id}/award", [
+                'award_reason' => 'Cheapest by a mile',
+            ])->assertForbidden();
     }
 
     public function test_user_without_generate_lpo_permission_cannot_generate_it(): void
