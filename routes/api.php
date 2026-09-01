@@ -113,6 +113,7 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('purchase')->group(function () {
             Route::get('pipeline', [PurchasePipelineController::class, 'index']);
+            Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show']);
             Route::get('suppliers', [SupplierController::class, 'index']);
             Route::post('suppliers', [SupplierController::class, 'store']);
             Route::post('suppliers/import', [SupplierController::class, 'import']);

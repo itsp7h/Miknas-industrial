@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
 
@@ -170,9 +171,9 @@ export default function PipelineBoardPage({
                     </div>
                 ) : (
                     filteredRows.map((row) => (
-                        <a
+                        <Link
                             key={row.id}
-                            href={`/purchase/pipeline/${row.id}`}
+                            to={`/app/purchase/pipeline/${row.id}`}
                             style={{
                                 display: 'block', background: '#fff', border: '1px solid #f1f5f9', borderRadius: 16,
                                 padding: 14, textDecoration: 'none', color: 'inherit',
@@ -201,7 +202,7 @@ export default function PipelineBoardPage({
                                 </div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{row.date}</div>
                             </div>
-                        </a>
+                        </Link>
                     ))
                 )}
             </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Card from '../../../components/ui/Card';
 import Table from '../../../components/ui/Table';
 import useLiveList from '../../../hooks/useLiveList';
@@ -34,7 +35,7 @@ const COLUMNS = [
     { key: 'date', label: 'Date' },
     {
         key: 'link', label: '',
-        render: (row) => <a href={`/purchase/pipeline/${row.id}`}>View</a>,
+        render: (row) => <Link to={`/app/purchase/pipeline/${row.id}`}>View</Link>,
     },
 ];
 

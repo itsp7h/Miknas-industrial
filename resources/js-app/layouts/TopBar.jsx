@@ -1,5 +1,6 @@
 import NotificationBell from '../components/NotificationBell';
 import usePageTitle from './usePageTitle';
+import { usePageTitleOverride } from './PageTitleContext';
 
 const DIVIDER = { width: 1, height: 20, background: '#e2e8f0', flexShrink: 0 };
 
@@ -26,7 +27,9 @@ export function formatTopBarDate(date) {
  * string plus a name never fit a phone row. The avatar stays.
  */
 export default function TopBar({ userName, currentUserId, compact = false, onToggleMenu }) {
-    const title = usePageTitle();
+    const routeTitle = usePageTitle();
+    const override = usePageTitleOverride();
+    const title = override ?? routeTitle;
     const initial = (userName || 'U').charAt(0).toUpperCase();
 
     return (

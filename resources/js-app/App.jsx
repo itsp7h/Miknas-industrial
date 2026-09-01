@@ -9,6 +9,8 @@ import DesktopPurchaseOrderListPage from './pages/desktop/purchase/PurchaseOrder
 import MobilePurchaseOrderListPage from './pages/mobile/purchase/PurchaseOrderListPage';
 import DesktopPurchaseOrderDetailPage from './pages/desktop/purchase/PurchaseOrderDetailPage';
 import MobilePurchaseOrderDetailPage from './pages/mobile/purchase/PurchaseOrderDetailPage';
+import DesktopPipelinePage from './pages/desktop/purchase/PipelinePage';
+import MobilePipelinePage from './pages/mobile/purchase/PipelinePage';
 import DesktopPipelineBoardPage from './pages/desktop/purchase/PipelineBoardPage';
 import MobilePipelineBoardPage from './pages/mobile/purchase/PipelineBoardPage';
 import DesktopItemListPage from './pages/desktop/inventory/ItemListPage';
@@ -52,6 +54,7 @@ export default function App({
     const DashboardPage = viewport === 'mobile' ? MobileDashboardPage : DesktopDashboardPage;
     const SupplierListPage = viewport === 'mobile' ? MobileSupplierListPage : DesktopSupplierListPage;
     const PipelineBoardPage = viewport === 'mobile' ? MobilePipelineBoardPage : DesktopPipelineBoardPage;
+    const PipelinePage = viewport === 'mobile' ? MobilePipelinePage : DesktopPipelinePage;
     const PurchaseOrderListPage = viewport === 'mobile' ? MobilePurchaseOrderListPage : DesktopPurchaseOrderListPage;
     const PurchaseOrderDetailPage = viewport === 'mobile' ? MobilePurchaseOrderDetailPage : DesktopPurchaseOrderDetailPage;
     const ItemListPage = viewport === 'mobile' ? MobileItemListPage : DesktopItemListPage;
@@ -91,6 +94,7 @@ export default function App({
                         canViewOwnPurchaseRequests={canViewOwnPurchaseRequests}
                     />
                 )} />
+                <Route path="/app/purchase/pipeline/:id" element={<PipelinePage />} />
                 <Route path="/app/purchase/orders" element={<PurchaseOrderListPage />} />
                 <Route path="/app/purchase/orders/:id" element={<PurchaseOrderDetailPage />} />
                 <Route path="/app/inventory/items" element={<ItemListPage />} />
