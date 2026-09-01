@@ -50,13 +50,20 @@ class PurchaseRequestDetailResource extends JsonResource
             'signature' => $this->whenLoaded('signature', fn () => $this->signature ? [
                 'signed_by_name' => $this->signature->signedBy?->name,
                 'signed_at' => $this->signature->signed_at?->toDateString(),
+                // The captured drawing, so "View Signature" can show the thing
+                // itself rather than just who signed.
+                'image' => $this->signature->signature_image,
             ] : null),
 
             'rfq_invitations' => $invitations->map(fn ($inv) => [
                 'id' => $inv->id,
+                'supplier_id' => $inv->supplier_id,
                 'supplier_name' => $inv->supplier?->name,
                 'channel' => $inv->channel,
                 'status' => $inv->status,
+                // The supplier's own portal link, which the view-suppliers modal
+                // offers for copying when an invitation cannot be auto-sent.
+                'portal_url' => route('rfq.show', $inv->token),
                 // Only surfaced where the Blade sidebar surfaced it: a pending
                 // invitation on a request still in the RFQ/quoting stages.
                 'whatsapp_link' => ($inv->status === 'pending'

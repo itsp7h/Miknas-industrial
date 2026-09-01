@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Purchase\PurchaseOrderController;
-use App\Http\Controllers\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Purchase\PurchaseRequestController;
 use App\Http\Controllers\Purchase\PurchaseSignatureController;
 use App\Http\Controllers\Purchase\RfqController;
@@ -59,7 +58,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // DomPDF print/pdf documents are still served here, and they must be
         // declared BEFORE the wildcard redirects or those would swallow them.
         Route::redirect('pipeline', '/app/purchase/pipeline')->name('pipeline.index');
-        Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show'])->name('pipeline.show');
+        // The request detail page is React now, with the supplier picker, the
+        // signature pad, the LPO issue and the GRN hand-off as its own dialogs.
+        Route::get('pipeline/{purchaseRequest}', fn ($purchaseRequest) => redirect("/app/purchase/pipeline/{$purchaseRequest}"))
+            ->whereNumber('purchaseRequest')->name('pipeline.show');
 
         // GM Signature
         Route::get('requests/{purchaseRequest}/sign', [PurchaseSignatureController::class, 'show'])->name('requests.sign');

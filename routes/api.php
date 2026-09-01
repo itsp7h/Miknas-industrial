@@ -178,8 +178,16 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::prefix('purchase')->group(function () {
+            // `pipeline/{purchaseRequest}/…` action paths sit under the
+            // wildcard, so they must come after the bare show route but their
+            // own suffixes keep them distinct.
             Route::get('pipeline', [PurchasePipelineController::class, 'index']);
             Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show']);
+            Route::get('pipeline/{purchaseRequest}/form-options', [PurchasePipelineController::class, 'formOptions']);
+            Route::post('pipeline/{purchaseRequest}/suppliers', [PurchasePipelineController::class, 'selectSuppliers']);
+            Route::post('pipeline/{purchaseRequest}/send-invitations', [PurchasePipelineController::class, 'sendInvitations']);
+            Route::post('pipeline/{purchaseRequest}/lpo', [PurchasePipelineController::class, 'generateLpo']);
+            Route::post('pipeline/{purchaseRequest}/signature', [PurchasePipelineController::class, 'storeSignature']);
             Route::get('suppliers', [SupplierController::class, 'index']);
             Route::post('suppliers', [SupplierController::class, 'store']);
             Route::post('suppliers/import', [SupplierController::class, 'import']);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet } from '../../../api/client';
+import { apiGet, apiPost } from '../../../api/client';
 import { echo } from '../../../echo';
 import { useToast } from '../../ui/Toast';
 
@@ -38,5 +38,23 @@ export default function usePipelineRequest(id) {
         return () => channel.stopListening('.purchase-request.stage-changed');
     }, [id, load]);
 
-    return { request, loading };
+    /**
+     * Every write answers with the whole request plus a message, so the page is
+     * replaced in one go rather than patched field by field.
+     */
+    async function act(path, body) {
+        const response = await apiPost(`/purchase/pipeline/${id}${path}`, body);
+        setRequest(response.data);
+        if (response.message) showToast(response.message, 'success');
+
+        return response.data;
+    }
+
+    return {
+        request, loading, reload: () => load(true),
+        selectSuppliers: (payload) => act('/suppliers', payload),
+        sendInvitations: () => act('/send-invitations'),
+        generateLpo: () => act('/lpo'),
+        saveSignature: (image) => act('/signature', { signature_image: image }),
+    };
 }

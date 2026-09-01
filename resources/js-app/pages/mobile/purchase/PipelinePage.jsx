@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import PipelineDialogs from '../../../components/purchase/pipeline/PipelineDialogs';
 import PipelineHeader from '../../../components/purchase/pipeline/PipelineHeader';
 import PipelineSidebar from '../../../components/purchase/pipeline/PipelineSidebar';
 import StageTimeline from '../../../components/purchase/pipeline/StageTimeline';
@@ -7,7 +9,9 @@ import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 
 export default function PipelinePage() {
     const { id } = useParams();
-    const { request, loading } = usePipelineRequest(id);
+    const { request, loading, ...actions } = usePipelineRequest(id);
+    // Which dialog is open, if any — the timeline names it.
+    const [dialog, setDialog] = useState(null);
 
     // Matches the Blade page's @section('title', 'Pipeline — ' . $pr->request_number).
     useSetPageTitle(request ? `Pipeline — ${request.request_number}` : null);
@@ -30,10 +34,14 @@ export default function PipelinePage() {
                     <PipelineHeader request={request} compact />
                     {/* Single column: the timeline is already a vertical stepper, and
                         the sidebar cards linearise beneath it in the same order. */}
-                    <StageTimeline request={request} compact />
+                    <StageTimeline request={request} compact onAction={setDialog} />
                     <div style={{ marginTop: 16 }}>
                         <PipelineSidebar request={request} />
                     </div>
+                    <PipelineDialogs
+                        open={dialog} onClose={() => setDialog(null)}
+                        request={request} actions={actions}
+                    />
                 </>
             )}
         </div>

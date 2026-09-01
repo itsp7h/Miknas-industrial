@@ -24,13 +24,15 @@ const PenIcon = () => (
 );
 
 /**
- * The RFQ send, signature capture, supplier selection, LPO issue and GRN
- * record actions exist only as modals or bare POSTs inside the Blade detail
- * page — they have no standalone destination of their own. Until each flow is
- * ported, those buttons hand off to that page rather than being dropped, which
- * would strand the action entirely.
+ * Actions that are modals rather than destinations. The timeline does not own
+ * them — it raises the intent and the page opens the right dialog, so one modal
+ * instance serves however many stage rows want it.
  */
-const bladeDetail = (id) => `/purchase/pipeline/${id}`;
+function ActionButton({ onClick, style, children }) {
+    return (
+        <button type="button" onClick={onClick} style={style}>{children}</button>
+    );
+}
 
 function Dot({ done, current }) {
     let background = '#e2e8f0';
@@ -88,14 +90,14 @@ function caption(stage, r, current) {
     }
 }
 
-function CurrentActions({ stage, r }) {
+function CurrentActions({ stage, r, on }) {
     const p = r.permissions;
     const signLabel = r.signature ? 'View Signature' : 'Sign';
     const SignIcon = r.signature ? EyeIcon : PenIcon;
     const sign = p.approve && (
-        <a href={bladeDetail(r.id)} style={{ ...ACTION, background: '#7c3aed', color: '#fff' }}>
+        <ActionButton onClick={() => on('signature')} style={{ ...ACTION, background: '#7c3aed', color: '#fff' }}>
             <SignIcon /> {signLabel}
-        </a>
+        </ActionButton>
     );
 
     switch (stage) {
@@ -106,9 +108,9 @@ function CurrentActions({ stage, r }) {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {sign}
                     {p.manageRfq && (
-                        <a href={bladeDetail(r.id)} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
+                        <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
                             🏭 Select Suppliers
-                        </a>
+                        </ActionButton>
                     )}
                 </div>
             );
@@ -116,13 +118,13 @@ function CurrentActions({ stage, r }) {
             if (!p.manageRfq) return null;
             return (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <a href={bladeDetail(r.id)} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
+                    <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
                         + Add Suppliers
-                    </a>
+                    </ActionButton>
                     {r.pending_invitation_count > 0 && (
-                        <a href={bladeDetail(r.id)} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
+                        <ActionButton onClick={() => on('send')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
                             📨 Send ({r.pending_invitation_count})
-                        </a>
+                        </ActionButton>
                     )}
                 </div>
             );
@@ -143,15 +145,15 @@ function CurrentActions({ stage, r }) {
                 return <span style={{ ...ACTION, background: '#dcfce7', color: '#15803d' }}>✓ LPO(s) Issued</span>;
             }
             return p.generateLpo ? (
-                <a href={bladeDetail(r.id)} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
+                <ActionButton onClick={() => on('lpo')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
                     Issue LPO →
-                </a>
+                </ActionButton>
             ) : null;
         case 'receiving':
             return (
-                <a href={bladeDetail(r.id)} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
+                <ActionButton onClick={() => on('grn')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
                     Record GRN →
-                </a>
+                </ActionButton>
             );
         case 'payment':
             return (
@@ -164,7 +166,7 @@ function CurrentActions({ stage, r }) {
     }
 }
 
-function DoneActions({ stage, r }) {
+function DoneActions({ stage, r, on }) {
     const p = r.permissions;
 
     switch (stage) {
@@ -172,10 +174,10 @@ function DoneActions({ stage, r }) {
             return <a href={`/purchase/requests/${r.id}`} style={VIEW}><EyeIcon /> View Request</a>;
         case 'gm_approval':
             return r.signature
-                ? <a href={bladeDetail(r.id)} style={VIEW}><EyeIcon /> View Signature</a>
+                ? <ActionButton onClick={() => on('signature')} style={VIEW}><EyeIcon /> View Signature</ActionButton>
                 : null;
         case 'rfq':
-            return <a href={bladeDetail(r.id)} style={VIEW}><EyeIcon /> View Suppliers</a>;
+            return <ActionButton onClick={() => on('view-suppliers')} style={VIEW}><EyeIcon /> View Suppliers</ActionButton>;
         case 'quoting':
             return p.manageQuotes
                 ? <a href={`/purchase/requests/${r.id}/quotes`} style={VIEW}><EyeIcon /> View Quotes ({r.supplier_quotes.length})</a>
@@ -204,9 +206,9 @@ function DoneActions({ stage, r }) {
                     ))}
                     {/* Awards can change after issuance, so re-issuing stays available. */}
                     {p.generateLpo && (
-                        <a href={bladeDetail(r.id)} style={{ ...ACTION, background: '#fff', color: '#d97706', border: '1.5px solid #fde68a' }}>
+                        <ActionButton onClick={() => on('lpo')} style={{ ...ACTION, background: '#fff', color: '#d97706', border: '1.5px solid #fde68a' }}>
                             ↻ Re-issue LPO
-                        </a>
+                        </ActionButton>
                     )}
                 </div>
             );
@@ -220,7 +222,8 @@ function DoneActions({ stage, r }) {
     }
 }
 
-export default function StageTimeline({ request, compact = false }) {
+/** `onAction(kind)` opens the matching dialog; the page owns them. */
+export default function StageTimeline({ request, compact = false, onAction = () => {} }) {
     const stages = request.stages;
     const index = request.stage_index;
 
@@ -274,8 +277,8 @@ export default function StageTimeline({ request, compact = false }) {
                                             <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{text}</div>
                                         )}
                                     </div>
-                                    {current && <CurrentActions stage={stage} r={request} />}
-                                    {done && <DoneActions stage={stage} r={request} />}
+                                    {current && <CurrentActions stage={stage} r={request} on={onAction} />}
+                                    {done && <DoneActions stage={stage} r={request} on={onAction} />}
                                 </div>
                             </div>
                         </div>
