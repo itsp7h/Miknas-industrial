@@ -1,5 +1,14 @@
-// Mirrors the badge palette the Blade purchase-orders index used
-// (badge-gray / badge-blue / badge-green / badge-red).
+// The Blade purchase-orders index badged status with these shared classes from
+// resources/css/app.css, which the React shell also loads.
+export const STATUS_BADGE_CLASS = {
+    draft: 'badge-gray',
+    sent: 'badge-blue',
+    received: 'badge-green',
+    cancelled: 'badge-red',
+};
+
+export const badgeClassFor = (status) => STATUS_BADGE_CLASS[status] ?? 'badge-gray';
+
 export const STATUS_LABELS = {
     draft: 'Draft',
     sent: 'Sent',

@@ -1,122 +1,70 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import Card from '../../../components/ui/Card';
-import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
 import PurchaseOrderForm from '../../../components/purchase/order/PurchaseOrderForm';
-import { STATUS_LABELS, STATUS_COLOURS, formatDate, money } from '../../../components/purchase/order/statuses';
-import useLiveList from '../../../hooks/useLiveList';
-import { apiDelete, apiGet } from '../../../api/client';
-import { useToast } from '../../../components/ui/Toast';
+import PurchaseOrderTable from '../../../components/purchase/order/PurchaseOrderTable';
+import usePurchaseOrderList from '../../../components/purchase/order/usePurchaseOrderList';
 
 export default function PurchaseOrderListPage() {
-    const { items: orders, upsertItem, removeItem } = useLiveList({
-        endpoint: '/purchase/orders',
-        channel: 'purchase',
-        event: '.purchase-order.saved',
-        deleteEvent: '.purchase-order.deleted',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load purchase orders.',
-    });
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState(null);
-    const [deleting, setDeleting] = useState(null);
-    const { showToast } = useToast();
-
-    function handleSaved(order) {
-        upsertItem(order);
-        setModalOpen(false);
-        showToast('Purchase order saved.', 'success');
-    }
-
-    async function openEdit(order) {
-        // The list row is a summary; the edit form wants the full record.
-        try {
-            const full = await apiGet(`/purchase/orders/${order.id}`);
-            setEditing(full.data);
-            setModalOpen(true);
-        } catch (err) {
-            showToast(err.message || 'Could not open that order.', 'error');
-        }
-    }
-
-    async function handleDeleteConfirmed() {
-        const order = deleting;
-        setDeleting(null);
-        try {
-            await apiDelete(`/purchase/orders/${order.id}`);
-            removeItem(order.id);
-            showToast('Purchase order deleted.', 'success');
-        } catch (err) {
-            showToast(err.message || 'Failed to delete the order.', 'error');
-        }
-    }
-
-    const columns = useMemo(() => [
-        {
-            key: 'po_number',
-            label: 'PO #',
-            render: (row) => (
-                <Link to={`/app/purchase/orders/${row.id}`} className="text-blue-600 hover:text-blue-800" style={{ fontFamily: 'monospace' }}>
-                    {row.po_number}
-                </Link>
-            ),
-        },
-        { key: 'supplier_name', label: 'Supplier', render: (row) => row.supplier_name ?? '—' },
-        { key: 'po_date', label: 'Date', render: (row) => formatDate(row.po_date) },
-        { key: 'expected_delivery_date', label: 'Expected Delivery', render: (row) => formatDate(row.expected_delivery_date) },
-        {
-            key: 'total_amount',
-            label: 'Total Amount',
-            render: (row) => <span style={{ fontWeight: 500 }}>{money(row.total_amount)}</span>,
-        },
-        {
-            key: 'status',
-            label: 'Status',
-            render: (row) => (
-                <span style={{ color: STATUS_COLOURS[row.status], fontWeight: 600 }}>
-                    {STATUS_LABELS[row.status] ?? row.status}
-                </span>
-            ),
-        },
-        {
-            key: 'actions',
-            label: '',
-            render: (row) => (
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <Link to={`/app/purchase/orders/${row.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">View</Link>
-                    <Button variant="link" onClick={() => openEdit(row)}>Edit</Button>
-                    <Button variant="link-danger" onClick={() => setDeleting(row)}>Delete</Button>
-                </div>
-            ),
-        },
-    ], []);
+    const o = usePurchaseOrderList();
 
     return (
-        <Card title="Purchase Orders">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>Manage all purchase orders</p>
-                <Button onClick={() => { setEditing(null); setModalOpen(true); }}>+ New PO</Button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Purchase Orders</h1>
+                    <p className="page-subtitle">Manage all purchase orders</p>
+                </div>
+                <button type="button" onClick={o.openCreate} className="btn-primary">+ New PO</button>
             </div>
 
-            <Table columns={columns} rows={orders} rowKey={(row) => row.id} searchPlaceholder="Search purchase orders…" />
+            {/*
+              The Blade page paginated server-side and so had no search. This
+              list loads in full, which would be unusable without one, so it
+              filters client-side per gotcha #6 — styled like the Suppliers
+              search bar for consistency.
+            */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                    <svg
+                        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                        width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={o.query}
+                        onChange={(e) => o.setQuery(e.target.value)}
+                        placeholder="Search PO number, supplier, status…"
+                        aria-label="Search purchase orders"
+                        autoComplete="off"
+                        style={{
+                            padding: '8px 14px 8px 34px', border: '1px solid #e2e8f0', borderRadius: 8,
+                            fontSize: 13.5, width: 340, outline: 'none',
+                        }}
+                    />
+                </div>
+                <div style={{ fontSize: 12.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {o.query ? `${o.filtered.length} of ${o.orders.length} orders` : `${o.orders.length} orders`}
+                </div>
+            </div>
+
+            <PurchaseOrderTable orders={o.filtered} onEdit={o.openEdit} onDelete={o.setDeleting} />
 
             <Modal
-                open={modalOpen}
-                title={editing ? `Edit ${editing.po_number}` : 'New Purchase Order'}
-                onClose={() => setModalOpen(false)}
+                open={o.modalOpen}
+                title={o.editing ? `Edit ${o.editing.po_number}` : 'New Purchase Order'}
+                onClose={() => o.setModalOpen(false)}
             >
-                <PurchaseOrderForm order={editing} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+                <PurchaseOrderForm order={o.editing} onSaved={o.handleSaved} onCancel={() => o.setModalOpen(false)} />
             </Modal>
             <ConfirmModal
-                open={!!deleting}
+                open={!!o.deleting}
                 title="Delete this purchase order?"
-                body={deleting ? `${deleting.po_number} will be permanently removed.` : ''}
-                onConfirm={handleDeleteConfirmed}
-                onCancel={() => setDeleting(null)}
+                body={o.deleting ? `${o.deleting.po_number} will be permanently removed.` : ''}
+                onConfirm={o.handleDeleteConfirmed}
+                onCancel={() => o.setDeleting(null)}
             />
-        </Card>
+        </div>
     );
 }

@@ -37,6 +37,40 @@ describe('desktop PurchaseOrderListPage', () => {
         );
     });
 
+    /**
+     * The Blade page badged status with the shared .badge-* classes and used
+     * .btn-primary / .btn-secondary / .btn-danger .btn-sm for the row actions.
+     * An earlier pass rendered status as coloured text and the actions as plain
+     * links, and coloured "+ New PO" green where Blade's btn-primary is blue.
+     */
+    it('badges status with the shared badge classes, per status', async () => {
+        renderPage();
+        await screen.findByText('PO-00001');
+        expect(screen.getByText('Draft')).toHaveClass('badge-gray');
+        expect(screen.getByText('Sent')).toHaveClass('badge-blue');
+    });
+
+    it('renders the row actions as small buttons, not bare links', async () => {
+        renderPage();
+        await screen.findByText('PO-00001');
+        expect(screen.getAllByText('View')[0]).toHaveClass('btn-primary', 'btn-sm');
+        expect(screen.getAllByText('Edit')[0]).toHaveClass('btn-secondary', 'btn-sm');
+        expect(screen.getAllByText('Delete')[0]).toHaveClass('btn-danger', 'btn-sm');
+    });
+
+    it('gives New PO the blue btn-primary, matching Blade', async () => {
+        renderPage();
+        await screen.findByText('PO-00001');
+        expect(screen.getByText('+ New PO')).toHaveClass('btn-primary');
+    });
+
+    it('shows the page header and its subtitle', async () => {
+        renderPage();
+        await screen.findByText('PO-00001');
+        expect(screen.getByText('Purchase Orders')).toHaveClass('page-title');
+        expect(screen.getByText('Manage all purchase orders')).toHaveClass('page-subtitle');
+    });
+
     it('lists orders with money and status labels', async () => {
         renderPage();
         expect(await screen.findByText('PO-00001')).toBeInTheDocument();
