@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { RequestModalProvider } from '../../../components/purchase/requests/RequestModalProvider';
 import PipelineBoardPage from './PipelineBoardPage';
 import * as client from '../../../api/client';
 
@@ -25,7 +26,7 @@ describe('PipelineBoardPage (desktop)', () => {
             ],
         });
 
-        render(<MemoryRouter><ToastProvider><PipelineBoardPage /></ToastProvider></MemoryRouter>);
+        render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
 
         await waitFor(() => expect(screen.getByText('MPR26-0001')).toBeInTheDocument());
         expect(screen.queryByText('MPR26-0002')).not.toBeInTheDocument();
@@ -40,7 +41,7 @@ describe('PipelineBoardPage (desktop)', () => {
             data: [{ id: 1, request_number: 'MPR26-0001', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
         });
 
-        render(<MemoryRouter><ToastProvider><PipelineBoardPage /></ToastProvider></MemoryRouter>);
+        render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
         await waitFor(() => expect(screen.getByText('MPR26-0001')).toBeInTheDocument());
         expect(screen.getByText(/Draft/i)).toBeInTheDocument();
 
@@ -62,7 +63,7 @@ describe('PipelineBoardPage (desktop)', () => {
             data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
         });
 
-        render(<MemoryRouter><ToastProvider><PipelineBoardPage /></ToastProvider></MemoryRouter>);
+        render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
         await waitFor(() => expect(screen.getByText('MPR26-0007')).toBeInTheDocument());
 
         expect(screen.getByText('View').closest('a')).toHaveAttribute('href', '/app/purchase/pipeline/7');
@@ -72,9 +73,9 @@ describe('PipelineBoardPage (desktop)', () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
 
-        render(<MemoryRouter><ToastProvider>
+        render(<MemoryRouter><ToastProvider><RequestModalProvider>
             <PipelineBoardPage currentUserId={1} canViewOwnPurchaseRequests />
-        </ToastProvider></MemoryRouter>);
+        </RequestModalProvider></ToastProvider></MemoryRouter>);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
         act(() => {
@@ -90,9 +91,9 @@ describe('PipelineBoardPage (desktop)', () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
 
-        render(<MemoryRouter><ToastProvider>
+        render(<MemoryRouter><ToastProvider><RequestModalProvider>
             <PipelineBoardPage currentUserId={1} canViewOwnPurchaseRequests />
-        </ToastProvider></MemoryRouter>);
+        </RequestModalProvider></ToastProvider></MemoryRouter>);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
         act(() => {
@@ -108,9 +109,9 @@ describe('PipelineBoardPage (desktop)', () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
 
-        render(<MemoryRouter><ToastProvider>
+        render(<MemoryRouter><ToastProvider><RequestModalProvider>
             <PipelineBoardPage currentUserId={1} canViewActivePipeline />
-        </ToastProvider></MemoryRouter>);
+        </RequestModalProvider></ToastProvider></MemoryRouter>);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
         act(() => {
@@ -126,9 +127,9 @@ describe('PipelineBoardPage (desktop)', () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
 
-        render(<MemoryRouter><ToastProvider>
+        render(<MemoryRouter><ToastProvider><RequestModalProvider>
             <PipelineBoardPage currentUserId={1} canViewActivePipeline />
-        </ToastProvider></MemoryRouter>);
+        </RequestModalProvider></ToastProvider></MemoryRouter>);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
         act(() => {
@@ -144,9 +145,9 @@ describe('PipelineBoardPage (desktop)', () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
 
-        render(<MemoryRouter><ToastProvider>
+        render(<MemoryRouter><ToastProvider><RequestModalProvider>
             <PipelineBoardPage currentUserId={1} canViewAllPurchaseRequests />
-        </ToastProvider></MemoryRouter>);
+        </RequestModalProvider></ToastProvider></MemoryRouter>);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
         act(() => {

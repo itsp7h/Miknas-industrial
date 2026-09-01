@@ -4,6 +4,7 @@ import Card from '../../../components/ui/Card';
 import Table from '../../../components/ui/Table';
 import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
+import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
 
 const STAGE_LABELS = {
     draft: 'Draft', gm_approval: 'GM Approval', rfq: 'RFQ', quoting: 'Quoting',
@@ -42,6 +43,7 @@ const COLUMNS = [
 export default function PipelineBoardPage({
     currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
 } = {}) {
+    const { openNew } = useRequestModal();
     const { items, setItems } = useLiveList({
         endpoint: '/purchase/pipeline',
         channel: 'purchase',
@@ -67,8 +69,14 @@ export default function PipelineBoardPage({
                     : [...prev, payload]
             ));
         };
+        // An edit rewrites these very columns, and PurchaseRequestUpdated
+        // broadcasts the same payload shape, so one handler upserts both.
         ch.listen('.purchase-request.created', handleCreated);
-        return () => ch.stopListening('.purchase-request.created');
+        ch.listen('.purchase-request.updated', handleCreated);
+        return () => {
+            ch.stopListening('.purchase-request.created');
+            ch.stopListening('.purchase-request.updated');
+        };
     }, [currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests, setItems]);
 
     // .purchase-request.stage-changed carries only {id, request_number, stage} — a
@@ -97,7 +105,7 @@ export default function PipelineBoardPage({
                     <button onClick={() => setTab('active')}>Active ({active.length})</button>
                     <button onClick={() => setTab('completed')}>Completed ({completed.length})</button>
                 </div>
-                <button onClick={() => window.mprModalOpen && window.mprModalOpen()}>+ New Request</button>
+                <button onClick={openNew}>+ New Request</button>
             </div>
             <Table
                 columns={COLUMNS}

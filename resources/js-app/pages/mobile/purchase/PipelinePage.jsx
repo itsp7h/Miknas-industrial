@@ -5,11 +5,13 @@ import PipelineHeader from '../../../components/purchase/pipeline/PipelineHeader
 import PipelineSidebar from '../../../components/purchase/pipeline/PipelineSidebar';
 import StageTimeline from '../../../components/purchase/pipeline/StageTimeline';
 import usePipelineRequest from '../../../components/purchase/pipeline/usePipelineRequest';
+import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
 import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 
 export default function PipelinePage() {
     const { id } = useParams();
-    const { request, loading, ...actions } = usePipelineRequest(id);
+    const { request, loading, applyUpdate, ...actions } = usePipelineRequest(id);
+    const { openEdit } = useRequestModal();
     // Which dialog is open, if any — the timeline names it.
     const [dialog, setDialog] = useState(null);
 
@@ -31,7 +33,7 @@ export default function PipelinePage() {
 
             {request && (
                 <>
-                    <PipelineHeader request={request} compact />
+                    <PipelineHeader request={request} compact onEdit={() => openEdit(id, applyUpdate)} />
                     {/* Single column: the timeline is already a vertical stepper, and
                         the sidebar cards linearise beneath it in the same order. */}
                     <StageTimeline request={request} compact onAction={setDialog} />

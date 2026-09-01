@@ -17,7 +17,9 @@
         <a href="{{ route('purchase.requests.print', $purchaseRequest) }}" target="_blank"
            class="btn-primary">Print MPR Form</a>
         @if($purchaseRequest->status === 'pending')
-            <x-purchase.edit-request-modal :purchaseRequest="$purchaseRequest" size="md" />
+            {{-- The MPR edit form is a React modal now, opened from the pipeline
+                 detail page. This page is still Blade, so it links there. --}}
+            <a href="/app/purchase/pipeline/{{ $purchaseRequest->id }}" class="btn-secondary">Edit</a>
         @endif
     </div>
 </div>

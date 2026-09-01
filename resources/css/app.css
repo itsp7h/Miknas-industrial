@@ -103,4 +103,11 @@
     .section-title {
         @apply text-base font-semibold text-slate-700 mb-4;
     }
+
+    /* ── MPR modal dropdown rows ──
+       The hover states the request modals had in their own <style> block; they
+       cannot be Tailwind utilities on the elements themselves because the rows
+       are built in JS and JIT would not see the classes (gotcha #1). */
+    .mpr-proj-opt:hover    { background:#eff6ff; border-left-color:#2563eb !important; }
+    .mpr-urgency-opt:hover { background:#f8fafc; }
 }

@@ -5,11 +5,13 @@ import PipelineHeader from '../../../components/purchase/pipeline/PipelineHeader
 import PipelineSidebar from '../../../components/purchase/pipeline/PipelineSidebar';
 import StageTimeline from '../../../components/purchase/pipeline/StageTimeline';
 import usePipelineRequest from '../../../components/purchase/pipeline/usePipelineRequest';
+import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
 import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 
 export default function PipelinePage() {
     const { id } = useParams();
-    const { request, loading, ...actions } = usePipelineRequest(id);
+    const { request, loading, applyUpdate, ...actions } = usePipelineRequest(id);
+    const { openEdit } = useRequestModal();
     // Which dialog is open, if any — the timeline names it.
     const [dialog, setDialog] = useState(null);
 
@@ -40,7 +42,7 @@ export default function PipelinePage() {
 
             {request && (
                 <>
-                    <PipelineHeader request={request} />
+                    <PipelineHeader request={request} onEdit={() => openEdit(id, applyUpdate)} />
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
                         <StageTimeline request={request} onAction={setDialog} />
                         <PipelineSidebar request={request} />

@@ -52,6 +52,9 @@ export default function usePipelineRequest(id) {
 
     return {
         request, loading, reload: () => load(true),
+        // The edit modal answers with this page's whole payload, so saving it
+        // replaces the request in place rather than triggering a refetch.
+        applyUpdate: setRequest,
         selectSuppliers: (payload) => act('/suppliers', payload),
         sendInvitations: () => act('/send-invitations'),
         generateLpo: () => act('/lpo'),

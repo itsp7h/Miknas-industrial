@@ -5,7 +5,7 @@ import { formatDate } from './pipelineStyles';
  * top-right actions, and the progress bar — amber while in flight, green once
  * complete, exactly as the Blade page rendered it.
  */
-export default function PipelineHeader({ request, compact = false }) {
+export default function PipelineHeader({ request, compact = false, onEdit }) {
     const done = request.is_done;
     const meta = [
         request.project_name && `📁 ${request.project_name}`,
@@ -44,19 +44,21 @@ export default function PipelineHeader({ request, compact = false }) {
                     </div>
                 </div>
 
-                {/* Editing and the full request sheet are still Blade pages. */}
+                {/* Editing is the React MPR modal now; the full request sheet
+                    is still a Blade page. */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {request.permissions.update && (
-                        <a
-                            href={`/purchase/requests/${request.id}/edit`}
+                        <button
+                            type="button"
+                            onClick={onEdit}
                             style={{
-                                fontSize: 12, color: '#64748b', textDecoration: 'none',
+                                fontSize: 12, color: '#64748b', background: 'transparent',
                                 border: '1px solid #e2e8f0', padding: '6px 14px', borderRadius: 7,
-                                whiteSpace: 'nowrap',
+                                whiteSpace: 'nowrap', cursor: 'pointer',
                             }}
                         >
                             Edit
-                        </a>
+                        </button>
                     )}
                     <a
                         href={`/purchase/requests/${request.id}`}

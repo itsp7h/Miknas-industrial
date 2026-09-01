@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PipelinePage from './PipelinePage';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { RequestModalProvider } from '../../../components/purchase/requests/RequestModalProvider';
 import { PageTitleProvider } from '../../../layouts/PageTitleContext';
 import * as client from '../../../api/client';
 
@@ -51,11 +52,13 @@ const renderPage = () =>
     render(
         <MemoryRouter initialEntries={['/app/purchase/pipeline/3']}>
             <ToastProvider>
-                <PageTitleProvider>
-                    <Routes>
-                        <Route path="/app/purchase/pipeline/:id" element={<PipelinePage />} />
-                    </Routes>
-                </PageTitleProvider>
+                <RequestModalProvider>
+                    <PageTitleProvider>
+                        <Routes>
+                            <Route path="/app/purchase/pipeline/:id" element={<PipelinePage />} />
+                        </Routes>
+                    </PageTitleProvider>
+                </RequestModalProvider>
             </ToastProvider>
         </MemoryRouter>
     );

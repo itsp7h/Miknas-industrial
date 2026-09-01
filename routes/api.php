@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Api\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
+use App\Http\Controllers\Api\Purchase\PurchaseRequestController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
 use App\Http\Controllers\Api\Purchase\SupplierInvoiceController as PurchaseInvoiceController;
 use App\Http\Controllers\Api\Purchase\SupplierPaymentController as PurchasePaymentController;
@@ -189,6 +190,13 @@ Route::prefix('v1')->group(function () {
             Route::post('pipeline/{purchaseRequest}/send-invitations', [PurchasePipelineController::class, 'sendInvitations']);
             Route::post('pipeline/{purchaseRequest}/lpo', [PurchasePipelineController::class, 'generateLpo']);
             Route::post('pipeline/{purchaseRequest}/signature', [PurchasePipelineController::class, 'storeSignature']);
+
+            // The MPR create/edit forms. `requests/form-options` must precede
+            // the `{purchaseRequest}` routes or the wildcard swallows it.
+            Route::get('requests/form-options', [PurchaseRequestController::class, 'formOptions']);
+            Route::post('requests', [PurchaseRequestController::class, 'store']);
+            Route::get('requests/{purchaseRequest}/edit', [PurchaseRequestController::class, 'edit']);
+            Route::put('requests/{purchaseRequest}', [PurchaseRequestController::class, 'update']);
 
             // The quotes workspace: one page for "view quotes" and "compare &
             // award", as in Blade.
