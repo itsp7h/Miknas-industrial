@@ -1,68 +1,66 @@
-import { useMemo, useState } from 'react';
-import Card from '../../../components/ui/Card';
-import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
-import Button from '../../../components/ui/Button';
+import ConfirmModal from '../../../components/ui/ConfirmModal';
 import InvoiceForm from '../../../components/sales/invoice/InvoiceForm';
-import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLOURS } from '../../../components/sales/invoice/statuses';
-import { money } from '../../../components/sales/order/statuses';
-import useLiveList from '../../../hooks/useLiveList';
-import { useToast } from '../../../components/ui/Toast';
+import InvoiceEditForm from '../../../components/sales/invoice/InvoiceEditForm';
+import InvoiceTable from '../../../components/sales/invoice/InvoiceTable';
+import useInvoiceList from '../../../components/sales/invoice/useInvoiceList';
 
 export default function InvoiceListPage() {
-    const { items: invoices, upsertItem } = useLiveList({
-        endpoint: '/sales/invoices',
-        channel: 'sales',
-        event: '.sales-invoice.saved',
-        mergeKey: 'id',
-        errorMessage: 'Failed to load invoices.',
-    });
-    const [modalOpen, setModalOpen] = useState(false);
-    const { showToast } = useToast();
-
-    function handleSaved(invoice) {
-        upsertItem(invoice);
-        setModalOpen(false);
-        showToast(`${invoice.invoice_number} created.`, 'success');
-    }
-
-    const columns = useMemo(() => [
-        { key: 'invoice_number', label: 'Invoice #' },
-        { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? '—' },
-        { key: 'invoice_date', label: 'Date' },
-        { key: 'total_amount', label: 'Total', render: (row) => money(row.total_amount) },
-        { key: 'paid_amount', label: 'Paid', render: (row) => money(row.paid_amount) },
-        {
-            key: 'balance_due',
-            label: 'Balance',
-            render: (row) => (
-                <span style={{ color: Number(row.balance_due) > 0 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
-                    {money(row.balance_due)}
-                </span>
-            ),
-        },
-        {
-            key: 'status',
-            label: 'Status',
-            render: (row) => (
-                <span style={{ color: INVOICE_STATUS_COLOURS[row.status], fontWeight: 600 }}>
-                    {INVOICE_STATUS_LABELS[row.status] ?? row.status}
-                </span>
-            ),
-        },
-    ], []);
+    const i = useInvoiceList();
 
     return (
-        <Card title="Sales Invoices">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <Button onClick={() => setModalOpen(true)}>New Invoice</Button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Sales Invoices</h1>
+                    <p className="page-subtitle">Track customer invoices and payments</p>
+                </div>
+                <button type="button" onClick={i.openCreate} className="btn-primary">+ New Invoice</button>
             </div>
 
-            <Table columns={columns} rows={invoices} rowKey={(row) => row.id} searchPlaceholder="Search invoices…" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                    <svg
+                        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                        width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={i.query}
+                        onChange={(e) => i.setQuery(e.target.value)}
+                        placeholder="Search invoice #, customer, SO #…"
+                        aria-label="Search invoices"
+                        autoComplete="off"
+                        style={{ padding: '8px 14px 8px 34px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13.5, width: 340, outline: 'none' }}
+                    />
+                </div>
+                <div style={{ fontSize: 12.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {i.query ? `${i.filtered.length} of ${i.invoices.length} invoices` : `${i.invoices.length} invoices`}
+                </div>
+            </div>
 
-            <Modal open={modalOpen} title="New Invoice" onClose={() => setModalOpen(false)}>
-                <InvoiceForm onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <InvoiceTable invoices={i.filtered} onEdit={i.openEdit} onDelete={i.setDeleting} />
+
+            <Modal
+                open={i.modalOpen}
+                title={i.editing ? `Edit ${i.editing.invoice_number}` : 'New Invoice'}
+                onClose={() => i.setModalOpen(false)}
+            >
+                {i.editing
+                    ? <InvoiceEditForm invoice={i.editing} onSaved={i.handleSaved} onCancel={() => i.setModalOpen(false)} />
+                    : <InvoiceForm onSaved={i.handleSaved} onCancel={() => i.setModalOpen(false)} />}
             </Modal>
-        </Card>
+            <ConfirmModal
+                open={!!i.deleting}
+                title="Delete this invoice?"
+                body={i.deleting
+                    ? `${i.deleting.invoice_number} will be permanently removed, the customer's outstanding balance reduced by ${i.deleting.total_amount}, and its sales order returned to uninvoiced.`
+                    : ''}
+                onConfirm={i.handleDelete}
+                onCancel={() => i.setDeleting(null)}
+            />
+        </div>
     );
 }

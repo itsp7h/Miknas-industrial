@@ -85,6 +85,8 @@ Route::prefix('v1')->group(function () {
             Route::get('invoices/form-options', [SalesInvoiceController::class, 'formOptions']);
             Route::get('invoices/{salesInvoice}', [SalesInvoiceController::class, 'show']);
             Route::post('invoices', [SalesInvoiceController::class, 'store']);
+            Route::put('invoices/{salesInvoice}', [SalesInvoiceController::class, 'update']);
+            Route::delete('invoices/{salesInvoice}', [SalesInvoiceController::class, 'destroy']);
 
             Route::get('payments', [PaymentReceiptController::class, 'index']);
             Route::get('payments/form-options', [PaymentReceiptController::class, 'formOptions']);

@@ -38,13 +38,23 @@ describe('mobile sales flow pages', () => {
         expect(screen.queryByText('DN-00001')).not.toBeInTheDocument();
     });
 
-    it('invoices show a due amount per card', async () => {
+    it('invoices show the balance owed and badge the status', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, invoice_number: 'INV-00001', customer_name: 'Gulf Steel', invoice_date: '2026-08-06', total_amount: '110.00', balance_due: 70, status: 'partial' }],
+            data: [{
+                id: 1, invoice_number: 'INV-00001', customer_name: 'Gulf Steel', sales_order_id: 11,
+                order_number: 'SO-00001', invoice_date: '2026-08-06', total_amount: '110.00',
+                paid_amount: '40.00', balance_due: 70, status: 'partial',
+            }],
         });
-        wrap(<InvoiceListPage />);
+        const { container } = wrap(<InvoiceListPage />);
+
         await screen.findByText('INV-00001');
-        expect(screen.getByText('70.00 due')).toBeInTheDocument();
+        expect(container.querySelector('table')).toBeNull();
+        expect(screen.getByText('70.00')).toHaveClass('text-red-600', 'font-semibold');
+        expect(screen.getByText('Part Paid')).toHaveClass('badge-yellow');
+        expect(screen.getByText('06 Aug 2026')).toBeInTheDocument();
+        // Blade's Receive link, carrying the invoice into the payment form.
+        expect(screen.getByText('Receive')).toHaveAttribute('href', '/app/sales/payments?invoice_id=1');
     });
 
     it('payments say so plainly when there are none', async () => {

@@ -19,7 +19,8 @@ const NOTES = [
 ];
 
 const INVOICES = [
-    { id: 1, invoice_number: 'INV-00001', customer_name: 'Gulf Steel', invoice_date: '2026-08-06', total_amount: '110.00', paid_amount: '40.00', balance_due: 70, status: 'partial' },
+    { id: 1, invoice_number: 'INV-00001', customer_name: 'Gulf Steel', sales_order_id: 11, order_number: 'SO-00001', invoice_date: '2026-08-06', due_date: null, subtotal: '100.00', vat_rate: 10, total_amount: '110.00', paid_amount: '40.00', balance_due: 70, status: 'partial' },
+    { id: 2, invoice_number: 'INV-00002', customer_name: 'Zenith', sales_order_id: 12, order_number: 'SO-00002', invoice_date: '2026-08-07', due_date: null, subtotal: '50.00', vat_rate: 0, total_amount: '50.00', paid_amount: '0.00', balance_due: 50, status: 'unpaid' },
 ];
 
 const RECEIPTS = [
@@ -117,6 +118,71 @@ describe('desktop sales flow pages', () => {
         await screen.findByText('INV-00001');
         expect(screen.getByText('70.00')).toBeInTheDocument();
         expect(screen.getByText('Part Paid')).toBeInTheDocument();
+    });
+
+    // Blade's nine columns. The port had seven and no SO # at all.
+    it('invoices list Blade\u2019s nine columns', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: INVOICES });
+        wrap(<InvoiceListPage />);
+
+        await screen.findByText('INV-00001');
+        expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+            'Invoice #', 'Customer', 'SO #', 'Date', 'Total', 'Paid', 'Outstanding', 'Status', 'Actions',
+        ]);
+        expect(screen.getByText('SO-00001')).toHaveAttribute('href', '/app/sales/orders/11');
+        expect(screen.getByText('06 Aug 2026')).toBeInTheDocument();
+        expect(screen.getByText('Part Paid')).toHaveClass('badge-yellow');
+        expect(screen.getByText('Unpaid')).toHaveClass('badge-red');
+        expect(screen.getByText('70.00')).toHaveClass('text-red-600', 'font-semibold');
+        expect(screen.getByText('40.00')).toHaveClass('text-green-700');
+    });
+
+    // The port had no actions on this page at all — no way to receive a payment,
+    // edit or delete.
+    it('invoices offer Receive and Edit, and Delete only before any money lands', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: INVOICES });
+        wrap(<InvoiceListPage />);
+
+        await screen.findByText('INV-00001');
+        expect(screen.getAllByText('Receive')).toHaveLength(2);
+        expect(screen.getAllByText('Edit')).toHaveLength(2);
+        // INV-00001 has 40.00 against it; only the untouched invoice can go.
+        expect(screen.getAllByText('Delete')).toHaveLength(1);
+        expect(screen.getAllByText('Receive')[0]).toHaveAttribute('href', '/app/sales/payments?invoice_id=1');
+    });
+
+    // Blade's edit form offered a free-text Status; setting it made an invoice
+    // read "paid" with no receipts behind it.
+    it('the edit form has no status field and locks amounts once money is received', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: INVOICES });
+        wrap(<InvoiceListPage />);
+
+        await screen.findByText('INV-00001');
+        fireEvent.click(screen.getAllByText('Edit')[0]);
+
+        expect(await screen.findByLabelText(/Invoice Date/)).toBeInTheDocument();
+        expect(screen.queryByLabelText('Status')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Subtotal')).toBeDisabled();
+        expect(screen.getByText(/its amounts are fixed/)).toBeInTheDocument();
+    });
+
+    it('the edit form leaves amounts editable while nothing has been received', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: INVOICES });
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({ data: INVOICES[1] });
+        wrap(<InvoiceListPage />);
+
+        await screen.findByText('INV-00002');
+        fireEvent.click(screen.getAllByText('Edit')[1]);
+        fireEvent.change(await screen.findByLabelText('Subtotal'), { target: { value: '80' } });
+        fireEvent.click(screen.getByText('Update Invoice'));
+
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/sales/invoices/2', expect.objectContaining({ subtotal: '80' })));
+    });
+
+    it('invoices say so when there are none', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<InvoiceListPage />);
+        expect(await screen.findByText('No invoices found.')).toBeInTheDocument();
     });
 
     it('payments label the method rather than showing the raw enum', async () => {

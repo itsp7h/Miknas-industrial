@@ -110,6 +110,93 @@ class SalesInvoiceAndPaymentTest extends TestCase
         $this->assertCount(0, $after);
     }
 
+    /**
+     * Blade's edit form let the status be typed in, so an invoice could read
+     * "paid" with no receipts behind it. The field is gone; the endpoint does
+     * not accept it either.
+     */
+    public function test_updating_an_invoice_cannot_set_its_status(): void
+    {
+        $invoice = $this->createInvoice();
+
+        $this->actingAs($this->actingUser())
+            ->putJson("/api/v1/sales/invoices/{$invoice['id']}", [
+                'invoice_date' => '2026-09-01',
+                'due_date' => '2026-09-30',
+                'status' => 'paid',
+                'paid_amount' => 999,
+            ])->assertOk();
+
+        $fresh = SalesInvoice::find($invoice['id']);
+        $this->assertSame('unpaid', $fresh->status);
+        $this->assertEquals(0, $fresh->paid_amount);
+        $this->assertSame('2026-09-30', $fresh->due_date->toDateString());
+    }
+
+    /**
+     * The customer's balance was raised by the original total, so a changed
+     * total has to move it by the same delta. Blade left the balance alone.
+     */
+    public function test_changing_the_amount_moves_the_customer_balance_with_it(): void
+    {
+        $invoice = $this->createInvoice();
+        $this->assertEquals(110, $this->customer->fresh()->outstanding_balance);
+
+        $this->actingAs($this->actingUser())
+            ->putJson("/api/v1/sales/invoices/{$invoice['id']}", [
+                'invoice_date' => now()->toDateString(),
+                'subtotal' => 200,
+                'vat_rate' => 10,
+            ])->assertOk()->assertJsonPath('data.total_amount', '220.00');
+
+        $this->assertEquals(220, $this->customer->fresh()->outstanding_balance);
+    }
+
+    public function test_amounts_are_frozen_once_money_has_been_received(): void
+    {
+        $invoice = $this->createInvoice();
+        $user = $this->actingUser();
+        $this->actingAs($user)->postJson('/api/v1/sales/payments', [
+            'sales_invoice_id' => $invoice['id'], 'receipt_date' => now()->toDateString(),
+            'amount' => 40, 'payment_method' => 'cash',
+        ])->assertCreated();
+
+        $this->actingAs($user)->putJson("/api/v1/sales/invoices/{$invoice['id']}", [
+            'invoice_date' => now()->toDateString(), 'subtotal' => 5,
+        ])->assertStatus(422);
+
+        $this->assertEquals(110, SalesInvoice::find($invoice['id'])->total_amount);
+    }
+
+    /**
+     * Deleting has to undo what raising the invoice did. Blade deleted the row
+     * and left the customer's balance and the order's status behind.
+     */
+    public function test_deleting_an_invoice_reverses_the_balance_and_frees_the_order(): void
+    {
+        $invoice = $this->createInvoice();
+
+        $this->actingAs($this->actingUser())
+            ->deleteJson("/api/v1/sales/invoices/{$invoice['id']}")->assertOk();
+
+        $this->assertDatabaseCount('sales_invoices', 0);
+        $this->assertEquals(0, $this->customer->fresh()->outstanding_balance);
+        $this->assertSame('confirmed', $this->order->fresh()->status);
+    }
+
+    public function test_an_invoice_with_money_against_it_cannot_be_deleted(): void
+    {
+        $invoice = $this->createInvoice();
+        $user = $this->actingUser();
+        $this->actingAs($user)->postJson('/api/v1/sales/payments', [
+            'sales_invoice_id' => $invoice['id'], 'receipt_date' => now()->toDateString(),
+            'amount' => 40, 'payment_method' => 'cash',
+        ])->assertCreated();
+
+        $this->actingAs($user)->deleteJson("/api/v1/sales/invoices/{$invoice['id']}")->assertStatus(422);
+        $this->assertDatabaseCount('sales_invoices', 1);
+    }
+
     public function test_a_partial_payment_marks_the_invoice_partial_and_reduces_the_balance(): void
     {
         $invoice = $this->createInvoice();
