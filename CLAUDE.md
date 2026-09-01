@@ -96,10 +96,10 @@ Api/                      ← React SPA's JSON API
   Purchase/SupplierInvoiceController.php
   Purchase/SupplierPaymentController.php
   Settings/CompanyController.php   ← companies + departments, role:Admin
+  Settings/ProjectController.php   ← projects + locations + import, role:Admin
 Settings/
-  LocationController.php          ProjectSettingController.php
-  UrgencyLevelController.php      UserManagementController.php
-  VatSettingController.php
+  LocationController.php          UrgencyLevelController.php
+  UserManagementController.php    VatSettingController.php
 Purchase/
   PurchaseRequestController.php   + approve, reject, print
   PurchaseOrderController.php     ← only generateLpo + print/pdf survive
@@ -149,6 +149,7 @@ SalesInvoice.php      PaymentReceipt.php
 | `SupplierImportService.php` | Excel import — detects MRF vs template format, skips duplicates |
 | `ItemImportService.php` | Excel import — detects Forkoll vs template format, skips duplicates |
 | `ProjectImportService.php` | Excel import for projects |
+| `ProjectTemplateGenerator.php` | Builds the projects import template (`storage/app/projects_template.xlsx`) |
 | `PurchaseStageService.php` | The purchase pipeline's stage machine (`draft → … → complete`). `setStageIfNotPast()` is the guard that stops a re-award rolling a request backwards. Covered by `tests/Unit/PurchaseStageServiceTest.php` |
 | `RfqInvitationService.php` | Builds tokenised RFQ invitations for the public supplier portal |
 | `LpoGenerationService.php` | Generates LPOs from awarded quote items |
@@ -242,9 +243,8 @@ components/              (Breeze defaults: modal, dropdown, buttons, inputs, etc
 auth/                    (login, register, forgot-password, reset-password, verify-email, confirm-password)
 profile/edit.blade.php   + partials/
 settings/
-  integrations.blade.php   vat.blade.php
-  projects/overview.blade.php   ← companies page is React now
-  users/
+  integrations.blade.php   vat.blade.php   users/
+  (both projects pages are React now)
 
 purchase/
   suppliers/   index, create, edit, pdf
@@ -481,7 +481,7 @@ page is finished. Every module has now been through this — Purchase, Inventory
 Production and Sales — so a React page here should be treated as ported, not
 merely present.
 
-**Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`). Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry), the rest of Settings (projects overview, users, integrations, VAT), Profile, and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard, Purchase Pipeline board **and detail**, Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`). Still Blade: the rest of Purchase (requests, quotes workspace, RFQ, signature — the RFQ workflow, none of which has a sidebar entry), the rest of Settings (users, integrations, VAT), Profile, and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
 
 **The cutover checklist** (each step is a way a cutover has broken before):
 1. Add the `Api/` controller, an `App\Http\Resources\` resource, and `…Saved`/`…Deleted` broadcast events; wire routes in `routes/api.php` — custom paths like `orders/form-options` go **before** the `{wildcard}`.

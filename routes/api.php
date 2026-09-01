@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Sales\PaymentReceiptController;
 use App\Http\Controllers\Api\Sales\SalesInvoiceController;
 use App\Http\Controllers\Api\Sales\SalesOrderController;
 use App\Http\Controllers\Api\Settings\CompanyController;
+use App\Http\Controllers\Api\Settings\ProjectController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -129,6 +130,18 @@ Route::prefix('v1')->group(function () {
             Route::post('companies/{company}/departments', [CompanyController::class, 'storeDepartment']);
             Route::put('companies/{company}/departments/{department}', [CompanyController::class, 'updateDepartment']);
             Route::delete('companies/{company}/departments/{department}', [CompanyController::class, 'destroyDepartment']);
+
+            // `projects/import` and `projects/template` must precede
+            // `projects/{project}` or the wildcard swallows them.
+            Route::get('projects', [ProjectController::class, 'index']);
+            Route::post('projects/import', [ProjectController::class, 'import']);
+            Route::get('projects/template', [ProjectController::class, 'downloadTemplate']);
+            Route::post('projects', [ProjectController::class, 'store']);
+            Route::put('projects/{project}', [ProjectController::class, 'update']);
+            Route::delete('projects/{project}', [ProjectController::class, 'destroy']);
+            Route::post('projects/{project}/locations', [ProjectController::class, 'storeLocation']);
+            Route::put('projects/{project}/locations/{location}', [ProjectController::class, 'updateLocation']);
+            Route::delete('projects/{project}/locations/{location}', [ProjectController::class, 'destroyLocation']);
         });
 
         Route::prefix('purchase')->group(function () {

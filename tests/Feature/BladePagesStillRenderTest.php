@@ -78,29 +78,27 @@ class BladePagesStillRenderTest extends TestCase
     }
 
     /**
-     * The projects overview page is still Blade and still uses the project,
-     * location and import routes, so the companies cutover must not have taken
-     * them with it.
+     * Both projects settings pages are React now, so their old URLs redirect and
+     * the sidebar links the shell. The nav entries render only for an Admin.
      */
-    public function test_the_projects_overview_page_still_renders(): void
+    public function test_the_sidebar_links_both_settings_pages_at_the_react_shell(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
-        $this->actingAs($admin)->get(route('settings.projects.overview'))->assertOk();
+        $response = $this->actingAs($admin)->get(route('dashboard'))->assertOk();
 
-        foreach (['settings.projects.store', 'settings.projects.update', 'settings.projects.destroy',
-            'settings.projects.locations.store', 'settings.projects.import', 'settings.projects.template'] as $name) {
-            $this->assertTrue(Route::has($name), "Route {$name} is missing.");
-        }
+        $response->assertSee('/app/settings/companies', false);
+        $response->assertSee('/app/settings/projects', false);
     }
 
-    public function test_the_old_companies_url_redirects_into_the_react_shell(): void
+    public function test_the_old_settings_urls_redirect_into_the_react_shell(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
 
         $this->actingAs($admin)->get('/settings/projects')->assertRedirect('/app/settings/companies');
+        $this->actingAs($admin)->get('/settings/projects-overview')->assertRedirect('/app/settings/projects');
     }
 
     /**
@@ -162,6 +160,15 @@ class BladePagesStillRenderTest extends TestCase
             '/production/outputs',
         ] as $url) {
             $this->actingAs($this->user())->get($url)->assertNotFound();
+        }
+    }
+
+    /** The template and import moved to the API with the page. */
+    public function test_the_project_settings_writes_moved_to_the_api(): void
+    {
+        foreach (['settings.projects.store', 'settings.projects.import', 'settings.projects.template',
+            'settings.projects.locations.store'] as $name) {
+            $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");
         }
     }
 }
