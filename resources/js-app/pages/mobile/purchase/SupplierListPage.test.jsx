@@ -9,6 +9,26 @@ vi.mock('../../../echo', () => ({
 }));
 
 describe('SupplierListPage (mobile)', () => {
+    it('filters client-side with a live count and no extra request', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [
+                { id: 1, name: 'Acme Steel', category: 'Steel', is_active: true },
+                { id: 2, name: 'Zenith Supply', category: 'Bolts', is_active: true },
+            ],
+        });
+
+        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        await waitFor(() => expect(screen.getByText('Acme Steel')).toBeInTheDocument());
+        expect(screen.getByText('2 suppliers')).toBeInTheDocument();
+
+        const before = client.apiGet.mock.calls.length;
+        fireEvent.change(screen.getByLabelText('Search suppliers'), { target: { value: 'zenith' } });
+
+        expect(screen.getByText('1 of 2 suppliers')).toBeInTheDocument();
+        expect(screen.queryByText('Acme Steel')).not.toBeInTheDocument();
+        expect(client.apiGet.mock.calls.length).toBe(before);
+    });
+
     it('renders suppliers as cards, not a table', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [{ id: 1, name: 'Acme Steel', category: 'Raw Material', is_active: true }] });
 
@@ -45,7 +65,7 @@ describe('SupplierListPage (mobile)', () => {
 
         render(<ToastProvider><SupplierListPage /></ToastProvider>);
 
-        expect(screen.getByText('Download Template').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/template');
+        expect(screen.getByText('Template').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/template');
         expect(screen.getByText('Export PDF').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/export-pdf');
     });
 
@@ -55,7 +75,7 @@ describe('SupplierListPage (mobile)', () => {
 
         render(<ToastProvider><SupplierListPage /></ToastProvider>);
         const file = new File(['dummy'], 'suppliers.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        fireEvent.change(screen.getByLabelText('Import'), { target: { files: [file] } });
+        fireEvent.change(screen.getByLabelText('Import Excel'), { target: { files: [file] } });
 
         await waitFor(() => expect(apiPostSpy).toHaveBeenCalled());
         await waitFor(() => expect(screen.getByText(/2 added, 1 updated/i)).toBeInTheDocument());
@@ -72,7 +92,7 @@ describe('SupplierListPage (mobile)', () => {
         await waitFor(() => expect(apiGetSpy).toHaveBeenCalledTimes(1));
 
         const file = new File(['dummy'], 'suppliers.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        fireEvent.change(screen.getByLabelText('Import'), { target: { files: [file] } });
+        fireEvent.change(screen.getByLabelText('Import Excel'), { target: { files: [file] } });
 
         await waitFor(() => expect(apiGetSpy).toHaveBeenCalledTimes(2));
         await waitFor(() => expect(screen.getByText('Imported Supplier')).toBeInTheDocument());
