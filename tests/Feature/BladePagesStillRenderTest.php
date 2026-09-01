@@ -41,6 +41,7 @@ class BladePagesStillRenderTest extends TestCase
         foreach ([
             '/app/purchase/orders',
             '/app/purchase/grns',
+            '/app/purchase/invoices',
             '/app/inventory/items',
             '/app/inventory/warehouses',
             '/app/inventory/movements',
@@ -91,6 +92,9 @@ class BladePagesStillRenderTest extends TestCase
             '/purchase/grns/7' => '/app/purchase/grns/7',
             '/purchase/grns/create' => '/app/purchase/grns',
             '/purchase/grns/create?purchase_order_id=4' => '/app/purchase/grns?purchase_order_id=4',
+            '/purchase/invoices' => '/app/purchase/invoices',
+            '/purchase/invoices/create' => '/app/purchase/invoices',
+            '/purchase/invoices/7' => '/app/purchase/invoices',
         ] as $from => $to) {
             $this->actingAs($user)->get($from)->assertRedirect($to);
         }

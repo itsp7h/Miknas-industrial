@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Api\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
+use App\Http\Controllers\Api\Purchase\SupplierInvoiceController as PurchaseInvoiceController;
 use App\Http\Controllers\Api\Sales\CustomerController;
 use App\Http\Controllers\Api\Sales\DeliveryNoteController;
 use App\Http\Controllers\Api\Sales\PaymentReceiptController;
@@ -139,6 +140,14 @@ Route::prefix('v1')->group(function () {
             Route::post('grns', [GoodsReceiptNoteController::class, 'store']);
             Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm']);
             Route::delete('grns/{grn}', [GoodsReceiptNoteController::class, 'destroy']);
+
+            // `invoices/form-options` must precede `invoices/{supplierInvoice}`.
+            Route::get('invoices', [PurchaseInvoiceController::class, 'index']);
+            Route::get('invoices/form-options', [PurchaseInvoiceController::class, 'formOptions']);
+            Route::get('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'show']);
+            Route::post('invoices', [PurchaseInvoiceController::class, 'store']);
+            Route::put('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'update']);
+            Route::delete('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'destroy']);
         });
     });
 });

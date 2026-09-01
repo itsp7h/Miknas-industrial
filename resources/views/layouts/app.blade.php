@@ -127,8 +127,15 @@
             " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
                 Goods Receipt (GRN)
             </a>
+            {{-- Supplier Invoices now lives in the React app shell — full navigation, not a named Blade route --}}
+            <a href="/app/purchase/invoices" style="
+                display:block; padding:7px 12px 7px 24px; border-radius:7px; margin-bottom:1px;
+                font-size:13px; text-decoration:none;
+                {{ request()->is('app/purchase/invoices*') ? 'background:#1e293b;color:#fff;font-weight:500;' : 'color:#94a3b8;' }}
+            " onmouseover="if(!this.style.color.includes('fff'))this.style.color='#e2e8f0'" onmouseout="if(!this.style.background.includes('1e293b'))this.style.color='#94a3b8'">
+                Supplier Invoices
+            </a>
             @foreach([
-                ['purchase.invoices.index',   'Supplier Invoices'],
                 ['purchase.payments.index',   'Payments'],
             ] as [$routeName, $label])
             <a href="{{ route($routeName) }}" style="

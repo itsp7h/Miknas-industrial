@@ -9,7 +9,6 @@ use App\Http\Controllers\Purchase\PurchaseRequestController;
 use App\Http\Controllers\Purchase\PurchaseSignatureController;
 use App\Http\Controllers\Purchase\RfqController;
 use App\Http\Controllers\Purchase\RfqPortalController;
-use App\Http\Controllers\Purchase\SupplierInvoiceController;
 use App\Http\Controllers\Purchase\SupplierPaymentController;
 use App\Http\Controllers\Purchase\SupplierQuoteController;
 use App\Http\Controllers\Settings\ProjectSettingController;
@@ -106,7 +105,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::redirect('grns', '/app/purchase/grns');
         Route::get('grns/{grn}', fn ($grn) => redirect("/app/purchase/grns/{$grn}"))
             ->whereNumber('grn');
-        Route::resource('invoices', SupplierInvoiceController::class);
+        Route::redirect('invoices', '/app/purchase/invoices');
+        Route::get('invoices/{invoice}', fn ($invoice) => redirect('/app/purchase/invoices'))
+            ->whereNumber('invoice');
+        Route::get('invoices/create', fn () => redirect('/app/purchase/invoices'));
         Route::resource('payments', SupplierPaymentController::class);
     });
 
