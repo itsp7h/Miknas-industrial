@@ -55,8 +55,8 @@ import DesktopBomListPage from './pages/desktop/production/BomListPage';
 import MobileBomListPage from './pages/mobile/production/BomListPage';
 import DesktopMaterialIssueListPage from './pages/desktop/production/MaterialIssueListPage';
 import MobileMaterialIssueListPage from './pages/mobile/production/MaterialIssueListPage';
-import DesktopFlowListPage from './pages/desktop/production/FlowListPage';
-import MobileFlowListPage from './pages/mobile/production/FlowListPage';
+import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
+import MobileProductionOutputListPage from './pages/mobile/production/ProductionOutputListPage';
 
 export default function App({
     currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken,
@@ -90,7 +90,7 @@ export default function App({
     const ProductionOrderDetailPage = viewport === 'mobile' ? MobileProductionOrderDetailPage : DesktopProductionOrderDetailPage;
     const BomListPage = viewport === 'mobile' ? MobileBomListPage : DesktopBomListPage;
     const MaterialIssueListPage = viewport === 'mobile' ? MobileMaterialIssueListPage : DesktopMaterialIssueListPage;
-    const FlowListPage = viewport === 'mobile' ? MobileFlowListPage : DesktopFlowListPage;
+    const ProductionOutputListPage = viewport === 'mobile' ? MobileProductionOutputListPage : DesktopProductionOutputListPage;
 
     return (
         <AppShell
@@ -136,7 +136,7 @@ export default function App({
                 <Route path="/app/production/orders/:id" element={<ProductionOrderDetailPage />} />
                 <Route path="/app/production/bom" element={<BomListPage />} />
                 <Route path="/app/production/material-issues" element={<MaterialIssueListPage />} />
-                <Route path="/app/production/outputs" element={<FlowListPage kind="production-output" />} />
+                <Route path="/app/production/outputs" element={<ProductionOutputListPage />} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>
         </AppShell>

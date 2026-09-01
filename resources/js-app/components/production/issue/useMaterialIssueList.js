@@ -2,17 +2,9 @@ import { useState } from 'react';
 import useLiveList from '../../../hooks/useLiveList';
 import { useToast } from '../../ui/Toast';
 
-export const num = (value) =>
-    Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-export const formatDate = (value) => {
-    if (!value) return '';
-    const date = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(date.getTime())) return value;
-
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-        .replace('Sept', 'Sep');
-};
+// Re-exported so the pages can pull the row formatters from the same place as
+// the hook they already import.
+export { formatDate, num } from '../formatters';
 
 /** Live list plus client-side search, shared by both viewports. */
 export default function useMaterialIssueList() {

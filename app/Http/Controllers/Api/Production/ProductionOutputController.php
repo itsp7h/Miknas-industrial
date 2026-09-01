@@ -6,6 +6,7 @@ use App\Events\ProductionFlowRecorded;
 use App\Events\ProductionOrderSaved;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductionOutputResource;
+use App\Models\Item;
 use App\Models\ProductionOrder;
 use App\Models\ProductionOutput;
 use App\Models\StockLevel;
@@ -39,6 +40,12 @@ class ProductionOutputController extends Controller
                     'quantity_produced' => $order->quantity_produced,
                 ]),
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            // Blade let the item be chosen explicitly — normally the order's own
+            // product, but a run can yield a by-product or a different grade.
+            'products' => Item::where('is_active', true)
+                ->whereIn('category', ['finished_good', 'wip'])
+                ->orderBy('item_name')
+                ->get(['id', 'item_code', 'item_name']),
         ]);
     }
 

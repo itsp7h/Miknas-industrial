@@ -311,6 +311,19 @@ class ProductionModuleTest extends TestCase
         $this->assertDatabaseHas('stock_movements', ['type' => 'in', 'quantity' => 4, 'reference_type' => 'ProductionOutput']);
     }
 
+    /** The item is chosen explicitly on this page, so the options have to include it. */
+    public function test_output_form_options_offer_producible_items_and_open_orders(): void
+    {
+        $this->makeOrder('in_progress');
+
+        $response = $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/production/outputs/form-options')->assertOk();
+
+        $this->assertSame(['Frame'], array_column($response->json('products'), 'item_name'));
+        $this->assertSame('Frame', $response->json('production_orders.0.product_name'));
+        $this->assertEquals($this->product->id, $response->json('production_orders.0.product_id'));
+    }
+
     public function test_output_cannot_be_recorded_against_a_completed_order(): void
     {
         $order = $this->makeOrder('completed');

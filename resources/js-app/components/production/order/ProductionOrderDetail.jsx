@@ -125,7 +125,8 @@ export default function ProductionOrderDetail({ order, compact = false }) {
             />
             <FlowTable
                 title="Production Output" rows={outputs} dateKey="output_date"
-                actionLabel="+ Record Output" actionTo="/app/production/outputs"
+                actionLabel="+ Record Output"
+                actionTo={`/app/production/outputs?production_order_id=${order.id}`}
             />
         </div>
     );

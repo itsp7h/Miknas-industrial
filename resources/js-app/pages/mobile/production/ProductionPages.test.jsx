@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ProductionOrderListPage from './ProductionOrderListPage';
-import FlowListPage from './FlowListPage';
+import ProductionOutputListPage from './ProductionOutputListPage';
 import BomListPage from './BomListPage';
 import MaterialIssueListPage from './MaterialIssueListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
@@ -88,5 +88,19 @@ describe('mobile production pages', () => {
         expect(screen.queryByText('Issue New Material')).not.toBeInTheDocument();
         fireEvent.click(screen.getByText('+ Issue Material'));
         expect(await screen.findByText('Issue New Material')).toBeInTheDocument();
+    });
+
+    it('production output renders as cards and opens its form as a sheet', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{ id: 2, production_order_id: 1, production_order_number: 'PO-00001', item_name: 'Frame', warehouse_name: 'Main', quantity: '4.00', output_date: '2026-08-04' }],
+        });
+        const { container } = wrap(<ProductionOutputListPage />);
+
+        await screen.findByText('Frame');
+        expect(container.querySelector('table')).toBeNull();
+        expect(screen.getByText('1 entries')).toBeInTheDocument();
+        expect(screen.getByText('04 Aug 2026')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('+ Record Output'));
+        expect(await screen.findByText('Record Production Output')).toBeInTheDocument();
     });
 });

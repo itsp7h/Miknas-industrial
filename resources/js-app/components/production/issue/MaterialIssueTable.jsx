@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatDate, num } from './useMaterialIssueList';
+import { formatDate, num } from '../formatters';
 
 /** Blade's six columns, with the production order as a link into its detail page. */
 export default function MaterialIssueTable({ issues }) {

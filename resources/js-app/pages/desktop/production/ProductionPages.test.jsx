@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ProductionOrderListPage from './ProductionOrderListPage';
 import BomListPage from './BomListPage';
-import FlowListPage from './FlowListPage';
+import ProductionOutputListPage from './ProductionOutputListPage';
 import MaterialIssueListPage from './MaterialIssueListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import * as client from '../../../api/client';
@@ -192,20 +192,52 @@ describe('desktop production pages', () => {
         expect(screen.queryByText(/Bolt/)).not.toBeInTheDocument();
     });
 
-    it('material issues and output share a page but differ in title and columns', async () => {
+    // Output's Blade page is the issues page's twin, differing in wording, in the
+    // weight of the quantity cell, and in offering the item explicitly.
+    it('production output lists Blade\u2019s six columns with the order linked', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, issue_number: 'MI-00001', issue_date: '2026-08-03', production_order_number: 'PO-00001', item_name: 'Steel Bar', warehouse_name: 'Main', quantity: '20.00', notes: null }],
+            data: [{
+                id: 2, production_order_id: 1, production_order_number: 'PO-00001',
+                item_name: 'Frame', warehouse_name: 'Main', quantity: '4.00', output_date: '2026-08-04', notes: null,
+            }],
         });
-        const { unmount } = wrap(<FlowListPage kind="material-issue" />);
-        expect(await screen.findByText('Material Issues')).toBeInTheDocument();
-        expect(screen.getByText('MI-00001')).toBeInTheDocument();
-        unmount();
+        wrap(<ProductionOutputListPage />);
 
-        vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 2, output_date: '2026-08-04', production_order_number: 'PO-00001', item_name: 'Frame', warehouse_name: 'Main', quantity: '4.00', notes: null }],
-        });
-        wrap(<FlowListPage kind="production-output" />);
-        expect(await screen.findByText('Production Output')).toBeInTheDocument();
-        expect(screen.getByText('Record Output')).toBeInTheDocument();
+        await screen.findByText('Frame');
+        expect(screen.getAllByRole('columnheader').map((th) => th.textContent))
+            .toEqual(['Production Order', 'Item', 'Warehouse', 'Quantity', 'Output Date', 'Notes']);
+        expect(screen.getByText('PO-00001')).toHaveAttribute('href', '/app/production/orders/1');
+        expect(screen.getByText('04 Aug 2026')).toBeInTheDocument();
+        expect(screen.getByText('-')).toBeInTheDocument();
+    });
+
+    it('production output keeps the create form on the page, not behind a modal', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<ProductionOutputListPage />);
+
+        expect(await screen.findByText('Record Production Output')).toBeInTheDocument();
+        expect(screen.getByLabelText(/Item \(Finished Good\)/)).toBeInTheDocument();
+        expect(screen.getByText('Record Output')).toHaveClass('btn-primary');
+        expect(screen.getByText('No production outputs recorded.')).toBeInTheDocument();
+    });
+
+    // A run normally yields the order's own product, so choosing the order fills
+    // the item in — but it stays editable for a by-product or another grade.
+    it('production output preselects the order\u2019s product as the item', async () => {
+        vi.spyOn(client, 'apiGet').mockImplementation((url) => (
+            url.endsWith('/form-options')
+                ? Promise.resolve({
+                    production_orders: [{ id: 1, order_number: 'PO-00001', product_id: 7, product_name: 'Frame', quantity_to_produce: '10.00', quantity_produced: '4.00' }],
+                    warehouses: [{ id: 1, name: 'Main' }],
+                    products: [{ id: 7, item_code: 'FG-1', item_name: 'Frame' }, { id: 8, item_code: 'FG-2', item_name: 'Panel' }],
+                })
+                : Promise.resolve({ data: [] })
+        ));
+        wrap(<ProductionOutputListPage />);
+
+        const orderSelect = await screen.findByLabelText(/Production Order/);
+        fireEvent.change(orderSelect, { target: { value: '1' } });
+        expect(screen.getByLabelText(/Item \(Finished Good\)/)).toHaveValue('7');
+        expect(screen.getByText('4.00 of 10.00 made so far.')).toBeInTheDocument();
     });
 });
