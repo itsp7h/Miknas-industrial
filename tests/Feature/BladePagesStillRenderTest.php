@@ -65,6 +65,45 @@ class BladePagesStillRenderTest extends TestCase
     }
 
     /**
+     * Companies is the first Settings page in the shell. The sidebar link is
+     * rendered only for an Admin, so this needs one.
+     */
+    public function test_the_sidebar_links_companies_at_the_react_shell_for_an_admin(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->get(route('dashboard'))->assertOk()
+            ->assertSee('/app/settings/companies', false);
+    }
+
+    /**
+     * The projects overview page is still Blade and still uses the project,
+     * location and import routes, so the companies cutover must not have taken
+     * them with it.
+     */
+    public function test_the_projects_overview_page_still_renders(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->get(route('settings.projects.overview'))->assertOk();
+
+        foreach (['settings.projects.store', 'settings.projects.update', 'settings.projects.destroy',
+            'settings.projects.locations.store', 'settings.projects.import', 'settings.projects.template'] as $name) {
+            $this->assertTrue(Route::has($name), "Route {$name} is missing.");
+        }
+    }
+
+    public function test_the_old_companies_url_redirects_into_the_react_shell(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->get('/settings/projects')->assertRedirect('/app/settings/companies');
+    }
+
+    /**
      * The LPO print/PDF documents are DomPDF-backed and deliberately stay
      * Blade, so the Purchase Orders cutover must not have taken them with it.
      */

@@ -74,7 +74,7 @@ export const NAV_GROUPS = [
         // Alone among the groups, the Blade System links carried their own 14px
         // icon beside the label.
         items: [
-            { type: 'href', to: '/settings/projects', label: 'Companies', icon: BUILDING },
+            { type: 'link', to: '/app/settings/companies', label: 'Companies', icon: BUILDING },
             { type: 'href', to: '/settings/projects-overview', label: 'Projects', icon: FOLDER },
             { type: 'href', to: '/settings/users', label: 'Users', icon: USERS },
             { type: 'href', to: '/settings/integrations', label: 'Integrations', icon: COG },

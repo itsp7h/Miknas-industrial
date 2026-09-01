@@ -55,6 +55,8 @@ import DesktopBomListPage from './pages/desktop/production/BomListPage';
 import MobileBomListPage from './pages/mobile/production/BomListPage';
 import DesktopMaterialIssueListPage from './pages/desktop/production/MaterialIssueListPage';
 import MobileMaterialIssueListPage from './pages/mobile/production/MaterialIssueListPage';
+import DesktopCompanyListPage from './pages/desktop/settings/CompanyListPage';
+import MobileCompanyListPage from './pages/mobile/settings/CompanyListPage';
 import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
 import MobileProductionOutputListPage from './pages/mobile/production/ProductionOutputListPage';
 
@@ -91,6 +93,7 @@ export default function App({
     const BomListPage = viewport === 'mobile' ? MobileBomListPage : DesktopBomListPage;
     const MaterialIssueListPage = viewport === 'mobile' ? MobileMaterialIssueListPage : DesktopMaterialIssueListPage;
     const ProductionOutputListPage = viewport === 'mobile' ? MobileProductionOutputListPage : DesktopProductionOutputListPage;
+    const CompanyListPage = viewport === 'mobile' ? MobileCompanyListPage : DesktopCompanyListPage;
 
     return (
         <AppShell
@@ -137,6 +140,7 @@ export default function App({
                 <Route path="/app/production/bom" element={<BomListPage />} />
                 <Route path="/app/production/material-issues" element={<MaterialIssueListPage />} />
                 <Route path="/app/production/outputs" element={<ProductionOutputListPage />} />
+                <Route path="/app/settings/companies" element={<CompanyListPage />} />
                 <Route path="*" element={<div>Page not found.</div>} />
             </Routes>
         </AppShell>

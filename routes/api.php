@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Sales\DeliveryNoteController;
 use App\Http\Controllers\Api\Sales\PaymentReceiptController;
 use App\Http\Controllers\Api\Sales\SalesInvoiceController;
 use App\Http\Controllers\Api\Sales\SalesOrderController;
+use App\Http\Controllers\Api\Settings\CompanyController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -116,6 +117,18 @@ Route::prefix('v1')->group(function () {
             Route::get('outputs', [ProductionOutputController::class, 'index']);
             Route::get('outputs/form-options', [ProductionOutputController::class, 'formOptions']);
             Route::post('outputs', [ProductionOutputController::class, 'store']);
+        });
+
+        // Settings are Admin-only, matching the `role:Admin` group the Blade
+        // settings pages live in.
+        Route::prefix('settings')->middleware('role:Admin')->group(function () {
+            Route::get('companies', [CompanyController::class, 'index']);
+            Route::post('companies', [CompanyController::class, 'store']);
+            Route::put('companies/{company}', [CompanyController::class, 'update']);
+            Route::delete('companies/{company}', [CompanyController::class, 'destroy']);
+            Route::post('companies/{company}/departments', [CompanyController::class, 'storeDepartment']);
+            Route::put('companies/{company}/departments/{department}', [CompanyController::class, 'updateDepartment']);
+            Route::delete('companies/{company}/departments/{department}', [CompanyController::class, 'destroyDepartment']);
         });
 
         Route::prefix('purchase')->group(function () {

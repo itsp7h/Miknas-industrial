@@ -139,23 +139,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/integrations/mail-accounts/{mailAccount}/send-test', [MailAccountController::class, 'sendTestEmail'])->name('settings.mail-accounts.send-test');
         Route::patch('settings/integrations/mail-accounts/{mailAccount}/toggle', [MailAccountController::class, 'toggleEnabled'])->name('settings.mail-accounts.toggle');
 
-        // Projects settings
-        Route::get('settings/projects', [ProjectSettingController::class, 'index'])->name('settings.projects.index');
+        // Projects settings. The companies + departments page is served by the
+        // React shell at /app/settings/companies; only a redirect for old links
+        // stays here, and the company/department writes moved to routes/api.php.
+        Route::redirect('settings/projects', '/app/settings/companies')->name('settings.projects.index');
         Route::get('settings/projects-overview', [ProjectSettingController::class, 'projectsOverview'])->name('settings.projects.overview');
         Route::post('settings/projects', [ProjectSettingController::class, 'store'])->name('settings.projects.store');
         Route::post('settings/projects/import', [ProjectSettingController::class, 'import'])->name('settings.projects.import');
         Route::get('settings/projects/template', [ProjectSettingController::class, 'downloadTemplate'])->name('settings.projects.template');
-        Route::post('settings/projects/companies', [ProjectSettingController::class, 'storeCompany'])->name('settings.projects.companies.store');
-        Route::patch('settings/projects/companies/{company}', [ProjectSettingController::class, 'updateCompany'])->name('settings.projects.companies.update');
-        Route::delete('settings/projects/companies/{company}', [ProjectSettingController::class, 'destroyCompany'])->name('settings.projects.companies.destroy');
         Route::patch('settings/projects/{project}', [ProjectSettingController::class, 'update'])->name('settings.projects.update');
         Route::delete('settings/projects/{project}', [ProjectSettingController::class, 'destroy'])->name('settings.projects.destroy');
         Route::post('settings/projects/{project}/locations', [ProjectSettingController::class, 'storeLocation'])->name('settings.projects.locations.store');
         Route::patch('settings/projects/{project}/locations/{location}', [ProjectSettingController::class, 'updateLocation'])->name('settings.projects.locations.update');
         Route::delete('settings/projects/{project}/locations/{location}', [ProjectSettingController::class, 'destroyLocation'])->name('settings.projects.locations.destroy');
-        Route::post('settings/projects/companies/{company}/departments', [ProjectSettingController::class, 'storeDepartment'])->name('settings.projects.companies.departments.store');
-        Route::patch('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'updateDepartment'])->name('settings.projects.companies.departments.update');
-        Route::delete('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'destroyDepartment'])->name('settings.projects.companies.departments.destroy');
 
         // VAT settings
         Route::get('settings/vat', [VatSettingController::class, 'index'])->name('settings.vat');
