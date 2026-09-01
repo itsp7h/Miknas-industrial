@@ -1,11 +1,7 @@
 import MobileReport from '../../../../components/inventory/reports/MobileReport';
 import MovementFilters from '../../../../components/inventory/reports/MovementFilters';
 import useReport from '../../../../components/inventory/reports/useReport';
-import { TYPE_LABELS } from '../../../../components/inventory/movement/StockMovementForm';
-
-const TYPE_COLOURS = { in: '#16a34a', out: '#dc2626', adjustment: '#ca8a04' };
-const SEARCH_KEYS = ['item_name', 'item_code', 'warehouse_name', 'notes'];
-const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '—');
+import { formatDate, num, typeBadgeClass, typeLabel } from '../../../../components/inventory/movement/movementStyles';
 
 export default function MovementReportPage() {
     const { rows, meta, loading, reload } = useReport('/inventory/reports/movement', {
@@ -15,22 +11,28 @@ export default function MovementReportPage() {
     return (
         <MobileReport
             title="Movement Report"
+            subtitle="View stock movements within a date range"
             summary={[{ label: 'Movements', value: rows.length }]}
             rows={rows}
             loading={loading}
-            searchKeys={SEARCH_KEYS}
-            emptyMessage="No movements match those filters."
+            searchKeys={['item_code', 'item_name', 'warehouse_name', 'notes']}
+            emptyMessage="No movements found for selected filters."
             renderCard={(row) => (
                 <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                        <span style={{ fontWeight: 600 }}>{row.item_name}</span>
-                        <span style={{ color: TYPE_COLOURS[row.type], fontWeight: 600, fontSize: 13 }}>
-                            {TYPE_LABELS[row.type] ?? row.type} {row.quantity}
-                        </span>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a' }}>{row.item_name ?? '—'}</div>
+                            <div className="font-mono" style={{ fontSize: 11, color: '#94a3b8' }}>{row.item_code ?? ''}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <span className={typeBadgeClass(row.type)}>{typeLabel(row.type)}</span>
+                            <div style={{ fontWeight: 700, color: '#1f2937', marginTop: 4 }}>{num(row.quantity)}</div>
+                        </div>
                     </div>
-                    <div style={{ fontSize: 13, color: '#64748b' }}>{row.warehouse_name}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{formatDate(row.created_at)}</div>
-                    {row.notes && <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{row.notes}</div>}
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                        {row.warehouse_name ?? '—'} · {formatDate(row.created_at)}
+                    </div>
+                    {row.notes && <div style={{ fontSize: 11, color: '#94a3b8' }}>{row.notes}</div>}
                 </>
             )}
         >

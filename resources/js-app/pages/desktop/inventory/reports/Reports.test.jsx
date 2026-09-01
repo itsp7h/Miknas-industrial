@@ -66,8 +66,8 @@ describe('desktop inventory reports', () => {
         // filter, so anchor on the warehouse cell, which is unique.
         await screen.findByText('Main');
 
-        fireEvent.change(screen.getByLabelText('Item'), { target: { value: '7' } });
-        fireEvent.click(screen.getByText('Apply'));
+        fireEvent.change(screen.getByLabelText('Item (optional)'), { target: { value: '7' } });
+        fireEvent.click(screen.getByText('Filter'));
 
         await waitFor(() => {
             expect(spy).toHaveBeenCalledWith('/inventory/reports/movement?item_id=7');
@@ -81,8 +81,8 @@ describe('desktop inventory reports', () => {
         wrap(<MovementReportPage />);
         await screen.findByText('Clear');
 
-        fireEvent.change(screen.getByLabelText('Item'), { target: { value: '7' } });
-        fireEvent.click(screen.getByText('Apply'));
+        fireEvent.change(screen.getByLabelText('Item (optional)'), { target: { value: '7' } });
+        fireEvent.click(screen.getByText('Filter'));
         fireEvent.click(screen.getByText('Clear'));
 
         await waitFor(() => {
