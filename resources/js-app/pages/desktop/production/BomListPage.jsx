@@ -1,88 +1,76 @@
-import { useMemo, useState } from 'react';
-import Card from '../../../components/ui/Card';
-import Table from '../../../components/ui/Table';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
 import BomForm from '../../../components/production/BomForm';
-import { qty } from '../../../components/production/statuses';
-import { apiDelete, apiGet } from '../../../api/client';
-import { useToast } from '../../../components/ui/Toast';
-import { useEffect } from 'react';
+import BomProductCard from '../../../components/production/bom/BomProductCard';
+import useBomList from '../../../components/production/bom/useBomList';
 
 export default function BomListPage() {
-    const [rows, setRows] = useState([]);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState(null);
-    const [deleting, setDeleting] = useState(null);
-    const { showToast } = useToast();
-
-    // A bill of materials is reference data — it changes when someone edits it,
-    // not from activity elsewhere, so there is nothing to subscribe to.
-    function load() {
-        return apiGet('/production/bom')
-            .then((response) => setRows(response.data))
-            .catch(() => showToast('Failed to load the bill of materials.', 'error'));
-    }
-
-    useEffect(() => {
-        load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    async function handleSaved() {
-        setModalOpen(false);
-        await load();
-        showToast('BOM line saved.', 'success');
-    }
-
-    async function handleDeleteConfirmed() {
-        const entry = deleting;
-        setDeleting(null);
-        try {
-            await apiDelete(`/production/bom/${entry.id}`);
-            setRows((prev) => prev.filter((row) => row.id !== entry.id));
-            showToast('BOM line removed.', 'success');
-        } catch (err) {
-            showToast(err.message || 'Failed to remove that line.', 'error');
-        }
-    }
-
-    const columns = useMemo(() => [
-        { key: 'product_name', label: 'Product', render: (row) => row.product_name ?? '—' },
-        { key: 'raw_material_name', label: 'Raw Material', render: (row) => row.raw_material_name ?? '—' },
-        { key: 'quantity_required', label: 'Quantity', render: (row) => qty(row.quantity_required) },
-        { key: 'unit_of_measure', label: 'Unit' },
-        {
-            key: 'actions',
-            label: '',
-            render: (row) => (
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <Button variant="link" onClick={() => { setEditing(row); setModalOpen(true); }}>Edit</Button>
-                    <Button variant="link-danger" onClick={() => setDeleting(row)}>Delete</Button>
-                </div>
-            ),
-        },
-    ], []);
+    const b = useBomList();
 
     return (
-        <Card title="Bill of Materials">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <Button onClick={() => { setEditing(null); setModalOpen(true); }}>Add BOM Line</Button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Bill of Materials</h1>
+                    <p className="page-subtitle">Define material requirements for each product</p>
+                </div>
+                <button type="button" onClick={b.openCreate} className="btn-primary">+ Add BOM Entry</button>
             </div>
 
-            <Table columns={columns} rows={rows} rowKey={(row) => row.id} searchPlaceholder="Search bill of materials…" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                    <svg
+                        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                        width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={b.query}
+                        onChange={(e) => b.setQuery(e.target.value)}
+                        placeholder="Search product, material, UOM…"
+                        aria-label="Search bill of materials"
+                        autoComplete="off"
+                        style={{ padding: '8px 14px 8px 34px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13.5, width: 340, outline: 'none' }}
+                    />
+                </div>
+                <div style={{ fontSize: 12.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {b.query ? `${b.filtered.length} of ${b.rows.length} entries` : `${b.rows.length} entries`}
+                </div>
+            </div>
 
-            <Modal open={modalOpen} title={editing ? 'Edit BOM Line' : 'Add BOM Line'} onClose={() => setModalOpen(false)}>
-                <BomForm entry={editing} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            {b.groups.map((group) => (
+                <BomProductCard key={group.key} group={group} onEdit={b.openEdit} onDelete={b.setDeleting} />
+            ))}
+
+            {b.groups.length === 0 && (
+                <div className="card card-body text-center text-gray-400">
+                    {b.query ? 'No BOM entries match that search.' : (
+                        <>
+                            No BOM entries found.{' '}
+                            <button type="button" onClick={b.openCreate} className="text-blue-600 hover:underline">Add the first one</button>.
+                        </>
+                    )}
+                </div>
+            )}
+
+            <Modal
+                open={b.modalOpen}
+                title={b.editing ? 'Edit BOM Entry' : 'Add BOM Entry'}
+                onClose={() => b.setModalOpen(false)}
+            >
+                <BomForm entry={b.editing} onSaved={b.handleSaved} onCancel={() => b.setModalOpen(false)} />
             </Modal>
             <ConfirmModal
-                open={!!deleting}
-                title="Remove this BOM line?"
-                body={deleting ? `${deleting.raw_material_name} will no longer be required for ${deleting.product_name}.` : ''}
-                onConfirm={handleDeleteConfirmed}
-                onCancel={() => setDeleting(null)}
+                open={!!b.deleting}
+                title="Delete this BOM entry?"
+                body={b.deleting
+                    ? `${b.deleting.raw_material_name} will no longer be required for ${b.deleting.product_name}.`
+                    : ''}
+                onConfirm={b.handleDeleteConfirmed}
+                onCancel={() => b.setDeleting(null)}
             />
-        </Card>
+        </div>
     );
 }

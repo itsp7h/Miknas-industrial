@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ProductionOrderListPage from './ProductionOrderListPage';
 import FlowListPage from './FlowListPage';
+import BomListPage from './BomListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import * as client from '../../../api/client';
 
@@ -45,6 +46,22 @@ describe('mobile production pages', () => {
         fireEvent.change(screen.getByLabelText('Search production orders'), { target: { value: 'in progress' } });
         expect(screen.getByText('PO-00001')).toBeInTheDocument();
         expect(screen.queryByText('PO-00002')).not.toBeInTheDocument();
+    });
+
+    it('bom lines render as cards grouped under their product, not a table', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [
+                { id: 1, product_id: 1, product_name: 'Frame', product_code: 'FG-1', raw_material_name: 'Steel Bar', quantity_required: '2.50', unit_of_measure: 'KG' },
+                { id: 2, product_id: 2, product_name: 'Panel', product_code: 'FG-2', raw_material_name: 'Steel Sheet', quantity_required: '1.00', unit_of_measure: 'SQM' },
+            ],
+        });
+        const { container } = wrap(<BomListPage />);
+
+        await screen.findByText('Frame');
+        expect(container.querySelector('table')).toBeNull();
+        expect(screen.getByText('FG-1')).toBeInTheDocument();
+        expect(screen.getByText('2.50 KG')).toBeInTheDocument();
+        expect(screen.getByText('2 entries')).toBeInTheDocument();
     });
 
     it('material issues render as cards with a live count', async () => {

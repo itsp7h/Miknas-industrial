@@ -1,102 +1,95 @@
-import { useEffect, useMemo, useState } from 'react';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import Button from '../../../components/ui/Button';
 import BomForm from '../../../components/production/BomForm';
-import { qty } from '../../../components/production/statuses';
-import { apiDelete, apiGet } from '../../../api/client';
-import { useToast } from '../../../components/ui/Toast';
+import useBomList, { num } from '../../../components/production/bom/useBomList';
 
 export default function BomListPage() {
-    const [rows, setRows] = useState([]);
-    const [query, setQuery] = useState('');
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState(null);
-    const [deleting, setDeleting] = useState(null);
-    const { showToast } = useToast();
-
-    function load() {
-        return apiGet('/production/bom')
-            .then((response) => setRows(response.data))
-            .catch(() => showToast('Failed to load the bill of materials.', 'error'));
-    }
-
-    useEffect(() => {
-        load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const filtered = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return rows;
-        return rows.filter((r) =>
-            [r.product_name, r.raw_material_name].some((field) => String(field ?? '').toLowerCase().includes(q))
-        );
-    }, [rows, query]);
-
-    async function handleSaved() {
-        setModalOpen(false);
-        await load();
-        showToast('BOM line saved.', 'success');
-    }
-
-    async function handleDeleteConfirmed() {
-        const entry = deleting;
-        setDeleting(null);
-        try {
-            await apiDelete(`/production/bom/${entry.id}`);
-            setRows((prev) => prev.filter((row) => row.id !== entry.id));
-            showToast('BOM line removed.', 'success');
-        } catch (err) {
-            showToast(err.message || 'Failed to remove that line.', 'error');
-        }
-    }
+    const b = useBomList();
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h1 style={{ fontSize: 18, fontWeight: 700 }}>Bill of Materials</h1>
-                <Button onClick={() => { setEditing(null); setModalOpen(true); }}>Add</Button>
+            <div style={{ marginBottom: 12 }}>
+                <h1 className="page-title">Bill of Materials</h1>
+                <p className="page-subtitle">Define material requirements for each product</p>
             </div>
 
+            <button
+                type="button" onClick={b.openCreate} className="btn-primary"
+                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+            >
+                + Add BOM Entry
+            </button>
+
             <div style={{ marginBottom: 12 }}>
-                <input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search bill of materials…" aria-label="Search bill of materials"
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full" />
+                <input
+                    type="search"
+                    value={b.query}
+                    onChange={(e) => b.setQuery(e.target.value)}
+                    placeholder="Search product, material, UOM…"
+                    aria-label="Search bill of materials"
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
+                />
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    {query ? `${filtered.length} of ${rows.length} lines` : `${rows.length} lines`}
+                    {b.query ? `${b.filtered.length} of ${b.rows.length} entries` : `${b.rows.length} entries`}
                 </div>
             </div>
 
-            {filtered.length === 0 && (
+            {b.groups.length === 0 && (
                 <p style={{ fontSize: 14, color: '#64748b' }}>
-                    {query ? 'No BOM lines match that search.' : 'No bill of materials defined yet.'}
+                    {b.query ? 'No BOM entries match that search.' : 'No BOM entries found.'}
                 </p>
             )}
 
-            {filtered.map((row) => (
-                <div key={row.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                    <div onClick={() => { setEditing(row); setModalOpen(true); }}>
-                        <div style={{ fontWeight: 600 }}>{row.product_name ?? '—'}</div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>
-                            needs {qty(row.quantity_required)} {row.unit_of_measure} of {row.raw_material_name ?? '—'}
+            {/* Same grouping as desktop — the product header stays, its lines
+                become cards rather than table rows. */}
+            {b.groups.map((group) => (
+                <div key={group.key} style={{ marginBottom: 18 }}>
+                    <div className="bg-blue-50 border border-blue-100" style={{
+                        borderRadius: 10, padding: '8px 12px', marginBottom: 8,
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+                    }}>
+                        <h3 className="font-semibold text-blue-800 text-sm" style={{ minWidth: 0 }}>{group.productName}</h3>
+                        <span className="text-xs text-blue-500" style={{ flexShrink: 0 }}>{group.productCode}</span>
+                    </div>
+
+                    {group.lines.map((line) => (
+                        <div key={line.id} style={{
+                            background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
+                            padding: 12, marginBottom: 8,
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14, minWidth: 0 }}>
+                                    {line.raw_material_name ?? ''}
+                                </div>
+                                <div style={{ fontSize: 13, color: '#334155', flexShrink: 0 }}>
+                                    {num(line.quantity_required)} {line.unit_of_measure}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                                <button type="button" onClick={() => b.openEdit(line)} className="btn-secondary btn-sm">Edit</button>
+                                <button type="button" onClick={() => b.setDeleting(line)} className="btn-danger btn-sm">Delete</button>
+                            </div>
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                        <Button variant="link-danger" onClick={() => setDeleting(row)}>Delete</Button>
-                    </div>
+                    ))}
                 </div>
             ))}
 
-            <Modal open={modalOpen} title={editing ? 'Edit BOM Line' : 'Add BOM Line'} onClose={() => setModalOpen(false)}>
-                <BomForm entry={editing} onSaved={handleSaved} onCancel={() => setModalOpen(false)} />
+            <Modal
+                open={b.modalOpen}
+                title={b.editing ? 'Edit BOM Entry' : 'Add BOM Entry'}
+                onClose={() => b.setModalOpen(false)}
+            >
+                <BomForm entry={b.editing} onSaved={b.handleSaved} onCancel={() => b.setModalOpen(false)} />
             </Modal>
             <ConfirmModal
-                open={!!deleting}
-                title="Remove this BOM line?"
-                body={deleting ? `${deleting.raw_material_name} will no longer be required for ${deleting.product_name}.` : ''}
-                onConfirm={handleDeleteConfirmed}
-                onCancel={() => setDeleting(null)}
+                open={!!b.deleting}
+                title="Delete this BOM entry?"
+                body={b.deleting
+                    ? `${b.deleting.raw_material_name} will no longer be required for ${b.deleting.product_name}.`
+                    : ''}
+                onConfirm={b.handleDeleteConfirmed}
+                onCancel={() => b.setDeleting(null)}
             />
         </div>
     );

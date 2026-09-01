@@ -44,32 +44,40 @@ export default function BomForm({ entry, onSaved, onCancel }) {
     return (
         <form onSubmit={handleSubmit}>
             <div className="mb-4">
-                <label htmlFor="product_id" className="block text-sm font-medium text-gray-700 mb-1">Product</label>
+                <label htmlFor="product_id" className="form-label">
+                    Product (Finished Good) <span className="text-red-500">*</span>
+                </label>
                 <select id="product_id" value={values.product_id} onChange={(e) => setField('product_id', e.target.value)}
                     className={`border rounded-md px-3 py-2 text-sm w-full ${errors.product_id ? 'border-red-400' : 'border-gray-300'}`}>
-                    <option value="">Select a product…</option>
-                    {options.products.map((p) => <option key={p.id} value={p.id}>{p.item_name}</option>)}
+                    <option value="">-- Select Product --</option>
+                    {options.products.map((p) => (
+                        <option key={p.id} value={p.id}>{p.item_code} - {p.item_name}</option>
+                    ))}
                 </select>
                 {errors.product_id && <p className="text-sm text-red-600 mt-1">{errors.product_id}</p>}
             </div>
 
             <div className="mb-4">
-                <label htmlFor="raw_material_id" className="block text-sm font-medium text-gray-700 mb-1">Raw Material</label>
+                <label htmlFor="raw_material_id" className="form-label">
+                    Raw Material <span className="text-red-500">*</span>
+                </label>
                 <select id="raw_material_id" value={values.raw_material_id} onChange={(e) => setField('raw_material_id', e.target.value)}
                     className={`border rounded-md px-3 py-2 text-sm w-full ${errors.raw_material_id ? 'border-red-400' : 'border-gray-300'}`}>
-                    <option value="">Select a material…</option>
-                    {options.raw_materials.map((m) => <option key={m.id} value={m.id}>{m.item_name}</option>)}
+                    <option value="">-- Select Raw Material --</option>
+                    {options.raw_materials.map((m) => (
+                        <option key={m.id} value={m.id}>{m.item_code} - {m.item_name}</option>
+                    ))}
                 </select>
                 {errors.raw_material_id && <p className="text-sm text-red-600 mt-1">{errors.raw_material_id}</p>}
             </div>
 
             <FormField label="Quantity Required" name="quantity_required" type="number" value={values.quantity_required} onChange={setField} error={errors.quantity_required} />
-            <FormField label="Unit of Measure" name="unit_of_measure" value={values.unit_of_measure} onChange={setField} error={errors.unit_of_measure} />
+            <FormField label="Unit of Measure" name="unit_of_measure" value={values.unit_of_measure} onChange={setField} error={errors.unit_of_measure} placeholder="e.g. KG, PCS" />
             <FormField label="Notes" name="notes" type="textarea" value={values.notes} onChange={setField} error={errors.notes} />
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-                <Button type="submit" loading={saving}>{entry ? 'Save Changes' : 'Add BOM Line'}</Button>
+                <Button type="submit" loading={saving}>{entry ? 'Update BOM Entry' : 'Save BOM Entry'}</Button>
             </div>
         </form>
     );

@@ -181,6 +181,34 @@ class ProductionModuleTest extends TestCase
         ])->assertCreated()->assertJsonPath('data.raw_material_name', 'Steel Bar');
     }
 
+    /**
+     * The page groups lines into one card per product as it walks the list, so an
+     * unordered response would open a second card for a product already seen.
+     * It also needs each product's code for the card header.
+     */
+    public function test_bom_lines_arrive_grouped_by_product_with_item_codes(): void
+    {
+        $panel = Item::create(['item_code' => 'FG-2', 'item_name' => 'Panel', 'category' => 'finished_good', 'unit_of_measure' => 'PCS']);
+        $bolt = Item::create(['item_code' => 'RM-2', 'item_name' => 'Bolt', 'category' => 'raw_material', 'unit_of_measure' => 'PCS']);
+
+        // Inserted interleaved: Frame, Panel, Frame.
+        foreach ([[$this->product, $this->rawMaterial], [$panel, $bolt], [$this->product, $bolt]] as [$product, $material]) {
+            BillOfMaterial::create([
+                'product_id' => $product->id, 'raw_material_id' => $material->id,
+                'quantity_required' => 1, 'unit_of_measure' => 'KG',
+            ]);
+        }
+
+        $response = $this->actingAs($this->actingUser())->getJson('/api/v1/production/bom')->assertOk();
+
+        $this->assertSame(
+            ['Frame', 'Frame', 'Panel'],
+            array_column($response->json('data'), 'product_name')
+        );
+        $this->assertSame('FG-1', $response->json('data.0.product_code'));
+        $this->assertSame('RM-1', $response->json('data.0.raw_material_code'));
+    }
+
     /** A product built from itself would recurse forever. */
     public function test_a_product_cannot_be_its_own_raw_material(): void
     {

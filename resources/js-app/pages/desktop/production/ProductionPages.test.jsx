@@ -80,14 +80,60 @@ describe('desktop production pages', () => {
         });
     });
 
-    it('bill of materials lists product against raw material', async () => {
+    // Blade grouped the lines into one card per product, with the product's name
+    // and code in a blue header — not a flat table repeating the product on every
+    // row, which is what the first React port produced.
+    it('bill of materials groups lines under one card per product', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, product_name: 'Frame', raw_material_name: 'Steel Bar', quantity_required: '2.50', unit_of_measure: 'KG' }],
+            data: [
+                { id: 1, product_id: 1, product_name: 'Frame', product_code: 'FG-1', raw_material_name: 'Steel Bar', quantity_required: '2.50', unit_of_measure: 'KG' },
+                { id: 2, product_id: 1, product_name: 'Frame', product_code: 'FG-1', raw_material_name: 'Bolt', quantity_required: '8.00', unit_of_measure: 'PCS' },
+                { id: 3, product_id: 2, product_name: 'Panel', product_code: 'FG-2', raw_material_name: 'Steel Sheet', quantity_required: '1.00', unit_of_measure: 'SQM' },
+            ],
+        });
+        const { container } = wrap(<BomListPage />);
+
+        await screen.findByText('Frame');
+        expect(container.querySelectorAll('table')).toHaveLength(2);
+        // The product is named once per card, not once per line.
+        expect(screen.getAllByText('Frame')).toHaveLength(1);
+        expect(screen.getByText('FG-1')).toBeInTheDocument();
+        expect(screen.getByText('2.50')).toBeInTheDocument();
+        expect(screen.getByText('Bolt')).toBeInTheDocument();
+    });
+
+    it('bill of materials offers Edit and Delete on every line', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{ id: 1, product_id: 1, product_name: 'Frame', product_code: 'FG-1', raw_material_name: 'Steel Bar', quantity_required: '2.50', unit_of_measure: 'KG' }],
         });
         wrap(<BomListPage />);
+
+        expect(await screen.findByText('Edit')).toHaveClass('btn-secondary');
+        expect(screen.getByText('Delete')).toHaveClass('btn-danger');
+    });
+
+    it('bill of materials filters client-side with a live count', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [
+                { id: 1, product_id: 1, product_name: 'Frame', product_code: 'FG-1', raw_material_name: 'Steel Bar', quantity_required: '2.50', unit_of_measure: 'KG' },
+                { id: 3, product_id: 2, product_name: 'Panel', product_code: 'FG-2', raw_material_name: 'Steel Sheet', quantity_required: '1.00', unit_of_measure: 'SQM' },
+            ],
+        });
+        wrap(<BomListPage />);
+
         await screen.findByText('Frame');
-        expect(screen.getByText('Steel Bar')).toBeInTheDocument();
-        expect(screen.getByText('2.5')).toBeInTheDocument();
+        expect(screen.getByText('2 entries')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search bill of materials'), { target: { value: 'panel' } });
+        expect(screen.getByText('1 of 2 entries')).toBeInTheDocument();
+        expect(screen.queryByText('Frame')).not.toBeInTheDocument();
+    });
+
+    it('bill of materials says so when there is nothing defined', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<BomListPage />);
+
+        expect(await screen.findByText(/No BOM entries found/)).toBeInTheDocument();
+        expect(screen.getByText('Add the first one')).toBeInTheDocument();
     });
 
     it('material issues and output share a page but differ in title and columns', async () => {

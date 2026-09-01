@@ -13,8 +13,16 @@ class BillOfMaterialController extends Controller
 {
     public function index()
     {
+        // The page groups lines under one card per product, so the rows have to
+        // arrive grouped — an unordered list would open a new card every time
+        // the product changed and repeat products further down.
         return BillOfMaterialResource::collection(
-            BillOfMaterial::with(['product', 'rawMaterial'])->get()
+            BillOfMaterial::with(['product', 'rawMaterial'])
+                ->join('items', 'items.id', '=', 'bill_of_materials.product_id')
+                ->orderBy('items.item_name')
+                ->orderBy('bill_of_materials.id')
+                ->select('bill_of_materials.*')
+                ->get()
         );
     }
 
