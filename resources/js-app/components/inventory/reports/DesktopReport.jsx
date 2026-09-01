@@ -7,7 +7,7 @@ import ReportTable from './ReportTable';
  */
 export default function DesktopReport({
     title, subtitle, summary, columns, rows, loading,
-    emptyMessage, noun = 'lines', rowClassName, children,
+    emptyMessage, noun = 'lines', rowClassName, children, emptyTone,
 }) {
     return (
         <div>
@@ -39,7 +39,9 @@ export default function DesktopReport({
             {loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
 
             {!loading && rows.length === 0 && (
-                <p style={{ fontSize: 14, color: '#64748b' }}>{emptyMessage}</p>
+                <p style={{ fontSize: 14, color: emptyTone ?? '#64748b', fontWeight: emptyTone ? 500 : undefined }}>
+                    {emptyMessage}
+                </p>
             )}
 
             {!loading && rows.length > 0 && (

@@ -26,21 +26,41 @@ describe('desktop inventory reports', () => {
         expect(screen.getByText('Stock lines')).toBeInTheDocument();
     });
 
-    it('low stock highlights the shortfall', async () => {
+    /**
+     * The Blade report led with a red banner naming the count and the urgency,
+     * which replaces the generic "Below minimum" strip, and badged every row —
+     * they are all below minimum by definition.
+     */
+    it('low stock leads with the red banner and badges every row', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, item_code: 'ITEM-1', item_name: 'Rod', warehouse_name: 'Main', quantity: '4', minimum_stock_level: '10', shortfall: 6 }],
+            data: [{ id: 1, item_code: 'ITEM-1', item_name: 'Rod', category: 'raw_material', warehouse_name: 'Main', quantity: '4', minimum_stock_level: '10', shortfall: 6 }],
             meta: { below_minimum: 1 },
         });
         wrap(<LowStockPage />);
         expect(await screen.findByText('Rod')).toBeInTheDocument();
-        expect(screen.getByText('Below minimum')).toBeInTheDocument();
-        expect(screen.getByText('6')).toBeInTheDocument();
+        expect(screen.getByText(/1 item\(s\) are below minimum stock level/)).toBeInTheDocument();
+        expect(screen.getByText('LOW STOCK')).toHaveClass('badge-red');
+        expect(screen.getByText('Rod').closest('tr')).toHaveClass('bg-red-50');
+    });
+
+    it('low stock shows the shortage, the minimum and the category', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{ id: 1, item_code: 'ITEM-1', item_name: 'Rod', category: 'raw_material', warehouse_name: 'Main', quantity: '4', minimum_stock_level: '10', shortfall: 6 }],
+            meta: { below_minimum: 1 },
+        });
+        wrap(<LowStockPage />);
+        await screen.findByText('Rod');
+        expect(screen.getByText('6.00')).toHaveClass('text-red-600');
+        expect(screen.getByText('10.00')).toBeInTheDocument();
+        // Category was not sent by the endpoint at all before this.
+        expect(screen.getByText('Raw Material')).toBeInTheDocument();
     });
 
     it('low stock says so plainly when nothing is below minimum', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [], meta: { below_minimum: 0 } });
         wrap(<LowStockPage />);
-        expect(await screen.findByText('Every item is at or above its minimum stock level.')).toBeInTheDocument();
+        // Blade's wording, printed in green.
+        expect(await screen.findByText('All items are above minimum stock levels.')).toBeInTheDocument();
     });
 
     it('valuation formats money and shows the total', async () => {

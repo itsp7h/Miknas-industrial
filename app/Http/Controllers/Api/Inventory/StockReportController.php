@@ -94,6 +94,8 @@ class StockReportController extends Controller
                 'id' => $level->id,
                 'item_code' => $level->item?->item_code,
                 'item_name' => $level->item?->item_name,
+                // The Blade report showed the item's category; it was not sent.
+                'category' => $level->item?->category,
                 'warehouse_name' => $level->warehouse?->name,
                 'quantity' => $level->quantity,
                 'minimum_stock_level' => $level->item?->minimum_stock_level,

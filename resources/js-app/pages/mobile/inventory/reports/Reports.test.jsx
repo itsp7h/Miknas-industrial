@@ -47,14 +47,18 @@ describe('mobile inventory reports', () => {
         expect(screen.getByText('No inventory summary match that search.')).toBeInTheDocument();
     });
 
-    it('low stock shows the shortfall on each card', async () => {
+    it('low stock shows current, minimum and shortage on each card', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, item_code: 'ITEM-1', item_name: 'Rod', warehouse_name: 'Main', quantity: '4', minimum_stock_level: '10', shortfall: 6 }],
+            data: [{ id: 1, item_code: 'ITEM-1', item_name: 'Rod', category: 'raw_material', warehouse_name: 'Main', quantity: '4', minimum_stock_level: '10', shortfall: 6 }],
             meta: { below_minimum: 1 },
         });
         wrap(<LowStockPage />);
-        expect(await screen.findByText('-6')).toBeInTheDocument();
-        expect(screen.getByText('On hand 4 · minimum 10')).toBeInTheDocument();
+        await screen.findByText('Rod');
+        expect(screen.getByText('4.00')).toBeInTheDocument();
+        expect(screen.getByText('10.00')).toBeInTheDocument();
+        expect(screen.getByText('6.00')).toBeInTheDocument();
+        expect(screen.getByText('LOW STOCK')).toHaveClass('badge-red');
+        expect(screen.getByText(/1 item\(s\) are below minimum stock level/)).toBeInTheDocument();
     });
 
     it('valuation shows the total value', async () => {

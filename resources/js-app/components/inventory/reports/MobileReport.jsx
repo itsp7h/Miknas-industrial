@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
  */
 export default function MobileReport({
     title, subtitle, summary, rows, loading, searchKeys,
-    renderCard, cardClassName, emptyMessage, children,
+    renderCard, cardClassName, emptyMessage, children, emptyTone,
 }) {
     const [query, setQuery] = useState('');
 
@@ -60,7 +60,11 @@ export default function MobileReport({
             {loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
 
             {!loading && filtered.length === 0 && (
-                <p style={{ fontSize: 14, color: '#64748b' }}>
+                <p style={{
+                    fontSize: 14,
+                    color: query ? '#64748b' : (emptyTone ?? '#64748b'),
+                    fontWeight: !query && emptyTone ? 500 : undefined,
+                }}>
                     {query ? `No ${noun} match that search.` : emptyMessage}
                 </p>
             )}

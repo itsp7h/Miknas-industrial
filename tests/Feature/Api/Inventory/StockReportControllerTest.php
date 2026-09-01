@@ -96,6 +96,15 @@ class StockReportControllerTest extends TestCase
         $this->assertEquals(6, $response->json('data.0.shortfall'));
     }
 
+    /** The Blade low-stock report showed the item's category; it was not sent. */
+    public function test_low_stock_includes_the_items_category(): void
+    {
+        $response = $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/inventory/reports/low-stock')->assertOk();
+
+        $this->assertSame('raw_material', $response->json('data.0.category'));
+    }
+
     public function test_valuation_multiplies_quantity_by_cost_and_totals_it(): void
     {
         $response = $this->actingAs($this->actingUser())
