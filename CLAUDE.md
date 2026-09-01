@@ -82,49 +82,46 @@ mock `'../echo'` the way `NotificationBell.test.jsx` does.
 
 ## Controllers — `app/Http/Controllers/`
 
+45 files. Everything the SPA talks to lives under `Api/`; what is left outside it
+is Breeze's auth flow and the not-yet-migrated RFQ workflow.
+
 ```
 Controller.php
-Auth/                     (Breeze defaults)
-Api/                      ← React SPA's JSON API
+
+Api/                              ← the React SPA's JSON API
   AuthController.php              DashboardController.php
   NotificationController.php      ProfileController.php
-  Purchase/PurchasePipelineController.php
-  Purchase/SupplierController.php
-  Purchase/PurchaseOrderController.php
-  Purchase/GoodsReceiptNoteController.php
-  Purchase/SupplierInvoiceController.php
-  Purchase/SupplierPaymentController.php
-  Settings/CompanyController.php   ← companies + departments, role:Admin
-  Settings/ProjectController.php   ← projects + locations + import, role:Admin
-  Settings/UserController.php      ← users, roles, permissions, role:Admin
-  Settings/IntegrationController.php ← WhatsApp (UltraMSG) settings, role:Admin
-  Settings/MailAccountController.php ← mail accounts, role:Admin
-  Settings/VatController.php       ← the global VAT rate, role:Admin
-Settings/
-  LocationController.php          UrgencyLevelController.php
-Purchase/
-  PurchaseRequestController.php   + approve, reject, print
-  PurchaseOrderController.php     ← only generateLpo + print/pdf survive
-  PurchasePipelineController.php
-  PurchaseSignatureController.php RfqController.php
-  RfqPortalController.php         ← public, token-based, no auth
-  SupplierQuoteController.php
-Inventory/
-  ItemController.php              import, downloadTemplate, exportPdf + CRUD
-  WarehouseController.php         StockMovementController.php
-  StockReportController.php       summary, movement, lowStock, valuation
-Production/
-  ProductionOrderController.php   + start, complete
-  BillOfMaterialController.php    MaterialIssueController.php
-  ProductionOutputController.php
-Sales/
-  CustomerController.php          SalesOrderController.php        + confirm
-  DeliveryNoteController.php      + dispatch
-  SalesInvoiceController.php      PaymentReceiptController.php
-```
+  Purchase/  SupplierController, PurchaseOrderController,
+             GoodsReceiptNoteController, SupplierInvoiceController,
+             SupplierPaymentController, PurchasePipelineController
+  Inventory/ ItemController (import, template, exportPdf), WarehouseController,
+             StockMovementController, StockReportController
+             (summary, movement, lowStock, valuation)
+  Production/ ProductionOrderController (+ start, complete),
+             BillOfMaterialController, MaterialIssueController,
+             ProductionOutputController
+  Sales/     CustomerController, SalesOrderController (+ confirm),
+             DeliveryNoteController (+ dispatch, update, destroy),
+             SalesInvoiceController (+ update, destroy), PaymentReceiptController
+  Settings/  role:Admin on every route —
+             CompanyController      companies + departments
+             ProjectController      projects + locations + import + template
+             UserController         users, roles, permissions
+             IntegrationController  WhatsApp (UltraMSG)
+             MailAccountController  mail accounts
+             VatController          the global VAT rate
 
-Note: `SupplierController` (Purchase) is gone — suppliers are served by the
-React SPA through `Api/Purchase/SupplierController`.
+Auth/                             (Breeze defaults, session-establishing)
+
+Purchase/                         ← the RFQ workflow, still Blade
+  PurchaseRequestController.php   + approve, reject, print
+  PurchasePipelineController.php  request detail
+  SupplierQuoteController.php     quotes workspace, award/unaward
+  RfqController.php               supplier selection, send
+  PurchaseSignatureController.php GM signature
+  RfqPortalController.php         ← public, token-based, no auth
+  PurchaseOrderController.php     ← only generateFromRequest + print/pdf survive
+```
 
 ## Models — `app/Models/`
 
@@ -172,9 +169,9 @@ Files: `ImportSuppliers.php`, `GenerateSupplierTemplate.php`, `GenerateItemTempl
 
 ## Routes
 
-`routes/web.php` (Blade pages), `routes/api.php` (React SPA JSON, Sanctum),
-`routes/auth.php` (Breeze), `routes/channels.php` (broadcast auth),
-`routes/console.php`.
+`routes/web.php` (the few surviving Blade pages + redirects), `routes/api.php`
+(the React SPA's JSON API, Sanctum), `routes/auth.php` (Breeze),
+`routes/channels.php` (broadcast auth), `routes/console.php`.
 
 `/up` is Laravel's built-in health route — the smoke tests key off it.
 
@@ -182,100 +179,86 @@ Files: `ImportSuppliers.php`, `GenerateSupplierTemplate.php`, `GenerateItemTempl
 named route survives because Breeze's login and email-verification flows and the
 root route all send people to `route('dashboard')`.
 
-### web.php — all protected by `['auth', 'verified']`. Prefix groups:
+### web.php — what is left
 
-### Purchase — `prefix('purchase')->name('purchase.')`
-```
-GET/POST  suppliers              purchase.suppliers.*
-POST      suppliers/import       purchase.suppliers.import       ← must be BEFORE resource
-GET       suppliers/template     purchase.suppliers.template     ← must be BEFORE resource
-GET       suppliers/export-pdf   purchase.suppliers.export-pdf  ← must be BEFORE resource
-GET/POST  requests               purchase.requests.*
-PATCH     requests/{id}/approve  purchase.requests.approve
-PATCH     requests/{id}/reject   purchase.requests.reject
-GET       requests/{id}/print    purchase.requests.print
-GET       orders/{id}/print      purchase.orders.print   ← LPO document, Blade
-GET       orders/{id}/pdf        purchase.orders.pdf     ← LPO document, Blade
-POST      requests/{id}/generate-lpo  purchase.requests.generate-lpo
-```
+Everything else moved to `routes/api.php`. Two kinds of entry remain:
 
-### Inventory — `prefix('inventory')->name('inventory.')`
+**Redirects into the shell** — the URLs were live long enough to be bookmarked,
+and a dead end is worse than a hop:
+
 ```
-GET/POST  items                  inventory.items.*
-POST      items/import           inventory.items.import          ← must be BEFORE resource
-GET       items/template         inventory.items.template        ← must be BEFORE resource
-GET       items/export-pdf       inventory.items.export-pdf     ← must be BEFORE resource
-GET/POST  warehouses             inventory.warehouses.*
-GET/POST  movements              inventory.movements.*
-GET       reports/summary        inventory.reports.summary
-GET       reports/movement       inventory.reports.movement
-GET       reports/low-stock      inventory.reports.low-stock
-GET       reports/valuation      inventory.reports.valuation
+/dashboard  → /app                     /profile             → /app/profile
+/purchase/pipeline, orders, orders/{id}, grns, grns/{id}, grns/create,
+  invoices, invoices/{id}, invoices/create, payments, payments/{id},
+  payments/create                      → the matching /app/purchase/… page
+                                         (create links forward their query string)
+/settings/projects           → /app/settings/companies
+/settings/projects-overview  → /app/settings/projects
+/settings/users              → /app/settings/users
+/settings/integrations       → /app/settings/integrations
+/settings/vat                → /app/settings/vat
 ```
 
-### Production — `prefix('production')->name('production.')`
+**Real Blade pages** — the RFQ workflow, the DomPDF documents, the public portal:
+
 ```
-GET/POST  orders                 production.orders.*
-PATCH     orders/{id}/start      production.orders.start
-PATCH     orders/{id}/complete   production.orders.complete
-GET/POST  bom                    production.bom.*
-GET/POST  material-issues        production.material-issues.*
-GET/POST  outputs                production.outputs.*
+GET  purchase/requests/create|{id}|{id}/edit      purchase.requests.*
+POST purchase/requests                            purchase.requests.store
+PATCH purchase/requests/{purchaseRequest}/approve|reject
+GET  purchase/requests/{purchaseRequest}/print    MPR document
+POST purchase/requests/{purchaseRequest}/generate-lpo
+GET  purchase/pipeline/{purchaseRequest}          request detail
+GET/POST purchase/requests/{purchaseRequest}/rfq  + /rfq/select, /rfq/send-all
+GET  purchase/requests/{purchaseRequest}/quotes   quotes workspace
+GET  purchase/requests/{purchaseRequest}/compare
+POST purchase/requests/{purchaseRequest}/quotes/items/{quoteItem}/award|unaward
+GET/POST purchase/requests/{purchaseRequest}/sign GM signature
+GET  purchase/orders/{order}/print|pdf            LPO documents (DomPDF)
+GET/POST rfq/{token}                              public portal, no auth
+GET  notifications/unread|{id}/go, POST notifications/read-all
+                                                  ← the Blade layout's bell
+                                                    (the SPA uses the API pair)
 ```
 
-### Sales — `prefix('sales')->name('sales.')`
-```
-GET/POST  customers              sales.customers.*
-GET/POST  orders                 sales.orders.*
-PATCH     orders/{id}/confirm    sales.orders.confirm
-GET/POST  delivery-notes         sales.delivery-notes.*
-PATCH     delivery-notes/{id}/dispatch  sales.delivery-notes.dispatch
-GET/POST  invoices               sales.invoices.*
-GET/POST  payments               sales.payments.*
-```
-
----
+Route parameter names must never be `{request}` — see gotcha #8.
 
 ## Views — `resources/views/`
 
+38 files, and every one of them is deliberate: what is left is either the SPA's
+host page, a session-establishing auth page, a DomPDF/print document, the public
+RFQ portal, an email, or the not-yet-migrated RFQ workflow.
+
 ```
-welcome.blade.php
+app-shell.blade.php        ← the React SPA's host page
+
 layouts/
-  app.blade.php          main layout (sidebar + topbar)
-  guest.blade.php        (Breeze auth pages)
-components/              (Breeze defaults: modal, dropdown, buttons, inputs, etc.)
-auth/                    (login, register, forgot-password, reset-password, verify-email, confirm-password)
-(no settings/ views — the whole of Settings is React)
+  app.blade.php            chrome for the remaining Blade pages (RFQ workflow)
+  guest.blade.php          chrome for the auth pages
 
-purchase/
-  suppliers/   index, create, edit, pdf
-  requests/    index, create, edit, show
-  orders/      pdf, print          ← list/detail/forms are React
-                                   (grns/, invoices/ and payments/ are fully React)
-  invoices/    index, create, edit
-  payments/    index, create
+auth/                      login, forgot-password, reset-password,
+                           verify-email, confirm-password
+components/                the 6 Breeze partials the auth pages still use:
+                           application-logo, auth-session-status, input-error,
+                           input-label, primary-button, text-input
 
-inventory/
-  items/       index, create, edit, pdf
-  warehouses/  index, create, edit
-  movements/   index, create
-  reports/     summary, movement, low-stock, valuation
+── Still to migrate: the RFQ workflow ──────────────────────────────────────
+purchase/pipeline/show     request detail (977 lines)
+purchase/quotes/workspace  quotes + award (559)
+purchase/requests/         create, edit, show
+purchase/rfq/show          supplier selection
+purchase/signature/show    GM signature
+components/purchase/       request-modal, edit-request-modal,
+                           supplier-select-modal, view-rfq-modal,
+                           select-grn-modal, supplier-invite-list
 
-production/
-  orders/          index, create, edit, show
-  bom/             index, create, edit
-  material-issues/ index
-  outputs/         index
-
-sales/
-  customers/      index, create, edit
-  orders/         index, create, edit, show
-  delivery-notes/ index, create, edit
-  invoices/       index, create, edit
-  payments/       index, create
+── Blade permanently ───────────────────────────────────────────────────────
+purchase/orders/print, purchase/orders/pdf      LPO documents (DomPDF)
+purchase/requests/print                         MPR document
+inventory/items/pdf, purchase/suppliers/pdf     list exports
+rfq/show, rfq/show-mobile, rfq/submitted,       public token portal,
+rfq/expired                                     no auth, outside the shell
+mail/lpo-issued, mail/rfq-invitation            emails
 ```
-
----
 
 ## Database — `database/`
 
