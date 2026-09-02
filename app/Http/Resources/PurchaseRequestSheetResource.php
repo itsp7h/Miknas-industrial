@@ -39,9 +39,10 @@ class PurchaseRequestSheetResource extends JsonResource
                 'required_date' => $item->required_date?->toDateString(),
             ])->values()),
 
-            // Only rendered when the request has actually been approved, as in
-            // Blade.
-            'approval' => $this->whenLoaded('approvedBy', fn () => $this->approvedBy ? [
+            // Keyed off the status, not merely off the relation: a request that
+            // was approved and then rejected still carries approved_by, and this
+            // block must not print "Approved By" over a refusal.
+            'approval' => $this->whenLoaded('approvedBy', fn () => ($this->approvedBy && $this->status === 'approved') ? [
                 'approved_by_name' => $this->approvedBy->name,
                 'approved_at' => $this->approved_at?->toIso8601String(),
             ] : null),

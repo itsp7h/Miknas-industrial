@@ -6,6 +6,30 @@ const ROW = {
     gap: 8, fontSize: 12, padding: '8px 10px', borderRadius: 8,
 };
 
+const capitalise = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '—');
+
+// The GM's decision is the one fact on this card that changes what happens
+// next, so it reads as a pill rather than as plain text like the rest.
+const STATUS_TINT = {
+    approved: { bg: '#f0fdf4', fg: '#15803d' },
+    rejected: { bg: '#fef2f2', fg: '#b91c1c' },
+    pending: { bg: '#fffbeb', fg: '#92400e' },
+    ordered: { bg: '#eff6ff', fg: '#1d4ed8' },
+};
+
+function StatusPill({ status }) {
+    const tint = STATUS_TINT[status] ?? { bg: '#f1f5f9', fg: '#475569' };
+
+    return (
+        <span style={{
+            background: tint.bg, color: tint.fg, fontSize: 11, fontWeight: 700,
+            padding: '3px 9px', borderRadius: 20,
+        }}>
+            {capitalise(status)}
+        </span>
+    );
+}
+
 function DetailRow({ label, value }) {
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
@@ -22,7 +46,6 @@ function DetailRow({ label, value }) {
  */
 export default function PipelineSidebar({ request }) {
     const r = request;
-    const capitalise = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -32,7 +55,7 @@ export default function PipelineSidebar({ request }) {
                     {r.location && <DetailRow label="Location" value={r.location} />}
                     {r.required_date_text && <DetailRow label="Required By" value={r.required_date_text} />}
                     {r.verified_by_name && <DetailRow label="Verified By" value={r.verified_by_name} />}
-                    <DetailRow label="Status" value={capitalise(r.status)} />
+                    <DetailRow label="Status" value={<StatusPill status={r.status} />} />
                 </dl>
             </div>
 

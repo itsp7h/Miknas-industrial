@@ -13,6 +13,7 @@ use App\Services\LpoGenerationService;
 use App\Services\PurchaseStageService;
 use App\Services\RfqInvitationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -185,17 +186,50 @@ class PurchasePipelineController extends Controller
         // Signing twice would overwrite who approved it and when.
         abort_if((bool) $purchaseRequest->signature, 422, 'This request has already been signed.');
 
-        PurchaseSignature::create([
-            'purchase_request_id' => $purchaseRequest->id,
-            'signed_by' => auth()->id(),
-            'signature_image' => $data['signature_image'],
-            'signed_at' => now(),
-            'ip_address' => $request->ip(),
-        ]);
+        DB::transaction(function () use ($data, $request, $purchaseRequest, $stages) {
+            PurchaseSignature::create([
+                'purchase_request_id' => $purchaseRequest->id,
+                'signed_by' => auth()->id(),
+                'signature_image' => $data['signature_image'],
+                'signed_at' => now(),
+                'ip_address' => $request->ip(),
+            ]);
 
-        $stages->advance($purchaseRequest);
+            // Signing IS the GM approval — the dialog is titled "Approve &
+            // Sign" and says so. Until this, nothing wrote these three
+            // columns: the Blade `approve` action was the only writer and lost
+            // its UI in the cutover, so every signed request stayed 'pending'
+            // for ever and the MPR sheet's approval block could never appear.
+            $purchaseRequest->update([
+                'status' => 'approved',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+            ]);
 
-        return $this->fresh($purchaseRequest, 'Signature saved. Request moved to the RFQ stage.');
+            $stages->advance($purchaseRequest);
+        });
+
+        return $this->fresh($purchaseRequest, 'Approved and signed. Request moved to the RFQ stage.');
+    }
+
+    /**
+     * The other half of the same gate: the GM refuses the request. Same policy
+     * as signing, and like the Blade action it replaces it records the refusal
+     * without moving the stage — a rejected request stops where it is rather
+     * than travelling on down the pipeline.
+     */
+    public function reject(PurchaseRequest $purchaseRequest)
+    {
+        $this->authorize('approve', $purchaseRequest);
+
+        abort_if($purchaseRequest->status === 'rejected', 422, 'This request has already been rejected.');
+
+        // Only the status: `approved_by`/`approved_at` mean what they say, and
+        // writing them here would make the MPR sheet print "Approved By" over
+        // a refusal.
+        $purchaseRequest->update(['status' => 'rejected']);
+
+        return $this->fresh($purchaseRequest, $purchaseRequest->request_number.' rejected.');
     }
 
     /** Every action answers with the whole request, so the page re-renders once. */

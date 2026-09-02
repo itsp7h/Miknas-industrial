@@ -190,6 +190,7 @@ Route::prefix('v1')->group(function () {
             Route::post('pipeline/{purchaseRequest}/send-invitations', [PurchasePipelineController::class, 'sendInvitations']);
             Route::post('pipeline/{purchaseRequest}/lpo', [PurchasePipelineController::class, 'generateLpo']);
             Route::post('pipeline/{purchaseRequest}/signature', [PurchasePipelineController::class, 'storeSignature']);
+            Route::post('pipeline/{purchaseRequest}/reject', [PurchasePipelineController::class, 'reject']);
 
             // The MPR create/edit forms. `requests/form-options` must precede
             // the `{purchaseRequest}` routes or the wildcard swallows it.

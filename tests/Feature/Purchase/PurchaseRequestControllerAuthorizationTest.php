@@ -69,13 +69,20 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * Approving is the signature action now — signing records the approval as
+     * it saves the signature, which is what the dialog always claimed to do.
+     * The standalone approve/reject routes had lost their UI in the cutover.
+     */
     public function test_user_without_approve_permission_cannot_approve(): void
     {
         $user = User::factory()->create();
         $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
 
         $this->actingAs($user)
-            ->patch(route('purchase.requests.approve', $atStage))
+            ->postJson("/api/v1/purchase/pipeline/{$atStage->id}/signature", [
+                'signature_image' => 'data:image/png;base64,iVBORw0KGgo=',
+            ])
             ->assertForbidden();
     }
 
@@ -86,10 +93,25 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
 
         $this->actingAs($manager)
-            ->patch(route('purchase.requests.approve', $atStage))
-            ->assertRedirect();
+            ->postJson("/api/v1/purchase/pipeline/{$atStage->id}/signature", [
+                'signature_image' => 'data:image/png;base64,iVBORw0KGgo=',
+            ])
+            ->assertOk();
 
         $this->assertSame('approved', $atStage->fresh()->status);
+    }
+
+    public function test_purchase_manager_can_reject_at_gm_approval_stage(): void
+    {
+        $manager = User::factory()->create();
+        $manager->assignRole('Purchase Manager');
+        $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
+
+        $this->actingAs($manager)
+            ->postJson("/api/v1/purchase/pipeline/{$atStage->id}/reject")
+            ->assertOk();
+
+        $this->assertSame('rejected', $atStage->fresh()->status);
     }
 
     public function test_unauthorized_user_cannot_destroy_a_request(): void

@@ -6,21 +6,27 @@ import Modal from '../../ui/Modal';
  * When a signature already exists the same modal shows it read-only, with who
  * signed and when — the Blade page did both from one dialog too.
  */
-export default function SignatureModal({ open, request, onClose, onSubmit }) {
+export default function SignatureModal({ open, request, onClose, onSubmit, onReject }) {
     const canvasRef = useRef(null);
     const drawing = useRef(false);
     const dirty = useRef(false);
     const [hasInk, setHasInk] = useState(false);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
+    // Rejecting asks for confirmation inside this dialog rather than stacking a
+    // second modal on top of it.
+    const [confirmingReject, setConfirmingReject] = useState(false);
+    const [rejecting, setRejecting] = useState(false);
 
     const signature = request?.signature;
+    const rejected = request?.status === 'rejected';
 
     useEffect(() => {
         if (!open || signature) return;
         setHasInk(false);
         dirty.current = false;
         setError('');
+        setConfirmingReject(false);
 
         const canvas = canvasRef.current;
         // getContext returns null where 2D canvas is unavailable; the pad simply
@@ -94,10 +100,23 @@ export default function SignatureModal({ open, request, onClose, onSubmit }) {
         }
     }
 
+    async function reject() {
+        setRejecting(true);
+        setError('');
+        try {
+            await onReject();
+            onClose();
+        } catch (rejection) {
+            setError(rejection?.message || 'Could not reject that request.');
+        } finally {
+            setRejecting(false);
+        }
+    }
+
     return (
         <Modal
             open={open}
-            title={signature ? `Signature — ${request?.request_number ?? ''}` : 'Approve & Sign'}
+            title={signature ? `Signature — ${request?.request_number ?? ''}` : 'Approve or Reject'}
             onClose={onClose}
         >
             {signature ? (
@@ -117,9 +136,17 @@ export default function SignatureModal({ open, request, onClose, onSubmit }) {
                 </div>
             ) : (
                 <div>
+                    {rejected && (
+                        <p style={{
+                            fontSize: 12.5, color: '#b91c1c', background: '#fef2f2',
+                            border: '1px solid #fecaca', borderRadius: 9, padding: '9px 11px', margin: '0 0 14px',
+                        }}>
+                            This request was rejected. Signing it now approves it after all.
+                        </p>
+                    )}
                     <p style={{ fontSize: 13, color: '#475569', margin: '0 0 14px' }}>
-                        Draw your signature below to approve this purchase request. This is recorded with your
-                        name, timestamp, and IP.
+                        Draw your signature below to approve this purchase request. Approving records your name,
+                        the timestamp and your IP against it.
                     </p>
 
                     <div style={{ position: 'relative' }}>
@@ -154,6 +181,46 @@ export default function SignatureModal({ open, request, onClose, onSubmit }) {
                             {saving ? 'Saving…' : 'Confirm Signature →'}
                         </button>
                     </div>
+
+                    {/* The other half of the same decision. It is the GM's call
+                        either way, so it lives in the same dialog rather than
+                        needing its own button on the timeline. */}
+                    {onReject && !rejected && (
+                        <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 16, paddingTop: 14 }}>
+                            {confirmingReject ? (
+                                <>
+                                    <p style={{ fontSize: 12.5, color: '#475569', margin: '0 0 10px' }}>
+                                        Reject {request?.request_number ?? 'this request'}? It stops here rather
+                                        than going on to the RFQ stage. You can still approve it later.
+                                    </p>
+                                    <div style={{ display: 'flex', gap: 10 }}>
+                                        <button
+                                            type="button" onClick={() => setConfirmingReject(false)}
+                                            className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}
+                                        >
+                                            Keep it
+                                        </button>
+                                        <button
+                                            type="button" onClick={reject} disabled={rejecting}
+                                            className="btn-danger" style={{ flex: 1, justifyContent: 'center' }}
+                                        >
+                                            {rejecting ? 'Rejecting…' : 'Reject Request'}
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <button
+                                    type="button" onClick={() => setConfirmingReject(true)}
+                                    style={{
+                                        background: 'none', border: 0, padding: 0, cursor: 'pointer',
+                                        fontSize: 12.5, color: '#dc2626', fontWeight: 600,
+                                    }}
+                                >
+                                    Reject this request instead
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </Modal>

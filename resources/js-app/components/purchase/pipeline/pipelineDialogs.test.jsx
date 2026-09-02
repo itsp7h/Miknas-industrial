@@ -201,6 +201,61 @@ describe('SignatureModal', () => {
         expect(screen.getByText(/Zoe Admin/)).toBeInTheDocument();
         expect(screen.queryByLabelText('Signature pad')).not.toBeInTheDocument();
     });
+
+    // Approving and refusing are the same person's decision at the same gate,
+    // so refusing lives in this dialog rather than on the timeline.
+    it('offers rejection only when the caller supplies the action', () => {
+        wrap(<SignatureModal open request={base()} onClose={() => {}} onSubmit={() => {}} />);
+        expect(screen.queryByText('Reject this request instead')).not.toBeInTheDocument();
+
+        wrap(<SignatureModal open request={base()} onClose={() => {}} onSubmit={() => {}} onReject={() => {}} />);
+        expect(screen.getByText('Reject this request instead')).toBeInTheDocument();
+    });
+
+    it('confirms inside the dialog before rejecting, and closes on success', async () => {
+        const onReject = vi.fn().mockResolvedValue({});
+        const onClose = vi.fn();
+        wrap(<SignatureModal open request={base()} onClose={onClose} onSubmit={() => {}} onReject={onReject} />);
+
+        fireEvent.click(screen.getByText('Reject this request instead'));
+        expect(screen.getByText(/Reject MPR-0003\?/)).toBeInTheDocument();
+        expect(onReject).not.toHaveBeenCalled();
+
+        // Backing out leaves the request alone.
+        fireEvent.click(screen.getByText('Keep it'));
+        expect(onReject).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByText('Reject this request instead'));
+        fireEvent.click(screen.getByText('Reject Request'));
+        await waitFor(() => expect(onReject).toHaveBeenCalled());
+        await waitFor(() => expect(onClose).toHaveBeenCalled());
+    });
+
+    it('keeps the dialog open and says why when rejecting fails', async () => {
+        const onReject = vi.fn().mockRejectedValue({ message: 'Already rejected.' });
+        const onClose = vi.fn();
+        wrap(<SignatureModal open request={base()} onClose={onClose} onSubmit={() => {}} onReject={onReject} />);
+
+        fireEvent.click(screen.getByText('Reject this request instead'));
+        fireEvent.click(screen.getByText('Reject Request'));
+
+        await waitFor(() => expect(screen.getByText('Already rejected.')).toBeInTheDocument());
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('says so on an already-rejected request, and stops offering rejection', () => {
+        wrap(
+            <SignatureModal
+                open request={base({ status: 'rejected' })}
+                onClose={() => {}} onSubmit={() => {}} onReject={() => {}}
+            />
+        );
+
+        expect(screen.getByText(/This request was rejected/)).toBeInTheDocument();
+        expect(screen.queryByText('Reject this request instead')).not.toBeInTheDocument();
+        // Signing it is still on offer — refusing is not final.
+        expect(screen.getByLabelText('Signature pad')).toBeInTheDocument();
+    });
 });
 
 describe('PipelineDialogs', () => {

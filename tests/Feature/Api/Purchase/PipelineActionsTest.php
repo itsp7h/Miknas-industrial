@@ -213,6 +213,146 @@ class PipelineActionsTest extends TestCase
         $this->assertNotSame('gm_approval', $pr->fresh()->stage);
     }
 
+    /**
+     * Signing IS the GM approval. Before this, nothing wrote these columns —
+     * the Blade `approve` action was their only writer and lost its UI in the
+     * cutover — so every signed request stayed 'pending' for ever and the MPR
+     * sheet's approval block could never appear.
+     */
+    public function test_signing_records_the_approval_itself(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+        $this->assertSame('pending', $pr->status);
+
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
+            ->assertOk();
+
+        $pr->refresh();
+        $this->assertSame('approved', $pr->status);
+        $this->assertSame($approver->id, $pr->approved_by);
+        $this->assertNotNull($pr->approved_at);
+    }
+
+    public function test_the_approval_shows_on_the_mpr_sheet_once_signed(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+        $approver->givePermissionTo('purchase-requests.view-all');
+
+        $this->actingAs($approver)
+            ->getJson("/api/v1/purchase/requests/{$pr->id}")
+            ->assertOk()->assertJsonPath('data.approval', null);
+
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
+            ->assertOk();
+
+        $this->actingAs($approver)
+            ->getJson("/api/v1/purchase/requests/{$pr->id}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'approved')
+            ->assertJsonPath('data.approval.approved_by_name', $approver->name);
+    }
+
+    // ── Rejection: the other half of the same gate ──────────────────────────
+
+    public function test_rejecting_needs_the_same_permission_as_signing(): void
+    {
+        $pr = $this->request('gm_approval');
+
+        $this->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertUnauthorized();
+
+        $this->actingAs(User::factory()->create())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")
+            ->assertForbidden();
+    }
+
+    public function test_rejecting_records_the_refusal_and_leaves_the_stage_alone(): void
+    {
+        $pr = $this->request('gm_approval');
+
+        $response = $this->actingAs($this->approver())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")
+            ->assertOk();
+
+        $pr->refresh();
+        $this->assertSame('rejected', $pr->status);
+        // A rejected request stops where it is rather than travelling on.
+        $this->assertSame('gm_approval', $pr->stage);
+        $this->assertStringContainsString('rejected', $response->json('message'));
+        $response->assertJsonPath('data.status', 'rejected');
+    }
+
+    /**
+     * `approved_by`/`approved_at` mean what they say. Writing them on a refusal
+     * would make the MPR sheet print "Approved By" over it.
+     */
+    public function test_rejecting_does_not_claim_anyone_approved_it(): void
+    {
+        $pr = $this->request('gm_approval');
+
+        $this->actingAs($this->approver())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertOk();
+
+        $pr->refresh();
+        $this->assertNull($pr->approved_by);
+        $this->assertNull($pr->approved_at);
+    }
+
+    /**
+     * A request approved and then rejected still carries approved_by, so the
+     * sheet's approval block has to key off the status rather than the
+     * relation — otherwise it prints an approval over a refusal.
+     */
+    public function test_the_sheet_hides_the_approval_block_once_a_signed_request_is_rejected(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+        $approver->givePermissionTo('purchase-requests.view-all');
+
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
+            ->assertOk();
+
+        // Back to an approvable stage so the policy allows the refusal.
+        $pr->refresh()->update(['stage' => 'gm_approval']);
+
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertOk();
+
+        $this->assertNotNull($pr->fresh()->approved_by);
+        $this->actingAs($approver)
+            ->getJson("/api/v1/purchase/requests/{$pr->id}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'rejected')
+            ->assertJsonPath('data.approval', null);
+    }
+
+    public function test_a_request_cannot_be_rejected_twice(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+
+        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertOk();
+        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertStatus(422);
+    }
+
+    /** Rejecting is not final: the GM can still sign it afterwards. */
+    public function test_a_rejected_request_can_still_be_approved(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+
+        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertOk();
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
+            ->assertOk();
+
+        $this->assertSame('approved', $pr->fresh()->status);
+    }
+
     public function test_a_signature_requires_an_image(): void
     {
         $pr = $this->request('gm_approval');

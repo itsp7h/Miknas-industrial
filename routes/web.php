@@ -64,8 +64,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('requests/{purchaseRequest}/edit', fn ($purchaseRequest) => redirect("/app/purchase/pipeline/{$purchaseRequest}"))
             ->whereNumber('purchaseRequest')->name('requests.edit');
         Route::get('requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('requests.print');
-        Route::patch('requests/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('requests.approve');
-        Route::patch('requests/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('requests.reject');
         Route::get('requests/{purchaseRequest}', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}"))
             ->whereNumber('purchaseRequest')->name('requests.show');
         // Purchase orders are served by the React SPA at /app/purchase/orders.

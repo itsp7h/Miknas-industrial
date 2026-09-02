@@ -116,7 +116,7 @@ Api/                              ← the React SPA's JSON API
 Auth/                             (Breeze defaults, session-establishing)
 
 Purchase/                         ← what has to stay server-rendered
-  PurchaseRequestController.php   ← approve, reject, print (MPR document)
+  PurchaseRequestController.php   ← print only (the MPR document)
   PurchaseOrderController.php     ← print/pdf only (LPO documents)
   RfqPortalController.php         ← public, token-based, no auth
 ```
@@ -205,7 +205,6 @@ GET  purchase/requests                            → redirect /app/purchase/pip
 GET  purchase/requests/create                     → redirect …/pipeline?new=1
 GET  purchase/requests/{purchaseRequest}          → redirect /app/purchase/requests/{id}
 GET  purchase/requests/{purchaseRequest}/edit     → redirect …/pipeline/{id}
-PATCH purchase/requests/{purchaseRequest}/approve|reject
 GET  purchase/requests/{purchaseRequest}/print    MPR document
 GET  purchase/pipeline/{purchaseRequest}          request detail
 GET  purchase/requests/{purchaseRequest}/quotes   → redirect to /app/…/quotes
@@ -357,12 +356,12 @@ Laravel injects `Illuminate\Http\Request` by type-hint into `$request`. If a rou
 **Rule:** Always name route parameters after the model, matching the controller variable name exactly:
 ```php
 // WRONG — {request} clashes with Request $request injection
-Route::post('requests/{request}/sign', [PurchaseSignatureController::class, 'store']);
-// store(Request $request, PurchaseRequest $purchaseRequest) — $purchaseRequest gets null
+Route::put('requests/{request}', [PurchaseRequestController::class, 'update']);
+// update(Request $request, PurchaseRequest $purchaseRequest) — $purchaseRequest gets null
 
 // CORRECT
-Route::post('requests/{purchaseRequest}/sign', [PurchaseSignatureController::class, 'store']);
-// store(Request $request, PurchaseRequest $purchaseRequest) — binding works
+Route::put('requests/{purchaseRequest}', [PurchaseRequestController::class, 'update']);
+// update(Request $request, PurchaseRequest $purchaseRequest) — binding works
 ```
 
 **Route::resource also generates `{request}` for a resource named `requests`.** Always override it:
@@ -408,6 +407,7 @@ openEdit(id, applyUpdate);       // loads the record; the callback gets the save
 - It is one tree with a `compact` flag from `useViewport()`, not a desktop/mobile pair: two copies of a form this long would drift, which is the same reasoning as Integrations, Profile and the quotes workspace.
 - Writes go to `Api/Purchase/PurchaseRequestController`. `store` answers with a board row (the board opens it), `update` answers with the pipeline detail payload (the detail page opens it), and each broadcasts so the *other* screen stays in sync.
 - The read-only sheet is its own page (`/app/purchase/requests/{id}`) with its own resource: the pipeline detail payload shapes items for the timeline and never carries remarks or the approval record. Delete lives there too — it is the only place the old `requests.destroy` route's capability is offered.
+- **GM approval is the signature action, not a separate button.** `storeSignature` records the signature *and* writes `status`/`approved_by`/`approved_at` in one transaction — the dialog has always been titled "Approve & Sign" and said so, but until it did this nothing wrote those columns (the Blade `approve` action was their only writer and lost its UI in a cutover), so every signed request stayed `pending` and the sheet's approval block could never appear. Rejection is `POST pipeline/{id}/reject` behind the same policy, offered in the same dialog; it writes only `status`, because `approved_by`/`approved_at` mean what they say. A request approved and then rejected still carries `approved_by`, so **anything rendering an approval must key off `status === 'approved'`**, not off the relation being present.
 - Both modals wait for their data before mounting (options on the first open, the record when editing) and are keyed per target, because the form seeds itself from `initial` at mount. Do not add an effect that re-seeds from `initial`: a late render changing its identity would wipe what the user had typed.
 - A row is `required` only once the user has put something in it. Blade marked every added row required unconditionally, so adding a row and leaving it alone made the form refuse to submit with nothing but a browser tooltip to explain why.
 

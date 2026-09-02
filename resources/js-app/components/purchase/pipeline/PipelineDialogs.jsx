@@ -58,6 +58,7 @@ export default function PipelineDialogs({ open, onClose, request, actions }) {
                 request={request}
                 onClose={onClose}
                 onSubmit={actions.saveSignature}
+                onReject={actions.rejectRequest}
             />
 
             <RecordGrnModal open={open === 'grn'} request={request} onClose={onClose} />
