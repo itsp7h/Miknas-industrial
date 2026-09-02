@@ -59,6 +59,6 @@ export default function usePipelineRequest(id) {
         sendInvitations: () => act('/send-invitations'),
         generateLpo: () => act('/lpo'),
         saveSignature: (image) => act('/signature', { signature_image: image }),
-        rejectRequest: () => act('/reject'),
+        rejectRequest: (reason) => act('/reject', { rejection_reason: reason }),
     };
 }

@@ -57,6 +57,29 @@ export default function PipelineSidebar({ request }) {
                     {r.verified_by_name && <DetailRow label="Verified By" value={r.verified_by_name} />}
                     <DetailRow label="Status" value={<StatusPill status={r.status} />} />
                 </dl>
+
+                {/* Why it was refused belongs next to the fact that it was:
+                    whoever lands here needs to know what to change without
+                    reopening the signature dialog. */}
+                {r.rejection && (
+                    <div style={{
+                        marginTop: 10, background: '#fef2f2', border: '1px solid #fecaca',
+                        borderRadius: 9, padding: '8px 10px',
+                    }}>
+                        <div style={{
+                            fontSize: 10, fontWeight: 700, color: '#b91c1c',
+                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                        }}>
+                            Reason
+                        </div>
+                        <p style={{ fontSize: 12.5, color: '#7f1d1d', margin: '3px 0 0' }}>{r.rejection.reason}</p>
+                        {(r.rejection.rejected_by_name || r.rejection.rejected_at) && (
+                            <p style={{ fontSize: 11, color: '#b91c1c', margin: '5px 0 0' }}>
+                                {[r.rejection.rejected_by_name, r.rejection.rejected_at].filter(Boolean).join(' · ')}
+                            </p>
+                        )}
+                    </div>
+                )}
             </div>
 
             {r.rfq_invitations.length > 0 && (

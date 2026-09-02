@@ -45,7 +45,7 @@ class PurchasePipelineController extends Controller
         // The same relation graph the Blade show() loaded, so the sidebar and
         // timeline have every count and name they render without N+1 queries.
         $purchaseRequest->load([
-            'requestedBy', 'items', 'signature.signedBy',
+            'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
             'rfqInvitations.supplier', 'supplierQuotes.supplier', 'supplierQuotes.items',
             'purchaseOrders.supplier',
         ]);
@@ -218,16 +218,28 @@ class PurchasePipelineController extends Controller
      * without moving the stage — a rejected request stops where it is rather
      * than travelling on down the pipeline.
      */
-    public function reject(PurchaseRequest $purchaseRequest)
+    public function reject(Request $request, PurchaseRequest $purchaseRequest)
     {
         $this->authorize('approve', $purchaseRequest);
 
         abort_if($purchaseRequest->status === 'rejected', 422, 'This request has already been rejected.');
 
-        // Only the status: `approved_by`/`approved_at` mean what they say, and
-        // writing them here would make the MPR sheet print "Approved By" over
-        // a refusal.
-        $purchaseRequest->update(['status' => 'rejected']);
+        // Required, and long enough to say something: the reason is what the
+        // requester reads to know what to change, so an empty one wastes a
+        // round trip through the whole approval gate. Same rule as an award.
+        $data = $request->validate([
+            'rejection_reason' => ['required', 'string', 'min:5'],
+        ]);
+
+        // The refusal gets its own three columns rather than borrowing
+        // `approved_by`/`approved_at`, which mean what they say — a request
+        // approved and then rejected still carries them.
+        $purchaseRequest->update([
+            'status' => 'rejected',
+            'rejection_reason' => $data['rejection_reason'],
+            'rejected_by' => auth()->id(),
+            'rejected_at' => now(),
+        ]);
 
         return $this->fresh($purchaseRequest, $purchaseRequest->request_number.' rejected.');
     }
@@ -236,7 +248,7 @@ class PurchasePipelineController extends Controller
     private function fresh(PurchaseRequest $purchaseRequest, string $message)
     {
         $purchaseRequest->refresh()->load([
-            'requestedBy', 'items', 'signature.signedBy',
+            'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
             'rfqInvitations.supplier', 'supplierQuotes.supplier', 'supplierQuotes.items',
             'purchaseOrders.supplier',
         ]);

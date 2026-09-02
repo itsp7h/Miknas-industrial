@@ -80,7 +80,7 @@ class PurchaseRequestController extends Controller
     {
         $this->authorize('view', $purchaseRequest);
 
-        $purchaseRequest->load(['items', 'requestedBy', 'approvedBy']);
+        $purchaseRequest->load(['items', 'requestedBy', 'approvedBy', 'rejectedBy']);
 
         return response()->json(['data' => new PurchaseRequestSheetResource($purchaseRequest)]);
     }

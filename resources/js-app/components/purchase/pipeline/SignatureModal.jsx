@@ -17,9 +17,11 @@ export default function SignatureModal({ open, request, onClose, onSubmit, onRej
     // second modal on top of it.
     const [confirmingReject, setConfirmingReject] = useState(false);
     const [rejecting, setRejecting] = useState(false);
+    const [reason, setReason] = useState('');
 
     const signature = request?.signature;
     const rejected = request?.status === 'rejected';
+    const rejection = request?.rejection;
 
     useEffect(() => {
         if (!open || signature) return;
@@ -27,6 +29,7 @@ export default function SignatureModal({ open, request, onClose, onSubmit, onRej
         dirty.current = false;
         setError('');
         setConfirmingReject(false);
+        setReason('');
 
         const canvas = canvasRef.current;
         // getContext returns null where 2D canvas is unavailable; the pad simply
@@ -101,13 +104,23 @@ export default function SignatureModal({ open, request, onClose, onSubmit, onRej
     }
 
     async function reject() {
+        // Checked here too so an empty reason never costs a round trip.
+        if (reason.trim().length < 5) {
+            setError('Please give a reason of at least 5 characters.');
+
+            return;
+        }
         setRejecting(true);
         setError('');
         try {
-            await onReject();
+            await onReject(reason.trim());
             onClose();
-        } catch (rejection) {
-            setError(rejection?.message || 'Could not reject that request.');
+        } catch (failure) {
+            setError(
+                failure?.errors?.rejection_reason?.[0]
+                || failure?.message
+                || 'Could not reject that request.'
+            );
         } finally {
             setRejecting(false);
         }
@@ -137,12 +150,21 @@ export default function SignatureModal({ open, request, onClose, onSubmit, onRej
             ) : (
                 <div>
                     {rejected && (
-                        <p style={{
+                        <div style={{
                             fontSize: 12.5, color: '#b91c1c', background: '#fef2f2',
                             border: '1px solid #fecaca', borderRadius: 9, padding: '9px 11px', margin: '0 0 14px',
                         }}>
-                            This request was rejected. Signing it now approves it after all.
-                        </p>
+                            <p style={{ margin: 0, fontWeight: 600 }}>
+                                This request was rejected. Signing it now approves it after all.
+                            </p>
+                            {rejection?.reason && (
+                                <p style={{ margin: '6px 0 0', fontWeight: 400 }}>
+                                    “{rejection.reason}”
+                                    {rejection.rejected_by_name && ` — ${rejection.rejected_by_name}`}
+                                    {rejection.rejected_at && `, ${rejection.rejected_at}`}
+                                </p>
+                            )}
+                        </div>
                     )}
                     <p style={{ fontSize: 13, color: '#475569', margin: '0 0 14px' }}>
                         Draw your signature below to approve this purchase request. Approving records your name,
@@ -193,6 +215,21 @@ export default function SignatureModal({ open, request, onClose, onSubmit, onRej
                                         Reject {request?.request_number ?? 'this request'}? It stops here rather
                                         than going on to the RFQ stage. You can still approve it later.
                                     </p>
+                                    <label
+                                        htmlFor="rejection-reason"
+                                        style={{
+                                            display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b',
+                                            textTransform: 'uppercase', marginBottom: 6,
+                                        }}
+                                    >
+                                        Reason for rejection (required)
+                                    </label>
+                                    <textarea
+                                        id="rejection-reason" rows={3} className="form-textarea"
+                                        style={{ width: '100%', marginBottom: 10 }}
+                                        placeholder="e.g. Quantities exceed the budget for this project — resubmit with 20 units."
+                                        value={reason} onChange={(e) => setReason(e.target.value)}
+                                    />
                                     <div style={{ display: 'flex', gap: 10 }}>
                                         <button
                                             type="button" onClick={() => setConfirmingReject(false)}

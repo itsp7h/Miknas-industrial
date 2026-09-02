@@ -21,7 +21,7 @@ const base = (overrides = {}) => ({
     is_done: false, stages: STAGES, stage_labels: LABELS, status: 'pending',
     project_name: null, department: null, requested_by_name: 'Admin User', date: null,
     created_at: '2026-09-01', location: null, required_date_text: null, verified_by_name: null,
-    signature: null, rfq_invitations: [], pending_invitation_count: 0, sent_invitation_count: 0,
+    signature: null, rejection: null, rfq_invitations: [], pending_invitation_count: 0, sent_invitation_count: 0,
     items: [], supplier_quotes: [], awarded_supplier_names: [], purchase_orders: [],
     permissions: {
         update: true, approve: true, manageRfq: true,
@@ -226,9 +226,29 @@ describe('SignatureModal', () => {
         expect(onReject).not.toHaveBeenCalled();
 
         fireEvent.click(screen.getByText('Reject this request instead'));
+        fireEvent.change(screen.getByLabelText(/Reason for rejection/), {
+            target: { value: 'Over budget for this project.' },
+        });
         fireEvent.click(screen.getByText('Reject Request'));
-        await waitFor(() => expect(onReject).toHaveBeenCalled());
+        await waitFor(() => expect(onReject).toHaveBeenCalledWith('Over budget for this project.'));
         await waitFor(() => expect(onClose).toHaveBeenCalled());
+    });
+
+    // The reason is what the requester reads to know what to change, so an
+    // empty one must not cost a round trip through the approval gate.
+    it('will not reject without a reason', async () => {
+        const onReject = vi.fn().mockResolvedValue({});
+        wrap(<SignatureModal open request={base()} onClose={() => {}} onSubmit={() => {}} onReject={onReject} />);
+
+        fireEvent.click(screen.getByText('Reject this request instead'));
+        fireEvent.click(screen.getByText('Reject Request'));
+
+        expect(screen.getByText('Please give a reason of at least 5 characters.')).toBeInTheDocument();
+        expect(onReject).not.toHaveBeenCalled();
+
+        fireEvent.change(screen.getByLabelText(/Reason for rejection/), { target: { value: 'no' } });
+        fireEvent.click(screen.getByText('Reject Request'));
+        expect(onReject).not.toHaveBeenCalled();
     });
 
     it('keeps the dialog open and says why when rejecting fails', async () => {
@@ -237,21 +257,46 @@ describe('SignatureModal', () => {
         wrap(<SignatureModal open request={base()} onClose={onClose} onSubmit={() => {}} onReject={onReject} />);
 
         fireEvent.click(screen.getByText('Reject this request instead'));
+        fireEvent.change(screen.getByLabelText(/Reason for rejection/), {
+            target: { value: 'Over budget for this project.' },
+        });
         fireEvent.click(screen.getByText('Reject Request'));
 
         await waitFor(() => expect(screen.getByText('Already rejected.')).toBeInTheDocument());
         expect(onClose).not.toHaveBeenCalled();
     });
 
+    it('surfaces the server\'s own validation message for the reason', async () => {
+        const onReject = vi.fn().mockRejectedValue({
+            message: 'Invalid.', errors: { rejection_reason: ['The rejection reason field is required.'] },
+        });
+        wrap(<SignatureModal open request={base()} onClose={() => {}} onSubmit={() => {}} onReject={onReject} />);
+
+        fireEvent.click(screen.getByText('Reject this request instead'));
+        fireEvent.change(screen.getByLabelText(/Reason for rejection/), { target: { value: 'long enough' } });
+        fireEvent.click(screen.getByText('Reject Request'));
+
+        await waitFor(() => expect(
+            screen.getByText('The rejection reason field is required.')
+        ).toBeInTheDocument());
+    });
+
     it('says so on an already-rejected request, and stops offering rejection', () => {
         wrap(
             <SignatureModal
-                open request={base({ status: 'rejected' })}
+                open
+                request={base({
+                    status: 'rejected',
+                    rejection: { reason: 'Over budget.', rejected_by_name: 'Zoe Admin', rejected_at: '2026-09-02' },
+                })}
                 onClose={() => {}} onSubmit={() => {}} onReject={() => {}}
             />
         );
 
         expect(screen.getByText(/This request was rejected/)).toBeInTheDocument();
+        // Whoever opens it next needs to know why, not just that.
+        expect(screen.getByText(/Over budget\./)).toBeInTheDocument();
+        expect(screen.getByText(/Zoe Admin/)).toBeInTheDocument();
         expect(screen.queryByText('Reject this request instead')).not.toBeInTheDocument();
         // Signing it is still on offer — refusing is not final.
         expect(screen.getByLabelText('Signature pad')).toBeInTheDocument();

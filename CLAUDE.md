@@ -247,7 +247,7 @@ mail/lpo-issued, mail/rfq-invitation            emails
 
 **Driver:** SQLite — `database/database.sqlite`
 
-### Migrations (29 total)
+### Migrations (60 files — the domain tables, plus the alters that followed)
 ```
 users, cache, jobs (Laravel defaults)
 permission_tables (Spatie)
@@ -259,6 +259,7 @@ production_outputs, production_costs
 customers, sales_orders, sales_order_items, delivery_notes
 delivery_note_items, sales_invoices, payment_receipts
 purchase_request_items
+add_rejection_record_to_purchase_requests
 ```
 
 ### Seeders
@@ -407,7 +408,7 @@ openEdit(id, applyUpdate);       // loads the record; the callback gets the save
 - It is one tree with a `compact` flag from `useViewport()`, not a desktop/mobile pair: two copies of a form this long would drift, which is the same reasoning as Integrations, Profile and the quotes workspace.
 - Writes go to `Api/Purchase/PurchaseRequestController`. `store` answers with a board row (the board opens it), `update` answers with the pipeline detail payload (the detail page opens it), and each broadcasts so the *other* screen stays in sync.
 - The read-only sheet is its own page (`/app/purchase/requests/{id}`) with its own resource: the pipeline detail payload shapes items for the timeline and never carries remarks or the approval record. Delete lives there too — it is the only place the old `requests.destroy` route's capability is offered.
-- **GM approval is the signature action, not a separate button.** `storeSignature` records the signature *and* writes `status`/`approved_by`/`approved_at` in one transaction — the dialog has always been titled "Approve & Sign" and said so, but until it did this nothing wrote those columns (the Blade `approve` action was their only writer and lost its UI in a cutover), so every signed request stayed `pending` and the sheet's approval block could never appear. Rejection is `POST pipeline/{id}/reject` behind the same policy, offered in the same dialog; it writes only `status`, because `approved_by`/`approved_at` mean what they say. A request approved and then rejected still carries `approved_by`, so **anything rendering an approval must key off `status === 'approved'`**, not off the relation being present.
+- **GM approval is the signature action, not a separate button.** `storeSignature` records the signature *and* writes `status`/`approved_by`/`approved_at` in one transaction — the dialog has always been titled "Approve & Sign" and said so, but until it did this nothing wrote those columns (the Blade `approve` action was their only writer and lost its UI in a cutover), so every signed request stayed `pending` and the sheet's approval block could never appear. Rejection is `POST pipeline/{id}/reject` behind the same policy, offered in the same dialog, and takes a **required** `rejection_reason` (min 5 chars, the same rule an award follows) recorded with `rejected_by`/`rejected_at`. It has its own three columns rather than borrowing `approved_by`/`approved_at`, which mean what they say. Both records survive on the row as history, so **anything rendering an approval or a refusal must key off `status`** — `=== 'approved'` and `=== 'rejected'` respectively — not off the columns or the relation being present. A request approved after a refusal carries both.
 - Both modals wait for their data before mounting (options on the first open, the record when editing) and are keyed per target, because the form seeds itself from `initial` at mount. Do not add an effect that re-seeds from `initial`: a late render changing its identity would wipe what the user had typed.
 - A row is `required` only once the user has put something in it. Blade marked every added row required unconditionally, so adding a row and leaving it alone made the form refuse to submit with nothing but a browser tooltip to explain why.
 

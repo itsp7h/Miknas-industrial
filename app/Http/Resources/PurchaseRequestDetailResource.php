@@ -47,6 +47,15 @@ class PurchaseRequestDetailResource extends JsonResource
             'required_date_text' => $this->required_date_text,
             'verified_by_name' => $this->verified_by_name,
 
+            // Keyed off the status, not the columns: a request approved after a
+            // refusal keeps its rejection record as history, and this must not
+            // present it as the current state.
+            'rejection' => $this->status === 'rejected' ? [
+                'reason' => $this->rejection_reason,
+                'rejected_by_name' => $this->whenLoaded('rejectedBy', fn () => $this->rejectedBy?->name),
+                'rejected_at' => $this->rejected_at?->toDateString(),
+            ] : null,
+
             'signature' => $this->whenLoaded('signature', fn () => $this->signature ? [
                 'signed_by_name' => $this->signature->signedBy?->name,
                 'signed_at' => $this->signature->signed_at?->toDateString(),

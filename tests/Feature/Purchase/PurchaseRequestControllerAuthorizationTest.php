@@ -108,7 +108,9 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
 
         $this->actingAs($manager)
-            ->postJson("/api/v1/purchase/pipeline/{$atStage->id}/reject")
+            ->postJson("/api/v1/purchase/pipeline/{$atStage->id}/reject", [
+                'rejection_reason' => 'Over budget for this project.',
+            ])
             ->assertOk();
 
         $this->assertSame('rejected', $atStage->fresh()->status);

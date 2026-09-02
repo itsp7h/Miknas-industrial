@@ -47,6 +47,15 @@ class PurchaseRequestSheetResource extends JsonResource
                 'approved_at' => $this->approved_at?->toIso8601String(),
             ] : null),
 
+            // Same rule as the approval block, for the same reason: a request
+            // approved after a refusal keeps both records, and only the one
+            // matching the current status may be shown.
+            'rejection' => $this->status === 'rejected' ? [
+                'reason' => $this->rejection_reason,
+                'rejected_by_name' => $this->whenLoaded('rejectedBy', fn () => $this->rejectedBy?->name),
+                'rejected_at' => $this->rejected_at?->toIso8601String(),
+            ] : null,
+
             // The MPR document is DomPDF-backed and stays server-rendered.
             'print_url' => route('purchase.requests.print', $this->resource),
 

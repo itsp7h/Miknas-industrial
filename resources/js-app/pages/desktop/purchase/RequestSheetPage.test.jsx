@@ -35,6 +35,7 @@ const SHEET = {
         },
     ],
     approval: null,
+    rejection: null,
     print_url: '/purchase/requests/7/print',
     permissions: { update: true, delete: true },
 };
@@ -98,6 +99,27 @@ describe('the MPR sheet page', () => {
         renderPage();
         await waitFor(() => expect(screen.getByText('Approval Info')).toBeInTheDocument());
         expect(screen.getByText('Khalid Nasser')).toBeInTheDocument();
+    });
+
+    it('shows the rejection with its reason, and only while the request is rejected', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: {
+                ...SHEET,
+                status: 'rejected',
+                rejection: {
+                    reason: 'Quantities exceed the project budget.',
+                    rejected_by_name: 'Khalid Nasser',
+                    rejected_at: '2026-09-02T10:09:00+00:00',
+                },
+            },
+        });
+        renderPage();
+
+        await waitFor(() => expect(screen.getByText('Rejection Info')).toBeInTheDocument());
+        expect(screen.getByText('Quantities exceed the project budget.')).toBeInTheDocument();
+        expect(screen.getByText('Khalid Nasser')).toBeInTheDocument();
+        expect(screen.getByText('Rejected')).toBeInTheDocument();
+        expect(screen.queryByText('Approval Info')).not.toBeInTheDocument();
     });
 
     it('links the DomPDF document and the pipeline, and opens the edit modal in place', async () => {

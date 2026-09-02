@@ -13,6 +13,16 @@ export function ddmmyyyy(value) {
     return `${day}-${month}-${year}`;
 }
 
+/** Blade printed the approval stamp as "01 Sep 2026, 14:07". */
+export function datetime(value) {
+    if (!value) return '—';
+
+    return new Date(value).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+}
+
 function Field({ label, value, span }) {
     return (
         <div style={span ? { gridColumn: `span ${span}` } : undefined}>
@@ -95,20 +105,37 @@ export default function RequestSheet({ request, compact = false }) {
                 </div>
             </div>
 
+            {/* Only one of these can show: both are keyed off the status, so a
+                request approved after a refusal shows the approval and keeps
+                the refusal as history. */}
+            {request.rejection && (
+                <div className="card card-body" style={{ marginBottom: 24, borderColor: '#fecaca' }}>
+                    <SectionHeading>Rejection Info</SectionHeading>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 16 }}>
+                        <Field label="Rejected By" value={request.rejection.rejected_by_name} />
+                        <Field
+                            label="Rejected At"
+                            value={request.rejection.rejected_at ? datetime(request.rejection.rejected_at) : '—'}
+                        />
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <p style={{ color: '#6b7280', fontSize: 13 }}>Reason</p>
+                            <p style={{
+                                fontWeight: 500, color: '#7f1d1d', fontSize: 13, background: '#fef2f2',
+                                border: '1px solid #fecaca', borderRadius: 8, padding: '8px 10px', margin: '4px 0 0',
+                            }}>
+                                {request.rejection.reason || '—'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {request.approval && (
                 <div className="card card-body">
                     <SectionHeading>Approval Info</SectionHeading>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 16 }}>
                         <Field label="Approved By" value={request.approval.approved_by_name} />
-                        <Field
-                            label="Approved At"
-                            value={request.approval.approved_at
-                                ? new Date(request.approval.approved_at).toLocaleString('en-GB', {
-                                    day: '2-digit', month: 'short', year: 'numeric',
-                                    hour: '2-digit', minute: '2-digit', hour12: false,
-                                })
-                                : '—'}
-                        />
+                        <Field label="Approved At" value={datetime(request.approval.approved_at)} />
                     </div>
                 </div>
             )}

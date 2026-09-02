@@ -29,6 +29,12 @@ class PipelineActionsTest extends TestCase
         return $user;
     }
 
+    /** The payload the reject confirm step posts. */
+    private function rejection(string $reason = 'Quantities exceed the project budget.'): array
+    {
+        return ['rejection_reason' => $reason];
+    }
+
     private function approver(): User
     {
         $user = User::factory()->create();
@@ -262,10 +268,10 @@ class PipelineActionsTest extends TestCase
     {
         $pr = $this->request('gm_approval');
 
-        $this->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertUnauthorized();
+        $this->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())->assertUnauthorized();
 
         $this->actingAs(User::factory()->create())
-            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())
             ->assertForbidden();
     }
 
@@ -274,7 +280,7 @@ class PipelineActionsTest extends TestCase
         $pr = $this->request('gm_approval');
 
         $response = $this->actingAs($this->approver())
-            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())
             ->assertOk();
 
         $pr->refresh();
@@ -294,7 +300,7 @@ class PipelineActionsTest extends TestCase
         $pr = $this->request('gm_approval');
 
         $this->actingAs($this->approver())
-            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertOk();
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())->assertOk();
 
         $pr->refresh();
         $this->assertNull($pr->approved_by);
@@ -320,7 +326,7 @@ class PipelineActionsTest extends TestCase
         $pr->refresh()->update(['stage' => 'gm_approval']);
 
         $this->actingAs($approver)
-            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertOk();
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())->assertOk();
 
         $this->assertNotNull($pr->fresh()->approved_by);
         $this->actingAs($approver)
@@ -330,13 +336,101 @@ class PipelineActionsTest extends TestCase
             ->assertJsonPath('data.approval', null);
     }
 
+    /**
+     * The reason is what the requester reads to know what to change, so a
+     * refusal without one is not accepted — the same rule an award follows.
+     */
+    public function test_rejecting_requires_a_reason(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", [])
+            ->assertStatus(422)->assertJsonValidationErrors('rejection_reason');
+
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", ['rejection_reason' => 'no'])
+            ->assertStatus(422)->assertJsonValidationErrors('rejection_reason');
+
+        // Nothing was written by either attempt.
+        $this->assertSame('pending', $pr->fresh()->status);
+    }
+
+    public function test_the_reason_is_recorded_with_who_refused_it_and_when(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+
+        $response = $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection('Over budget for this project.'))
+            ->assertOk();
+
+        $pr->refresh();
+        $this->assertSame('Over budget for this project.', $pr->rejection_reason);
+        $this->assertSame($approver->id, $pr->rejected_by);
+        $this->assertNotNull($pr->rejected_at);
+
+        // The detail page gets it back in the same response.
+        $response->assertJsonPath('data.rejection.reason', 'Over budget for this project.');
+        $response->assertJsonPath('data.rejection.rejected_by_name', $approver->name);
+    }
+
+    public function test_the_reason_shows_on_the_mpr_sheet_while_rejected(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+        $approver->givePermissionTo('purchase-requests.view-all');
+
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection('Over budget for this project.'))
+            ->assertOk();
+
+        $this->actingAs($approver)
+            ->getJson("/api/v1/purchase/requests/{$pr->id}")
+            ->assertOk()
+            ->assertJsonPath('data.rejection.reason', 'Over budget for this project.')
+            ->assertJsonPath('data.rejection.rejected_by_name', $approver->name);
+    }
+
+    /**
+     * The record is kept as history but must stop being presented as the
+     * current state — the same rule the approval block follows in reverse.
+     */
+    public function test_the_rejection_is_hidden_once_the_request_is_approved_after_all(): void
+    {
+        $pr = $this->request('gm_approval');
+        $approver = $this->approver();
+        $approver->givePermissionTo('purchase-requests.view-all');
+
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())->assertOk();
+        $this->actingAs($approver)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
+            ->assertOk();
+
+        // Still on the row …
+        $this->assertNotNull($pr->fresh()->rejection_reason);
+
+        // … but not in either payload.
+        $this->actingAs($approver)
+            ->getJson("/api/v1/purchase/requests/{$pr->id}")
+            ->assertOk()
+            ->assertJsonPath('data.rejection', null)
+            ->assertJsonPath('data.approval.approved_by_name', $approver->name);
+
+        $this->actingAs($approver)
+            ->getJson("/api/v1/purchase/pipeline/{$pr->id}")
+            ->assertOk()->assertJsonPath('data.rejection', null);
+    }
+
     public function test_a_request_cannot_be_rejected_twice(): void
     {
         $pr = $this->request('gm_approval');
         $approver = $this->approver();
 
-        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertOk();
-        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertStatus(422);
+        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())->assertOk();
+        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())->assertStatus(422);
     }
 
     /** Rejecting is not final: the GM can still sign it afterwards. */
@@ -345,7 +439,7 @@ class PipelineActionsTest extends TestCase
         $pr = $this->request('gm_approval');
         $approver = $this->approver();
 
-        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject")->assertOk();
+        $this->actingAs($approver)->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())->assertOk();
         $this->actingAs($approver)
             ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
             ->assertOk();
