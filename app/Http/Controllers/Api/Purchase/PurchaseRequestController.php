@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\Purchase;
 
 use App\Events\PurchaseRequestCreated;
+use App\Events\PurchaseRequestDeleted;
 use App\Events\PurchaseRequestUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PurchaseRequestBoardResource;
 use App\Http\Resources\PurchaseRequestDetailResource;
+use App\Http\Resources\PurchaseRequestSheetResource;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\Settings\Department;
@@ -68,6 +70,19 @@ class PurchaseRequestController extends Controller
             'units' => self::UNITS,
             'today' => now()->toDateString(),
         ]);
+    }
+
+    /**
+     * The full MPR sheet, read-only. This is the page the pipeline detail
+     * header's "View Full Request" opens.
+     */
+    public function show(PurchaseRequest $purchaseRequest)
+    {
+        $this->authorize('view', $purchaseRequest);
+
+        $purchaseRequest->load(['items', 'requestedBy', 'approvedBy']);
+
+        return response()->json(['data' => new PurchaseRequestSheetResource($purchaseRequest)]);
     }
 
     /**
@@ -168,6 +183,19 @@ class PurchaseRequestController extends Controller
             'data' => new PurchaseRequestDetailResource($purchaseRequest),
             'message' => "{$purchaseRequest->request_number} updated successfully.",
         ]);
+    }
+
+    public function destroy(PurchaseRequest $purchaseRequest)
+    {
+        $this->authorize('delete', $purchaseRequest);
+
+        $number = $purchaseRequest->request_number;
+        $id = $purchaseRequest->id;
+        $purchaseRequest->delete();
+
+        event(new PurchaseRequestDeleted($id));
+
+        return response()->json(['message' => "{$number} deleted."]);
     }
 
     private function validated(Request $request): array

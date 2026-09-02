@@ -173,7 +173,7 @@ function DoneActions({ stage, r, on }) {
 
     switch (stage) {
         case 'draft':
-            return <a href={`/purchase/requests/${r.id}`} style={VIEW}><EyeIcon /> View Request</a>;
+            return <Link to={`/app/purchase/requests/${r.id}`} style={VIEW}><EyeIcon /> View Request</Link>;
         case 'gm_approval':
             return r.signature
                 ? <ActionButton onClick={() => on('signature')} style={VIEW}><EyeIcon /> View Signature</ActionButton>

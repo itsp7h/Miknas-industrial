@@ -20,6 +20,8 @@ import DesktopGrnDetailPage from './pages/desktop/purchase/GrnDetailPage';
 import MobileGrnDetailPage from './pages/mobile/purchase/GrnDetailPage';
 import DesktopPipelinePage from './pages/desktop/purchase/PipelinePage';
 import DesktopQuoteWorkspacePage from './pages/desktop/purchase/QuoteWorkspacePage';
+import DesktopRequestSheetPage from './pages/desktop/purchase/RequestSheetPage';
+import MobileRequestSheetPage from './pages/mobile/purchase/RequestSheetPage';
 import MobileQuoteWorkspacePage from './pages/mobile/purchase/QuoteWorkspacePage';
 import MobilePipelinePage from './pages/mobile/purchase/PipelinePage';
 import DesktopPipelineBoardPage from './pages/desktop/purchase/PipelineBoardPage';
@@ -83,6 +85,7 @@ export default function App({
     const PipelineBoardPage = viewport === 'mobile' ? MobilePipelineBoardPage : DesktopPipelineBoardPage;
     const PipelinePage = viewport === 'mobile' ? MobilePipelinePage : DesktopPipelinePage;
     const QuoteWorkspacePage = viewport === 'mobile' ? MobileQuoteWorkspacePage : DesktopQuoteWorkspacePage;
+    const RequestSheetPage = viewport === 'mobile' ? MobileRequestSheetPage : DesktopRequestSheetPage;
     const PurchaseOrderListPage = viewport === 'mobile' ? MobilePurchaseOrderListPage : DesktopPurchaseOrderListPage;
     const GrnListPage = viewport === 'mobile' ? MobileGrnListPage : DesktopGrnListPage;
     const SupplierInvoiceListPage = viewport === 'mobile' ? MobileSupplierInvoiceListPage : DesktopSupplierInvoiceListPage;
@@ -140,6 +143,7 @@ export default function App({
                     )} />
                     <Route path="/app/purchase/pipeline/:id" element={<PipelinePage />} />
                     <Route path="/app/purchase/requests/:id/quotes" element={<QuoteWorkspacePage />} />
+                    <Route path="/app/purchase/requests/:id" element={<RequestSheetPage />} />
                     <Route path="/app/purchase/orders" element={<PurchaseOrderListPage />} />
                     <Route path="/app/purchase/orders/:id" element={<PurchaseOrderDetailPage />} />
                     <Route path="/app/purchase/grns" element={<GrnListPage />} />

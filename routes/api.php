@@ -196,7 +196,9 @@ Route::prefix('v1')->group(function () {
             Route::get('requests/form-options', [PurchaseRequestController::class, 'formOptions']);
             Route::post('requests', [PurchaseRequestController::class, 'store']);
             Route::get('requests/{purchaseRequest}/edit', [PurchaseRequestController::class, 'edit']);
+            Route::get('requests/{purchaseRequest}', [PurchaseRequestController::class, 'show']);
             Route::put('requests/{purchaseRequest}', [PurchaseRequestController::class, 'update']);
+            Route::delete('requests/{purchaseRequest}', [PurchaseRequestController::class, 'destroy']);
 
             // The quotes workspace: one page for "view quotes" and "compare &
             // award", as in Blade.

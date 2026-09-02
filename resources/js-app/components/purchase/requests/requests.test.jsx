@@ -148,7 +148,10 @@ describe('the new-request modal', () => {
         renderProvider();
         fireEvent.click(screen.getByText('open new'));
 
-        expect(screen.getByText('New Purchase Request')).toBeInTheDocument();
+        // The form waits for its options rather than mounting with empty
+        // dropdowns and a blank date.
+        expect(screen.getByText('Loading…')).toBeInTheDocument();
+        expect(await screen.findByText('New Purchase Request')).toBeInTheDocument();
         expect(screen.getByText('Material Purchase Request (MPR)')).toBeInTheDocument();
         expect(screen.getByText('Submit Request')).toBeInTheDocument();
         await waitFor(() => expect(screen.getByLabelText(/^Date/)).toHaveValue('2026-09-01'));
@@ -158,7 +161,7 @@ describe('the new-request modal', () => {
     it('narrows locations and departments to the chosen project', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open new'));
-        await waitFor(() => expect(client.apiGet).toHaveBeenCalledWith('/purchase/requests/form-options'));
+        await screen.findByText('New Purchase Request');
 
         // With no project chosen, every department is on offer.
         expect(screen.getByText('Operations')).toBeInTheDocument();

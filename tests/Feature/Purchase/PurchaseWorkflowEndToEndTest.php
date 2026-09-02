@@ -34,7 +34,8 @@ class PurchaseWorkflowEndToEndTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         // 1) Requester creates the MPR — lands at stage=draft (DB default).
-        $storeResponse = $this->actingAs($requester)->post(route('purchase.requests.store'), [
+        // The create form is a React modal, so this step is the API call it makes.
+        $storeResponse = $this->actingAs($requester)->postJson('/api/v1/purchase/requests', [
             'date' => now()->format('Y-m-d'),
             'project_name' => 'Test Project',
             'requested_by_name' => 'Test Person',
@@ -42,7 +43,7 @@ class PurchaseWorkflowEndToEndTest extends TestCase
                 ['description' => 'Widget', 'quantity_required' => 5],
             ],
         ]);
-        $storeResponse->assertRedirect(route('purchase.requests.index'));
+        $storeResponse->assertCreated();
 
         $purchaseRequest = PurchaseRequest::where('requested_by_name', 'Test Person')->firstOrFail();
         $this->assertSame('draft', $purchaseRequest->stage);

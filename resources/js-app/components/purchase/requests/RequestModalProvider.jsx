@@ -9,6 +9,27 @@ import useRequestFormOptions from './useRequestFormOptions';
 const RequestModalContext = createContext(null);
 
 /**
+ * Shown for the moment before the form can be seeded — the options fetch on the
+ * very first open, or the record fetch when editing. Both modals read their
+ * initial values once at mount, so neither may be mounted early.
+ */
+function LoadingOverlay() {
+    return (
+        <div style={{
+            display: 'flex', position: 'fixed', inset: 0, zIndex: 9999, alignItems: 'center',
+            justifyContent: 'center', background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(3px)',
+        }}>
+            <div style={{
+                background: '#fff', borderRadius: '1rem', padding: '1.25rem 1.75rem',
+                fontSize: 13, color: '#64748b',
+            }}>
+                Loading…
+            </div>
+        </div>
+    );
+}
+
+/**
  * Hosts the MPR create and edit forms above the router, so any page can open
  * either one without owning the form itself. This replaces the Blade component
  * that app-shell.blade.php had to include purely so React could call its Alpine
@@ -85,22 +106,30 @@ export function RequestModalProvider({ children }) {
         <RequestModalContext.Provider value={value}>
             {children}
 
-            <RequestModal
-                {...CREATE_CHROME}
-                open={target?.kind === 'create'}
-                initial={createInitial}
-                options={options}
-                optionsError={optionsError}
-                onClose={close}
-                onSubmit={submitCreate}
-            />
+            {/* Each modal is mounted only while it is open, and keyed by its
+                target: the form seeds itself from `initial` at mount, so
+                reopening starts from the record without an effect that could
+                reset it mid-typing. */}
+            {target?.kind === 'create' && !options && !optionsError && <LoadingOverlay />}
+            {target?.kind === 'create' && (options || optionsError) && (
+                <RequestModal
+                    {...CREATE_CHROME}
+                    key="create"
+                    initial={createInitial}
+                    options={options}
+                    optionsError={optionsError}
+                    onClose={close}
+                    onSubmit={submitCreate}
+                />
+            )}
 
-            {/* Mounted only once the record is in hand, so the fields are never
+            {/* The edit form waits for the record, so its fields are never
                 shown blank and then filled in under the cursor. */}
+            {target?.kind === 'edit' && !editInitial && <LoadingOverlay />}
             {target?.kind === 'edit' && editInitial && (
                 <RequestModal
                     {...EDIT_CHROME}
-                    open
+                    key={`edit-${target.id}`}
                     subtitle={editing.request_number}
                     initial={editInitial}
                     options={options}

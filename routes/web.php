@@ -80,10 +80,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('requests/{purchaseRequest}/compare', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}/quotes"))
             ->whereNumber('purchaseRequest')->name('requests.compare');
 
-        Route::resource('requests', PurchaseRequestController::class)->parameters(['requests' => 'purchaseRequest']);
+        // The MPR form is a React modal and the request sheet a React page, so
+        // the create/edit/show pages are gone. Their URLs redirect: all three
+        // were live long enough to be bookmarked. `requests/create` must come
+        // before the `{purchaseRequest}` wildcard, and `requests/print` after
+        // it is fine because it carries an extra segment.
+        Route::redirect('requests', '/app/purchase/pipeline')->name('requests.index');
+        Route::redirect('requests/create', '/app/purchase/pipeline?new=1')->name('requests.create');
+        Route::get('requests/{purchaseRequest}/edit', fn ($purchaseRequest) => redirect("/app/purchase/pipeline/{$purchaseRequest}"))
+            ->whereNumber('purchaseRequest')->name('requests.edit');
+        Route::get('requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('requests.print');
         Route::patch('requests/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('requests.approve');
         Route::patch('requests/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('requests.reject');
-        Route::get('requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('requests.print');
+        Route::get('requests/{purchaseRequest}', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}"))
+            ->whereNumber('purchaseRequest')->name('requests.show');
         Route::post('requests/{purchaseRequest}/generate-lpo', [PurchaseOrderController::class, 'generateFromRequest'])->name('requests.generate-lpo');
         // Purchase orders are served by the React SPA at /app/purchase/orders.
         // Only the DomPDF-backed print/pdf documents stay server-rendered.

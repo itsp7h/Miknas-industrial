@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\PurchaseRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -13,26 +14,37 @@ use Tests\TestCase;
  * render time — invisible to unit tests, and fatal on a page users see. These
  * render the surviving Blade pages for real.
  *
- * The dashboard used to be that page. It is React now, so the RFQ workflow's
- * create-request page stands in: it is the remaining Blade page that renders the
- * full `layouts/app` chrome without needing a model.
+ * The dashboard used to be that page, then the create-request page. Both are
+ * React now, so the RFQ supplier-selection page stands in — the last Blade page
+ * on `layouts/app`. Unlike its predecessors it needs a model, so these seed a
+ * request and a user who can view it.
  */
 class BladePagesStillRenderTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * The chrome page needs a viewable request, so every user here gets
+     * view-all rather than being a bare account.
+     */
     private function user(): User
     {
-        return User::factory()->create();
+        $user = User::factory()->create();
+        $user->givePermissionTo('purchase-requests.view-all');
+
+        return $user;
     }
 
     /** The Blade page that still carries the shared chrome. */
-    private const BLADE_PAGE = '/purchase/requests/create';
+    private function bladePage(): string
+    {
+        return '/purchase/requests/'.PurchaseRequest::factory()->create(['stage' => 'rfq'])->id.'/rfq';
+    }
 
     public function test_a_surviving_blade_page_renders_with_the_full_sidebar(): void
     {
         $this->actingAs($this->user())
-            ->get(self::BLADE_PAGE)
+            ->get($this->bladePage())
             ->assertOk()
             ->assertSee('Stock Summary', false);
     }
@@ -51,7 +63,7 @@ class BladePagesStillRenderTest extends TestCase
 
         // The chrome links the shell directly rather than hopping through the
         // redirect.
-        $this->actingAs($this->user())->get(self::BLADE_PAGE)->assertOk()
+        $this->actingAs($this->user())->get($this->bladePage())->assertOk()
             ->assertSee('href="/app"', false);
     }
 
@@ -61,7 +73,7 @@ class BladePagesStillRenderTest extends TestCase
      */
     public function test_the_sidebar_links_migrated_pages_at_the_react_shell(): void
     {
-        $response = $this->actingAs($this->user())->get(self::BLADE_PAGE)->assertOk();
+        $response = $this->actingAs($this->user())->get($this->bladePage())->assertOk();
 
         foreach ([
             '/app/purchase/orders',
@@ -95,10 +107,10 @@ class BladePagesStillRenderTest extends TestCase
      */
     public function test_the_sidebar_links_companies_at_the_react_shell_for_an_admin(): void
     {
-        $admin = User::factory()->create();
+        $admin = $this->user();
         $admin->assignRole('Admin');
 
-        $this->actingAs($admin)->get(self::BLADE_PAGE)->assertOk()
+        $this->actingAs($admin)->get($this->bladePage())->assertOk()
             ->assertSee('/app/settings/companies', false);
     }
 
@@ -108,10 +120,10 @@ class BladePagesStillRenderTest extends TestCase
      */
     public function test_the_sidebar_links_both_settings_pages_at_the_react_shell(): void
     {
-        $admin = User::factory()->create();
+        $admin = $this->user();
         $admin->assignRole('Admin');
 
-        $response = $this->actingAs($admin)->get(self::BLADE_PAGE)->assertOk();
+        $response = $this->actingAs($admin)->get($this->bladePage())->assertOk();
 
         $response->assertSee('/app/settings/companies', false);
         $response->assertSee('/app/settings/projects', false);
@@ -122,7 +134,7 @@ class BladePagesStillRenderTest extends TestCase
 
     public function test_the_old_settings_urls_redirect_into_the_react_shell(): void
     {
-        $admin = User::factory()->create();
+        $admin = $this->user();
         $admin->assignRole('Admin');
 
         $this->actingAs($admin)->get('/settings/projects')->assertRedirect('/app/settings/companies');
@@ -144,7 +156,7 @@ class BladePagesStillRenderTest extends TestCase
         $user = $this->user();
 
         $this->actingAs($user)->get('/profile')->assertRedirect('/app/profile');
-        $this->actingAs($user)->get(self::BLADE_PAGE)->assertOk()->assertSee('/app/profile', false);
+        $this->actingAs($user)->get($this->bladePage())->assertOk()->assertSee('/app/profile', false);
 
         foreach (['profile.update', 'profile.destroy'] as $name) {
             $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");

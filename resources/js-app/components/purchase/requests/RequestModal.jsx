@@ -38,9 +38,13 @@ function messagesFrom(rejection) {
  * drift again; the per-modal identity comes in as props.
  */
 export default function RequestModal({
-    open, title, subtitle, gradient, accent, icon, submitLabel, initial,
+    title, subtitle, gradient, accent, icon, submitLabel, initial,
     options, optionsError, onClose, onSubmit,
 }) {
+    // `initial` is read once, at mount: the provider mounts a keyed modal per
+    // target and unmounts it on close, so reopening always starts from the
+    // record. An effect that re-seeded from `initial` instead could wipe what
+    // the user had typed whenever a late render changed its identity.
     const [values, setValues] = useState(initial);
     const [messages, setMessages] = useState([]);
     const [saving, setSaving] = useState(false);
@@ -51,18 +55,7 @@ export default function RequestModal({
     // every page uses.
     const compact = useViewport() === 'mobile';
 
-    // Reopening the form starts from the record again, never from what was left
-    // half-typed the last time it was dismissed.
     useEffect(() => {
-        if (open) {
-            setValues(initial);
-            setMessages([]);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, initial]);
-
-    useEffect(() => {
-        if (!open) return undefined;
         const onKey = (event) => { if (event.key === 'Escape') onClose(); };
         document.addEventListener('keydown', onKey);
         document.body.style.overflow = 'hidden';
@@ -71,7 +64,7 @@ export default function RequestModal({
             document.removeEventListener('keydown', onKey);
             document.body.style.overflow = '';
         };
-    }, [open, onClose]);
+    }, [onClose]);
 
     const projects = options?.projects ?? [];
     const units = options?.units ?? [];
@@ -107,8 +100,6 @@ export default function RequestModal({
             setSaving(false);
         }
     }
-
-    if (!open) return null;
 
     return (
         <div

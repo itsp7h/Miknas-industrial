@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { formatDate } from './pipelineStyles';
 
 /**
@@ -44,8 +45,8 @@ export default function PipelineHeader({ request, compact = false, onEdit }) {
                     </div>
                 </div>
 
-                {/* Editing is the React MPR modal now; the full request sheet
-                    is still a Blade page. */}
+                {/* Editing is the React MPR modal; the full request sheet is a
+                    React page. Neither leaves the shell any more. */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {request.permissions.update && (
                         <button
@@ -60,8 +61,8 @@ export default function PipelineHeader({ request, compact = false, onEdit }) {
                             Edit
                         </button>
                     )}
-                    <a
-                        href={`/purchase/requests/${request.id}`}
+                    <Link
+                        to={`/app/purchase/requests/${request.id}`}
                         style={{
                             fontSize: 12, color: '#64748b', textDecoration: 'none',
                             border: '1px solid #e2e8f0', padding: '6px 14px', borderRadius: 7,
@@ -69,7 +70,7 @@ export default function PipelineHeader({ request, compact = false, onEdit }) {
                         }}
                     >
                         View Full Request →
-                    </a>
+                    </Link>
                 </div>
             </div>
             <div style={{ height: 4, background: '#f1f5f9' }}>

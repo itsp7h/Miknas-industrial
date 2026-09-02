@@ -60,8 +60,9 @@ export const QUICK_ACTIONS = [
     {
         label: 'New Purchase Request',
         caption: 'Raise a PR for approval',
-        // Still Blade — a real navigation, not a router link.
-        to: '/purchase/requests/create',
+        // The MPR form is a modal, not a page: the board opens it on ?new=1,
+        // which is also where the old /purchase/requests/create URL redirects.
+        to: '/app/purchase/pipeline?new=1',
         Icon: PlusIcon,
         border: 'hover:border-amber-300',
         iconWrap: 'bg-amber-50 group-hover:bg-amber-100',

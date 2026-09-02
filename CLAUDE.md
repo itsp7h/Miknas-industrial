@@ -95,7 +95,7 @@ Api/                              ← the React SPA's JSON API
              GoodsReceiptNoteController, SupplierInvoiceController,
              SupplierPaymentController, PurchasePipelineController,
              SupplierQuoteController (quotes workspace, award/unaward),
-             PurchaseRequestController (the MPR create/edit forms)
+             PurchaseRequestController (the MPR form, sheet and delete)
   Inventory/ ItemController (import, template, exportPdf), WarehouseController,
              StockMovementController, StockReportController
              (summary, movement, lowStock, valuation)
@@ -116,7 +116,7 @@ Api/                              ← the React SPA's JSON API
 Auth/                             (Breeze defaults, session-establishing)
 
 Purchase/                         ← the RFQ workflow, still Blade
-  PurchaseRequestController.php   + approve, reject, print
+  PurchaseRequestController.php   ← only approve, reject and print survive
   RfqController.php               supplier selection, send
   PurchaseSignatureController.php GM signature
   RfqPortalController.php         ← public, token-based, no auth
@@ -202,8 +202,10 @@ and a dead end is worse than a hop:
 **Real Blade pages** — the RFQ workflow, the DomPDF documents, the public portal:
 
 ```
-GET  purchase/requests/create|{id}|{id}/edit      purchase.requests.*
-POST purchase/requests                            purchase.requests.store
+GET  purchase/requests                            → redirect /app/purchase/pipeline
+GET  purchase/requests/create                     → redirect …/pipeline?new=1
+GET  purchase/requests/{purchaseRequest}          → redirect /app/purchase/requests/{id}
+GET  purchase/requests/{purchaseRequest}/edit     → redirect …/pipeline/{id}
 PATCH purchase/requests/{purchaseRequest}/approve|reject
 GET  purchase/requests/{purchaseRequest}/print    MPR document
 POST purchase/requests/{purchaseRequest}/generate-lpo
@@ -241,7 +243,6 @@ components/                the 6 Breeze partials the auth pages still use:
                            input-label, primary-button, text-input
 
 ── Still to migrate: the RFQ workflow ──────────────────────────────────────
-purchase/requests/         create, edit, show
 purchase/rfq/show          supplier selection
 purchase/signature/show    GM signature
 components/purchase/       supplier-invite-list
@@ -413,6 +414,8 @@ openEdit(id, applyUpdate);       // loads the record; the callback gets the save
 - One component renders both forms; `requestModalChrome.js` holds what differs (title, gradient, accent, submit label, icon). The two Blade components had drifted — the edit copy had a plain project select, a free-text department and a free-text unit where the create copy had a searchable picker and cascading selects — and a single tree is what stops that recurring.
 - It is one tree with a `compact` flag from `useViewport()`, not a desktop/mobile pair: two copies of a form this long would drift, which is the same reasoning as Integrations, Profile and the quotes workspace.
 - Writes go to `Api/Purchase/PurchaseRequestController`. `store` answers with a board row (the board opens it), `update` answers with the pipeline detail payload (the detail page opens it), and each broadcasts so the *other* screen stays in sync.
+- The read-only sheet is its own page (`/app/purchase/requests/{id}`) with its own resource: the pipeline detail payload shapes items for the timeline and never carries remarks or the approval record. Delete lives there too — it is the only place the old `requests.destroy` route's capability is offered.
+- Both modals wait for their data before mounting (options on the first open, the record when editing) and are keyed per target, because the form seeds itself from `initial` at mount. Do not add an effect that re-seeds from `initial`: a late render changing its identity would wipe what the user had typed.
 - A row is `required` only once the user has put something in it. Blade marked every added row required unconditionally, so adding a row and leaving it alone made the form refuse to submit with nothing but a browser tooltip to explain why.
 
 ### 11. Data entry pages — AJAX only, no page refreshes
@@ -466,7 +469,7 @@ page is finished. Every module has now been through this — Purchase, Inventory
 Production and Sales — so a React page here should be treated as ported, not
 merely present.
 
-**Where the migration stands.** React (desktop + mobile pair each): Dashboard (`/app`, and `/dashboard` redirects to it), Purchase Pipeline board **and detail**, the **supplier quotes workspace** (`/app/purchase/requests/{id}/quotes`, which the old `/quotes` and `/compare` Blade URLs both redirect to), the **MPR create and edit forms** (a modal any page opens through `useRequestModal()` — see gotcha #10 — which also took the last Alpine.js out of `app-shell.blade.php`), Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). Still Blade: the rest of Purchase (the request create/edit/show *pages*, RFQ, signature — the RFQ workflow, none of which has a sidebar entry) and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard (`/app`, and `/dashboard` redirects to it), Purchase Pipeline board **and detail**, the **supplier quotes workspace** (`/app/purchase/requests/{id}/quotes`, which the old `/quotes` and `/compare` Blade URLs both redirect to), the **MPR create and edit forms** (a modal any page opens through `useRequestModal()` — see gotcha #10 — which also took the last Alpine.js out of `app-shell.blade.php`), the **MPR sheet** (`/app/purchase/requests/{id}`, the pipeline header's "View Full Request"), Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). Still Blade: the rest of Purchase (RFQ supplier selection and the GM signature page, neither of which has a sidebar entry) and the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
 
 **The cutover checklist** (each step is a way a cutover has broken before):
 1. Add the `Api/` controller, an `App\Http\Resources\` resource, and `…Saved`/`…Deleted` broadcast events; wire routes in `routes/api.php` — custom paths like `orders/form-options` go **before** the `{wildcard}`.

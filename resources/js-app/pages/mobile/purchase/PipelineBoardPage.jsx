@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
 import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
@@ -17,6 +17,7 @@ export default function PipelineBoardPage({
     currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
 } = {}) {
     const { openNew } = useRequestModal();
+    const [params, setParams] = useSearchParams();
     const { items, setItems } = useLiveList({
         endpoint: '/purchase/pipeline',
         channel: 'purchase',
@@ -51,6 +52,27 @@ export default function PipelineBoardPage({
             ch.stopListening('.purchase-request.updated');
         };
     }, [currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests, setItems]);
+
+    // ?new=1 opens the MPR form straight away: it is where the dashboard's
+    // "New Purchase Request" action and the old /purchase/requests/create URL
+    // both land, and the form is a modal rather than a page of its own. The
+    // param is stripped so a reload or a back-navigation does not reopen it.
+    useEffect(() => {
+        if (params.get('new') !== '1') return;
+        openNew();
+        params.delete('new');
+        setParams(params, { replace: true });
+    }, [params, setParams, openNew]);
+
+    // A deleted request has to leave every board showing it.
+    useEffect(() => {
+        const ch = echo.private('purchase');
+        const handleDeleted = (payload) => {
+            setItems((prev) => prev.filter((item) => item.id !== payload.id));
+        };
+        ch.listen('.purchase-request.deleted', handleDeleted);
+        return () => ch.stopListening('.purchase-request.deleted');
+    }, [setItems]);
 
     // .purchase-request.stage-changed carries only {id, request_number, stage} — merge
     // it shallowly onto the matching row so project_name/department/etc. survive.
