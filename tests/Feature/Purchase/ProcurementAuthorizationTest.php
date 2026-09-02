@@ -10,9 +10,20 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * The procurement gates. Every one of these actions is a React dialog on the
+ * pipeline detail page now, so each is asserted against the API endpoint the
+ * dialog calls — the policy behind them is unchanged.
+ */
 class ProcurementAuthorizationTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** The payload the supplier-select dialog posts. */
+    private function selectPayload(Supplier $supplier): array
+    {
+        return ['mode' => 'global', 'supplier_ids' => [$supplier->id]];
+    }
 
     public function test_user_without_manage_rfq_cannot_select_suppliers(): void
     {
@@ -21,7 +32,7 @@ class ProcurementAuthorizationTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         $this->actingAs($user)
-            ->post(route('purchase.requests.rfq.select', $atRfq), ['supplier_ids' => [$supplier->id]])
+            ->postJson("/api/v1/purchase/pipeline/{$atRfq->id}/suppliers", $this->selectPayload($supplier))
             ->assertForbidden();
     }
 
@@ -33,8 +44,8 @@ class ProcurementAuthorizationTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         $this->actingAs($procurement)
-            ->post(route('purchase.requests.rfq.select', $atRfq), ['supplier_ids' => [$supplier->id]])
-            ->assertRedirect();
+            ->postJson("/api/v1/purchase/pipeline/{$atRfq->id}/suppliers", $this->selectPayload($supplier))
+            ->assertOk();
     }
 
     public function test_procurement_officer_cannot_select_suppliers_before_rfq_stage(): void
@@ -45,7 +56,7 @@ class ProcurementAuthorizationTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         $this->actingAs($procurement)
-            ->post(route('purchase.requests.rfq.select', $atDraft), ['supplier_ids' => [$supplier->id]])
+            ->postJson("/api/v1/purchase/pipeline/{$atDraft->id}/suppliers", $this->selectPayload($supplier))
             ->assertForbidden();
     }
 
@@ -72,16 +83,21 @@ class ProcurementAuthorizationTest extends TestCase
         $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
 
         $this->actingAs($user)
-            ->post(route('purchase.requests.generate-lpo', $atLpo))
+            ->postJson("/api/v1/purchase/pipeline/{$atLpo->id}/lpo")
             ->assertForbidden();
     }
 
+    /**
+     * The RFQ page's own `view` gate is now the pipeline detail endpoint's —
+     * the supplier picker is a dialog on that page rather than a page of its
+     * own.
+     */
     public function test_unauthorized_user_cannot_view_the_rfq_page(): void
     {
         $user = User::factory()->create();
         $pr = PurchaseRequest::factory()->create(['stage' => 'rfq']);
 
-        $this->actingAs($user)->get(route('purchase.requests.rfq', $pr))->assertForbidden();
+        $this->actingAs($user)->getJson("/api/v1/purchase/pipeline/{$pr->id}")->assertForbidden();
     }
 
     public function test_procurement_officer_can_view_the_rfq_page_at_rfq_stage(): void
@@ -90,7 +106,7 @@ class ProcurementAuthorizationTest extends TestCase
         $procurement->assignRole('Procurement Officer');
         $pr = PurchaseRequest::factory()->create(['stage' => 'rfq']);
 
-        $this->actingAs($procurement)->get(route('purchase.requests.rfq', $pr))->assertOk();
+        $this->actingAs($procurement)->getJson("/api/v1/purchase/pipeline/{$pr->id}")->assertOk();
     }
 
     public function test_procurement_officer_can_select_suppliers_at_gm_approval_precondition_stage(): void
@@ -101,8 +117,8 @@ class ProcurementAuthorizationTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         $this->actingAs($procurement)
-            ->post(route('purchase.requests.rfq.select', $atGmApproval), ['supplier_ids' => [$supplier->id]])
-            ->assertRedirect();
+            ->postJson("/api/v1/purchase/pipeline/{$atGmApproval->id}/suppliers", $this->selectPayload($supplier))
+            ->assertOk();
     }
 
     public function test_procurement_officer_can_reach_manage_quotes_actions_at_lpo_stage(): void

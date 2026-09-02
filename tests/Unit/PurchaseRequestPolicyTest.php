@@ -37,7 +37,7 @@ class PurchaseRequestPolicyTest extends TestCase
 
     public function test_purchase_manager_can_approve_at_draft_or_gm_approval_stage_but_not_later(): void
     {
-        // 'draft' is the real-world precondition: PurchaseSignatureController::store
+        // 'draft' is the real-world precondition: the signature endpoint
         // is authorized against 'approve' while the request is still at draft, and
         // only advances it to gm_approval afterwards. 'gm_approval' is also allowed
         // so a re-check against an already-advanced request still passes.
@@ -75,7 +75,7 @@ class PurchaseRequestPolicyTest extends TestCase
 
     public function test_procurement_officer_can_manage_rfq_at_gm_approval_or_rfq_stage_but_not_draft(): void
     {
-        // 'gm_approval' is the real-world precondition: RfqController::selectSuppliers
+        // 'gm_approval' is the real-world precondition: the select-suppliers endpoint
         // is authorized against 'manageRfq' right after the GM signature advances the
         // request to gm_approval, and it is itself the action that sets stage to 'rfq'.
         $procurement = User::factory()->create();

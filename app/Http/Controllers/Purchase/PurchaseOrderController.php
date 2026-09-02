@@ -6,13 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Mail\LpoIssuedMail;
 use App\Models\MailAccount;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseRequest;
 use App\Models\Setting;
 use App\Models\Settings\ProjectSetting;
 use App\Models\Supplier;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
-use App\Services\LpoGenerationService;
-use App\Services\PurchaseStageService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -26,33 +23,6 @@ class PurchaseOrderController extends Controller
      * one LPO per winning supplier, since items on the same request can be split
      * across different suppliers.
      */
-    public function generateFromRequest(PurchaseRequest $purchaseRequest, LpoGenerationService $service, PurchaseStageService $stages)
-    {
-        $this->authorize('generateLpo', $purchaseRequest);
-
-        try {
-            $orders = $service->generate($purchaseRequest);
-        } catch (RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
-        }
-
-        $stages->setStage($purchaseRequest, 'receiving');
-
-        foreach ($orders as $order) {
-            $this->issueLpoToSupplier($order);
-        }
-
-        // Purchase orders live in the React SPA now, so these are plain URLs
-        // rather than named Blade routes.
-        if ($orders->count() === 1) {
-            return redirect('/app/purchase/orders/'.$orders->first()->id)
-                ->with('success', 'LPO '.$orders->first()->po_number.' generated.');
-        }
-
-        return redirect('/app/purchase/orders')
-            ->with('success', $orders->count().' LPOs generated: '.$orders->pluck('po_number')->implode(', '));
-    }
-
     public function print(PurchaseOrder $order)
     {
         $data = $this->lpoDocumentData($order);

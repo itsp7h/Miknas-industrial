@@ -2,8 +2,6 @@
 
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchaseRequestController;
-use App\Http\Controllers\Purchase\PurchaseSignatureController;
-use App\Http\Controllers\Purchase\RfqController;
 use App\Http\Controllers\Purchase\RfqPortalController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -22,27 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // route('dashboard'), and so does `/`.
     Route::redirect('/dashboard', '/app')->name('dashboard');
 
-    Route::get('/notifications/unread', fn () => response()->json([
-        'count' => auth()->user()->unreadNotifications()->count(),
-        'items' => auth()->user()->unreadNotifications()->latest()->take(10)->get()->map(fn ($n) => [
-            'id' => $n->id,
-            'message' => $n->data['message'] ?? '',
-            'go_url' => route('notifications.go', $n->id),
-            'ago' => $n->created_at->diffForHumans(),
-        ]),
-    ]))->name('notifications.unread');
-
-    Route::get('/notifications/{id}/go', function (string $id) {
-        $n = auth()->user()->notifications()->findOrFail($id);
-        $n->markAsRead();
-        $dest = $n->data['url'] ?? route('dashboard');
-
-        return redirect($dest);
-    })->name('notifications.go');
-
-    Route::post('/notifications/read-all', fn () => response()->json(
-        tap(auth()->user()->unreadNotifications()->update(['read_at' => now()]))
-    ))->name('notifications.read-all');
+    // The notification bell is React and talks to routes/api.php. The three
+    // web routes that used to back the Blade topbar's bell went with it.
 
     // The profile page is served by the React shell at /app/profile; its writes
     // live in routes/api.php. The named route stays as a redirect because Breeze
@@ -62,15 +41,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('pipeline/{purchaseRequest}', fn ($purchaseRequest) => redirect("/app/purchase/pipeline/{$purchaseRequest}"))
             ->whereNumber('purchaseRequest')->name('pipeline.show');
 
-        // GM Signature
-        Route::get('requests/{purchaseRequest}/sign', [PurchaseSignatureController::class, 'show'])->name('requests.sign');
-        Route::post('requests/{purchaseRequest}/sign', [PurchaseSignatureController::class, 'store'])->name('requests.sign.store');
-
-        // RFQ
-        Route::post('requests/{purchaseRequest}/rfq/select', [RfqController::class, 'selectSuppliers'])->name('requests.rfq.select');
-        Route::post('requests/{purchaseRequest}/rfq/send-all', [RfqController::class, 'sendAll'])->name('requests.rfq.send-all');
-        Route::get('requests/{purchaseRequest}/rfq', [RfqController::class, 'show'])->name('requests.rfq');
-        Route::post('requests/{purchaseRequest}/rfq', [RfqController::class, 'store'])->name('requests.rfq.store');
+        // The GM signature pad and the RFQ supplier picker are React dialogs on
+        // the pipeline detail page, writing to routes/api.php. Their Blade pages
+        // and POST endpoints are gone; unlike the pages above these had no
+        // sharable URL worth redirecting — nothing ever linked to them.
 
         // The quotes workspace is React now — one page for both of the old URLs,
         // with the award writes in routes/api.php. Both redirect, since either
@@ -94,7 +68,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('requests/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('requests.reject');
         Route::get('requests/{purchaseRequest}', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}"))
             ->whereNumber('purchaseRequest')->name('requests.show');
-        Route::post('requests/{purchaseRequest}/generate-lpo', [PurchaseOrderController::class, 'generateFromRequest'])->name('requests.generate-lpo');
         // Purchase orders are served by the React SPA at /app/purchase/orders.
         // Only the DomPDF-backed print/pdf documents stay server-rendered.
         Route::get('orders/{order}/print', [PurchaseOrderController::class, 'print'])->name('orders.print');

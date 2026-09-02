@@ -9,24 +9,24 @@ use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
- * Every React cutover deletes named Blade routes, and the shared layout calls
- * route() for its sidebar. A stale reference throws RouteNotFoundException at
- * render time — invisible to unit tests, and fatal on a page users see. These
- * render the surviving Blade pages for real.
+ * Every React cutover deletes named Blade routes, and a Blade page that still
+ * calls route() for one throws RouteNotFoundException at render time —
+ * invisible to unit tests, and fatal on a page users see.
  *
- * The dashboard used to be that page, then the create-request page. Both are
- * React now, so the RFQ supplier-selection page stands in — the last Blade page
- * on `layouts/app`. Unlike its predecessors it needs a model, so these seed a
- * request and a user who can view it.
+ * There are no Blade pages left on the shared chrome: the dashboard went
+ * first, then the create-request page, then the RFQ and signature pages, and
+ * `layouts/app` itself went with them. The SPA host page is the last Blade
+ * page that calls route() at all, so it is what gets rendered here. What the
+ * sidebar links is a React concern now, covered by Sidebar.test.jsx.
+ *
+ * The rest of this class is the part that still matters either way: the moved
+ * URLs must redirect rather than 404, and the routes that became API endpoints
+ * must be gone.
  */
 class BladePagesStillRenderTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * The chrome page needs a viewable request, so every user here gets
-     * view-all rather than being a bare account.
-     */
     private function user(): User
     {
         $user = User::factory()->create();
@@ -35,18 +35,65 @@ class BladePagesStillRenderTest extends TestCase
         return $user;
     }
 
-    /** The Blade page that still carries the shared chrome. */
+    /** The one Blade page left that calls route(): the SPA host page. */
     private function bladePage(): string
     {
-        return '/purchase/requests/'.PurchaseRequest::factory()->create(['stage' => 'rfq'])->id.'/rfq';
+        return '/app';
     }
 
-    public function test_a_surviving_blade_page_renders_with_the_full_sidebar(): void
+    public function test_the_spa_host_page_renders_and_hands_react_its_context(): void
     {
         $this->actingAs($this->user())
             ->get($this->bladePage())
             ->assertOk()
-            ->assertSee('Stock Summary', false);
+            // A stale route() in this file — route('logout') is the live one —
+            // would throw rather than render.
+            ->assertSee('id="react-app"', false)
+            ->assertSee('data-user-id', false)
+            ->assertSee('data-csrf-token', false);
+    }
+
+    /**
+     * The shared Blade chrome is gone along with the last pages that used it.
+     * A new Blade page extending it would fail at render, so this fails first
+     * and says why.
+     */
+    public function test_the_blade_chrome_and_its_last_pages_are_gone(): void
+    {
+        $this->assertFalse(view()->exists('layouts.app'), 'layouts/app was deleted with the last Blade page.');
+
+        foreach (['purchase.rfq.show', 'purchase.signature.show', 'components.purchase.supplier-invite-list'] as $view) {
+            $this->assertFalse(view()->exists($view), "View {$view} should have been deleted.");
+        }
+
+        // The auth pages have their own chrome and stay Blade.
+        $this->assertTrue(view()->exists('layouts.guest'));
+        $this->assertTrue(view()->exists('app-shell'));
+    }
+
+    /**
+     * The RFQ picker and the signature pad are React dialogs writing to the
+     * API. Their Blade pages had no sharable URL, so unlike the request pages
+     * these 404 rather than redirect.
+     */
+    public function test_the_rfq_and_signature_routes_moved_to_the_api(): void
+    {
+        $user = $this->user();
+        $pr = PurchaseRequest::factory()->create(['stage' => 'rfq']);
+
+        foreach (["/purchase/requests/{$pr->id}/rfq", "/purchase/requests/{$pr->id}/sign"] as $url) {
+            $this->actingAs($user)->get($url)->assertNotFound();
+        }
+
+        foreach ([
+            'purchase.requests.rfq', 'purchase.requests.rfq.store', 'purchase.requests.rfq.select',
+            'purchase.requests.rfq.send-all', 'purchase.requests.sign', 'purchase.requests.sign.store',
+            'purchase.requests.generate-lpo',
+            // The notification bell is React and uses the API pair.
+            'notifications.unread', 'notifications.go', 'notifications.read-all',
+        ] as $name) {
+            $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");
+        }
     }
 
     /**
@@ -60,78 +107,13 @@ class BladePagesStillRenderTest extends TestCase
 
         $this->actingAs($this->user())->get('/dashboard')->assertRedirect('/app');
         $this->get('/')->assertRedirect(route('dashboard'));
-
-        // The chrome links the shell directly rather than hopping through the
-        // redirect.
-        $this->actingAs($this->user())->get($this->bladePage())->assertOk()
-            ->assertSee('href="/app"', false);
     }
 
     /**
-     * The sidebar links for migrated Inventory pages must point at the React
-     * shell, not at deleted Blade routes.
+     * What the sidebar links used to be assertable here, because the sidebar
+     * was Blade. It is React now — Sidebar.test.jsx owns those assertions, and
+     * the redirect tests below still prove the old URLs lead somewhere.
      */
-    public function test_the_sidebar_links_migrated_pages_at_the_react_shell(): void
-    {
-        $response = $this->actingAs($this->user())->get($this->bladePage())->assertOk();
-
-        foreach ([
-            '/app/purchase/orders',
-            '/app/purchase/grns',
-            '/app/purchase/invoices',
-            '/app/purchase/payments',
-            '/app/inventory/items',
-            '/app/inventory/warehouses',
-            '/app/inventory/movements',
-            '/app/inventory/reports/summary',
-            '/app/inventory/reports/movement',
-            '/app/inventory/reports/low-stock',
-            '/app/inventory/reports/valuation',
-            '/app/sales/customers',
-            '/app/sales/orders',
-            '/app/sales/delivery-notes',
-            '/app/sales/invoices',
-            '/app/sales/payments',
-            '/app/production/orders',
-            '/app/production/bom',
-            '/app/production/material-issues',
-            '/app/production/outputs',
-        ] as $url) {
-            $response->assertSee($url, false);
-        }
-    }
-
-    /**
-     * Companies is the first Settings page in the shell. The sidebar link is
-     * rendered only for an Admin, so this needs one.
-     */
-    public function test_the_sidebar_links_companies_at_the_react_shell_for_an_admin(): void
-    {
-        $admin = $this->user();
-        $admin->assignRole('Admin');
-
-        $this->actingAs($admin)->get($this->bladePage())->assertOk()
-            ->assertSee('/app/settings/companies', false);
-    }
-
-    /**
-     * Both projects settings pages are React now, so their old URLs redirect and
-     * the sidebar links the shell. The nav entries render only for an Admin.
-     */
-    public function test_the_sidebar_links_both_settings_pages_at_the_react_shell(): void
-    {
-        $admin = $this->user();
-        $admin->assignRole('Admin');
-
-        $response = $this->actingAs($admin)->get($this->bladePage())->assertOk();
-
-        $response->assertSee('/app/settings/companies', false);
-        $response->assertSee('/app/settings/projects', false);
-        $response->assertSee('/app/settings/users', false);
-        $response->assertSee('/app/settings/integrations', false);
-        $response->assertSee('/app/settings/vat', false);
-    }
-
     public function test_the_old_settings_urls_redirect_into_the_react_shell(): void
     {
         $admin = $this->user();
@@ -156,7 +138,6 @@ class BladePagesStillRenderTest extends TestCase
         $user = $this->user();
 
         $this->actingAs($user)->get('/profile')->assertRedirect('/app/profile');
-        $this->actingAs($user)->get($this->bladePage())->assertOk()->assertSee('/app/profile', false);
 
         foreach (['profile.update', 'profile.destroy'] as $name) {
             $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");
