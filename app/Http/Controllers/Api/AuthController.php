@@ -3,24 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    /**
+     * Breeze's LoginRequest is reused rather than re-validating here, so the
+     * React login page and the Blade POST /login route share one
+     * authentication policy. It carries the two things a hand-rolled
+     * Auth::attempt() silently drops: rate limiting (5 attempts per
+     * email+IP, then a lockout) and remember-me.
+     */
+    public function login(LoginRequest $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
-
-        if (! Auth::attempt($credentials)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials do not match our records.'],
-            ]);
-        }
+        $request->authenticate();
 
         $request->session()->regenerate();
 

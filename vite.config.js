@@ -9,6 +9,9 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js-app/main.jsx',
+                // Guest entry: the login screen runs outside the /app shell,
+                // which is behind auth+verified. See resources/js-app/auth.jsx.
+                'resources/js-app/auth.jsx',
             ],
             refresh: true,
         }),
