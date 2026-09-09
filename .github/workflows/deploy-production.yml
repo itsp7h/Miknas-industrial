@@ -1,11 +1,20 @@
 name: Deploy production
 
-# Production follows `main`, and never deploys automatically off a branch push:
-# it goes out on an explicit version tag or a manual run, and waits on the
-# `production` environment's approval gate before touching anything.
+# Production follows `main`: merging an approved PR into it deploys, once CI is
+# green for that commit and the `production` environment's approval gate is
+# satisfied. A version tag and a manual run remain as the other two ways in.
 # Day-to-day work lands on `development` (which auto-deploys to staging) and
-# reaches production by merging into `main` and tagging.
+# reaches production by merging into `main`.
+#
+# The `main` trigger is `workflow_run` rather than `push` for the same reason
+# staging uses it: a push starts CI and this workflow at the same instant, so
+# `verify` would find CI still running and refuse every merge. Waiting for the
+# CI run to finish is what makes the green-CI check meaningful here.
 on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
   push:
     tags: ['v*']
   workflow_dispatch:
@@ -47,6 +56,13 @@ jobs:
   verify:
     name: Verify CI is green
     runs-on: ubuntu-latest
+    # A CI run that failed must not reach the approval gate at all: without
+    # this, every red run on `main` would queue a deploy for a reviewer to
+    # decline. Tag pushes and manual runs carry no workflow_run payload and so
+    # fall through to the checks below.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: read
       actions: read
@@ -76,6 +92,11 @@ jobs:
                 ref: requested,
               });
               sha = data.sha;
+            } else if (context.eventName === 'workflow_run') {
+              // Not `context.sha` — on workflow_run that is the commit the
+              // workflow file was read from, not the commit CI actually ran
+              // against. head_sha is the merge commit that triggered CI.
+              sha = context.payload.workflow_run.head_sha;
             } else if (context.eventName === 'push') {
               sha = context.sha;
             } else {
