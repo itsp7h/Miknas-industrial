@@ -35,6 +35,6 @@ class DeliveryNote extends Model
 
     public function dispatchedBy()
     {
-        return $this->belongsTo(\App\Models\User::class, 'dispatched_by');
+        return $this->belongsTo(User::class, 'dispatched_by');
     }
 }

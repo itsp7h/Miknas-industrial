@@ -3,6 +3,8 @@
 namespace App\Models\Settings;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProjectSetting extends Model
 {
@@ -17,14 +19,13 @@ class ProjectSetting extends Model
         return $query->where('is_active', true);
     }
 
-    public function company(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class, 'company_id');
     }
 
-    public function locations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function locations(): HasMany
     {
-        return $this->hasMany(\App\Models\Settings\Location::class, 'project_id');
+        return $this->hasMany(Location::class, 'project_id');
     }
-
 }

@@ -24,7 +24,7 @@ describe('SupplierListPage', () => {
         render(<ToastProvider><SupplierListPage /></ToastProvider>);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
-        fireEvent.click(screen.getByText('New Supplier'));
+        fireEvent.click(screen.getByText('Add Supplier'));
         fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'New Supplier' } });
         fireEvent.click(screen.getByText('Save'));
 
@@ -58,7 +58,7 @@ describe('SupplierListPage', () => {
 
         render(<ToastProvider><SupplierListPage /></ToastProvider>);
 
-        expect(screen.getByText('Download Template').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/template');
+        expect(screen.getByText('Template').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/template');
         expect(screen.getByText('Export PDF').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/export-pdf');
     });
 
@@ -68,7 +68,7 @@ describe('SupplierListPage', () => {
 
         render(<ToastProvider><SupplierListPage /></ToastProvider>);
         const file = new File(['dummy'], 'suppliers.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        fireEvent.change(screen.getByLabelText('Import'), { target: { files: [file] } });
+        fireEvent.change(screen.getByLabelText('Import Excel'), { target: { files: [file] } });
 
         await waitFor(() => expect(apiPostSpy).toHaveBeenCalled());
         await waitFor(() => expect(screen.getByText(/2 added, 1 updated/i)).toBeInTheDocument());
@@ -85,7 +85,7 @@ describe('SupplierListPage', () => {
         await waitFor(() => expect(apiGetSpy).toHaveBeenCalledTimes(1));
 
         const file = new File(['dummy'], 'suppliers.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        fireEvent.change(screen.getByLabelText('Import'), { target: { files: [file] } });
+        fireEvent.change(screen.getByLabelText('Import Excel'), { target: { files: [file] } });
 
         await waitFor(() => expect(apiGetSpy).toHaveBeenCalledTimes(2));
         await waitFor(() => expect(screen.getByText('Imported Supplier')).toBeInTheDocument());

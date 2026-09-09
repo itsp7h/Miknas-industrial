@@ -8,13 +8,13 @@ class UltraMessageServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/ultra-message.php', 'ultra-message');
+        $this->mergeConfigFrom(__DIR__.'/../config/ultra-message.php', 'ultra-message');
 
-        $this->app->singleton('ultra-message.config-resolver', fn() => null);
+        $this->app->singleton('ultra-message.config-resolver', fn () => null);
 
         $this->app->bind(UltraMessageClient::class, function ($app) {
             $resolver = $app->make('ultra-message.config-resolver');
-            $config   = $resolver ? call_user_func($resolver) : config('ultra-message');
+            $config = $resolver ? call_user_func($resolver) : config('ultra-message');
 
             return new UltraMessageClient($config);
         });
@@ -28,10 +28,10 @@ class UltraMessageServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../config/ultra-message.php' => config_path('ultra-message.php'),
+                __DIR__.'/../config/ultra-message.php' => config_path('ultra-message.php'),
             ], 'ultra-message-config');
         }
 
-        $this->loadRoutesFrom(__DIR__ . '/../routes/webhook.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/webhook.php');
     }
 }

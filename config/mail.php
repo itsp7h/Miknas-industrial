@@ -50,11 +50,11 @@ return [
         ],
 
         'azure' => [
-            'transport'     => 'azure',
-            'tenant_id'     => env('AZURE_TENANT_ID'),
-            'client_id'     => env('AZURE_CLIENT_ID'),
+            'transport' => 'azure',
+            'tenant_id' => env('AZURE_TENANT_ID'),
+            'client_id' => env('AZURE_CLIENT_ID'),
             'client_secret' => env('AZURE_CLIENT_SECRET'),
-            'from_address'  => env('AZURE_MAIL_FROM_ADDRESS'),
+            'from_address' => env('AZURE_MAIL_FROM_ADDRESS'),
         ],
 
         'ses' => [

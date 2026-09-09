@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Supplier;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class SupplierImportService
 {
@@ -12,15 +14,15 @@ class SupplierImportService
     public function import(string $filePath): array
     {
         $spreadsheet = IOFactory::load($filePath);
-        $format      = $this->detectFormat($spreadsheet);
+        $format = $this->detectFormat($spreadsheet);
 
         $rows = $format === 'mrf'
             ? $this->extractFromMrf($spreadsheet)
             : $this->extractFromTemplate($spreadsheet);
 
         $imported = 0;
-        $updated  = 0;
-        $skipped  = 0;
+        $updated = 0;
+        $skipped = 0;
 
         foreach ($rows as $data) {
             $name = trim($data['name'] ?? '');
@@ -42,66 +44,67 @@ class SupplierImportService
 
         return [
             'imported' => $imported,
-            'updated'  => $updated,
-            'skipped'  => $skipped,
-            'format'   => $format,
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'format' => $format,
         ];
     }
 
     private function buildAttributes(array $data, bool $isUpdate): array
     {
         $attrs = [
-            'contact_person'  => $this->str($data['contact_person'] ?? ''),
-            'email'           => $this->str($data['email'] ?? ''),
+            'contact_person' => $this->str($data['contact_person'] ?? ''),
+            'email' => $this->str($data['email'] ?? ''),
             'secondary_email' => $this->str($data['secondary_email'] ?? ''),
-            'phone'           => $this->normalizePhone($data['phone'] ?? ''),
-            'phone2'          => $this->normalizePhone($data['phone2'] ?? ''),
-            'whatsapp'        => $this->normalizePhone($data['whatsapp'] ?? ''),
-            'address'         => $this->str($data['address'] ?? ''),
-            'website'         => $this->str($data['website'] ?? ''),
-            'tax_number'      => $this->str($data['tax_number'] ?? ''),
-            'credit_terms'    => $this->str($data['credit_terms'] ?? ''),
-            'credit_days'     => $this->parseCreditDays($data['credit_days'] ?? ''),
-            'remarks'         => $this->str($data['remarks'] ?? ''),
-            'is_active'       => $this->parseBoolean($data['is_active'] ?? 'yes'),
+            'phone' => $this->normalizePhone($data['phone'] ?? ''),
+            'phone2' => $this->normalizePhone($data['phone2'] ?? ''),
+            'whatsapp' => $this->normalizePhone($data['whatsapp'] ?? ''),
+            'address' => $this->str($data['address'] ?? ''),
+            'website' => $this->str($data['website'] ?? ''),
+            'tax_number' => $this->str($data['tax_number'] ?? ''),
+            'credit_terms' => $this->str($data['credit_terms'] ?? ''),
+            'credit_days' => $this->parseCreditDays($data['credit_days'] ?? ''),
+            'remarks' => $this->str($data['remarks'] ?? ''),
+            'is_active' => $this->parseBoolean($data['is_active'] ?? 'yes'),
         ];
 
-        if (!$isUpdate) {
-            $attrs['name']          = trim($data['name']);
+        if (! $isUpdate) {
+            $attrs['name'] = trim($data['name']);
             $attrs['supplier_code'] = $this->str($data['supplier_code'] ?? '');
-            $attrs['category']      = $this->str($data['category'] ?? '');
+            $attrs['category'] = $this->str($data['category'] ?? '');
         } else {
             // On update: only fill category/code if not already set
-            if (!empty($data['supplier_code'])) {
+            if (! empty($data['supplier_code'])) {
                 $attrs['supplier_code'] = $this->str($data['supplier_code']);
             }
-            if (!empty($data['category'])) {
+            if (! empty($data['category'])) {
                 $attrs['category'] = $this->str($data['category']);
             }
         }
 
         // Remove null-equivalent values so we don't overwrite real data with blanks
-        return array_filter($attrs, fn($v) => $v !== null && $v !== '');
+        return array_filter($attrs, fn ($v) => $v !== null && $v !== '');
     }
 
     // ── Format detection ────────────────────────────────────────────────────
 
-    private function detectFormat(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): string
+    private function detectFormat(Spreadsheet $spreadsheet): string
     {
         $sheet = $spreadsheet->getActiveSheet();
-        $a4    = strtolower(trim((string) $sheet->getCell('A4')->getValue()));
+        $a4 = strtolower(trim((string) $sheet->getCell('A4')->getValue()));
+
         return $a4 === 's.no' ? 'mrf' : 'template';
     }
 
     // ── MRF extraction ──────────────────────────────────────────────────────
 
-    private function extractFromMrf(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): array
+    private function extractFromMrf(Spreadsheet $spreadsheet): array
     {
-        $sheet     = $spreadsheet->getActiveSheet();
+        $sheet = $spreadsheet->getActiveSheet();
         $suppliers = [];
 
         for ($col = 7; $col <= 50; $col++) {
-            $coord = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . '4';
+            $coord = Coordinate::stringFromColumnIndex($col).'4';
             $value = trim((string) $sheet->getCell($coord)->getValue());
 
             if (empty($value) || in_array(strtolower($value), $this->mrfStopWords)) {
@@ -116,47 +119,47 @@ class SupplierImportService
 
     // ── Template / Unified format extraction ────────────────────────────────
 
-    private function extractFromTemplate(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): array
+    private function extractFromTemplate(Spreadsheet $spreadsheet): array
     {
-        $rows    = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+        $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
         $headers = array_map(
-            fn($h) => strtolower(trim(str_replace(['*', '_'], [' ', ' '], (string) $h))),
+            fn ($h) => strtolower(trim(str_replace(['*', '_'], [' ', ' '], (string) $h))),
             $rows[0] ?? []
         );
 
         // Map normalised header text → internal field name
         $aliases = [
-            'supplier id'      => 'supplier_code',
-            'name'             => 'name',
-            'company name'     => 'name',
-            'category'         => 'category',
-            'contact person'   => 'contact_person',
-            'primary email'    => 'email',
-            'email'            => 'email',
-            'secondary email'  => 'secondary_email',
-            'phone 1'          => 'phone',
-            'phone'            => 'phone',
-            'phone 2'          => 'phone2',
-            'whatsapp number'  => 'whatsapp',
-            'whatsapp'         => 'whatsapp',
-            'address'          => 'address',
-            'website'          => 'website',
-            'credit (y/n)'     => 'credit_terms',
-            'credit days'      => 'credit_days',
-            'tax number'       => 'tax_number',
-            'is active'        => 'is_active',
+            'supplier id' => 'supplier_code',
+            'name' => 'name',
+            'company name' => 'name',
+            'category' => 'category',
+            'contact person' => 'contact_person',
+            'primary email' => 'email',
+            'email' => 'email',
+            'secondary email' => 'secondary_email',
+            'phone 1' => 'phone',
+            'phone' => 'phone',
+            'phone 2' => 'phone2',
+            'whatsapp number' => 'whatsapp',
+            'whatsapp' => 'whatsapp',
+            'address' => 'address',
+            'website' => 'website',
+            'credit (y/n)' => 'credit_terms',
+            'credit days' => 'credit_days',
+            'tax number' => 'tax_number',
+            'is active' => 'is_active',
             'remarks / key details' => 'remarks',
-            'remarks'          => 'remarks',
+            'remarks' => 'remarks',
         ];
 
         $map = [];
         foreach ($headers as $idx => $header) {
-            if (isset($aliases[$header]) && !isset($map[$aliases[$header]])) {
+            if (isset($aliases[$header]) && ! isset($map[$aliases[$header]])) {
                 $map[$aliases[$header]] = $idx;
             }
         }
 
-        if (!isset($map['name'])) {
+        if (! isset($map['name'])) {
             return [];
         }
 
@@ -168,15 +171,17 @@ class SupplierImportService
                 continue;
             }
 
-            if (!$this->looksLikeSupplierName($name)) {
+            if (! $this->looksLikeSupplierName($name)) {
                 continue;
             }
 
             $entry = ['name' => $name];
             foreach (array_keys($aliases) as $alias) {
                 $field = $aliases[$alias];
-                if ($field === 'name') continue;
-                if (isset($map[$field]) && !isset($entry[$field])) {
+                if ($field === 'name') {
+                    continue;
+                }
+                if (isset($map[$field]) && ! isset($entry[$field])) {
                     $entry[$field] = trim((string) ($row[$map[$field]] ?? ''));
                 }
             }
@@ -246,16 +251,17 @@ class SupplierImportService
 
         // 8-digit Bahrain local number → prepend 973
         if (strlen($digits) === 8) {
-            return '+973' . $digits;
+            return '+973'.$digits;
         }
 
         // Already has country code as prefix
-        return '+' . $digits;
+        return '+'.$digits;
     }
 
     private function parseCreditDays(string $val): ?int
     {
         $digits = preg_replace('/[^\d]/', '', $val);
+
         return $digits !== '' ? (int) $digits : null;
     }
 
@@ -267,6 +273,7 @@ class SupplierImportService
     private function str(string $val): ?string
     {
         $v = trim($val);
+
         return $v !== '' ? $v : null;
     }
 }

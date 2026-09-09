@@ -3,6 +3,7 @@
 namespace App\Models\Settings;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
@@ -12,12 +13,12 @@ class Company extends Model
 
     protected $casts = ['is_active' => 'boolean'];
 
-    public function projects(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function projects(): HasMany
     {
         return $this->hasMany(ProjectSetting::class, 'company_id');
     }
 
-    public function departments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function departments(): HasMany
     {
         return $this->hasMany(Department::class, 'company_id');
     }

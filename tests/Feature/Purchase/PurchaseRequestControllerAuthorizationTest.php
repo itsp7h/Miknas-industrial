@@ -23,12 +23,15 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         ];
     }
 
+    // The create and edit forms are a React modal now, so their writes are
+    // asserted against the API rather than the deleted Blade routes.
+
     public function test_user_without_create_permission_cannot_store_a_request(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->post(route('purchase.requests.store'), $this->validPayload())
+            ->postJson('/api/v1/purchase/requests', $this->validPayload())
             ->assertForbidden();
     }
 
@@ -38,8 +41,8 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $requester->assignRole('Requester');
 
         $this->actingAs($requester)
-            ->post(route('purchase.requests.store'), $this->validPayload())
-            ->assertRedirect(route('purchase.requests.index'));
+            ->postJson('/api/v1/purchase/requests', $this->validPayload())
+            ->assertCreated();
 
         $this->assertDatabaseHas('purchase_requests', ['requested_by_name' => 'Test Person']);
     }
@@ -51,7 +54,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $othersRequest = PurchaseRequest::factory()->create(['stage' => 'draft']);
 
         $this->actingAs($requester)
-            ->put(route('purchase.requests.update', $othersRequest), $this->validPayload())
+            ->putJson("/api/v1/purchase/requests/{$othersRequest->id}", $this->validPayload())
             ->assertForbidden();
     }
 
@@ -62,17 +65,24 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $ownRequest = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'rfq']);
 
         $this->actingAs($requester)
-            ->put(route('purchase.requests.update', $ownRequest), $this->validPayload())
+            ->putJson("/api/v1/purchase/requests/{$ownRequest->id}", $this->validPayload())
             ->assertForbidden();
     }
 
+    /**
+     * Approving is the signature action now — signing records the approval as
+     * it saves the signature, which is what the dialog always claimed to do.
+     * The standalone approve/reject routes had lost their UI in the cutover.
+     */
     public function test_user_without_approve_permission_cannot_approve(): void
     {
         $user = User::factory()->create();
         $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
 
         $this->actingAs($user)
-            ->patch(route('purchase.requests.approve', $atStage))
+            ->postJson("/api/v1/purchase/pipeline/{$atStage->id}/signature", [
+                'signature_image' => 'data:image/png;base64,iVBORw0KGgo=',
+            ])
             ->assertForbidden();
     }
 
@@ -83,10 +93,27 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
 
         $this->actingAs($manager)
-            ->patch(route('purchase.requests.approve', $atStage))
-            ->assertRedirect();
+            ->postJson("/api/v1/purchase/pipeline/{$atStage->id}/signature", [
+                'signature_image' => 'data:image/png;base64,iVBORw0KGgo=',
+            ])
+            ->assertOk();
 
         $this->assertSame('approved', $atStage->fresh()->status);
+    }
+
+    public function test_purchase_manager_can_reject_at_gm_approval_stage(): void
+    {
+        $manager = User::factory()->create();
+        $manager->assignRole('Purchase Manager');
+        $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
+
+        $this->actingAs($manager)
+            ->postJson("/api/v1/purchase/pipeline/{$atStage->id}/reject", [
+                'rejection_reason' => 'Over budget for this project.',
+            ])
+            ->assertOk();
+
+        $this->assertSame('rejected', $atStage->fresh()->status);
     }
 
     public function test_unauthorized_user_cannot_destroy_a_request(): void
@@ -95,7 +122,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $draft = PurchaseRequest::factory()->create(['stage' => 'draft']);
 
         $this->actingAs($user)
-            ->delete(route('purchase.requests.destroy', $draft))
+            ->deleteJson("/api/v1/purchase/requests/{$draft->id}")
             ->assertForbidden();
 
         $this->assertDatabaseHas('purchase_requests', ['id' => $draft->id]);
@@ -108,7 +135,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $othersDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
 
         $this->actingAs($requester)
-            ->delete(route('purchase.requests.destroy', $othersDraft))
+            ->deleteJson("/api/v1/purchase/requests/{$othersDraft->id}")
             ->assertForbidden();
 
         $this->assertDatabaseHas('purchase_requests', ['id' => $othersDraft->id]);
@@ -121,19 +148,23 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
         $ownDraft = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
 
         $this->actingAs($requester)
-            ->delete(route('purchase.requests.destroy', $ownDraft))
-            ->assertRedirect(route('purchase.requests.index'));
+            ->deleteJson("/api/v1/purchase/requests/{$ownDraft->id}")
+            ->assertOk();
 
         $this->assertDatabaseMissing('purchase_requests', ['id' => $ownDraft->id]);
     }
 
+    /**
+     * The sheet and the edit form are React now, so the `view` gate is asserted
+     * on the API. Print stays Blade — it is a DomPDF document.
+     */
     public function test_unauthorized_user_cannot_view_show_edit_or_print(): void
     {
         $user = User::factory()->create();
         $pr = PurchaseRequest::factory()->create();
 
-        $this->actingAs($user)->get(route('purchase.requests.show', $pr))->assertForbidden();
-        $this->actingAs($user)->get(route('purchase.requests.edit', $pr))->assertForbidden();
+        $this->actingAs($user)->getJson("/api/v1/purchase/requests/{$pr->id}")->assertForbidden();
+        $this->actingAs($user)->getJson("/api/v1/purchase/requests/{$pr->id}/edit")->assertForbidden();
         $this->actingAs($user)->get(route('purchase.requests.print', $pr))->assertForbidden();
     }
 
@@ -141,10 +172,29 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     {
         $requester = User::factory()->create();
         $requester->assignRole('Requester');
-        $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
+        $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
 
-        $this->actingAs($requester)->get(route('purchase.requests.show', $pr))->assertOk();
-        $this->actingAs($requester)->get(route('purchase.requests.edit', $pr))->assertOk();
+        $this->actingAs($requester)->getJson("/api/v1/purchase/requests/{$pr->id}")->assertOk();
+        $this->actingAs($requester)->getJson("/api/v1/purchase/requests/{$pr->id}/edit")->assertOk();
         $this->actingAs($requester)->get(route('purchase.requests.print', $pr))->assertOk();
+    }
+
+    /**
+     * All three deleted pages redirect into the shell rather than 404ing: each
+     * URL was live long enough to be bookmarked.
+     */
+    public function test_the_deleted_request_pages_redirect_into_the_react_shell(): void
+    {
+        $requester = User::factory()->create();
+        $requester->assignRole('Requester');
+        $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
+
+        $this->actingAs($requester)->get('/purchase/requests')->assertRedirect('/app/purchase/pipeline');
+        $this->actingAs($requester)->get('/purchase/requests/create')
+            ->assertRedirect('/app/purchase/pipeline?new=1');
+        $this->actingAs($requester)->get("/purchase/requests/{$pr->id}")
+            ->assertRedirect("/app/purchase/requests/{$pr->id}");
+        $this->actingAs($requester)->get("/purchase/requests/{$pr->id}/edit")
+            ->assertRedirect("/app/purchase/pipeline/{$pr->id}");
     }
 }

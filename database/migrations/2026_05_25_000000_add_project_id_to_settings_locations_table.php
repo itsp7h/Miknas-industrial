@@ -10,10 +10,10 @@ return new class extends Migration
     {
         Schema::table('settings_locations', function (Blueprint $table) {
             $table->foreignId('project_id')
-                  ->nullable()
-                  ->after('name')
-                  ->constrained('settings_projects')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('name')
+                ->constrained('settings_projects')
+                ->nullOnDelete();
 
             $table->index('project_id');
         });

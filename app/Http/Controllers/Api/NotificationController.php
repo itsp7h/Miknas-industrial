@@ -21,4 +21,12 @@ class NotificationController extends Controller
 
         return response()->json(['notifications' => $notifications]);
     }
+
+    /** Backs the dropdown's "Mark all read" control, which the Blade topbar also had. */
+    public function markAllRead(Request $request)
+    {
+        $request->user()->unreadNotifications()->update(['read_at' => now()]);
+
+        return response()->json(['marked' => true]);
+    }
 }

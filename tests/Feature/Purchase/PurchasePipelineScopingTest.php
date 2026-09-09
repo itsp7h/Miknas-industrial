@@ -25,20 +25,17 @@ class PurchasePipelineScopingTest extends TestCase
         $response->assertRedirect('/app/purchase/pipeline');
     }
 
-    public function test_user_without_view_permission_cannot_open_a_single_request(): void
+    /**
+     * The request detail page is React now too, so this URL is a redirect and
+     * the per-request authorization it used to enforce lives on the API's show
+     * endpoint — see PurchasePipelineControllerTest, where both cases moved.
+     */
+    public function test_pipeline_show_redirects_to_the_react_detail_page(): void
     {
         $user = User::factory()->create();
         $pr = PurchaseRequest::factory()->create();
 
-        $this->actingAs($user)->get(route('purchase.pipeline.show', $pr))->assertForbidden();
-    }
-
-    public function test_requester_can_open_their_own_request(): void
-    {
-        $requester = User::factory()->create();
-        $requester->assignRole('Requester');
-        $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
-
-        $this->actingAs($requester)->get(route('purchase.pipeline.show', $pr))->assertOk();
+        $this->actingAs($user)->get(route('purchase.pipeline.show', $pr))
+            ->assertRedirect('/app/purchase/pipeline/'.$pr->id);
     }
 }

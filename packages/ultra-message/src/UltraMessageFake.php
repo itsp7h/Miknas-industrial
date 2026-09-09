@@ -16,6 +16,7 @@ class UltraMessageFake extends UltraMessageClient
     protected function post(string $endpoint, array $data): array
     {
         $this->sent[] = ['endpoint' => $endpoint, 'data' => $data];
+
         return ['sent' => 'ok'];
     }
 
@@ -39,7 +40,7 @@ class UltraMessageFake extends UltraMessageClient
 
     public function assertSentCount(int $count): void
     {
-        Assert::assertCount($count, $this->sent, "Expected {$count} messages sent, got " . count($this->sent));
+        Assert::assertCount($count, $this->sent, "Expected {$count} messages sent, got ".count($this->sent));
     }
 
     public function getSent(): array

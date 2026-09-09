@@ -20,13 +20,13 @@ return new class extends Migration
 
         Schema::table('settings_projects', function (Blueprint $table) {
             $table->foreignId('company_id')->nullable()->after('id')
-                  ->constrained('settings_companies')->nullOnDelete();
+                ->constrained('settings_companies')->nullOnDelete();
         });
 
         // Assign all existing projects to a "General" company
-        if (\DB::table('settings_projects')->exists()) {
-            $id = \DB::table('settings_companies')->insertGetId(['name' => 'General', 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()]);
-            \DB::table('settings_projects')->update(['company_id' => $id]);
+        if (DB::table('settings_projects')->exists()) {
+            $id = DB::table('settings_companies')->insertGetId(['name' => 'General', 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('settings_projects')->update(['company_id' => $id]);
         }
     }
 

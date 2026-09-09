@@ -39,17 +39,17 @@ class RfqPortalController extends Controller
         }
 
         $purchaseRequest = $invitation->purchaseRequest;
-        $itemIds         = $invitation->item_ids;
-        $items           = $itemIds
+        $itemIds = $invitation->item_ids;
+        $items = $itemIds
             ? $purchaseRequest->items->whereIn('id', $itemIds)->values()
             : $purchaseRequest->items;
 
         // Generate a fresh confirmation code per page load and store in session
         $confirmCode = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
-        session(['rfq_confirm_' . $token => $confirmCode]);
+        session(['rfq_confirm_'.$token => $confirmCode]);
 
         $vatRate = (float) Setting::get('vat_rate', 0);
-        $view    = $this->isMobileDevice() ? 'rfq.show-mobile' : 'rfq.show';
+        $view = $this->isMobileDevice() ? 'rfq.show-mobile' : 'rfq.show';
 
         return view($view, compact('invitation', 'purchaseRequest', 'items', 'confirmCode', 'vatRate'));
     }
@@ -78,51 +78,51 @@ class RfqPortalController extends Controller
         }
 
         $validated = $request->validate([
-            'terms'                          => ['accepted'],
-            'confirm_code'                   => ['required', 'string'],
-            'lead_time_days'                 => ['nullable', 'integer', 'min:0'],
-            'payment_terms'                  => ['nullable', 'string', 'max:200'],
-            'notes'                          => ['nullable', 'string', 'max:1000'],
-            'items'                          => ['required', 'array'],
-            'items.*.unit_price'             => ['nullable', 'numeric', 'min:0'],
-            'items.*.is_vatable'             => ['nullable', 'boolean'],
-            'items.*.not_available'          => ['nullable', 'boolean'],
-            'items.*.supplier_description'   => ['nullable', 'string', 'max:500'],
+            'terms' => ['accepted'],
+            'confirm_code' => ['required', 'string'],
+            'lead_time_days' => ['nullable', 'integer', 'min:0'],
+            'payment_terms' => ['nullable', 'string', 'max:200'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['required', 'array'],
+            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.is_vatable' => ['nullable', 'boolean'],
+            'items.*.not_available' => ['nullable', 'boolean'],
+            'items.*.supplier_description' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $expectedCode = session('rfq_confirm_' . $token);
-        if (!$expectedCode || strtoupper(trim($validated['confirm_code'])) !== $expectedCode) {
+        $expectedCode = session('rfq_confirm_'.$token);
+        if (! $expectedCode || strtoupper(trim($validated['confirm_code'])) !== $expectedCode) {
             return back()->withErrors(['confirm_code' => 'Incorrect confirmation code. Please copy the code exactly as shown.'])->withInput();
         }
-        session()->forget('rfq_confirm_' . $token);
+        session()->forget('rfq_confirm_'.$token);
 
-        $itemIds       = $invitation->item_ids;
+        $itemIds = $invitation->item_ids;
         $purchaseItems = $itemIds
             ? $invitation->purchaseRequest->items->whereIn('id', $itemIds)->values()
             : $invitation->purchaseRequest->items;
 
         $quote = SupplierQuote::create([
-            'rfq_invitation_id'   => $invitation->id,
+            'rfq_invitation_id' => $invitation->id,
             'purchase_request_id' => $invitation->purchase_request_id,
-            'supplier_id'         => $invitation->supplier_id,
-            'submitted_at'        => now(),
-            'lead_time_days'      => $validated['lead_time_days'],
-            'payment_terms'       => $validated['payment_terms'],
-            'notes'               => $validated['notes'],
-            'total_amount'        => 0,
+            'supplier_id' => $invitation->supplier_id,
+            'submitted_at' => now(),
+            'lead_time_days' => $validated['lead_time_days'],
+            'payment_terms' => $validated['payment_terms'],
+            'notes' => $validated['notes'],
+            'total_amount' => 0,
         ]);
 
-        $subtotal  = 0;
+        $subtotal = 0;
         $vatAmount = 0;
-        $vatRate   = (float) Setting::get('vat_rate', 0);
+        $vatRate = (float) Setting::get('vat_rate', 0);
 
         foreach ($purchaseItems as $i => $item) {
-            $notAvailable       = !empty($validated['items'][$i]['not_available']);
-            $unitPrice          = $notAvailable ? 0 : (float)($validated['items'][$i]['unit_price'] ?? 0);
-            $qty                = (float)$item->quantity_required;
-            $totalPrice         = $notAvailable ? 0 : round($unitPrice * $qty, 3);
-            $isVatable          = !$notAvailable && !empty($validated['items'][$i]['is_vatable']);
-            $supplierDescription = !empty($validated['items'][$i]['supplier_description'])
+            $notAvailable = ! empty($validated['items'][$i]['not_available']);
+            $unitPrice = $notAvailable ? 0 : (float) ($validated['items'][$i]['unit_price'] ?? 0);
+            $qty = (float) $item->quantity_required;
+            $totalPrice = $notAvailable ? 0 : round($unitPrice * $qty, 3);
+            $isVatable = ! $notAvailable && ! empty($validated['items'][$i]['is_vatable']);
+            $supplierDescription = ! empty($validated['items'][$i]['supplier_description'])
                 ? trim($validated['items'][$i]['supplier_description'])
                 : null;
 
@@ -133,16 +133,16 @@ class RfqPortalController extends Controller
             }
 
             SupplierQuoteItem::create([
-                'supplier_quote_id'         => $quote->id,
-                'purchase_request_item_id'  => $item->id,
-                'description'         => $item->description,
-                'supplier_description'=> $supplierDescription,
-                'unit'                => $item->unit ?? '',
-                'quantity'            => $qty,
-                'unit_price'          => $unitPrice,
-                'total_price'         => $totalPrice,
-                'is_vatable'          => $isVatable,
-                'not_available'       => $notAvailable,
+                'supplier_quote_id' => $quote->id,
+                'purchase_request_item_id' => $item->id,
+                'description' => $item->description,
+                'supplier_description' => $supplierDescription,
+                'unit' => $item->unit ?? '',
+                'quantity' => $qty,
+                'unit_price' => $unitPrice,
+                'total_price' => $totalPrice,
+                'is_vatable' => $isVatable,
+                'not_available' => $notAvailable,
             ]);
         }
 

@@ -15,10 +15,10 @@ class RfqInvitation extends Model
     ];
 
     protected $casts = [
-        'sent_at'    => 'datetime',
-        'opened_at'  => 'datetime',
+        'sent_at' => 'datetime',
+        'opened_at' => 'datetime',
         'expires_at' => 'datetime',
-        'item_ids'   => 'array',
+        'item_ids' => 'array',
     ];
 
     public function purchaseRequest()

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import Card from '../../../components/ui/Card';
 import Table from '../../../components/ui/Table';
+import TabPills from '../../../components/ui/TabPills';
 import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
+import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
 
 const STAGE_LABELS = {
     draft: 'Draft', gm_approval: 'GM Approval', rfq: 'RFQ', quoting: 'Quoting',
@@ -34,13 +37,15 @@ const COLUMNS = [
     { key: 'date', label: 'Date' },
     {
         key: 'link', label: '',
-        render: (row) => <a href={`/purchase/pipeline/${row.id}`}>View</a>,
+        render: (row) => <Link to={`/app/purchase/pipeline/${row.id}`}>View</Link>,
     },
 ];
 
 export default function PipelineBoardPage({
     currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
 } = {}) {
+    const { openNew } = useRequestModal();
+    const [params, setParams] = useSearchParams();
     const { items, setItems } = useLiveList({
         endpoint: '/purchase/pipeline',
         channel: 'purchase',
@@ -66,9 +71,36 @@ export default function PipelineBoardPage({
                     : [...prev, payload]
             ));
         };
+        // An edit rewrites these very columns, and PurchaseRequestUpdated
+        // broadcasts the same payload shape, so one handler upserts both.
         ch.listen('.purchase-request.created', handleCreated);
-        return () => ch.stopListening('.purchase-request.created');
+        ch.listen('.purchase-request.updated', handleCreated);
+        return () => {
+            ch.stopListening('.purchase-request.created');
+            ch.stopListening('.purchase-request.updated');
+        };
     }, [currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests, setItems]);
+
+    // ?new=1 opens the MPR form straight away: it is where the dashboard's
+    // "New Purchase Request" action and the old /purchase/requests/create URL
+    // both land, and the form is a modal rather than a page of its own. The
+    // param is stripped so a reload or a back-navigation does not reopen it.
+    useEffect(() => {
+        if (params.get('new') !== '1') return;
+        openNew();
+        params.delete('new');
+        setParams(params, { replace: true });
+    }, [params, setParams, openNew]);
+
+    // A deleted request has to leave every board showing it.
+    useEffect(() => {
+        const ch = echo.private('purchase');
+        const handleDeleted = (payload) => {
+            setItems((prev) => prev.filter((item) => item.id !== payload.id));
+        };
+        ch.listen('.purchase-request.deleted', handleDeleted);
+        return () => ch.stopListening('.purchase-request.deleted');
+    }, [setItems]);
 
     // .purchase-request.stage-changed carries only {id, request_number, stage} — a
     // wholesale upsert (as useLiveList's default `event` handler does) would blank
@@ -91,12 +123,21 @@ export default function PipelineBoardPage({
 
     return (
         <Card title="Purchase Pipeline">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setTab('active')}>Active ({active.length})</button>
-                    <button onClick={() => setTab('completed')}>Completed ({completed.length})</button>
-                </div>
-                <button onClick={() => window.mprModalOpen && window.mprModalOpen()}>+ New Request</button>
+            <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', marginBottom: 12,
+            }}>
+                <TabPills
+                    tabs={[
+                        { key: 'active', label: `Active (${active.length})` },
+                        { key: 'completed', label: `Completed (${completed.length})` },
+                    ]}
+                    tab={tab} onChange={setTab}
+                    style={{ marginBottom: 0 }}
+                />
+                <button type="button" onClick={openNew} className="btn-primary btn-sm">
+                    + New Request
+                </button>
             </div>
             <Table
                 columns={COLUMNS}

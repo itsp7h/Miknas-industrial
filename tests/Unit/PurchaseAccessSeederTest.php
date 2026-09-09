@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\PurchaseRequest;
 use Database\Seeders\PurchaseAccessSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -14,7 +15,7 @@ class PurchaseAccessSeederTest extends TestCase
 
     public function test_seeds_all_ten_permissions(): void
     {
-        (new PurchaseAccessSeeder())->run();
+        (new PurchaseAccessSeeder)->run();
 
         $this->assertCount(10, Permission::all());
         $this->assertTrue(Permission::where('name', 'purchase-requests.create')->exists());
@@ -23,7 +24,7 @@ class PurchaseAccessSeederTest extends TestCase
 
     public function test_seeds_three_profiles_with_correct_permissions(): void
     {
-        (new PurchaseAccessSeeder())->run();
+        (new PurchaseAccessSeeder)->run();
 
         $requester = Role::where('name', 'Requester')->first();
         $this->assertNotNull($requester);
@@ -53,8 +54,8 @@ class PurchaseAccessSeederTest extends TestCase
 
     public function test_running_twice_does_not_duplicate_or_error(): void
     {
-        (new PurchaseAccessSeeder())->run();
-        (new PurchaseAccessSeeder())->run();
+        (new PurchaseAccessSeeder)->run();
+        (new PurchaseAccessSeeder)->run();
 
         $this->assertCount(10, Permission::all());
         $this->assertCount(3, Role::whereIn('name', ['Requester', 'Purchase Manager', 'Procurement Officer'])->get());
@@ -62,7 +63,7 @@ class PurchaseAccessSeederTest extends TestCase
 
     public function test_purchase_request_factory_produces_a_valid_draft_request(): void
     {
-        $pr = \App\Models\PurchaseRequest::factory()->create();
+        $pr = PurchaseRequest::factory()->create();
 
         $this->assertSame('draft', $pr->stage);
         $this->assertSame('pending', $pr->status);

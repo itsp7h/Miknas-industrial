@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import NotificationBell from '../components/NotificationBell';
+import TopBar from './TopBar';
 import LogoutForm from '../components/LogoutForm';
+import { SidebarNav } from './Sidebar';
+import { LOGOUT, NavIcon } from './navIcons';
 import { DASHBOARD_ITEM, NAV_GROUPS } from './navItems';
 
 // Icon paths mirror the section icons used in resources/views/layouts/app.blade.php's
@@ -47,30 +49,6 @@ function BottomTabLink({ tab, active }) {
         : <a href={tab.to} style={style}>{content}</a>;
 }
 
-function NavLink({ item, active, onNavigate }) {
-    const style = {
-        display: 'block',
-        padding: '12px 16px',
-        textDecoration: 'none',
-        color: active ? '#2563eb' : '#334155',
-        fontWeight: active ? 600 : 400,
-    };
-
-    if (item.type === 'link') {
-        return (
-            <Link to={item.to} onClick={onNavigate} style={style}>
-                {item.label}
-            </Link>
-        );
-    }
-
-    return (
-        <a href={item.to} style={style}>
-            {item.label}
-        </a>
-    );
-}
-
 export default function MobileShell({ children, currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const location = useLocation();
@@ -81,38 +59,47 @@ export default function MobileShell({ children, currentUserId, userName, userEma
 
     return (
         <div data-testid="mobile-shell" style={{ minHeight: '100vh' }}>
-            <header style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '12px 16px', borderBottom: '1px solid #e2e8f0',
-            }}>
-                <button aria-label="Menu" onClick={() => setMenuOpen((v) => !v)} style={{ fontSize: 20 }}>
-                    ☰
-                </button>
-                <span style={{ fontWeight: 700 }}>SteelERP</span>
-                <NotificationBell currentUserId={currentUserId} />
-            </header>
+            <TopBar
+                userName={userName}
+                currentUserId={currentUserId}
+                compact
+                onToggleMenu={() => setMenuOpen((v) => !v)}
+            />
 
             {menuOpen && (
-                <nav style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <NavLink item={DASHBOARD_ITEM} active={isActive(DASHBOARD_ITEM.to)} onNavigate={() => setMenuOpen(false)} />
-
-                    {NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin).map((group) => (
-                        <div key={group.label}>
+                <nav data-testid="mobile-drawer" style={{ background: '#0f172a', padding: 12, borderBottom: '1px solid #1e293b' }}>
+                    <SidebarNav
+                        isAdmin={isAdmin}
+                        isActive={isActive}
+                        onNavigate={() => setMenuOpen(false)}
+                    />
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        gap: 10, padding: '8px 10px', borderRadius: 8, background: '#1e293b',
+                    }}>
+                        {/* Tapping the name opens the profile page, as on desktop. */}
+                        <Link
+                            to="/app/profile" onClick={() => setMenuOpen(false)}
+                            style={{ minWidth: 0, flex: 1, textDecoration: 'none' }}
+                        >
                             <div style={{
-                                fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase',
-                                color: '#94a3b8', padding: '10px 16px 2px',
+                                color: '#e2e8f0', fontSize: 12.5, fontWeight: 600,
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                             }}>
-                                {group.label}
+                                {userName || 'User'}
                             </div>
-                            {group.items.map((item) => (
-                                <NavLink key={item.to} item={item} active={isActive(item.to)} onNavigate={() => setMenuOpen(false)} />
-                            ))}
-                        </div>
-                    ))}
-
-                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ fontSize: 12, color: '#64748b' }}>{userName}{userEmail ? ` · ${userEmail}` : ''}</div>
-                        <LogoutForm logoutUrl={logoutUrl} csrfToken={csrfToken} />
+                            <div style={{
+                                color: '#64748b', fontSize: 11,
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}>
+                                {userEmail || ''}
+                            </div>
+                        </Link>
+                        <LogoutForm logoutUrl={logoutUrl} csrfToken={csrfToken} style={{ display: 'flex' }}>
+                            <span style={{ display: 'flex', color: '#64748b' }}>
+                                <NavIcon paths={LOGOUT} size={15} />
+                            </span>
+                        </LogoutForm>
                     </div>
                 </nav>
             )}

@@ -15,14 +15,14 @@ class AzureTransportTest extends TestCase
     public function test_sends_html_body(): void
     {
         $captured = [];
-        $client   = $this->createMock(GraphClient::class);
+        $client = $this->createMock(GraphClient::class);
         $client->expects($this->once())
             ->method('send')
             ->willReturnCallback(function (array $payload) use (&$captured) {
                 $captured = $payload;
             });
 
-        $email = (new Email())
+        $email = (new Email)
             ->from('from@example.com')
             ->to('to@example.com')
             ->subject('Hello')
@@ -41,10 +41,12 @@ class AzureTransportTest extends TestCase
     public function test_falls_back_to_text_body_when_no_html(): void
     {
         $captured = [];
-        $client   = $this->createMock(GraphClient::class);
-        $client->method('send')->willReturnCallback(function ($p) use (&$captured) { $captured = $p; });
+        $client = $this->createMock(GraphClient::class);
+        $client->method('send')->willReturnCallback(function ($p) use (&$captured) {
+            $captured = $p;
+        });
 
-        $email = (new Email())
+        $email = (new Email)
             ->from('from@example.com')
             ->to('to@example.com')
             ->subject('Text only')
@@ -60,10 +62,12 @@ class AzureTransportTest extends TestCase
     public function test_maps_cc_bcc_and_reply_to(): void
     {
         $captured = [];
-        $client   = $this->createMock(GraphClient::class);
-        $client->method('send')->willReturnCallback(function ($p) use (&$captured) { $captured = $p; });
+        $client = $this->createMock(GraphClient::class);
+        $client->method('send')->willReturnCallback(function ($p) use (&$captured) {
+            $captured = $p;
+        });
 
-        $email = (new Email())
+        $email = (new Email)
             ->from('from@example.com')
             ->to('to@example.com')
             ->cc('cc@example.com')
@@ -83,10 +87,12 @@ class AzureTransportTest extends TestCase
     public function test_encodes_attachments_as_base64(): void
     {
         $captured = [];
-        $client   = $this->createMock(GraphClient::class);
-        $client->method('send')->willReturnCallback(function ($p) use (&$captured) { $captured = $p; });
+        $client = $this->createMock(GraphClient::class);
+        $client->method('send')->willReturnCallback(function ($p) use (&$captured) {
+            $captured = $p;
+        });
 
-        $email = (new Email())
+        $email = (new Email)
             ->from('from@example.com')
             ->to('to@example.com')
             ->subject('With attachment')
@@ -106,10 +112,12 @@ class AzureTransportTest extends TestCase
     public function test_save_to_sent_items_is_configurable(): void
     {
         $captured = [];
-        $client   = $this->createMock(GraphClient::class);
-        $client->method('send')->willReturnCallback(function ($p) use (&$captured) { $captured = $p; });
+        $client = $this->createMock(GraphClient::class);
+        $client->method('send')->willReturnCallback(function ($p) use (&$captured) {
+            $captured = $p;
+        });
 
-        $email = (new Email())
+        $email = (new Email)
             ->from('from@example.com')
             ->to('to@example.com')
             ->subject('Save it')
@@ -123,7 +131,7 @@ class AzureTransportTest extends TestCase
 
     public function test_to_string_returns_azure(): void
     {
-        $client    = $this->createMock(GraphClient::class);
+        $client = $this->createMock(GraphClient::class);
         $transport = new AzureTransport($client, []);
 
         $this->assertSame('azure', (string) $transport);

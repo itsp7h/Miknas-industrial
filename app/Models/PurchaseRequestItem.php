@@ -15,7 +15,7 @@ class PurchaseRequestItem extends Model
     ];
 
     protected $casts = [
-        'required_date'     => 'date',
+        'required_date' => 'date',
         'quantity_required' => 'decimal:2',
     ];
 

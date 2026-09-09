@@ -1,8 +1,9 @@
-export default function FormField({ label, name, value, onChange, error, type = 'text' }) {
+export default function FormField({ label, name, value, onChange, error, type = 'text', placeholder }) {
     const inputProps = {
         id: name,
         name,
         value,
+        placeholder,
         onChange: (e) => onChange(name, e.target.value),
         className: `border rounded-md px-3 py-2 text-sm w-full ${error ? 'border-red-400' : 'border-gray-300'}`,
     };

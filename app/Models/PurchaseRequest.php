@@ -14,11 +14,13 @@ class PurchaseRequest extends Model
         'requested_by_name', 'required_date_text', 'location',
         'remarks', 'status', 'stage', 'verified_by_name',
         'requested_by', 'approved_by', 'approved_at',
+        'rejection_reason', 'rejected_by', 'rejected_at',
     ];
 
     protected $casts = [
-        'date'        => 'date',
+        'date' => 'date',
         'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
     ];
 
     public function items()
@@ -34,6 +36,11 @@ class PurchaseRequest extends Model
     public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
     public function purchaseOrders()
@@ -84,7 +91,7 @@ class PurchaseRequest extends Model
                 ->where('not_available', false)
                 ->exists();
 
-            if ($quoted && !in_array($item->id, $awardedItemIds)) {
+            if ($quoted && ! in_array($item->id, $awardedItemIds)) {
                 return false;
             }
         }

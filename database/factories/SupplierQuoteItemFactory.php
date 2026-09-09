@@ -11,10 +11,10 @@ class SupplierQuoteItemFactory extends Factory
     {
         return [
             'supplier_quote_id' => SupplierQuote::factory(),
-            'description'       => $this->faker->sentence(3),
-            'quantity'          => 1,
-            'unit_price'        => 10,
-            'total_price'       => 10,
+            'description' => $this->faker->sentence(3),
+            'quantity' => 1,
+            'unit_price' => 10,
+            'total_price' => 10,
         ];
     }
 }

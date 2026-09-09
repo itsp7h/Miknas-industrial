@@ -33,48 +33,93 @@ php artisan serve    # http://localhost:8000
 
 ---
 
+## Environments
+
+| | Production | Staging |
+|---|---|---|
+| URL | https://steelerp.p7h.me | http://192.168.0.38 |
+| Host | LXC `SteelERP`, 192.168.0.46 | LXC `steelERPstaging`, 192.168.0.38 |
+| Branch | `main` | `development` |
+| Deploys | tag `v*` or manual, behind approval | automatic, once CI is green |
+
+Public traffic reaches production through Cloudflare → a tunnel host on
+192.168.1.10 → Apache on port 80. Nothing inbound reaches either container
+directly, which is why deploys run on **self-hosted** GitHub Actions runners
+(`steelerp-production`, `steelerp-staging`) rather than GitHub-hosted ones.
+
+Both boxes run `steelerp-reverb`, `steelerp-queue` and `steelerp-scheduler`
+as systemd units. Staging has `ULTRAMSG_ENABLED=false` — it carries a copy of
+live customer data, so an enabled WhatsApp integration there would message
+real customers.
+
+---
+
+## Testing & CI/CD
+
+```bash
+php artisan test        # PHPUnit — in-memory SQLite
+npm test                # Vitest — React components
+vendor/bin/pint         # format; CI gates on `pint --test` repo-wide
+scripts/smoke-test.sh <base-url>   # black-box checks against a running site
+```
+
+CI (`.github/workflows/ci.yml`) runs a PHP syntax lint, Pint, PHPUnit on 8.2
+and 8.3, Vitest, and a Vite build. The syntax lint exists because three
+notification classes once shipped as invalid PHP (`??` inside `"{...}"`
+interpolation): a file that does not parse never gets far enough to fail a
+test, so no unit suite could have caught it.
+
+Deploy scripts live in `scripts/`; see `docs/ci-cd-setup.md` for runner setup
+and rollback. Every deploy backs up the SQLite database before migrating.
+
+**Any Vitest test that renders a component reaching Echo must `vi.mock` it.**
+`resources/js-app/echo.js` instantiates Pusher at import time, so without a
+`VITE_REVERB_APP_KEY` it throws and the whole suite file fails to load with
+zero tests run. CI has no `.env`, so this passes locally and fails there —
+mock `'../echo'` the way `NotificationBell.test.jsx` does.
+
+---
+
 ## Controllers — `app/Http/Controllers/`
+
+45 files. Everything the SPA talks to lives under `Api/`; what is left outside it
+is Breeze's auth flow and the not-yet-migrated RFQ workflow.
 
 ```
 Controller.php
-DashboardController.php
-ProfileController.php
-Auth/
-  AuthenticatedSessionController.php
-  ConfirmablePasswordController.php
-  EmailVerificationNotificationController.php
-  EmailVerificationPromptController.php
-  NewPasswordController.php
-  PasswordController.php
-  PasswordResetLinkController.php
-  RegisteredUserController.php
-  VerifyEmailController.php
-Purchase/
-  SupplierController.php          import, downloadTemplate, exportPdf + CRUD
-  PurchaseRequestController.php   + approve, reject, print
-  PurchaseOrderController.php
-  GoodsReceiptNoteController.php  + confirm
-  SupplierInvoiceController.php
-  SupplierPaymentController.php
-Inventory/
-  ItemController.php              import, downloadTemplate, exportPdf + CRUD
-  WarehouseController.php
-  StockMovementController.php
-  StockReportController.php       summary, movement, lowStock, valuation
-Production/
-  ProductionOrderController.php   + start, complete
-  BillOfMaterialController.php
-  MaterialIssueController.php
-  ProductionOutputController.php
-Sales/
-  CustomerController.php
-  SalesOrderController.php        + confirm
-  DeliveryNoteController.php      + dispatch
-  SalesInvoiceController.php
-  PaymentReceiptController.php
-```
 
----
+Api/                              ← the React SPA's JSON API
+  AuthController.php              DashboardController.php
+  NotificationController.php      ProfileController.php
+  Purchase/  SupplierController, PurchaseOrderController,
+             GoodsReceiptNoteController, SupplierInvoiceController,
+             SupplierPaymentController, PurchasePipelineController,
+             SupplierQuoteController (quotes workspace, award/unaward),
+             PurchaseRequestController (the MPR form, sheet and delete)
+  Inventory/ ItemController (import, template, exportPdf), WarehouseController,
+             StockMovementController, StockReportController
+             (summary, movement, lowStock, valuation)
+  Production/ ProductionOrderController (+ start, complete),
+             BillOfMaterialController, MaterialIssueController,
+             ProductionOutputController
+  Sales/     CustomerController, SalesOrderController (+ confirm),
+             DeliveryNoteController (+ dispatch, update, destroy),
+             SalesInvoiceController (+ update, destroy), PaymentReceiptController
+  Settings/  role:Admin on every route —
+             CompanyController      companies + departments
+             ProjectController      projects + locations + import + template
+             UserController         users, roles, permissions
+             IntegrationController  WhatsApp (UltraMSG)
+             MailAccountController  mail accounts
+             VatController          the global VAT rate
+
+Auth/                             (Breeze defaults, session-establishing)
+
+Purchase/                         ← what has to stay server-rendered
+  PurchaseRequestController.php   ← print only (the MPR document)
+  PurchaseOrderController.php     ← print/pdf only (LPO documents)
+  RfqPortalController.php         ← public, token-based, no auth
+```
 
 ## Models — `app/Models/`
 
@@ -100,6 +145,11 @@ SalesInvoice.php      PaymentReceipt.php
 |------|---------|
 | `SupplierImportService.php` | Excel import — detects MRF vs template format, skips duplicates |
 | `ItemImportService.php` | Excel import — detects Forkoll vs template format, skips duplicates |
+| `ProjectImportService.php` | Excel import for projects |
+| `ProjectTemplateGenerator.php` | Builds the projects import template (`storage/app/projects_template.xlsx`) |
+| `PurchaseStageService.php` | The purchase pipeline's stage machine (`draft → … → complete`). `setStageIfNotPast()` is the guard that stops a re-award rolling a request backwards. Covered by `tests/Unit/PurchaseStageServiceTest.php` |
+| `RfqInvitationService.php` | Builds tokenised RFQ invitations for the public supplier portal |
+| `LpoGenerationService.php` | Generates LPOs from awarded quote items |
 
 ---
 
@@ -115,112 +165,89 @@ Files: `ImportSuppliers.php`, `GenerateSupplierTemplate.php`, `GenerateItemTempl
 
 ---
 
-## Routes — `routes/web.php`
+## Routes
 
-All protected by `['auth', 'verified']`. Prefix groups:
+`routes/web.php` (the redirects, the DomPDF documents and the public portal),
+`routes/api.php`
+(the React SPA's JSON API, Sanctum), `routes/auth.php` (Breeze),
+`routes/channels.php` (broadcast auth), `routes/console.php`.
 
-### Purchase — `prefix('purchase')->name('purchase.')`
-```
-GET/POST  suppliers              purchase.suppliers.*
-POST      suppliers/import       purchase.suppliers.import       ← must be BEFORE resource
-GET       suppliers/template     purchase.suppliers.template     ← must be BEFORE resource
-GET       suppliers/export-pdf   purchase.suppliers.export-pdf  ← must be BEFORE resource
-GET/POST  requests               purchase.requests.*
-PATCH     requests/{id}/approve  purchase.requests.approve
-PATCH     requests/{id}/reject   purchase.requests.reject
-GET       requests/{id}/print    purchase.requests.print
-GET/POST  orders                 purchase.orders.*
-GET/POST  grns                   purchase.grns.*
-PATCH     grns/{id}/confirm      purchase.grns.confirm
-GET/POST  invoices               purchase.invoices.*
-GET/POST  payments               purchase.payments.*
-```
+`/up` is Laravel's built-in health route — the smoke tests key off it.
 
-### Inventory — `prefix('inventory')->name('inventory.')`
+`/dashboard` is a redirect to `/app`, not a page: the dashboard is React. The
+named route survives because Breeze's login and email-verification flows and the
+root route all send people to `route('dashboard')`.
+
+### web.php — what is left
+
+Everything else moved to `routes/api.php`. Two kinds of entry remain:
+
+**Redirects into the shell** — the URLs were live long enough to be bookmarked,
+and a dead end is worse than a hop:
+
 ```
-GET/POST  items                  inventory.items.*
-POST      items/import           inventory.items.import          ← must be BEFORE resource
-GET       items/template         inventory.items.template        ← must be BEFORE resource
-GET       items/export-pdf       inventory.items.export-pdf     ← must be BEFORE resource
-GET/POST  warehouses             inventory.warehouses.*
-GET/POST  movements              inventory.movements.*
-GET       reports/summary        inventory.reports.summary
-GET       reports/movement       inventory.reports.movement
-GET       reports/low-stock      inventory.reports.low-stock
-GET       reports/valuation      inventory.reports.valuation
+/dashboard  → /app                     /profile             → /app/profile
+/purchase/pipeline, orders, orders/{id}, grns, grns/{id}, grns/create,
+  invoices, invoices/{id}, invoices/create, payments, payments/{id},
+  payments/create                      → the matching /app/purchase/… page
+                                         (create links forward their query string)
+/settings/projects           → /app/settings/companies
+/settings/projects-overview  → /app/settings/projects
+/settings/users              → /app/settings/users
+/settings/integrations       → /app/settings/integrations
+/settings/vat                → /app/settings/vat
 ```
 
-### Production — `prefix('production')->name('production.')`
+**Real Blade pages** — the RFQ workflow, the DomPDF documents, the public portal:
+
 ```
-GET/POST  orders                 production.orders.*
-PATCH     orders/{id}/start      production.orders.start
-PATCH     orders/{id}/complete   production.orders.complete
-GET/POST  bom                    production.bom.*
-GET/POST  material-issues        production.material-issues.*
-GET/POST  outputs                production.outputs.*
+GET  purchase/requests                            → redirect /app/purchase/pipeline
+GET  purchase/requests/create                     → redirect …/pipeline?new=1
+GET  purchase/requests/{purchaseRequest}          → redirect /app/purchase/requests/{id}
+GET  purchase/requests/{purchaseRequest}/edit     → redirect …/pipeline/{id}
+GET  purchase/requests/{purchaseRequest}/print    MPR document
+GET  purchase/pipeline/{purchaseRequest}          request detail
+GET  purchase/requests/{purchaseRequest}/quotes   → redirect to /app/…/quotes
+GET  purchase/requests/{purchaseRequest}/compare  → redirect to the same page
+GET  purchase/orders/{order}/print|pdf            LPO documents (DomPDF)
+GET/POST rfq/{token}                              public portal, no auth
 ```
 
-### Sales — `prefix('sales')->name('sales.')`
-```
-GET/POST  customers              sales.customers.*
-GET/POST  orders                 sales.orders.*
-PATCH     orders/{id}/confirm    sales.orders.confirm
-GET/POST  delivery-notes         sales.delivery-notes.*
-PATCH     delivery-notes/{id}/dispatch  sales.delivery-notes.dispatch
-GET/POST  invoices               sales.invoices.*
-GET/POST  payments               sales.payments.*
-```
-
----
+Route parameter names must never be `{request}` — see gotcha #8.
 
 ## Views — `resources/views/`
 
+38 files, and every one of them is deliberate: what is left is either the SPA's
+host page, a session-establishing auth page, a DomPDF/print document, the public
+RFQ portal, an email, or the not-yet-migrated RFQ workflow.
+
 ```
-dashboard.blade.php
-welcome.blade.php
+app-shell.blade.php        ← the React SPA's host page
+
 layouts/
-  app.blade.php          main layout (sidebar + topbar)
-  navigation.blade.php
-  guest.blade.php
-components/              (Breeze defaults: modal, dropdown, buttons, inputs, etc.)
-auth/                    (login, register, forgot-password, reset-password, verify-email, confirm-password)
-profile/edit.blade.php   + partials/
+  guest.blade.php          chrome for the auth pages (the only Blade chrome
+                           left — layouts/app went with the last page on it)
 
-purchase/
-  suppliers/   index, create, edit, pdf
-  requests/    index, create, edit, show
-  orders/      index, create, edit, show
-  grns/        index, create, show
-  invoices/    index, create, edit
-  payments/    index, create
+auth/                      login, forgot-password, reset-password,
+                           verify-email, confirm-password
+components/                the 6 Breeze partials the auth pages still use:
+                           application-logo, auth-session-status, input-error,
+                           input-label, primary-button, text-input
 
-inventory/
-  items/       index, create, edit, pdf
-  warehouses/  index, create, edit
-  movements/   index, create
-  reports/     summary, movement, low-stock, valuation
-
-production/
-  orders/          index, create, edit, show
-  bom/             index, create, edit
-  material-issues/ index
-  outputs/         index
-
-sales/
-  customers/      index, create, edit
-  orders/         index, create, edit, show
-  delivery-notes/ index, create, edit
-  invoices/       index, create, edit
-  payments/       index, create
+── Blade permanently ───────────────────────────────────────────────────────
+purchase/orders/print, purchase/orders/pdf      LPO documents (DomPDF)
+purchase/requests/print                         MPR document
+inventory/items/pdf, purchase/suppliers/pdf     list exports
+rfq/show, rfq/show-mobile, rfq/submitted,       public token portal,
+rfq/expired                                     no auth, outside the shell
+mail/lpo-issued, mail/rfq-invitation            emails
 ```
-
----
 
 ## Database — `database/`
 
 **Driver:** SQLite — `database/database.sqlite`
 
-### Migrations (29 total)
+### Migrations (60 files — the domain tables, plus the alters that followed)
 ```
 users, cache, jobs (Laravel defaults)
 permission_tables (Spatie)
@@ -232,6 +259,7 @@ production_outputs, production_costs
 customers, sales_orders, sales_order_items, delivery_notes
 delivery_note_items, sales_invoices, payment_receipts
 purchase_request_items
+add_rejection_record_to_purchase_requests
 ```
 
 ### Seeders
@@ -329,12 +357,12 @@ Laravel injects `Illuminate\Http\Request` by type-hint into `$request`. If a rou
 **Rule:** Always name route parameters after the model, matching the controller variable name exactly:
 ```php
 // WRONG — {request} clashes with Request $request injection
-Route::post('requests/{request}/sign', [PurchaseSignatureController::class, 'store']);
-// store(Request $request, PurchaseRequest $purchaseRequest) — $purchaseRequest gets null
+Route::put('requests/{request}', [PurchaseRequestController::class, 'update']);
+// update(Request $request, PurchaseRequest $purchaseRequest) — $purchaseRequest gets null
 
 // CORRECT
-Route::post('requests/{purchaseRequest}/sign', [PurchaseSignatureController::class, 'store']);
-// store(Request $request, PurchaseRequest $purchaseRequest) — binding works
+Route::put('requests/{purchaseRequest}', [PurchaseRequestController::class, 'update']);
+// update(Request $request, PurchaseRequest $purchaseRequest) — binding works
 ```
 
 **Route::resource also generates `{request}` for a resource named `requests`.** Always override it:
@@ -350,25 +378,39 @@ Route::resource('requests', PurchaseRequestController::class)->parameters(['requ
 Use `{purchaseRequest}`, `{purchaseOrder}`, `{supplier}`, etc. — never `{request}`.
 
 ### 9. Status notifications — always use toasts, never inline banners
-All success/error/info/warning messages MUST be displayed as toasts, not as `<div>` banners inside the page content. The global toast system is wired into `layouts/app.blade.php` and fires automatically from Laravel session flash keys (`success`, `error`, `info`, `warning`). In controllers, use:
-```php
-return redirect()->route('...')->with('success', 'Done.');
-return redirect()->route('...')->with('error', 'Something failed.');
-```
-To trigger a toast from JavaScript (e.g. after an in-page action), call:
-```javascript
+All success/error/info/warning messages MUST be displayed as toasts, not as
+`<div>` banners inside the page content. The toast system is React
+(`components/ui/Toast.jsx`), mounted once in `main.jsx` above the router:
+```jsx
+const { showToast } = useToast();
 showToast('Message text', 'success'); // types: success | error | info | warn
 ```
-**Never** add inline `@if(session('success'))` banner divs to individual views — the layout handles all of them. The toast appears bottom-right, auto-dismisses after 4 s, has a shrinking progress bar, and can be clicked or ×-closed early.
-
-### 10. Purchase Request creation — always use `<x-purchase.request-modal />`
-The create form lives in `resources/views/components/purchase/request-modal.blade.php` as a reusable Blade component. Wherever a "New Purchase Request" trigger is needed, drop in the component tag — it renders the button and the full modal itself:
-```blade
-<x-purchase.request-modal />
+Session-flash toasts are gone with `layouts/app.blade.php`: there is no Blade
+page left to render them, and API writes answer with a `message` the caller
+toasts itself. So in an `Api/` controller return the message in the payload —
+```php
+return response()->json(['data' => …, 'message' => 'Done.']);
 ```
-- **Never** link to `route('purchase.requests.create')` for creating new requests — the component replaces that flow entirely.
-- The component is self-contained: it owns the trigger button, the Alpine.js open/close state, the full MPR form (POSTing to `purchase.requests.store`), dynamic item rows, and validation-error auto-reopen logic.
-- The `/purchase/requests/create` page and route remain as a fallback but should not be referenced in new UI.
+— rather than flashing to the session. The toast appears bottom-right and
+auto-dismisses after 4 s.
+
+### 10. Purchase Request create/edit — one React modal, opened through `useRequestModal()`
+The MPR form is `resources/js-app/components/purchase/requests/RequestModal.jsx`,
+hosted by `RequestModalProvider` above the router in `App.jsx`. Any page opens it
+through the context rather than owning a copy:
+```jsx
+const { openNew, openEdit } = useRequestModal();
+openNew();                       // blank MPR
+openEdit(id, applyUpdate);       // loads the record; the callback gets the saved payload
+```
+- **Never** link to `route('purchase.requests.create')` or `/purchase/requests/{id}/edit` from new UI — those Blade pages survive only as a fallback.
+- One component renders both forms; `requestModalChrome.js` holds what differs (title, gradient, accent, submit label, icon). The two Blade components had drifted — the edit copy had a plain project select, a free-text department and a free-text unit where the create copy had a searchable picker and cascading selects — and a single tree is what stops that recurring.
+- It is one tree with a `compact` flag from `useViewport()`, not a desktop/mobile pair: two copies of a form this long would drift, which is the same reasoning as Integrations, Profile and the quotes workspace.
+- Writes go to `Api/Purchase/PurchaseRequestController`. `store` answers with a board row (the board opens it), `update` answers with the pipeline detail payload (the detail page opens it), and each broadcasts so the *other* screen stays in sync.
+- The read-only sheet is its own page (`/app/purchase/requests/{id}`) with its own resource: the pipeline detail payload shapes items for the timeline and never carries remarks or the approval record. Delete lives there too — it is the only place the old `requests.destroy` route's capability is offered.
+- **GM approval is the signature action, not a separate button.** `storeSignature` records the signature *and* writes `status`/`approved_by`/`approved_at` in one transaction — the dialog has always been titled "Approve & Sign" and said so, but until it did this nothing wrote those columns (the Blade `approve` action was their only writer and lost its UI in a cutover), so every signed request stayed `pending` and the sheet's approval block could never appear. Rejection is `POST pipeline/{id}/reject` behind the same policy, offered in the same dialog, and takes a **required** `rejection_reason` (min 5 chars, the same rule an award follows) recorded with `rejected_by`/`rejected_at`. It has its own three columns rather than borrowing `approved_by`/`approved_at`, which mean what they say. Both records survive on the row as history, so **anything rendering an approval or a refusal must key off `status`** — `=== 'approved'` and `=== 'rejected'` respectively — not off the columns or the relation being present. A request approved after a refusal carries both.
+- Both modals wait for their data before mounting (options on the first open, the record when editing) and are keyed per target, because the form seeds itself from `initial` at mount. Do not add an effect that re-seeds from `initial`: a late render changing its identity would wipe what the user had typed.
+- A row is `required` only once the user has put something in it. Blade marked every added row required unconditionally, so adding a row and leaving it alone made the form refuse to submit with nothing but a browser tooltip to explain why.
 
 ### 11. Data entry pages — AJAX only, no page refreshes
 All settings and management pages where users create, edit, or delete records MUST use `fetch()` AJAX. No `<form>` submissions, no page reloads, no redirects after data entry.
@@ -406,10 +448,48 @@ This project is migrating from Blade/Alpine to a React SPA (`resources/js-app/`)
 - **Full cutover per module, no coexistence.** When converting a module to React, delete its Blade controllers/routes/views in the same change — never leave old and new versions of the same page both linked in the sidebar. (Lesson from commit `575eb7a`: a side-by-side React Suppliers page caused two confusing sidebar entries and was reverted.)
 - **Migration order:** Foundation/shell → Purchase → Inventory → Production → Sales. Each module is its own phase with its own spec.
 
-### 13. Still-Blade pages get a mobile counterpart too — same "separate files" rule, different mechanism
-Not every module is React yet (gotcha #12's migration order). Until a module converts, its pages still get a dedicated, professionally-designed mobile version — same principle as #12 (mobile and desktop are separate files, never one file branching on device), but Blade has no live `useViewport()` swap, so it uses a different mechanism. See `docs/superpowers/specs/2026-08-03-blade-mobile-desktop-split-design.md` for the full design and page rollout order (Production → Inventory → Sales → remaining Purchase).
+**A page being React is not the same as it being ported.** The Inventory, Sales
+and Production modules were cut over to React in one sweep each (`0aaad1b`,
+`8cb2cc9`, `c494fbe`, `d6ae2f2`, `5834b68`), built on the generic `Card` +
+`Table` primitives rather than reproducing the Blade page each replaced. The
+result renders the right data with the wrong design — green primaries where
+Blade used blue `.btn-primary`, `Yes`/`No` where Blade badged, text links where
+Blade used `.btn-sm`, missing page headers and subtitles — and in several cases
+dropped real function (a whole column, a drag-and-drop import, low-stock
+signalling). When touching one of these pages, recover its Blade original from
+the commit that deleted it (`git log --diff-filter=D -- 'resources/views/<path>'`
+then `git show <sha>^:<path>`) and diff against it before assuming the React
+page is finished. Every module has now been through this — Purchase, Inventory,
+Production and Sales — so a React page here should be treated as ported, not
+merely present.
 
-- **File layout:** desktop stays at `resources/views/{module}/{entity}/{action}.blade.php`, unchanged. Its mobile counterpart goes at the same relative path under `resources/views/mobile/...` — e.g. `resources/views/mobile/production/orders/index.blade.php`.
-- **Switching:** a script in `layouts/app.blade.php` buckets `window.innerWidth` at the 768px breakpoint into a `viewport` cookie (reloading once on a mismatch, guarded against loops via `sessionStorage`). Controllers call `resolveView($view, $data)` instead of `view($view, $data)` — it renders `mobile.$view` only when the cookie says mobile AND that mobile view actually exists, otherwise it falls back to the desktop view unchanged. This is what makes the rollout genuinely incremental: a page with no mobile counterpart yet keeps working exactly as before.
-- **Design language:** card lists instead of wide tables, single-column forms with full-width bottom-pinned primary actions, bottom-sheet-style modals, hero-style gradient header — matching the pattern already used by the React mobile Pipeline Board (`pages/mobile/purchase/PipelineBoardPage.jsx`). Not a shrunk desktop page.
-- **Keep both in sync:** once a page has a `mobile/` counterpart, any change to its shared data/fields/actions (new column, new validation rule, new button) must be applied to **both** files, each restyled for its own platform — never just the one you're looking at.
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard (`/app`, and `/dashboard` redirects to it), Purchase Pipeline board **and detail**, the **supplier quotes workspace** (`/app/purchase/requests/{id}/quotes`, which the old `/quotes` and `/compare` Blade URLs both redirect to), the **MPR create and edit forms** (a modal any page opens through `useRequestModal()` — see gotcha #10 — which also took the last Alpine.js out of `app-shell.blade.php`), the **MPR sheet** (`/app/purchase/requests/{id}`, the pipeline header's "View Full Request"), Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). **Every page in the app is React** — every one of the 29 sidebar entries is a React route, and no `type: 'href'` entry remains in `navItems.js`. Still Blade: only the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+
+**The cutover checklist.** Every module is through it, so this is now the recipe
+for adding a *new* page rather than for converting one — each step is still a
+way a cutover broke before:
+1. Add the `Api/` controller, an `App\Http\Resources\` resource, and `…Saved`/`…Deleted` broadcast events; wire routes in `routes/api.php` — custom paths like `orders/form-options` go **before** the `{wildcard}`.
+2. Build `pages/desktop/…` and `pages/mobile/…`, register both in `App.jsx` behind `useViewport()`, and add a `type: 'link'` entry to `navItems.js`.
+3. Repoint every referrer at the plain `/app/...` URL. (The Blade sidebar this step used to mean is gone; what is left are deep links between React pages, which are `<Link>`s.)
+4. If the page replaces something server-rendered, delete its views, routes and controller methods. Keep `print`/`pdf`, and give any URL that could have been bookmarked a redirect into the shell rather than a 404.
+5. Port the deleted routes' authorization tests onto the new API endpoints — never just delete them — and add the URLs to `tests/Feature/BladePagesStillRenderTest.php`, which fails if a supposedly-deleted Blade URL still answers or a route that should have moved to the API still exists.
+
+### 13. There is no Blade page mechanism left — React only
+This slot used to describe a Blade mobile/desktop split (a `viewport` cookie, a
+`resolveView()` helper, a parallel `resources/views/mobile/` tree) for modules
+that had not converted yet. Every module has converted, so all of it has been
+deleted: the helper file, the cookie script, the mobile view tree, and
+`layouts/app.blade.php` itself along with the last two pages that used it.
+`app/View/Components/AppLayout.php` went with them.
+
+What that means for new work:
+
+- **There is no shared Blade chrome.** A new Blade page has nothing to extend.
+  New pages are React (gotcha #12), full stop.
+- The only Blade left is the SPA host page (`app-shell`), the Breeze auth pages
+  on `layouts/guest`, the DomPDF/print documents, the public token RFQ portal,
+  and the two mail views. Each is Blade for a reason it cannot stop being:
+  it establishes the session, it is a PDF, it renders outside the shell, or it
+  is an email.
+- The design spec `docs/superpowers/specs/2026-08-03-blade-mobile-desktop-split-design.md`
+  is history now, not a plan.

@@ -19,7 +19,8 @@ class PurchaseRequestCreatedBroadcastTest extends TestCase
         $user->givePermissionTo('purchase-requests.create');
         $this->actingAs($user);
 
-        $this->post(route('purchase.requests.store'), [
+        // The create form is a React modal now, so the write is the API.
+        $this->postJson('/api/v1/purchase/requests', [
             'date' => now()->toDateString(),
             'project_name' => 'Test Project',
             'requested_by_name' => $user->name,

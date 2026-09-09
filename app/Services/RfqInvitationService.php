@@ -16,12 +16,12 @@ class RfqInvitationService
     {
         return RfqInvitation::create([
             'purchase_request_id' => $purchaseRequest->id,
-            'supplier_id'         => $supplier->id,
-            'token'               => bin2hex(random_bytes(32)),
-            'channel'             => $channel,
-            'expires_at'          => now()->addDays(14),
-            'status'              => 'pending',
-            'item_ids'            => empty($itemIds) ? null : $itemIds,
+            'supplier_id' => $supplier->id,
+            'token' => bin2hex(random_bytes(32)),
+            'channel' => $channel,
+            'expires_at' => now()->addDays(14),
+            'status' => 'pending',
+            'item_ids' => empty($itemIds) ? null : $itemIds,
         ]);
     }
 
@@ -49,11 +49,11 @@ class RfqInvitationService
                 Mail::mailer($account->name)->to($supplier->email)->send(new RfqInvitationMail($invitation));
             } catch (\Throwable $e) {
                 Log::error('RFQ invitation email failed to send', [
-                    'invitation_id'  => $invitation->id,
-                    'supplier_id'    => $supplier->id,
+                    'invitation_id' => $invitation->id,
+                    'supplier_id' => $supplier->id,
                     'supplier_email' => $supplier->email,
-                    'mail_account'   => $account?->name,
-                    'error'          => $e->getMessage(),
+                    'mail_account' => $account?->name,
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -63,17 +63,19 @@ class RfqInvitationService
     {
         $invitation = $this->select($purchaseRequest, $supplier, $channel);
         $this->sendInvitation($invitation);
+
         return $invitation;
     }
 
     public function whatsappLink(RfqInvitation $invitation): string
     {
-        $url   = route('rfq.show', $invitation->token);
-        $text  = "Hello {$invitation->supplier->name},\n\n"
-               . "You are invited to submit a quote for purchase request {$invitation->purchaseRequest->request_number}.\n\n"
-               . "Please click the link below to submit your quote:\n{$url}\n\n"
-               . "This link expires in 7 days and can only be used once.";
+        $url = route('rfq.show', $invitation->token);
+        $text = "Hello {$invitation->supplier->name},\n\n"
+               ."You are invited to submit a quote for purchase request {$invitation->purchaseRequest->request_number}.\n\n"
+               ."Please click the link below to submit your quote:\n{$url}\n\n"
+               .'This link expires in 7 days and can only be used once.';
         $phone = preg_replace('/\D/', '', $invitation->supplier->phone ?? '');
-        return 'https://wa.me/' . $phone . '?text=' . rawurlencode($text);
+
+        return 'https://wa.me/'.$phone.'?text='.rawurlencode($text);
     }
 }

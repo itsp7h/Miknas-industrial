@@ -9,6 +9,12 @@
     <link rel="alternate icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet"/>
+    {{-- Must precede @vite: @vitejs/plugin-react needs its refresh preamble in the
+         document before any JSX module loads, or every component throws
+         "can't detect preamble" under `npm run dev` and the SPA never mounts.
+         A production build has no refresh runtime, so this is dev-only — which
+         is exactly why a passing CI build does not prove the app boots. --}}
+    @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js-app/main.jsx'])
 </head>
 <body class="bg-slate-100 antialiased" style="font-family:'Inter',sans-serif;">
@@ -24,11 +30,5 @@
         data-logout-url="{{ route('logout') }}"
         data-csrf-token="{{ csrf_token() }}"
     ></div>
-
-    {{-- Provides window.mprModalOpen()/the MPR Alpine.js modal state to every React page,
-         regardless of which one is showing. Its own "+ New Request" trigger button is
-         hidden here since React pages render their own button that calls
-         window.mprModalOpen() directly. --}}
-    <x-purchase.request-modal :hide-trigger="true" />
 </body>
 </html>

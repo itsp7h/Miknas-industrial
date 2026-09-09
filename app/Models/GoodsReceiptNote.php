@@ -35,6 +35,6 @@ class GoodsReceiptNote extends Model
 
     public function receivedBy()
     {
-        return $this->belongsTo(\App\Models\User::class, 'received_by');
+        return $this->belongsTo(User::class, 'received_by');
     }
 }

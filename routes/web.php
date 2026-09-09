@@ -1,36 +1,9 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchaseRequestController;
-use App\Http\Controllers\Purchase\SupplierInvoiceController;
-use App\Http\Controllers\Purchase\SupplierPaymentController;
-use App\Http\Controllers\Purchase\PurchasePipelineController;
-use App\Http\Controllers\Purchase\PurchaseSignatureController;
-use App\Http\Controllers\Purchase\RfqController;
-use App\Http\Controllers\Purchase\SupplierQuoteController;
 use App\Http\Controllers\Purchase\RfqPortalController;
-use App\Http\Controllers\Inventory\ItemController;
-use App\Http\Controllers\Inventory\StockMovementController;
-use App\Http\Controllers\Inventory\StockReportController;
-use App\Http\Controllers\Inventory\WarehouseController;
-use App\Http\Controllers\Production\BillOfMaterialController;
-use App\Http\Controllers\Production\MaterialIssueController;
-use App\Http\Controllers\Production\ProductionOrderController;
-use App\Http\Controllers\Production\ProductionOutputController;
-use App\Http\Controllers\Sales\CustomerController;
-use App\Http\Controllers\Sales\DeliveryNoteController;
-use App\Http\Controllers\Sales\PaymentReceiptController;
-use App\Http\Controllers\Sales\SalesInvoiceController;
-use App\Http\Controllers\Sales\SalesOrderController;
-use App\Http\Controllers\MailAccountController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\Settings\ProjectSettingController;
-use App\Http\Controllers\Settings\UserManagementController;
-use App\Http\Controllers\Settings\VatSettingController;
-use App\Models\Settings\Location;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -38,151 +11,121 @@ Route::get('/', function () {
 });
 
 // Public RFQ portal — no auth required
-Route::get('/rfq/{token}',  [RfqPortalController::class, 'show'])->name('rfq.show');
+Route::get('/rfq/{token}', [RfqPortalController::class, 'show'])->name('rfq.show');
 Route::post('/rfq/{token}', [RfqPortalController::class, 'submit'])->name('rfq.submit');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // The dashboard is the React page at /app. The named route stays as a
+    // redirect: Breeze's login and email-verification flows both send people to
+    // route('dashboard'), and so does `/`.
+    Route::redirect('/dashboard', '/app')->name('dashboard');
 
-    Route::get('/notifications/unread',  fn() => response()->json([
-        'count' => auth()->user()->unreadNotifications()->count(),
-        'items' => auth()->user()->unreadNotifications()->latest()->take(10)->get()->map(fn($n) => [
-            'id'      => $n->id,
-            'message' => $n->data['message'] ?? '',
-            'go_url'  => route('notifications.go', $n->id),
-            'ago'     => $n->created_at->diffForHumans(),
-        ]),
-    ]))->name('notifications.unread');
+    // The notification bell is React and talks to routes/api.php. The three
+    // web routes that used to back the Blade topbar's bell went with it.
 
-    Route::get('/notifications/{id}/go', function (string $id) {
-        $n = auth()->user()->notifications()->findOrFail($id);
-        $n->markAsRead();
-        $dest = $n->data['url'] ?? route('dashboard');
-        return redirect($dest);
-    })->name('notifications.go');
-
-    Route::post('/notifications/read-all', fn() => response()->json(
-        tap(auth()->user()->unreadNotifications()->update(['read_at' => now()]))
-    ))->name('notifications.read-all');
-
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // The profile page is served by the React shell at /app/profile; its writes
+    // live in routes/api.php. The named route stays as a redirect because Breeze
+    // still points at it after a password update.
+    Route::redirect('/profile', '/app/profile')->name('profile.edit');
 
     // Purchase Module
     Route::prefix('purchase')->name('purchase.')->group(function () {
-        // Pipeline — the index view was replaced by the React board at
-        // /app/purchase/pipeline; this route is now a safety net for anyone with the
-        // old URL bookmarked. The per-request detail page stays Blade.
+        // ── Bookmark safety nets ────────────────────────────────────────────
+        // These pages all live in the React shell now. Rather than 404 anyone
+        // holding an old link, each redirects to its /app equivalent. Only the
+        // DomPDF print/pdf documents are still served here, and they must be
+        // declared BEFORE the wildcard redirects or those would swallow them.
         Route::redirect('pipeline', '/app/purchase/pipeline')->name('pipeline.index');
-        Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show'])->name('pipeline.show');
+        // The request detail page is React now, with the supplier picker, the
+        // signature pad, the LPO issue and the GRN hand-off as its own dialogs.
+        Route::get('pipeline/{purchaseRequest}', fn ($purchaseRequest) => redirect("/app/purchase/pipeline/{$purchaseRequest}"))
+            ->whereNumber('purchaseRequest')->name('pipeline.show');
 
-        // GM Signature
-        Route::get('requests/{purchaseRequest}/sign',  [PurchaseSignatureController::class, 'show'])->name('requests.sign');
-        Route::post('requests/{purchaseRequest}/sign', [PurchaseSignatureController::class, 'store'])->name('requests.sign.store');
+        // The GM signature pad and the RFQ supplier picker are React dialogs on
+        // the pipeline detail page, writing to routes/api.php. Their Blade pages
+        // and POST endpoints are gone; unlike the pages above these had no
+        // sharable URL worth redirecting — nothing ever linked to them.
 
-        // RFQ
-        Route::post('requests/{purchaseRequest}/rfq/select',   [RfqController::class, 'selectSuppliers'])->name('requests.rfq.select');
-        Route::post('requests/{purchaseRequest}/rfq/send-all', [RfqController::class, 'sendAll'])->name('requests.rfq.send-all');
-        Route::get('requests/{purchaseRequest}/rfq',  [RfqController::class, 'show'])->name('requests.rfq');
-        Route::post('requests/{purchaseRequest}/rfq', [RfqController::class, 'store'])->name('requests.rfq.store');
+        // The quotes workspace is React now — one page for both of the old URLs,
+        // with the award writes in routes/api.php. Both redirect, since either
+        // could have been bookmarked.
+        Route::get('requests/{purchaseRequest}/quotes', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}/quotes"))
+            ->whereNumber('purchaseRequest')->name('requests.quotes');
+        Route::get('requests/{purchaseRequest}/compare', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}/quotes"))
+            ->whereNumber('purchaseRequest')->name('requests.compare');
 
-        // Quotes
-        Route::get('requests/{purchaseRequest}/quotes',                    [SupplierQuoteController::class, 'index'])->name('requests.quotes');
-        Route::get('requests/{purchaseRequest}/compare',                   [SupplierQuoteController::class, 'compare'])->name('requests.compare');
-        Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award',   [SupplierQuoteController::class, 'awardItem'])->name('requests.quotes.items.award');
-        Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unawardItem'])->name('requests.quotes.items.unaward');
-
-        Route::resource('requests', PurchaseRequestController::class)->parameters(['requests' => 'purchaseRequest']);
-        Route::patch('requests/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('requests.approve');
-        Route::patch('requests/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('requests.reject');
+        // The MPR form is a React modal and the request sheet a React page, so
+        // the create/edit/show pages are gone. Their URLs redirect: all three
+        // were live long enough to be bookmarked. `requests/create` must come
+        // before the `{purchaseRequest}` wildcard, and `requests/print` after
+        // it is fine because it carries an extra segment.
+        Route::redirect('requests', '/app/purchase/pipeline')->name('requests.index');
+        Route::redirect('requests/create', '/app/purchase/pipeline?new=1')->name('requests.create');
+        Route::get('requests/{purchaseRequest}/edit', fn ($purchaseRequest) => redirect("/app/purchase/pipeline/{$purchaseRequest}"))
+            ->whereNumber('purchaseRequest')->name('requests.edit');
         Route::get('requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('requests.print');
-        Route::post('requests/{purchaseRequest}/generate-lpo', [PurchaseOrderController::class, 'generateFromRequest'])->name('requests.generate-lpo');
+        Route::get('requests/{purchaseRequest}', fn ($purchaseRequest) => redirect("/app/purchase/requests/{$purchaseRequest}"))
+            ->whereNumber('purchaseRequest')->name('requests.show');
+        // Purchase orders are served by the React SPA at /app/purchase/orders.
+        // Only the DomPDF-backed print/pdf documents stay server-rendered.
         Route::get('orders/{order}/print', [PurchaseOrderController::class, 'print'])->name('orders.print');
         Route::get('orders/{order}/pdf', [PurchaseOrderController::class, 'pdf'])->name('orders.pdf');
-        Route::resource('orders', PurchaseOrderController::class);
-        Route::resource('grns', GoodsReceiptNoteController::class);
-        Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm'])->name('grns.confirm');
-        Route::resource('invoices', SupplierInvoiceController::class);
-        Route::resource('payments', SupplierPaymentController::class);
+
+        Route::redirect('orders', '/app/purchase/orders');
+        Route::get('orders/{order}', fn ($order) => redirect("/app/purchase/orders/{$order}"))
+            ->whereNumber('order');
+
+        // grns/create carried a ?purchase_order_id=… the React list also accepts,
+        // so the query string is forwarded rather than dropped.
+        Route::get('grns/create', fn (Request $request) => redirect()->to(
+            '/app/purchase/grns'.($request->query('purchase_order_id')
+                ? '?purchase_order_id='.$request->query('purchase_order_id')
+                : '')
+        ));
+        Route::redirect('grns', '/app/purchase/grns');
+        Route::get('grns/{grn}', fn ($grn) => redirect("/app/purchase/grns/{$grn}"))
+            ->whereNumber('grn');
+        Route::redirect('invoices', '/app/purchase/invoices');
+        Route::get('invoices/{invoice}', fn ($invoice) => redirect('/app/purchase/invoices'))
+            ->whereNumber('invoice');
+        Route::get('invoices/create', fn () => redirect('/app/purchase/invoices'));
+        Route::redirect('payments', '/app/purchase/payments');
+        // The invoices page linked here with ?invoice_id=…; the React page accepts
+        // the same parameter, so it is forwarded rather than dropped.
+        Route::get('payments/create', fn (Request $request) => redirect()->to(
+            '/app/purchase/payments'.($request->query('invoice_id')
+                ? '?invoice_id='.$request->query('invoice_id')
+                : '')
+        ));
+        Route::get('payments/{payment}', fn ($payment) => redirect('/app/purchase/payments'))
+            ->whereNumber('payment');
     });
 
     // Inventory Module
-    Route::prefix('inventory')->name('inventory.')->group(function () {
-        Route::post('items/import',    [ItemController::class, 'import'])->name('items.import');
-        Route::get('items/template',   [ItemController::class, 'downloadTemplate'])->name('items.template');
-        Route::get('items/export-pdf', [ItemController::class, 'exportPdf'])->name('items.export-pdf');
-        Route::resource('items', ItemController::class);
-        Route::resource('warehouses', WarehouseController::class);
-        Route::resource('movements', StockMovementController::class);
-        Route::get('reports/summary', [StockReportController::class, 'summary'])->name('reports.summary');
-        Route::get('reports/movement', [StockReportController::class, 'movement'])->name('reports.movement');
-        Route::get('reports/low-stock', [StockReportController::class, 'lowStock'])->name('reports.low-stock');
-        Route::get('reports/valuation', [StockReportController::class, 'valuation'])->name('reports.valuation');
-    });
-
-    // Production Module
-    Route::prefix('production')->name('production.')->group(function () {
-        Route::resource('orders', ProductionOrderController::class);
-        Route::patch('orders/{order}/start', [ProductionOrderController::class, 'start'])->name('orders.start');
-        Route::patch('orders/{order}/complete', [ProductionOrderController::class, 'complete'])->name('orders.complete');
-        Route::resource('bom', BillOfMaterialController::class);
-        Route::resource('material-issues', MaterialIssueController::class);
-        Route::resource('outputs', ProductionOutputController::class);
-    });
+    Route::prefix('inventory')->name('inventory.')->group(function () {});
 
     // Sales Module
-    Route::prefix('sales')->name('sales.')->group(function () {
-        Route::resource('customers', CustomerController::class);
-        Route::resource('orders', SalesOrderController::class);
-        Route::patch('orders/{order}/confirm', [SalesOrderController::class, 'confirm'])->name('orders.confirm');
-        Route::resource('delivery-notes', DeliveryNoteController::class);
-        Route::patch('delivery-notes/{note}/dispatch', [DeliveryNoteController::class, 'dispatch'])->name('delivery-notes.dispatch');
-        Route::resource('invoices', SalesInvoiceController::class);
-        Route::resource('payments', PaymentReceiptController::class);
-    });
-
     // Settings (Admin only)
     Route::middleware('role:Admin')->group(function () {
-        Route::get('settings/integrations', [SettingsController::class, 'integrations'])->name('settings.integrations');
-        Route::post('settings/integrations/whatsapp', [SettingsController::class, 'updateWhatsapp'])->name('settings.integrations.whatsapp');
-        Route::post('settings/integrations/test-whatsapp', [SettingsController::class, 'testWhatsappConnection'])->name('settings.integrations.test-whatsapp');
-        Route::post('settings/integrations/send-test-message', [SettingsController::class, 'sendTestMessage'])->name('settings.integrations.send-test-message');
-        Route::get('settings/integrations/mail-accounts', [MailAccountController::class, 'index'])->name('settings.mail-accounts.index');
-        Route::post('settings/integrations/mail-accounts', [MailAccountController::class, 'store'])->name('settings.mail-accounts.store');
-        Route::get('settings/integrations/mail-accounts/{mailAccount}', [MailAccountController::class, 'show'])->name('settings.mail-accounts.show');
-        Route::put('settings/integrations/mail-accounts/{mailAccount}', [MailAccountController::class, 'update'])->name('settings.mail-accounts.update');
-        Route::delete('settings/integrations/mail-accounts/{mailAccount}', [MailAccountController::class, 'destroy'])->name('settings.mail-accounts.destroy');
-        Route::post('settings/integrations/mail-accounts/{mailAccount}/test', [MailAccountController::class, 'testConnection'])->name('settings.mail-accounts.test');
-        Route::post('settings/integrations/mail-accounts/{mailAccount}/send-test', [MailAccountController::class, 'sendTestEmail'])->name('settings.mail-accounts.send-test');
-        Route::patch('settings/integrations/mail-accounts/{mailAccount}/toggle', [MailAccountController::class, 'toggleEnabled'])->name('settings.mail-accounts.toggle');
+        // Integrations is served by the React shell at /app/settings/integrations;
+        // the WhatsApp settings and the mail-account endpoints live in
+        // routes/api.php.
+        Route::redirect('settings/integrations', '/app/settings/integrations')->name('settings.integrations');
 
-        // Projects settings
-        Route::get('settings/projects', [ProjectSettingController::class, 'index'])->name('settings.projects.index');
-        Route::get('settings/projects-overview', [ProjectSettingController::class, 'projectsOverview'])->name('settings.projects.overview');
-        Route::post('settings/projects', [ProjectSettingController::class, 'store'])->name('settings.projects.store');
-        Route::post('settings/projects/import', [ProjectSettingController::class, 'import'])->name('settings.projects.import');
-        Route::get('settings/projects/template', [ProjectSettingController::class, 'downloadTemplate'])->name('settings.projects.template');
-        Route::post('settings/projects/companies', [ProjectSettingController::class, 'storeCompany'])->name('settings.projects.companies.store');
-        Route::patch('settings/projects/companies/{company}', [ProjectSettingController::class, 'updateCompany'])->name('settings.projects.companies.update');
-        Route::delete('settings/projects/companies/{company}', [ProjectSettingController::class, 'destroyCompany'])->name('settings.projects.companies.destroy');
-        Route::patch('settings/projects/{project}', [ProjectSettingController::class, 'update'])->name('settings.projects.update');
-        Route::delete('settings/projects/{project}', [ProjectSettingController::class, 'destroy'])->name('settings.projects.destroy');
-        Route::post('settings/projects/{project}/locations', [ProjectSettingController::class, 'storeLocation'])->name('settings.projects.locations.store');
-        Route::patch('settings/projects/{project}/locations/{location}', [ProjectSettingController::class, 'updateLocation'])->name('settings.projects.locations.update');
-        Route::delete('settings/projects/{project}/locations/{location}', [ProjectSettingController::class, 'destroyLocation'])->name('settings.projects.locations.destroy');
-        Route::post('settings/projects/companies/{company}/departments', [ProjectSettingController::class, 'storeDepartment'])->name('settings.projects.companies.departments.store');
-        Route::patch('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'updateDepartment'])->name('settings.projects.companies.departments.update');
-        Route::delete('settings/projects/companies/{company}/departments/{department}', [ProjectSettingController::class, 'destroyDepartment'])->name('settings.projects.companies.departments.destroy');
+        // Both projects settings pages are served by the React shell now
+        // (/app/settings/companies and /app/settings/projects); their writes,
+        // import and template live in routes/api.php. Only redirects for old
+        // links stay here.
+        Route::redirect('settings/projects', '/app/settings/companies')->name('settings.projects.index');
+        Route::redirect('settings/projects-overview', '/app/settings/projects')->name('settings.projects.overview');
 
-        // VAT settings
-        Route::get('settings/vat',  [VatSettingController::class, 'index'])->name('settings.vat');
-        Route::post('settings/vat', [VatSettingController::class, 'update'])->name('settings.vat.update');
+        // VAT is served by the React shell at /app/settings/vat; the rate itself
+        // lives behind GET/PUT /api/v1/settings/vat.
+        Route::redirect('settings/vat', '/app/settings/vat')->name('settings.vat');
 
-        // User management
-        Route::get('settings/users', [UserManagementController::class, 'index'])->name('settings.users.index');
-        Route::post('settings/users', [UserManagementController::class, 'store'])->name('settings.users.store');
-        Route::patch('settings/users/{user}', [UserManagementController::class, 'update'])->name('settings.users.update');
+        // User management is served by the React shell at /app/settings/users;
+        // its endpoints live in routes/api.php.
+        Route::redirect('settings/users', '/app/settings/users')->name('settings.users.index');
     });
 
     // React SPA shell (catch-all — must stay last so it never shadows a more specific route)

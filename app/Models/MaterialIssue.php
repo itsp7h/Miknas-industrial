@@ -33,6 +33,6 @@ class MaterialIssue extends Model
 
     public function issuedBy()
     {
-        return $this->belongsTo(\App\Models\User::class, 'issued_by');
+        return $this->belongsTo(User::class, 'issued_by');
     }
 }

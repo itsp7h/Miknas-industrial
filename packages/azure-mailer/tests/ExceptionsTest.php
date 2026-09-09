@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace PromoSeven\AzureMailer\Tests;
 
+use PHPUnit\Framework\TestCase;
 use PromoSeven\AzureMailer\Exceptions\AuthenticationException;
 use PromoSeven\AzureMailer\Exceptions\GraphApiException;
 
-class ExceptionsTest extends \PHPUnit\Framework\TestCase
+class ExceptionsTest extends TestCase
 {
     public function test_authentication_exception_formats_message(): void
     {

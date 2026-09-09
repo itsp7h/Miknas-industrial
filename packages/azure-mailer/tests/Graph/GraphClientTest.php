@@ -14,23 +14,23 @@ use PromoSeven\AzureMailer\Tests\TestCase;
 class GraphClientTest extends TestCase
 {
     private array $config = [
-        'tenant_id'          => 'test-tenant',
-        'client_id'          => 'test-client-id',
-        'client_secret'      => 'test-secret',
-        'from_address'       => 'sender@example.com',
-        'timeout'            => 30,
-        'graph_api_version'  => 'v1.0',
+        'tenant_id' => 'test-tenant',
+        'client_id' => 'test-client-id',
+        'client_secret' => 'test-secret',
+        'from_address' => 'sender@example.com',
+        'timeout' => 30,
+        'graph_api_version' => 'v1.0',
     ];
 
     private array $payload = [
         'message' => [
             'subject' => 'Test',
-            'body'    => ['contentType' => 'HTML', 'content' => '<p>Hello</p>'],
+            'body' => ['contentType' => 'HTML', 'content' => '<p>Hello</p>'],
             'toRecipients' => [['emailAddress' => ['address' => 'to@example.com', 'name' => '']]],
-            'ccRecipients'  => [],
+            'ccRecipients' => [],
             'bccRecipients' => [],
-            'replyTo'       => [],
-            'attachments'   => [],
+            'replyTo' => [],
+            'attachments' => [],
         ],
         'saveToSentItems' => false,
     ];
@@ -39,7 +39,7 @@ class GraphClientTest extends TestCase
     {
         Http::fake([
             'login.microsoftonline.com/*' => Http::response(['access_token' => 'tok', 'expires_in' => 3600], 200),
-            'graph.microsoft.com/*'       => Http::response('', 202),
+            'graph.microsoft.com/*' => Http::response('', 202),
         ]);
 
         $client = new GraphClient(new TokenManager($this->config), $this->config);
@@ -78,7 +78,7 @@ class GraphClientTest extends TestCase
 
         Http::fake([
             'login.microsoftonline.com/*' => Http::response(['access_token' => 'tok', 'expires_in' => 3600], 200),
-            'graph.microsoft.com/*'       => Http::response([
+            'graph.microsoft.com/*' => Http::response([
                 'error' => ['code' => 'InvalidAuthenticationToken', 'message' => 'Token is expired.'],
             ], 401),
         ]);
@@ -94,7 +94,7 @@ class GraphClientTest extends TestCase
     {
         Http::fake([
             'login.microsoftonline.com/*' => Http::response(['access_token' => 'tok', 'expires_in' => 3600], 200),
-            'graph.microsoft.com/*'       => Http::response([
+            'graph.microsoft.com/*' => Http::response([
                 'error' => ['code' => 'ErrorInvalidRecipients', 'message' => 'Recipient address is invalid.'],
             ], 400),
         ]);
@@ -110,7 +110,7 @@ class GraphClientTest extends TestCase
     {
         Http::fake([
             'login.microsoftonline.com/*' => Http::response(['access_token' => 'tok', 'expires_in' => 3600], 200),
-            'graph.microsoft.com/*'       => Http::response('', 202),
+            'graph.microsoft.com/*' => Http::response('', 202),
         ]);
 
         $config = array_merge($this->config, ['graph_api_version' => 'beta']);

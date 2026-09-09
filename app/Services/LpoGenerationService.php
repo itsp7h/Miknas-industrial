@@ -29,7 +29,7 @@ class LpoGenerationService
         foreach ($staleOrders as $stale) {
             if ($stale->goodsReceiptNotes()->exists() || $stale->supplierInvoices()->exists()) {
                 throw new RuntimeException(
-                    $stale->po_number . ' already has goods received or an invoice recorded — resolve that before re-issuing.'
+                    $stale->po_number.' already has goods received or an invoice recorded — resolve that before re-issuing.'
                 );
             }
         }
@@ -55,22 +55,22 @@ class LpoGenerationService
     private function createOrderForSupplier(PurchaseRequest $purchaseRequest, int $supplierId, Collection $items): PurchaseOrder
     {
         $order = PurchaseOrder::create([
-            'po_number'           => 'PO-' . str_pad((PurchaseOrder::max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT),
-            'supplier_id'         => $supplierId,
+            'po_number' => 'PO-'.str_pad((PurchaseOrder::max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT),
+            'supplier_id' => $supplierId,
             'purchase_request_id' => $purchaseRequest->id,
-            'po_date'             => now()->toDateString(),
-            'total_amount'        => $items->sum('total_price'),
-            'status'              => 'sent',
-            'created_by'          => auth()->id(),
+            'po_date' => now()->toDateString(),
+            'total_amount' => $items->sum('total_price'),
+            'status' => 'sent',
+            'created_by' => auth()->id(),
         ]);
 
         foreach ($items as $quoteItem) {
             PurchaseOrderItem::create([
                 'purchase_order_id' => $order->id,
-                'item_id'           => $this->resolveCatalogItem($quoteItem)->id,
-                'quantity'          => $quoteItem->quantity,
-                'rate'              => $quoteItem->unit_price,
-                'total_amount'      => $quoteItem->total_price,
+                'item_id' => $this->resolveCatalogItem($quoteItem)->id,
+                'quantity' => $quoteItem->quantity,
+                'rate' => $quoteItem->unit_price,
+                'total_amount' => $quoteItem->total_price,
             ]);
         }
 
@@ -92,12 +92,12 @@ class LpoGenerationService
         }
 
         return Item::create([
-            'item_code'       => 'ITEM-' . str_pad((Item::max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT),
-            'item_name'       => $name,
-            'category'        => 'raw_material',
+            'item_code' => 'ITEM-'.str_pad((Item::max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT),
+            'item_name' => $name,
+            'category' => 'raw_material',
             'unit_of_measure' => $quoteItem->unit ?: ($quoteItem->purchaseRequestItem->unit ?? 'PCS'),
-            'cost_price'      => $quoteItem->unit_price,
-            'is_active'       => true,
+            'cost_price' => $quoteItem->unit_price,
+            'is_active' => true,
         ]);
     }
 }

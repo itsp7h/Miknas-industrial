@@ -3,6 +3,7 @@
 namespace App\Models\Settings;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Location extends Model
 {
@@ -17,8 +18,8 @@ class Location extends Model
         return $query->where('is_active', true);
     }
 
-    public function project(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function project(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Settings\ProjectSetting::class, 'project_id');
+        return $this->belongsTo(ProjectSetting::class, 'project_id');
     }
 }

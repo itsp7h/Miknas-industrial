@@ -14,17 +14,17 @@ class ServiceProviderTest extends TestCase
         parent::defineEnvironment($app);
 
         $app['config']->set('mail.mailers.azure', [
-            'transport'     => 'azure',
-            'tenant_id'     => 'test-tenant',
-            'client_id'     => 'test-client-id',
+            'transport' => 'azure',
+            'tenant_id' => 'test-tenant',
+            'client_id' => 'test-client-id',
             'client_secret' => 'test-secret',
-            'from_address'  => 'sender@example.com',
+            'from_address' => 'sender@example.com',
         ]);
     }
 
     public function test_azure_transport_is_registered_with_mail_manager(): void
     {
-        $manager   = $this->app->make(MailManager::class);
+        $manager = $this->app->make(MailManager::class);
         $transport = $manager->mailer('azure')->getSymfonyTransport();
 
         $this->assertInstanceOf(AzureTransport::class, $transport);

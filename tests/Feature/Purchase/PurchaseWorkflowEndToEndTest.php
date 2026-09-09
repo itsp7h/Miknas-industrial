@@ -18,7 +18,7 @@ class PurchaseWorkflowEndToEndTest extends TestCase
      * pre-positioning the `stage` column via factory. This is the test that
      * should have caught the draft/gm_approval/rfq stage-gate mismatch between
      * PurchaseRequestPolicy::approve()/manageRfq() and the actual order in
-     * which PurchaseSignatureController and RfqController advance the stage.
+     * which the signature and select-suppliers endpoints advance the stage.
      */
     public function test_request_moves_through_the_full_pipeline_without_403s(): void
     {
@@ -34,26 +34,28 @@ class PurchaseWorkflowEndToEndTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         // 1) Requester creates the MPR — lands at stage=draft (DB default).
-        $storeResponse = $this->actingAs($requester)->post(route('purchase.requests.store'), [
-            'date'              => now()->format('Y-m-d'),
-            'project_name'      => 'Test Project',
+        // The create form is a React modal, so this step is the API call it makes.
+        $storeResponse = $this->actingAs($requester)->postJson('/api/v1/purchase/requests', [
+            'date' => now()->format('Y-m-d'),
+            'project_name' => 'Test Project',
             'requested_by_name' => 'Test Person',
-            'items'             => [
+            'items' => [
                 ['description' => 'Widget', 'quantity_required' => 5],
             ],
         ]);
-        $storeResponse->assertRedirect(route('purchase.requests.index'));
+        $storeResponse->assertCreated();
 
         $purchaseRequest = PurchaseRequest::where('requested_by_name', 'Test Person')->firstOrFail();
         $this->assertSame('draft', $purchaseRequest->stage);
 
         // 2) Purchase Manager signs (GM signature) while the request is still
-        // at draft — this is the exact precondition approve() must allow.
-        $signResponse = $this->actingAs($purchaseManager)->post(
-            route('purchase.requests.sign.store', $purchaseRequest),
+        // at draft — this is the exact precondition approve() must allow. The
+        // signature pad is a React dialog, so this is the endpoint it posts to.
+        $signResponse = $this->actingAs($purchaseManager)->postJson(
+            "/api/v1/purchase/pipeline/{$purchaseRequest->id}/signature",
             ['signature_image' => 'data:image/png;base64,iVBORw0KGgo=']
         );
-        $signResponse->assertRedirect(route('purchase.pipeline.show', $purchaseRequest));
+        $signResponse->assertOk();
         $this->assertFalse($signResponse->isForbidden());
 
         $purchaseRequest->refresh();
@@ -62,23 +64,23 @@ class PurchaseWorkflowEndToEndTest extends TestCase
         // 3) Procurement Officer selects suppliers while the request sits at
         // gm_approval — the exact precondition manageRfq() must allow. This
         // action itself advances the stage to 'rfq'.
-        $selectResponse = $this->actingAs($procurementOfficer)->post(
-            route('purchase.requests.rfq.select', $purchaseRequest),
-            ['supplier_ids' => [$supplier->id]]
+        $selectResponse = $this->actingAs($procurementOfficer)->postJson(
+            "/api/v1/purchase/pipeline/{$purchaseRequest->id}/suppliers",
+            ['mode' => 'global', 'supplier_ids' => [$supplier->id]]
         );
         $this->assertFalse($selectResponse->isForbidden());
-        $selectResponse->assertRedirect(route('purchase.pipeline.show', $purchaseRequest));
+        $selectResponse->assertOk();
 
         $purchaseRequest->refresh();
         $this->assertSame('rfq', $purchaseRequest->stage);
 
         // 4) Procurement Officer sends the RFQ to the selected supplier(s) —
         // manageRfq() must still allow this now that the stage is 'rfq'.
-        $sendResponse = $this->actingAs($procurementOfficer)->post(
-            route('purchase.requests.rfq.send-all', $purchaseRequest)
+        $sendResponse = $this->actingAs($procurementOfficer)->postJson(
+            "/api/v1/purchase/pipeline/{$purchaseRequest->id}/send-invitations"
         );
         $this->assertFalse($sendResponse->isForbidden());
-        $sendResponse->assertRedirect(route('purchase.pipeline.show', $purchaseRequest));
+        $sendResponse->assertOk();
 
         $purchaseRequest->refresh();
         $this->assertSame('quoting', $purchaseRequest->stage);

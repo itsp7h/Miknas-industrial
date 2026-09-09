@@ -12,7 +12,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class GenerateItemTemplate extends Command
 {
-    protected $signature   = 'items:template {--output= : Save path}';
+    protected $signature = 'items:template {--output= : Save path}';
+
     protected $description = 'Generate a clean Excel template for importing inventory items';
 
     private array $columns = [
@@ -29,13 +30,13 @@ class GenerateItemTemplate extends Command
     {
         $outputPath = $this->option('output') ?? storage_path('app/items_template.xlsx');
 
-        $spreadsheet = new Spreadsheet();
-        $sheet       = $spreadsheet->getActiveSheet();
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Items');
 
         // Headers
         foreach ($this->columns as $i => [$label]) {
-            $sheet->getCell(Coordinate::stringFromColumnIndex($i + 1) . '1')->setValue($label);
+            $sheet->getCell(Coordinate::stringFromColumnIndex($i + 1).'1')->setValue($label);
         }
 
         $lastCol = Coordinate::stringFromColumnIndex(count($this->columns));
@@ -59,13 +60,13 @@ class GenerateItemTemplate extends Command
         foreach ($examples as $rowIdx => $values) {
             $excelRow = $rowIdx + 2;
             foreach ($values as $colIdx => $value) {
-                $sheet->getCell(Coordinate::stringFromColumnIndex($colIdx + 1) . $excelRow)->setValue($value);
+                $sheet->getCell(Coordinate::stringFromColumnIndex($colIdx + 1).$excelRow)->setValue($value);
             }
         }
 
         $lastDataRow = count($examples) + 1;
         $sheet->getStyle("A2:{$lastCol}{$lastDataRow}")->applyFromArray([
-            'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8FAFC']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8FAFC']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
         ]);
@@ -87,14 +88,14 @@ class GenerateItemTemplate extends Command
         }
 
         $dir = dirname($outputPath);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         (new Xlsx($spreadsheet))->save($outputPath);
 
         $this->info("Template saved to: {$outputPath}");
-        $this->line("Usage: php artisan items:import \"<path-to-file.xlsx>\"");
+        $this->line('Usage: php artisan items:import "<path-to-file.xlsx>"');
 
         return Command::SUCCESS;
     }

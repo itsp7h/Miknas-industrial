@@ -49,8 +49,9 @@ class PurchaseRequestPolicy
 
     public function approve(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // 'draft' is the precondition stage: PurchaseSignatureController::store is
-        // invoked while the request is still at draft and only advances it to
+        // 'draft' is the precondition stage: the signature endpoint
+        // (Api\Purchase\PurchasePipelineController::storeSignature) is invoked
+        // while the request is still at draft and only advances it to
         // gm_approval afterwards. 'gm_approval' is accepted too so re-checks
         // against an already-advanced request still pass.
         return $user->can('purchase-requests.approve')
@@ -59,9 +60,10 @@ class PurchaseRequestPolicy
 
     public function manageRfq(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // 'gm_approval' is the precondition stage: RfqController::selectSuppliers
-        // is invoked right after the GM signature advances the request to
-        // gm_approval, and it is itself the action that sets stage to 'rfq'.
+        // 'gm_approval' is the precondition stage:
+        // Api\Purchase\PurchasePipelineController::selectSuppliers is invoked
+        // right after the GM signature advances the request to gm_approval, and
+        // it is itself the action that sets stage to 'rfq'.
         return $user->can('purchase-requests.manage-rfq')
             && in_array($purchaseRequest->stage, ['gm_approval', 'rfq'], true);
     }

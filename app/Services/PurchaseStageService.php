@@ -43,22 +43,23 @@ class PurchaseStageService
     public function stageIndex(string $stage): int
     {
         $idx = array_search($stage, self::STAGES);
+
         return $idx === false ? 0 : $idx;
     }
 
     public function stageLabel(string $stage): string
     {
         return match ($stage) {
-            'draft'       => 'Purchase Request',
+            'draft' => 'Purchase Request',
             'gm_approval' => 'GM Signature',
-            'rfq'         => 'Select Suppliers',
-            'quoting'     => 'Awaiting Quotes',
-            'comparison'  => 'Quote Comparison',
-            'lpo'         => 'LPO Issued',
-            'receiving'   => 'Receiving Materials',
-            'payment'     => 'Payment',
-            'complete'    => 'Complete',
-            default       => ucfirst($stage),
+            'rfq' => 'Select Suppliers',
+            'quoting' => 'Awaiting Quotes',
+            'comparison' => 'Quote Comparison',
+            'lpo' => 'LPO Issued',
+            'receiving' => 'Receiving Materials',
+            'payment' => 'Payment',
+            'complete' => 'Complete',
+            default => ucfirst($stage),
         };
     }
 }

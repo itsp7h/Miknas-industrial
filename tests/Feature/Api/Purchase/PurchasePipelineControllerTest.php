@@ -72,6 +72,31 @@ class PurchasePipelineControllerTest extends TestCase
         $this->assertCount(0, $response->json('data'));
     }
 
+    /**
+     * Ported from the deleted Blade detail page: opening one request is gated by
+     * the view policy, not just the board's own scoping.
+     */
+    public function test_show_is_refused_without_permission_to_view_that_request(): void
+    {
+        $pr = PurchaseRequest::factory()->create();
+
+        $this->getJson("/api/v1/purchase/pipeline/{$pr->id}")->assertUnauthorized();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson("/api/v1/purchase/pipeline/{$pr->id}")->assertForbidden();
+    }
+
+    public function test_a_requester_can_open_their_own_request(): void
+    {
+        $requester = User::factory()->create();
+        $requester->assignRole('Requester');
+        $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
+
+        $this->actingAs($requester)
+            ->getJson("/api/v1/purchase/pipeline/{$pr->id}")->assertOk()
+            ->assertJsonPath('data.id', $pr->id);
+    }
+
     public function test_index_serializes_date_as_a_plain_y_m_d_string(): void
     {
         $user = User::factory()->create();
