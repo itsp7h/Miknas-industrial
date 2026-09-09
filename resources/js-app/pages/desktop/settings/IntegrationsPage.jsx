@@ -1,7 +1,7 @@
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import EmailPanel from '../../../components/settings/integrations/EmailPanel';
 import MailAccountModal from '../../../components/settings/integrations/MailAccountModal';
-import TabPills from '../../../components/settings/integrations/TabPills';
+import TabPills from '../../../components/ui/TabPills';
 import WhatsAppPanel from '../../../components/settings/integrations/WhatsAppPanel';
 import useIntegrations from '../../../components/settings/integrations/useIntegrations';
 
@@ -15,7 +15,13 @@ export default function IntegrationsPage({ compact = false }) {
                 <p className="page-subtitle">Configure third-party service integrations.</p>
             </div>
 
-            <TabPills tab={i.tab} onChange={i.setTab} />
+            <TabPills
+                tabs={[
+                    { key: 'whatsapp', label: '💬 WhatsApp' },
+                    { key: 'email', label: '✉️ Email' },
+                ]}
+                tab={i.tab} onChange={i.setTab}
+            />
 
             {i.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
 

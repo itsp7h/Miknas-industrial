@@ -3,15 +3,17 @@ const BASE = {
     cursor: 'pointer', transition: 'all .15s',
 };
 
-/** Blade's two pill tabs. */
-export default function TabPills({ tab, onChange }) {
-    const tabs = [
-        { key: 'whatsapp', label: '💬 WhatsApp' },
-        { key: 'email', label: '✉️ Email' },
-    ];
-
+/**
+ * Blade's two pill tabs, as shared vocabulary: pass the tabs in rather than
+ * hard-coding a module's own set, so every page that needs a pill switcher
+ * renders the identical thing.
+ *
+ * `style` merges into the row wrapper, for callers that sit the pills inside
+ * their own flex header and so need the default bottom margin dropped.
+ */
+export default function TabPills({ tabs, tab, onChange, style }) {
     return (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, ...style }}>
             {tabs.map(({ key, label }) => (
                 <button
                     key={key} type="button" onClick={() => onChange(key)}

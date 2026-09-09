@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Card from '../../../components/ui/Card';
 import Table from '../../../components/ui/Table';
+import TabPills from '../../../components/ui/TabPills';
 import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
 import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
@@ -122,12 +123,21 @@ export default function PipelineBoardPage({
 
     return (
         <Card title="Purchase Pipeline">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setTab('active')}>Active ({active.length})</button>
-                    <button onClick={() => setTab('completed')}>Completed ({completed.length})</button>
-                </div>
-                <button onClick={openNew}>+ New Request</button>
+            <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', marginBottom: 12,
+            }}>
+                <TabPills
+                    tabs={[
+                        { key: 'active', label: `Active (${active.length})` },
+                        { key: 'completed', label: `Completed (${completed.length})` },
+                    ]}
+                    tab={tab} onChange={setTab}
+                    style={{ marginBottom: 0 }}
+                />
+                <button type="button" onClick={openNew} className="btn-primary btn-sm">
+                    + New Request
+                </button>
             </div>
             <Table
                 columns={COLUMNS}
