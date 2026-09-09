@@ -6,7 +6,7 @@
 |---|---|---|---|
 | `ci.yml` | push to `main` or `development`, any PR | GitHub-hosted | PHP syntax check, Pint (changed files), PHPUnit on 8.2 + 8.3, Vitest, Vite build |
 | `deploy-staging.yml` | CI green on `development`, or manual | self-hosted `staging` | Deploy + smoke test `http://192.168.0.38` |
-| `deploy-production.yml` | tag `v*`, or manual | self-hosted `production` | Deploy + smoke test `https://steelerp.p7h.me`, behind an approval gate |
+| `deploy-production.yml` | tag `v*`, or manual | self-hosted `production` | Verify CI is green for the commit, then deploy + smoke test `https://steelerp.p7h.me`, behind an approval gate |
 
 ## Branching
 
@@ -16,7 +16,35 @@
 | `main` | production (`steelerp.p7h.me`) | merge from `development`, then tag `v*` or run the workflow manually |
 
 Day-to-day work lands on `development`. Nothing reaches production without an
-explicit tag or manual run *and* an approval on the `production` environment.
+explicit tag or manual run, a green CI run for that exact commit, *and* an
+approval on the `production` environment.
+
+### The production CI gate
+
+Staging consumes CI's verdict through `workflow_run`. Production cannot — it is
+triggered by a tag push or a manual run, and CI does not run on tags. So
+`deploy-production.yml` has a `verify` job that runs first, on a GitHub-hosted
+runner:
+
+1. It resolves the requested ref (tag, branch or SHA) to an immutable commit
+   SHA through the API, and the deploy job then deploys *that SHA* — so a branch
+   ref cannot move between the check and the deploy.
+2. It looks up `ci.yml` runs by that **head SHA** (not by ref — the tagged
+   commit was pushed to `main` first, and that run shares its SHA) and fails
+   unless one concluded `success`.
+
+Because `verify` is a `needs:` dependency of the deploy job, the approval
+request never reaches a reviewer for a commit CI has not passed.
+
+**Emergency override:** run the workflow manually with `allow_untested=true`.
+That downgrades the missing-CI failure to a warning in the run log. It is a
+separate explicit input rather than an implicit property of manual runs, so an
+untested deploy is visible as such afterwards.
+
+Refs handed to `deploy.sh` are validated by the script itself — `github/main`,
+`github/development`, a `v*` tag, or a commit SHA. Anything else exits 2 before
+the script touches the tree, because that argument reaches a root shell through
+the NOPASSWD sudo rule.
 
 ## Why the deploys need self-hosted runners
 
@@ -59,7 +87,8 @@ should show as Idle.
   the staging smoke test to open a websocket against Reverb.
 - **Environment `production`** — add required reviewers under
   Settings → Environments. That is what makes production deploys wait for a
-  human; the workflow itself has no other gate.
+  human. It is the second of two gates; the first is the `verify` job's CI
+  check, which runs before the approval request is raised.
 
 ## Deploying by hand
 

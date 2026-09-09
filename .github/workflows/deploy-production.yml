@@ -11,29 +11,147 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Git ref to deploy (defaults to the tag, else main)'
+        # A branch, tag, or commit SHA. Resolved to a SHA by the `verify` job
+        # via the GitHub API, so this must be a ref GitHub knows about — not a
+        # local remote-qualified ref like `github/main`.
+        description: 'Git ref to deploy (branch, tag or SHA; defaults to the pushed tag, else main)'
         required: false
-        default: 'github/main'
+        default: ''
+      allow_untested:
+        # The documented escape hatch. Deliberately a separate opt-in rather
+        # than an implicit property of workflow_dispatch: a manual deploy of a
+        # tested commit is routine, deploying an untested one is not, and the
+        # two should not look identical in the run log.
+        description: 'Deploy even if CI is not green for that commit (emergency only)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # A gate before the approval gate. Production is reached by tag push or manual
+  # run, neither of which passes through `workflow_run` the way staging does —
+  # so without this, a tag on an untested commit deploys as readily as a tested
+  # one, and the human approving it cannot tell which. Runs on a GitHub-hosted
+  # runner: it only talks to the API, so it has no business executing on the
+  # LAN box.
+  #
+  # It also resolves the ref to an immutable SHA which the deploy job uses
+  # verbatim, so the commit deployed is exactly the commit whose CI was checked
+  # — a branch ref could otherwise move between the two steps.
+  # ---------------------------------------------------------------------------
+  verify:
+    name: Verify CI is green
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Resolve ref and check CI status
+        id: resolve
+        uses: actions/github-script@v7
+        env:
+          # Read through `env`, never interpolated into the script body: a
+          # `${{ }}` expression is pasted in as literal source text, so a
+          # hostile ref value would be executed rather than read.
+          INPUT_REF: ${{ github.event.inputs.ref }}
+          ALLOW_UNTESTED: ${{ github.event.inputs.allow_untested }}
+        with:
+          script: |
+            const requested = (process.env.INPUT_REF || '').trim();
+            const allowUntested = process.env.ALLOW_UNTESTED === 'true';
+
+            // A tag push already carries the exact commit; a manual run may
+            // name any ref, and an empty input means `main`.
+            let sha;
+            if (requested) {
+              const { data } = await github.rest.repos.getCommit({
+                ...context.repo,
+                ref: requested,
+              });
+              sha = data.sha;
+            } else if (context.eventName === 'push') {
+              sha = context.sha;
+            } else {
+              const { data } = await github.rest.repos.getCommit({
+                ...context.repo,
+                ref: 'main',
+              });
+              sha = data.sha;
+            }
+
+            if (!/^[0-9a-f]{40}$/.test(sha)) {
+              core.setFailed(`Resolved ref is not a commit SHA: ${sha}`);
+              return;
+            }
+            core.info(`Deploying ${requested || context.ref} -> ${sha}`);
+            core.setOutput('sha', sha);
+
+            // CI does not run on tags (ci.yml triggers on branch pushes and
+            // PRs), so look the run up by head SHA rather than by ref: the
+            // commit a `v*` tag points at was pushed to `main` first, and that
+            // run carries the same head SHA.
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              ...context.repo,
+              workflow_id: 'ci.yml',
+              head_sha: sha,
+              per_page: 100,
+            });
+
+            const green = runs.workflow_runs.find(r => r.conclusion === 'success');
+            const pending = runs.workflow_runs.find(r => r.status !== 'completed');
+
+            if (green) {
+              core.info(`CI is green for ${sha}: ${green.html_url}`);
+              return;
+            }
+
+            const detail = runs.total_count === 0
+              ? 'CI has never run for this commit.'
+              : pending
+                ? `CI is still running: ${pending.html_url}`
+                : `CI concluded '${runs.workflow_runs[0].conclusion}': ${runs.workflow_runs[0].html_url}`;
+
+            if (allowUntested) {
+              core.warning(
+                `Proceeding without a green CI run for ${sha} because ` +
+                `allow_untested was set. ${detail}`
+              );
+              return;
+            }
+
+            core.setFailed(
+              `Refusing to deploy ${sha} to production: no successful CI run. ` +
+              `${detail} Push the commit to a branch and let CI pass, or re-run ` +
+              `this workflow with allow_untested=true if this is an emergency.`
+            );
+
   deploy:
     name: Deploy to production
+    needs: verify
     runs-on: [self-hosted, steelerp, production]
     # Configure required reviewers on this environment in the repo settings —
-    # that is what turns this job into an approval gate.
+    # that is what turns this job into an approval gate. `needs: verify` means
+    # the reviewer is never asked to approve a commit CI has not passed.
     environment:
       name: production
       url: https://steelerp.p7h.me
 
     steps:
       - name: Deploy
+        env:
+          # Same rule as in `verify`, and it matters more here: this value
+          # reaches a root shell through sudo. It is a 40-char SHA produced by
+          # `verify`, and deploy.sh re-validates it independently.
+          REF: ${{ needs.verify.outputs.sha }}
         run: |
-          sudo /var/www/ProjectsERP/scripts/deploy.sh production \
-            "${{ github.event.inputs.ref || github.ref_name }}"
+          sudo /var/www/ProjectsERP/scripts/deploy.sh production "$REF"
 
       - name: Smoke test
         run: /var/www/ProjectsERP/scripts/smoke-test.sh https://steelerp.p7h.me

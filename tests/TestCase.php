@@ -14,13 +14,14 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
         $this->seedRoles();
 
-        // The PHP job builds no assets, so public/build/manifest.json does not
-        // exist there and every @vite view (the SPA shell, Breeze's auth
-        // screens) throws "Vite manifest not found" instead of rendering.
-        // These tests assert on routes and view data, not on the bundle — the
-        // JS job already gates the build — so the manifest is stubbed out here
-        // rather than required. Without this the suite passes locally only
-        // because a previous `npm run build` left a manifest behind.
+        // Every layout calls @vite(...), which throws unless
+        // public/build/manifest.json exists — and that file is a build
+        // artifact, gitignored, absent in a fresh checkout. So any test that
+        // renders a page failed in CI while passing on a machine that happened
+        // to have run `npm run build` at some point. The PHP CI job has no
+        // Node in it by design (the JS job builds the bundle and would catch a
+        // broken build), so stub Vite out here instead: these tests are
+        // asserting on server-rendered HTML, never on asset URLs.
         $this->withoutVite();
 
         // Sanctum's stateful-request detection (EnsureFrontendRequestsAreStateful)
