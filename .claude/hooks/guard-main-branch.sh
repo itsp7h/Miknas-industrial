@@ -17,9 +17,43 @@ payload=$(cat)
 cmd=$(printf '%s' "$payload" | jq -r '.tool_input.command // empty' 2>/dev/null)
 [ -z "$cmd" ] && exit 0
 
+# ---------------------------------------------------------------------------
+# Only the executable part of the command is matched, never text the command
+# merely carries. A commit message or PR body that *describes* pushing to main
+# is prose, not a push — and an earlier version of this hook blocked its own
+# PR for saying so. Two kinds of payload are stripped first:
+#
+#   1. heredoc bodies — `git commit -F - <<'MSG' … MSG`, `gh pr create
+#      --body-file <<'MD' … MD`. The line opening the heredoc is kept, since
+#      the real command lives on it; the body is dropped.
+#   2. quoted values of message-ish flags — -m, --message, --title, --body.
+#
+# Quoted arguments elsewhere are left intact, so `git push origin "main"` is
+# still caught.
+# ---------------------------------------------------------------------------
+stripped=$(printf '%s' "$cmd" | awk '
+    skip {
+        if ($0 ~ "^[[:space:]]*" term "[[:space:]]*$") skip = 0
+        next
+    }
+    {
+        print
+        if (match($0, /<<-?[[:space:]]*['"'"'"]?[A-Za-z_][A-Za-z0-9_]*['"'"'"]?/)) {
+            term = substr($0, RSTART, RLENGTH)
+            sub(/^<<-?[[:space:]]*/, "", term)
+            gsub(/['"'"'"]/, "", term)
+            skip = 1
+        }
+    }
+')
+
 # Collapse newlines and runs of whitespace so a multi-line or oddly spaced
 # command cannot slip past the patterns below.
-norm=$(printf '%s' "$cmd" | tr '\n\t' '  ' | tr -s ' ')
+norm=$(printf '%s' "$stripped" \
+    | tr '\n\t' '  ' \
+    | sed -E "s/(-m|--message|-t|--title|-b|--body)[= ]+'[^']*'/ /g; \
+              s/(-m|--message|-t|--title|-b|--body)[= ]+\"[^\"]*\"/ /g" \
+    | tr -s ' ')
 
 deny() {
     jq -nc --arg r "$1" '{
@@ -40,7 +74,7 @@ branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
 
 # `main` named as a push destination: `origin main`, `HEAD:main`, `dev:main`.
 # The word boundaries keep `maintenance` or `main-old` from matching.
-names_main='(^| )(main|[^ ]+:main)( |$)'
+names_main='(^| )("?main"?|[^ ]+:"?main"?)( |$)'
 
 # 1. Merging a pull request is the owner's decision, never a terminal's.
 if has '(^|[;&|] *)gh +pr +merge( |$)'; then
