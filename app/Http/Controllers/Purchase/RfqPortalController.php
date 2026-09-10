@@ -2,179 +2,25 @@
 
 namespace App\Http\Controllers\Purchase;
 
-use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
 use App\Models\RfqInvitation;
-use App\Models\Setting;
-use App\Models\SupplierQuote;
-use App\Models\SupplierQuoteItem;
-use App\Models\User;
-use App\Notifications\QuoteReceived;
-use App\Services\PurchaseStageService;
-use Illuminate\Http\Request;
 
+/**
+ * The public quote portal's host page — the Blade that mounts React and
+ * nothing else. Reading the invitation and recording the quote belong to
+ * Api\Purchase\RfqPortalController; all this route decides is whether the
+ * token is one we issued, so an unknown link still 404s at the door rather
+ * than painting a shell that then reports the same thing.
+ *
+ * It stays Blade for the same reason the login page does: a supplier is not
+ * authenticated, so the portal cannot be a route inside the /app shell.
+ */
 class RfqPortalController extends Controller
 {
-    private function resolve(string $token): RfqInvitation
-    {
-        return RfqInvitation::where('token', $token)
-            ->with(['purchaseRequest.items', 'supplier'])
-            ->firstOrFail();
-    }
-
     public function show(string $token)
     {
-        $invitation = $this->resolve($token);
+        RfqInvitation::where('token', $token)->firstOrFail();
 
-        if ($invitation->isSubmitted()) {
-            return view('rfq.submitted', compact('invitation'));
-        }
-
-        if ($invitation->isExpired()) {
-            return view('rfq.expired', compact('invitation'));
-        }
-
-        if ($invitation->status === 'sent') {
-            $invitation->update(['status' => 'opened', 'opened_at' => now()]);
-        }
-
-        $purchaseRequest = $invitation->purchaseRequest;
-        $itemIds = $invitation->item_ids;
-        $items = $itemIds
-            ? $purchaseRequest->items->whereIn('id', $itemIds)->values()
-            : $purchaseRequest->items;
-
-        // Generate a fresh confirmation code per page load and store in session
-        $confirmCode = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
-        session(['rfq_confirm_'.$token => $confirmCode]);
-
-        $vatRate = (float) Setting::get('vat_rate', 0);
-        $view = $this->isMobileDevice() ? 'rfq.show-mobile' : 'rfq.show';
-
-        return view($view, compact('invitation', 'purchaseRequest', 'items', 'confirmCode', 'vatRate'));
-    }
-
-    /**
-     * Phones only — tablets (iPad, Android tablets) render the desktop view,
-     * since they have enough screen space for the table-based layout.
-     */
-    private function isMobileDevice(): bool
-    {
-        $userAgent = request()->userAgent() ?? '';
-
-        if (preg_match('/iPad|Android(?!.*Mobile)/i', $userAgent)) {
-            return false;
-        }
-
-        return (bool) preg_match('/Mobi|iPhone|iPod|Android|BlackBerry|IEMobile|Opera Mini/i', $userAgent);
-    }
-
-    public function submit(Request $request, string $token)
-    {
-        $invitation = $this->resolve($token);
-
-        if ($invitation->isSubmitted() || $invitation->isExpired()) {
-            abort(403, 'This link is no longer valid.');
-        }
-
-        $validated = $request->validate([
-            'terms' => ['accepted'],
-            'confirm_code' => ['required', 'string'],
-            'lead_time_days' => ['nullable', 'integer', 'min:0'],
-            'payment_terms' => ['nullable', 'string', 'max:200'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-            'items' => ['required', 'array'],
-            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
-            'items.*.is_vatable' => ['nullable', 'boolean'],
-            'items.*.not_available' => ['nullable', 'boolean'],
-            'items.*.supplier_description' => ['nullable', 'string', 'max:500'],
-        ]);
-
-        $expectedCode = session('rfq_confirm_'.$token);
-        if (! $expectedCode || strtoupper(trim($validated['confirm_code'])) !== $expectedCode) {
-            return back()->withErrors(['confirm_code' => 'Incorrect confirmation code. Please copy the code exactly as shown.'])->withInput();
-        }
-        session()->forget('rfq_confirm_'.$token);
-
-        $itemIds = $invitation->item_ids;
-        $purchaseItems = $itemIds
-            ? $invitation->purchaseRequest->items->whereIn('id', $itemIds)->values()
-            : $invitation->purchaseRequest->items;
-
-        $quote = SupplierQuote::create([
-            'rfq_invitation_id' => $invitation->id,
-            'purchase_request_id' => $invitation->purchase_request_id,
-            'supplier_id' => $invitation->supplier_id,
-            'submitted_at' => now(),
-            'lead_time_days' => $validated['lead_time_days'],
-            'payment_terms' => $validated['payment_terms'],
-            'notes' => $validated['notes'],
-            'total_amount' => 0,
-        ]);
-
-        $subtotal = 0;
-        $vatAmount = 0;
-        $vatRate = (float) Setting::get('vat_rate', 0);
-
-        foreach ($purchaseItems as $i => $item) {
-            $notAvailable = ! empty($validated['items'][$i]['not_available']);
-            $unitPrice = $notAvailable ? 0 : (float) ($validated['items'][$i]['unit_price'] ?? 0);
-            $qty = (float) $item->quantity_required;
-            $totalPrice = $notAvailable ? 0 : round($unitPrice * $qty, 3);
-            $isVatable = ! $notAvailable && ! empty($validated['items'][$i]['is_vatable']);
-            $supplierDescription = ! empty($validated['items'][$i]['supplier_description'])
-                ? trim($validated['items'][$i]['supplier_description'])
-                : null;
-
-            $subtotal += $totalPrice;
-
-            if ($isVatable && $vatRate > 0) {
-                $vatAmount += round($totalPrice * $vatRate / 100, 3);
-            }
-
-            SupplierQuoteItem::create([
-                'supplier_quote_id' => $quote->id,
-                'purchase_request_item_id' => $item->id,
-                'description' => $item->description,
-                'supplier_description' => $supplierDescription,
-                'unit' => $item->unit ?? '',
-                'quantity' => $qty,
-                'unit_price' => $unitPrice,
-                'total_price' => $totalPrice,
-                'is_vatable' => $isVatable,
-                'not_available' => $notAvailable,
-            ]);
-        }
-
-        $quote->update(['total_amount' => round($subtotal + $vatAmount, 3)]);
-        $invitation->update(['status' => 'submitted']);
-
-        // If at least 1 quote is in, move to comparison stage
-        $pr = $invitation->purchaseRequest;
-        if ($pr->stage === 'quoting') {
-            app(PurchaseStageService::class)->setStage($pr, 'comparison');
-        }
-
-        // Notify all admin users
-        $invitation->load('supplier', 'purchaseRequest');
-        User::role('Admin')->each(function ($u) use ($invitation) {
-            $u->notify(new QuoteReceived($invitation));
-
-            // Broadcast the just-created database notification live over
-            // Reverb so the bell updates instantly instead of via polling.
-            $notification = $u->notifications()->latest()->first();
-            if ($notification) {
-                event(new NotificationPushed(
-                    $u->id,
-                    'New Quote Received',
-                    $notification->data['message'] ?? '',
-                    $notification->data['url'] ?? null,
-                    $notification->id,
-                    optional($notification->created_at)->toIso8601String(),
-                ));
-            }
-        });
-
-        return view('rfq.submitted', compact('invitation'));
+        return view('rfq.portal', compact('token'));
     }
 }

@@ -64,18 +64,20 @@ class NotificationBroadcastTest extends TestCase
         $confirmCode = 'ABCDE';
         $this->withSession(['rfq_confirm_'.$invitation->token => $confirmCode]);
 
-        $response = $this->post('/rfq/'.$invitation->token, [
-            'terms' => '1',
+        // The portal is React now: the quote is submitted to the API, not to
+        // a Blade form post. Lines are paired to items by id.
+        $response = $this->postJson('/api/v1/rfq/'.$invitation->token, [
+            'terms' => true,
             'confirm_code' => $confirmCode,
             'lead_time_days' => 5,
             'payment_terms' => 'Net 30',
             'notes' => null,
             'items' => [
-                ['unit_price' => 5, 'is_vatable' => false, 'not_available' => false],
+                ['id' => $item->id, 'unit_price' => 5, 'is_vatable' => false, 'not_available' => false],
             ],
         ]);
 
-        $response->assertOk();
+        $response->assertCreated();
 
         Event::assertDispatched(NotificationPushed::class, function (NotificationPushed $event) use ($admin) {
             return $event->userId === $admin->id

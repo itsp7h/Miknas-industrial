@@ -12,6 +12,9 @@ export default defineConfig({
                 // Guest entry: the login screen runs outside the /app shell,
                 // which is behind auth+verified. See resources/js-app/auth.jsx.
                 'resources/js-app/auth.jsx',
+                // Public entry: the supplier quote portal is reached by token
+                // with no account at all. See resources/js-app/rfq.jsx.
+                'resources/js-app/rfq.jsx',
             ],
             refresh: true,
         }),

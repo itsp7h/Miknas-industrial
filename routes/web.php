@@ -11,8 +11,9 @@ Route::get('/', function () {
 });
 
 // Public RFQ portal — no auth required
+// The page is a React mount point; the quote itself is submitted to
+// POST /api/v1/rfq/{token}, which is why there is no POST route here any more.
 Route::get('/rfq/{token}', [RfqPortalController::class, 'show'])->name('rfq.show');
-Route::post('/rfq/{token}', [RfqPortalController::class, 'submit'])->name('rfq.submit');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // The dashboard is the React page at /app. The named route stays as a

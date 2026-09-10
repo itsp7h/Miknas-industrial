@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Purchase\GoodsReceiptNoteController;
 use App\Http\Controllers\Api\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Api\Purchase\PurchasePipelineController;
 use App\Http\Controllers\Api\Purchase\PurchaseRequestController;
+use App\Http\Controllers\Api\Purchase\RfqPortalController;
 use App\Http\Controllers\Api\Purchase\SupplierController;
 use App\Http\Controllers\Api\Purchase\SupplierInvoiceController as PurchaseInvoiceController;
 use App\Http\Controllers\Api\Purchase\SupplierPaymentController as PurchasePaymentController;
@@ -35,6 +36,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
+
+    // The public quote portal. No auth by design — the invitation token is the
+    // credential, and the controller resolves it on every call. Sits outside
+    // the auth:sanctum group for that reason, not by oversight.
+    Route::get('rfq/{token}', [RfqPortalController::class, 'show']);
+    Route::post('rfq/{token}', [RfqPortalController::class, 'submit']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);

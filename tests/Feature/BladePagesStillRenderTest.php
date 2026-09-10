@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\PurchaseRequest;
+use App\Models\RfqInvitation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -94,6 +95,41 @@ class BladePagesStillRenderTest extends TestCase
         ] as $name) {
             $this->assertFalse(Route::has($name), "Route {$name} should have moved to the API.");
         }
+    }
+
+    /**
+     * The public quote portal is React behind its own Vite entry. The Blade
+     * route survives — a supplier has no session, so the portal cannot be a
+     * route inside the /app shell — but it is a mount point now, and the four
+     * pages it used to render are gone. The POST went with them: the quote is
+     * submitted to POST /api/v1/rfq/{token}.
+     */
+    public function test_the_rfq_portal_is_a_react_mount_point(): void
+    {
+        $invitation = RfqInvitation::factory()->create();
+
+        $this->get("/rfq/{$invitation->token}")
+            ->assertOk()
+            ->assertSee('id="rfq-app"', false)
+            ->assertSee('data-token="'.$invitation->token.'"', false)
+            // Nothing about the invitation is in the markup — the React page
+            // reads it from the API, so a forwarded link leaks no prices.
+            ->assertDontSee($invitation->supplier->name);
+
+        // An unknown token still fails at the door rather than painting a
+        // shell that then reports the same thing.
+        $this->get('/rfq/nobody-issued-this')->assertNotFound();
+
+        $this->assertFalse(Route::has('rfq.submit'), 'The portal submits to the API now.');
+        $this->assertTrue(Route::has('rfq.show'), 'The invitation emails link to this route.');
+
+        foreach (['rfq.show', 'rfq.show-mobile', 'rfq.expired', 'rfq.submitted'] as $view) {
+            $this->assertFalse(view()->exists($view), "View {$view} should have been deleted.");
+        }
+
+        // The hand-rolled user-agent split went with them: one tree, picked by
+        // useViewport (CLAUDE.md #12).
+        $this->assertTrue(view()->exists('rfq.portal'));
     }
 
     /**
