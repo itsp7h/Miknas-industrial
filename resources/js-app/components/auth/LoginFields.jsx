@@ -3,24 +3,13 @@
  * the two inputs, their error text, remember-me, and the dev quick-fill.
  * Layout, spacing and the submit button stay with each page (CLAUDE.md #12 —
  * separate files per viewport), so only the fields themselves are shared.
+ *
+ * FormError moved to AuthFields when the other four auth screens were
+ * converted — it is not login's any more — and is re-exported here so the
+ * pages that already import it from this module keep working.
  */
 
-export function FormError({ message }) {
-    if (!message) return null;
-
-    return (
-        <div
-            role="alert"
-            style={{
-                marginBottom: 16, padding: '10px 12px', borderRadius: 8,
-                background: '#fef2f2', border: '1px solid #fecaca',
-                color: '#b91c1c', fontSize: 13,
-            }}
-        >
-            {message}
-        </div>
-    );
-}
+export { FormError } from './AuthFields';
 
 export function LoginFields({ values, errors, onChange, disabled, autoFocus = true }) {
     return (

@@ -37,6 +37,12 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
 
+    // The guest half of the password-reset flow. Breeze's own POST routes
+    // still exist and still behave as Breeze intends; these are the same
+    // policy answering in JSON, for the React pages that replaced its forms.
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('reset-password', [AuthController::class, 'resetPassword']);
+
     // The public quote portal. No auth by design — the invitation token is the
     // credential, and the controller resolves it on every call. Sits outside
     // the auth:sanctum group for that reason, not by oversight.
@@ -46,6 +52,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
+        Route::post('confirm-password', [AuthController::class, 'confirmPassword']);
         Route::post('dashboard/ping', [DashboardController::class, 'ping']);
         Route::get('dashboard/summary', [DashboardController::class, 'summary']);
         Route::get('notifications/unread', [NotificationController::class, 'unread']);

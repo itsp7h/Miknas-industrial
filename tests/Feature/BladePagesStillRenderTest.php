@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\PurchaseRequest;
 use App\Models\RfqInvitation;
 use App\Models\User;
+use App\View\Components\GuestLayout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -55,21 +56,80 @@ class BladePagesStillRenderTest extends TestCase
     }
 
     /**
-     * The shared Blade chrome is gone along with the last pages that used it.
-     * A new Blade page extending it would fail at render, so this fails first
-     * and says why.
+     * There is no Blade chrome left at all. `layouts/app` went with the last
+     * page on it; `layouts/guest` and the six Breeze partials went with the
+     * auth screens. A new Blade page extending either would fail at render,
+     * so this fails first and says why.
      */
     public function test_the_blade_chrome_and_its_last_pages_are_gone(): void
     {
         $this->assertFalse(view()->exists('layouts.app'), 'layouts/app was deleted with the last Blade page.');
+        $this->assertFalse(view()->exists('layouts.guest'), 'layouts/guest went with the Breeze auth pages.');
 
         foreach (['purchase.rfq.show', 'purchase.signature.show', 'components.purchase.supplier-invite-list'] as $view) {
             $this->assertFalse(view()->exists($view), "View {$view} should have been deleted.");
         }
 
-        // The auth pages have their own chrome and stay Blade.
-        $this->assertTrue(view()->exists('layouts.guest'));
+        // The Breeze partials had no other consumer than the auth pages.
+        foreach ([
+            'components.application-logo', 'components.auth-session-status', 'components.input-error',
+            'components.input-label', 'components.primary-button', 'components.text-input',
+        ] as $view) {
+            $this->assertFalse(view()->exists($view), "Breeze partial {$view} should have been deleted.");
+        }
+
+        $this->assertFalse(class_exists(GuestLayout::class), 'GuestLayout went with layouts/guest.');
+
+        // What is left: the two React host pages.
         $this->assertTrue(view()->exists('app-shell'));
+        $this->assertTrue(view()->exists('auth.shell'));
+    }
+
+    /**
+     * All five auth screens are React on one shared host page. They stay
+     * outside the /app shell because they are exactly the screens someone
+     * reaches without auth, without verification, or without a confirmed
+     * password — so the shell's middleware would bounce them.
+     *
+     * Breeze's own POST routes survive alongside the JSON ones, as they did
+     * for the login cutover: they are the framework's contract and its test
+     * suite's, and nothing in our UI posts to them any more.
+     */
+    public function test_the_auth_screens_are_react_on_one_host_page(): void
+    {
+        $guest = [
+            '/login' => 'login',
+            '/forgot-password' => 'forgot-password',
+            '/reset-password/reset-token-123' => 'reset-password',
+        ];
+
+        foreach ($guest as $url => $page) {
+            $this->get($url)
+                ->assertOk()
+                ->assertSee('id="auth-app"', false)
+                ->assertSee('data-page="'.$page.'"', false);
+        }
+
+        // The token and the address come from the emailed link; only the
+        // server can hand them to the page.
+        $this->get('/reset-password/reset-token-123?email=admin%40erp.com')
+            ->assertSee('reset-token-123', false)
+            ->assertSee('admin@erp.com', false);
+
+        $unverified = User::factory()->unverified()->create();
+        $this->actingAs($unverified)->get('/verify-email')
+            ->assertOk()
+            ->assertSee('data-page="verify-email"', false)
+            ->assertSee($unverified->email, false);
+
+        $this->actingAs($this->user())->get('/confirm-password')
+            ->assertOk()
+            ->assertSee('data-page="confirm-password"', false);
+
+        foreach (['auth.login', 'auth.forgot-password', 'auth.reset-password',
+            'auth.verify-email', 'auth.confirm-password'] as $view) {
+            $this->assertFalse(view()->exists($view), "View {$view} should have been deleted.");
+        }
     }
 
     /**
