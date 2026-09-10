@@ -30,11 +30,21 @@ describe('ProfilePage', () => {
         expect(screen.getByLabelText('Email')).toHaveValue('admin@erp.com');
     });
 
+    /**
+     * Wait for the *loaded value*, not merely for the label: the form renders
+     * empty and fills in when apiGet resolves, so keying off the label let a
+     * loaded runner click Save before the email arrived and assert against an
+     * empty payload. That is what made this file flaky in CI.
+     */
+    const loadedForm = () => waitFor(() =>
+        expect(screen.getByLabelText('Email')).toHaveValue('admin@erp.com'));
+
     it('saves the name and email', async () => {
         const put = vi.spyOn(client, 'apiPut').mockResolvedValue({ message: 'Profile updated.', data: { ...USER, name: 'Renamed' } });
         wrap(DesktopProfilePage);
+        await loadedForm();
 
-        fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Renamed' } });
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });
         fireEvent.click(screen.getAllByText('Save')[0]);
 
         await waitFor(() => expect(put).toHaveBeenCalledWith('/profile', { name: 'Renamed', email: 'admin@erp.com' }));
@@ -44,8 +54,9 @@ describe('ProfilePage', () => {
     it('shows a server field error against the field', async () => {
         vi.spyOn(client, 'apiPut').mockRejectedValue({ errors: { email: ['The email has already been taken.'] } });
         wrap(DesktopProfilePage);
+        await loadedForm();
 
-        fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'taken@example.test' } });
+        fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'taken@example.test' } });
         fireEvent.click(screen.getAllByText('Save')[0]);
 
         expect(await screen.findByText('The email has already been taken.')).toBeInTheDocument();
