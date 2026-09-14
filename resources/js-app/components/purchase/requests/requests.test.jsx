@@ -17,6 +17,10 @@ const OPTIONS = {
             id: 2, name: 'Harbour Works', company_id: 4, company_name: 'Gulf Marine',
             label: 'Gulf Marine — Harbour Works', locations: [],
         },
+        {
+            id: 3, name: 'Coastal Depot', company_id: 5, company_name: 'Desert Logistics',
+            label: 'Desert Logistics — Coastal Depot', locations: ['Main Store'],
+        },
     ],
     departments: [
         { id: 10, name: 'Operations', company_id: 3 },
@@ -177,6 +181,23 @@ describe('the new-request modal', () => {
         expect(screen.queryByText('Marine Ops')).not.toBeInTheDocument();
     });
 
+    it('fills the location in when the project offers only one', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
+        fireEvent.click(screen.getByText('Coastal Depot'));
+
+        // One location is no choice at all, so the form makes it.
+        expect(screen.getByLabelText('Location / Site')).toHaveValue('Main Store');
+
+        // Plant Expansion offers two, so it stays for the user to pick and
+        // the filled-in site does not carry over from the project before it.
+        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
+        fireEvent.click(screen.getByText('Plant Expansion'));
+        expect(screen.getByLabelText('Location / Site')).toHaveValue('');
+    });
     it('posts the form and drops rows left blank', async () => {
         const post = vi.spyOn(client, 'apiPost').mockResolvedValue({
             data: { id: 9, request_number: 'MPR26-0009' }, message: 'MPR26-0009 submitted successfully.',

@@ -101,13 +101,20 @@ export default function RequestModal({
                         <ProjectPicker
                             projects={projects}
                             value={values.project_name}
-                            onChange={(name) => setValues((current) => ({
-                                ...current,
-                                project_name: name,
+                            onChange={(name) => setValues((current) => {
                                 // A location belongs to one project, so it cannot survive
-                                // the project changing under it.
-                                location: '',
-                            }))}
+                                // the project changing under it. Where the new project
+                                // offers exactly one there is no choice to make, so make
+                                // it; with several, choosing for the user would put a site
+                                // nobody picked on the request.
+                                const offered = projects.find((p) => p.name === name)?.locations ?? [];
+
+                                return {
+                                    ...current,
+                                    project_name: name,
+                                    location: offered.length === 1 ? offered[0] : '',
+                                };
+                            })}
                         />
 
                         <div>
