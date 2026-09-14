@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
-import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import SupplierForm from '../../../components/purchase/supplier/SupplierForm';
+import SupplierModal from '../../../components/purchase/supplier/SupplierModal';
 import SupplierStatCards from '../../../components/purchase/supplier/SupplierStatCards';
 import SupplierToolbar from '../../../components/purchase/supplier/SupplierToolbar';
 import SupplierSearch from '../../../components/purchase/supplier/SupplierSearch';
@@ -122,13 +121,15 @@ export default function SupplierListPage() {
                 </div>
             ))}
 
-            <Modal
-                open={s.modalOpen}
-                title={s.editing ? 'Edit Supplier' : 'New Supplier'}
-                onClose={() => s.setModalOpen(false)}
-            >
-                <SupplierForm supplier={s.editing} onSaved={s.handleSaved} onCancel={() => s.setModalOpen(false)} />
-            </Modal>
+            {/* Its own dialog, on the same shell as the MPR modal — not the
+                small generic ui/Modal a sixteen-field form was cramped into. */}
+            {s.modalOpen && (
+                <SupplierModal
+                    supplier={s.editing}
+                    onSaved={s.handleSaved}
+                    onCancel={() => s.setModalOpen(false)}
+                />
+            )}
             <ConfirmModal
                 open={!!s.deleting}
                 title="Delete supplier?"

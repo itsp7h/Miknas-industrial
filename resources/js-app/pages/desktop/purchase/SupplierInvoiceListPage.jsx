@@ -1,6 +1,5 @@
-import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import SupplierInvoiceForm from '../../../components/purchase/invoice/SupplierInvoiceForm';
+import SupplierInvoiceModal from '../../../components/purchase/invoice/SupplierInvoiceModal';
 import SupplierInvoiceTable from '../../../components/purchase/invoice/SupplierInvoiceTable';
 import useSupplierInvoiceList from '../../../components/purchase/invoice/useSupplierInvoiceList';
 
@@ -42,13 +41,13 @@ export default function SupplierInvoiceListPage() {
 
             <SupplierInvoiceTable invoices={v.filtered} onEdit={v.openEdit} onDelete={v.setDeleting} />
 
-            <Modal
-                open={v.modalOpen}
-                title={v.editing ? `Edit ${v.editing.invoice_number}` : 'New Supplier Invoice'}
-                onClose={() => v.setModalOpen(false)}
-            >
-                <SupplierInvoiceForm invoice={v.editing} onSaved={v.handleSaved} onCancel={() => v.setModalOpen(false)} />
-            </Modal>
+            {v.modalOpen && (
+                <SupplierInvoiceModal
+                    invoice={v.editing}
+                    onSaved={v.handleSaved}
+                    onCancel={() => v.setModalOpen(false)}
+                />
+            )}
             <ConfirmModal
                 open={!!v.deleting}
                 title="Delete this invoice?"

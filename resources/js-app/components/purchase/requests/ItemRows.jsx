@@ -1,9 +1,4 @@
-const CELL = { border: '1px solid #e2e8f0', padding: '0.25rem 0.5rem' };
-const HEAD = {
-    border: '1px solid #e2e8f0', padding: '0.5rem 0.625rem', textAlign: 'left',
-    fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase',
-};
-const FIELD = { width: '100%', border: 0, outline: 'none', fontSize: '0.8rem', background: 'transparent' };
+import { FormSection, TABLE_CELL as CELL, TABLE_FIELD as FIELD, TABLE_HEAD as HEAD } from '../../ui/FormModal';
 
 export function blankRow(date) {
     return { description: '', unit: '', quantity_required: '', purpose_use: '', required_date: date ?? '' };
@@ -52,20 +47,11 @@ export default function ItemRows({ items, units, accent, today, compact = false,
     }
 
     return (
-        <div style={{
-            background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.875rem',
-            padding: '1.25rem', marginBottom: '1.25rem',
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                <h3 style={{
-                    fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase',
-                    letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '0.4rem',
-                }}>
-                    <span style={{ display: 'inline-block', width: 3, height: 12, background: accent, borderRadius: 2 }} />
-                    Material Details
-                </h3>
-                <button type="button" onClick={add} className="btn-primary btn-sm">+ Add Item</button>
-            </div>
+        <FormSection
+            accent={accent}
+            title="Material Details"
+            action={<button type="button" onClick={add} className="btn-primary btn-sm">+ Add Item</button>}
+        >
 
             {/* The table keeps its columns on a phone and scrolls sideways
                 instead — a purchase line only makes sense read across. */}
@@ -163,6 +149,6 @@ export default function ItemRows({ items, units, accent, today, compact = false,
                     </tbody>
                 </table>
             </div>
-        </div>
+        </FormSection>
     );
 }

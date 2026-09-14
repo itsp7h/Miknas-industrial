@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import GrnForm from '../../../components/purchase/grn/GrnForm';
+import GrnModal from '../../../components/purchase/grn/GrnModal';
 import useGrnList from '../../../components/purchase/grn/useGrnList';
 import { STATUS_LABELS, badgeClassFor, formatDate } from '../../../components/purchase/grn/grnStyles';
 
@@ -88,9 +87,9 @@ export default function GrnListPage() {
                 </div>
             ))}
 
-            <Modal open={g.modalOpen} title="New Goods Receipt Note" onClose={closeModal}>
-                <GrnForm presetOrderId={presetOrderId} onSaved={g.handleSaved} onCancel={closeModal} />
-            </Modal>
+            {g.modalOpen && (
+                <GrnModal presetOrderId={presetOrderId} onSaved={g.handleSaved} onCancel={closeModal} />
+            )}
             <ConfirmModal
                 open={!!g.confirming}
                 title="Confirm this GRN?"

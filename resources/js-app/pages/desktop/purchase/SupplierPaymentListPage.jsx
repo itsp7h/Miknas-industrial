@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import SupplierPaymentForm from '../../../components/purchase/payment/SupplierPaymentForm';
+import SupplierPaymentModal from '../../../components/purchase/payment/SupplierPaymentModal';
 import SupplierPaymentTable from '../../../components/purchase/payment/SupplierPaymentTable';
 import useSupplierPaymentList from '../../../components/purchase/payment/useSupplierPaymentList';
 
@@ -61,18 +60,14 @@ export default function SupplierPaymentListPage() {
 
             <SupplierPaymentTable payments={p.filtered} onEdit={p.openEdit} onDelete={p.setDeleting} />
 
-            <Modal
-                open={p.modalOpen}
-                title={p.editing ? 'Edit Payment' : 'Record Supplier Payment'}
-                onClose={closeModal}
-            >
-                <SupplierPaymentForm
+            {p.modalOpen && (
+                <SupplierPaymentModal
                     payment={p.editing}
                     presetInvoiceId={presetInvoiceId}
                     onSaved={p.handleSaved}
                     onCancel={closeModal}
                 />
-            </Modal>
+            )}
             <ConfirmModal
                 open={!!p.deleting}
                 title="Delete this payment?"
