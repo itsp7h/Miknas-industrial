@@ -4,8 +4,10 @@ import ConfirmModal from '../../../components/ui/ConfirmModal';
 import GrnModal from '../../../components/purchase/grn/GrnModal';
 import GrnTable from '../../../components/purchase/grn/GrnTable';
 import useGrnList from '../../../components/purchase/grn/useGrnList';
+import { useAccess } from '../../../layouts/AccessContext';
 
 export default function GrnListPage() {
+    const { can } = useAccess();
     const g = useGrnList();
     const [params, setParams] = useSearchParams();
     const presetOrderId = params.get('purchase_order_id');
@@ -33,7 +35,9 @@ export default function GrnListPage() {
                     <h1 className="page-title">Goods Receipt Notes</h1>
                     <p className="page-subtitle">Record goods received from suppliers</p>
                 </div>
-                <button type="button" onClick={() => g.setModalOpen(true)} className="btn-primary">+ New GRN</button>
+                {can('goods-receipts.create') && (
+                    <button type="button" onClick={() => g.setModalOpen(true)} className="btn-primary">+ New GRN</button>
+                )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>

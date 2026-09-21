@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './layouts/AppShell';
 import RequirePermission from './layouts/RequirePermission';
+import { AccessProvider } from './layouts/AccessContext';
 import { RequestModalProvider } from './components/purchase/requests/RequestModalProvider';
 import useViewport from './hooks/useViewport';
 import DesktopDashboardPage from './pages/desktop/DashboardPage';
@@ -131,6 +132,9 @@ export default function App({
             logoutUrl={logoutUrl}
             csrfToken={csrfToken}
         >
+            {/* So a page can ask what this person may do before offering it —
+                the sidebar had the answer and nothing below it could reach. */}
+            <AccessProvider isAdmin={isAdmin} permissions={permissions}>
             {/* The MPR create/edit forms live above the routes: the pipeline
                 board opens the new-request form, the detail page opens the edit
                 form, and neither owns it. */}
@@ -214,6 +218,7 @@ export default function App({
                 </Routes>
                 </RequirePermission>
             </RequestModalProvider>
+            </AccessProvider>
         </AppShell>
     );
 }
