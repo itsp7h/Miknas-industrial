@@ -184,7 +184,7 @@
     </div>
 
     <div class="section">
-        <div class="section-title">Project / Department Details</div>
+        <div class="section-title">Company / Department Details</div>
         <div class="info-grid">
             <div>
                 <div class="info-label">MPR Number</div>
@@ -195,7 +195,7 @@
                 <div class="info-value">{{ $purchaseRequest->date?->format('d-m-Y') ?? '—' }}</div>
             </div>
             <div>
-                <div class="info-label">Project / Site Name</div>
+                <div class="info-label">Company</div>
                 <div class="info-value">{{ $purchaseRequest->company_name ?? '—' }}</div>
             </div>
             <div>

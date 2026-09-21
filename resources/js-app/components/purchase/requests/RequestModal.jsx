@@ -88,7 +88,7 @@ export default function RequestModal({
             onClose={onClose}
         >
             <form id="mpr-form" onSubmit={submit}>
-                <FormSection accent={accent} title="Project / Department Details">
+                <FormSection accent={accent} title="Company / Department Details">
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: compact ? '1fr' : 'repeat(3,minmax(0,1fr))',
