@@ -7,6 +7,22 @@ const CHANNEL_BADGE = {
     both: { label: 'Email + WA', background: '#fef3c7', colour: '#92400e' },
 };
 
+// Tailwind JIT never sees classes used only inside a modal (CLAUDE.md #1), so
+// the callout is inline styles like the badges above it.
+const ACCOUNTABILITY_BLOCK = {
+    display: 'flex', flexWrap: 'wrap', gap: '4px 16px', alignItems: 'baseline',
+    marginTop: 8, padding: '7px 10px',
+    background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '3px solid #2563eb',
+    borderRadius: 8,
+};
+
+const ACTOR_LABEL = {
+    fontSize: 10, fontWeight: 700, color: '#94a3b8',
+    textTransform: 'uppercase', letterSpacing: '.05em',
+};
+
+const ACTOR_NAME = { fontSize: 12.5, fontWeight: 700, color: '#0f172a' };
+
 const STATUS_BADGE = {
     pending: { label: 'Unsent', background: '#fef3c7', colour: '#92400e' },
     sent: { label: 'Sent', background: '#eff6ff', colour: '#2563eb' },
@@ -70,14 +86,28 @@ export default function ViewSuppliersModal({ open, request, onClose, onSend }) {
                         </div>
 
                         {/* Who decided, the way an awarded line names who awarded it.
-                            An invitation from before this was recorded says
-                            nothing rather than inventing a name. */}
+                            Given its own tinted block rather than grey small print:
+                            this is the answer to "who picked this supplier?", and it
+                            is the reason most people open this modal at all. An
+                            invitation from before this was recorded says nothing
+                            rather than inventing a name. */}
                         {(invitation.selected_by || invitation.sent_by) && (
-                            <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 6 }}>
-                                {[
-                                    invitation.selected_by && `Selected by ${invitation.selected_by}`,
-                                    invitation.sent_by && `Sent by ${invitation.sent_by}${invitation.sent_at ? ` · ${invitation.sent_at}` : ''}`,
-                                ].filter(Boolean).join(' · ')}
+                            <div style={ACCOUNTABILITY_BLOCK}>
+                                {invitation.selected_by && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
+                                        <span style={ACTOR_LABEL}>Selected by</span>
+                                        <span style={ACTOR_NAME}>{invitation.selected_by}</span>
+                                    </span>
+                                )}
+                                {invitation.sent_by && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
+                                        <span style={ACTOR_LABEL}>Sent by</span>
+                                        <span style={ACTOR_NAME}>{invitation.sent_by}</span>
+                                        {invitation.sent_at && (
+                                            <span style={{ fontSize: 11, color: '#64748b' }}>· {invitation.sent_at}</span>
+                                        )}
+                                    </span>
+                                )}
                             </div>
                         )}
 

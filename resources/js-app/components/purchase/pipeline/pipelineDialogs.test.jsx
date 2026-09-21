@@ -292,16 +292,20 @@ describe('ViewSuppliersModal', () => {
         });
         wrap(<ViewSuppliersModal open request={attributed} onClose={() => {}} onSend={() => {}} />);
 
-        expect(screen.getByText(/Selected by Ali Hassan/)).toBeInTheDocument();
-        expect(screen.getByText(/Sent by Sara Ali · 21 Sep 2026, 09:30/)).toBeInTheDocument();
+        // Label and name are separate elements so the name can carry the weight.
+        expect(screen.getByText('Selected by')).toBeInTheDocument();
+        expect(screen.getByText('Ali Hassan')).toBeInTheDocument();
+        expect(screen.getByText('Sent by')).toBeInTheDocument();
+        expect(screen.getByText('Sara Ali')).toBeInTheDocument();
+        expect(screen.getByText('· 21 Sep 2026, 09:30')).toBeInTheDocument();
     });
 
     it('says nothing about who, for an invitation recorded before it was tracked', () => {
         wrap(<ViewSuppliersModal open request={request} onClose={() => {}} onSend={() => {}} />);
 
         // Inventing a name would be worse than admitting there is none.
-        expect(screen.queryByText(/Selected by/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/Sent by/)).not.toBeInTheDocument();
+        expect(screen.queryByText('Selected by')).not.toBeInTheDocument();
+        expect(screen.queryByText('Sent by')).not.toBeInTheDocument();
     });
 
     it('offers to send the unsent ones', async () => {
