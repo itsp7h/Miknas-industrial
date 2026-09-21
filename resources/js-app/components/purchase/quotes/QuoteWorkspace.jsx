@@ -53,8 +53,8 @@ export default function QuoteWorkspace({ requestId, compact = false }) {
                                 Supplier Quotes &amp; Comparison
                             </div>
                             <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginTop: 4 }}>{data.request_number}</div>
-                            {data.project_name && (
-                                <div style={{ fontSize: 13, color: 'rgba(255,255,255,.8)', marginTop: 2 }}>{data.project_name}</div>
+                            {data.company_name && (
+                                <div style={{ fontSize: 13, color: 'rgba(255,255,255,.8)', marginTop: 2 }}>{data.company_name}</div>
                             )}
                         </div>
                         <div style={{ fontSize: 13, color: 'rgba(255,255,255,.9)', fontWeight: 600 }}>

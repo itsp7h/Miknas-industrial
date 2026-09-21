@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './layouts/AppShell';
 import RequirePermission from './layouts/RequirePermission';
+import { AccessProvider } from './layouts/AccessContext';
 import { RequestModalProvider } from './components/purchase/requests/RequestModalProvider';
 import useViewport from './hooks/useViewport';
 import DesktopDashboardPage from './pages/desktop/DashboardPage';
@@ -73,6 +74,8 @@ import DesktopProfilePage from './pages/desktop/profile/ProfilePage';
 import MobileProfilePage from './pages/mobile/profile/ProfilePage';
 import DesktopFinancePage from './pages/desktop/settings/FinancePage';
 import MobileFinancePage from './pages/mobile/settings/FinancePage';
+import DesktopGeneralSettingsPage from './pages/desktop/settings/GeneralSettingsPage';
+import MobileGeneralSettingsPage from './pages/mobile/settings/GeneralSettingsPage';
 import DesktopItemCategoryPage from './pages/desktop/settings/ItemCategoryPage';
 import MobileItemCategoryPage from './pages/mobile/settings/ItemCategoryPage';
 import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
@@ -119,6 +122,7 @@ export default function App({
     const IntegrationsPage = viewport === 'mobile' ? MobileIntegrationsPage : DesktopIntegrationsPage;
     const FinancePage = viewport === 'mobile' ? MobileFinancePage : DesktopFinancePage;
     const ItemCategoryPage = viewport === 'mobile' ? MobileItemCategoryPage : DesktopItemCategoryPage;
+    const GeneralSettingsPage = viewport === 'mobile' ? MobileGeneralSettingsPage : DesktopGeneralSettingsPage;
     const ProfilePage = viewport === 'mobile' ? MobileProfilePage : DesktopProfilePage;
 
     return (
@@ -131,6 +135,9 @@ export default function App({
             logoutUrl={logoutUrl}
             csrfToken={csrfToken}
         >
+            {/* So a page can ask what this person may do before offering it —
+                the sidebar had the answer and nothing below it could reach. */}
+            <AccessProvider isAdmin={isAdmin} permissions={permissions}>
             {/* The MPR create/edit forms live above the routes: the pipeline
                 board opens the new-request form, the detail page opens the edit
                 form, and neither owns it. */}
@@ -209,11 +216,13 @@ export default function App({
                         element={<Navigate to="/app/settings/finance" replace />}
                     />
                     <Route path="/app/settings/item-categories" element={<ItemCategoryPage />} />
+                    <Route path="/app/settings/general" element={<GeneralSettingsPage />} />
                     <Route path="/app/profile" element={<ProfilePage />} />
                     <Route path="*" element={<div>Page not found.</div>} />
                 </Routes>
                 </RequirePermission>
             </RequestModalProvider>
+            </AccessProvider>
         </AppShell>
     );
 }

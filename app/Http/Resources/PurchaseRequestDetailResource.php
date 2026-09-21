@@ -38,6 +38,7 @@ class PurchaseRequestDetailResource extends JsonResource
             'stage_labels' => collect($all)->mapWithKeys(fn ($s) => [$s => $stages->stageLabel($s)]),
 
             'status' => $this->status,
+            'company_name' => $this->company_name,
             'project_name' => $this->project_name,
             'department' => $this->department,
             'requested_by_name' => $this->requested_by_name ?: $this->requestedBy?->name,
@@ -45,6 +46,14 @@ class PurchaseRequestDetailResource extends JsonResource
             'created_at' => $this->created_at?->toDateString(),
             'location' => $this->location,
             'required_date_text' => $this->required_date_text,
+            // The request has no date of its own — only the urgency picker's
+            // word. The real date lives on the items, so the panel shows the
+            // earliest of them: the day the first thing on this request is
+            // needed, which is the date the request as a whole answers to.
+            'required_date' => $this->whenLoaded('items', fn () => $this->items
+                ->filter(fn ($item) => $item->required_date)
+                ->sortBy('required_date')
+                ->first()?->required_date?->toDateString()),
             'verified_by_name' => $this->verified_by_name,
 
             // Keyed off the status, not the columns: a request approved after a
@@ -70,6 +79,11 @@ class PurchaseRequestDetailResource extends JsonResource
                 'supplier_name' => $inv->supplier?->name,
                 'channel' => $inv->channel,
                 'status' => $inv->status,
+                // Who chose this supplier, and who sent them the request —
+                // the same accounting the award lines carry.
+                'selected_by' => $inv->selectedBy?->name,
+                'sent_by' => $inv->sentBy?->name,
+                'sent_at' => $inv->sent_at?->format('d M Y, H:i'),
                 // The supplier's own portal link, which the view-suppliers modal
                 // offers for copying when an invitation cannot be auto-sent.
                 'portal_url' => route('rfq.show', $inv->token),

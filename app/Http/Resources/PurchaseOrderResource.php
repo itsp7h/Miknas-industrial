@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Settings\ProjectSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,19 +40,18 @@ class PurchaseOrderResource extends JsonResource
                 'email' => $this->supplier->email,
             ] : null),
             // The LPO sheet is headed by the project's company, resolved the same
-            // way the Blade show page did. Gated on purchaseRequest being loaded
-            // so the index listing never runs this lookup per row.
+            // The request names the company outright now; older ones name a
+            // project, so resolveCompany() covers both. Gated on
+            // purchaseRequest being loaded so the index never runs it per row.
             'company_name' => $this->whenLoaded(
                 'purchaseRequest',
-                fn () => $this->purchaseRequest
-                    ? ProjectSetting::where('name', $this->purchaseRequest->project_name)
-                        ->with('company')->first()?->company?->name
-                    : null
+                fn () => $this->purchaseRequest?->resolveCompany()?->name
+                    ?? $this->purchaseRequest?->company_name
             ),
             'purchase_request' => $this->whenLoaded('purchaseRequest', fn () => $this->purchaseRequest ? [
                 'id' => $this->purchaseRequest->id,
                 'request_number' => $this->purchaseRequest->request_number,
-                'project_name' => $this->purchaseRequest->project_name,
+                'company_name' => $this->purchaseRequest->company_name,
             ] : null),
             'goods_receipt_notes' => $this->whenLoaded('goodsReceiptNotes', fn () => $this->goodsReceiptNotes->map(fn ($grn) => [
                 'id' => $grn->id,

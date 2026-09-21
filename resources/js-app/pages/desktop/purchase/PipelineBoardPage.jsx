@@ -14,12 +14,13 @@ const STAGE_LABELS = {
 
 // Mirrors App\Policies\PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES exactly — kept
 // in sync by hand since the frontend can't import PHP constants.
-const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'];
 
 const COLUMNS = [
     { key: 'request_number', label: 'Request #' },
-    { key: 'project_name', label: 'Project' },
+    { key: 'company_name', label: 'Company' },
     { key: 'department', label: 'Department' },
+    { key: 'project_name', label: 'Project' },
     { key: 'requested_by_name', label: 'Requested By' },
     {
         key: 'stage',
@@ -110,7 +111,7 @@ export default function PipelineBoardPage({
 
     // .purchase-request.stage-changed carries only {id, request_number, stage} — a
     // wholesale upsert (as useLiveList's default `event` handler does) would blank
-    // out project_name/department/etc. on the existing row, so this is subscribed
+    // out company_name/department/etc. on the existing row, so this is subscribed
     // separately here and merged shallowly onto the matching row instead.
     useEffect(() => {
         const ch = echo.private('purchase');

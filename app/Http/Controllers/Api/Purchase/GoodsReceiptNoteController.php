@@ -220,7 +220,11 @@ class GoodsReceiptNoteController extends Controller
         $live = $purchaseRequest->purchaseOrders()->where('status', '!=', 'cancelled')->get();
 
         if ($live->isNotEmpty() && $live->every(fn ($po) => $po->status === 'received')) {
-            $stages->setStageIfNotPast($purchaseRequest, 'payment');
+            // Receiving everything ends the request. Payment used to be a
+            // stage after this one and is no longer tracked on the pipeline,
+            // which also means a finished request finally reaches 'complete' —
+            // nothing ever set it before.
+            $stages->setStageIfNotPast($purchaseRequest, 'complete');
         }
     }
 

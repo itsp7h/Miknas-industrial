@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Purchase;
 
 use App\Events\PurchaseRequestCreated;
 use App\Events\PurchaseRequestUpdated;
+use App\Models\Item;
 use App\Models\PurchaseRequest;
 use App\Models\Settings\Company;
 use App\Models\Settings\Department;
@@ -11,6 +12,7 @@ use App\Models\Settings\Location;
 use App\Models\Settings\ProjectSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -34,7 +36,7 @@ class RequestFormTest extends TestCase
     {
         return array_merge([
             'date' => '2026-09-01',
-            'project_name' => 'Plant Expansion',
+            'company_name' => 'Plant Expansion',
             'requested_by_name' => 'Aisha Rahman',
             'department' => 'Operations',
             'required_date_text' => '1 Week',
@@ -92,14 +94,112 @@ class RequestFormTest extends TestCase
             ->getJson('/api/v1/purchase/requests/form-options')
             ->assertOk();
 
+        // The form names a company, and each one carries the locations that
+        // sit under its own projects.
+        $response->assertJsonPath('companies.0.name', 'Miknas Steel');
+        // Only active locations are offered.
+        $this->assertSame(['Bay 4'], $response->json('companies.0.locations'));
+
         $response->assertJsonPath('projects.0.name', 'Plant Expansion');
         $response->assertJsonPath('projects.0.company_name', 'Miknas Steel');
         // The option label Blade rendered: "Company — Project".
         $response->assertJsonPath('projects.0.label', 'Miknas Steel — Plant Expansion');
-        // Only active locations are offered.
         $this->assertSame(['Bay 4'], $response->json('projects.0.locations'));
         $response->assertJsonPath('departments.0.name', 'Operations');
         $this->assertContains('KG', $response->json('units'));
+    }
+
+    /** An inactive company is not offered, the way an inactive project is not. */
+    /** A request records both: the company, and the project within it. */
+    public function test_it_stores_the_company_and_the_project(): void
+    {
+        $response = $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'company_name' => 'Miknas Industrial',
+                'project_name' => 'Forkoll',
+            ]))
+            ->assertCreated();
+
+        $pr = PurchaseRequest::latest('id')->first();
+        $this->assertSame('Miknas Industrial', $pr->company_name);
+        $this->assertSame('Forkoll', $pr->project_name);
+        $response->assertJsonPath('data.company_name', 'Miknas Industrial');
+        $response->assertJsonPath('data.project_name', 'Forkoll');
+    }
+
+    /** A request always has a company; it does not always have a project. */
+    public function test_the_project_is_optional_but_the_company_is_not(): void
+    {
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload(['project_name' => null]))
+            ->assertCreated();
+
+        $this->assertNull(PurchaseRequest::latest('id')->first()->project_name);
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload(['company_name' => '']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('company_name');
+    }
+
+    /** The MPR names a company, and the company record is found by that name. */
+    public function test_a_request_resolves_its_company_by_name(): void
+    {
+        $company = Company::create(['name' => 'Miknas Steel', 'is_active' => true]);
+        $pr = PurchaseRequest::factory()->create(['company_name' => 'Miknas Steel']);
+
+        $this->assertSame($company->id, $pr->resolveCompany()?->id);
+    }
+
+    /**
+     * Requests raised before the form named companies hold a project name.
+     * Their LPO letterhead must not go blank because the field changed.
+     */
+    public function test_a_request_naming_an_old_project_still_finds_its_company(): void
+    {
+        $company = Company::create(['name' => 'Miknas Industrial', 'is_active' => true]);
+        ProjectSetting::create(['name' => 'Forkoll', 'company_id' => $company->id, 'is_active' => true]);
+        $pr = PurchaseRequest::factory()->create(['company_name' => 'Forkoll']);
+
+        $this->assertSame('Miknas Industrial', $pr->resolveCompany()?->name);
+    }
+
+    /** A name matching neither is simply no company, not an error. */
+    public function test_a_request_naming_nothing_known_resolves_to_no_company(): void
+    {
+        $pr = PurchaseRequest::factory()->create(['company_name' => 'Gone Ltd']);
+
+        $this->assertNull($pr->resolveCompany());
+    }
+
+    public function test_only_active_companies_are_offered(): void
+    {
+        Company::create(['name' => 'Miknas Steel', 'is_active' => true]);
+        Company::create(['name' => 'Wound Up Ltd', 'is_active' => false]);
+
+        $response = $this->actingAs($this->requester())
+            ->getJson('/api/v1/purchase/requests/form-options')
+            ->assertOk();
+
+        $this->assertSame(['Miknas Steel'], array_column($response->json('companies'), 'name'));
+    }
+
+    /** A company gathers the locations of every project beneath it, once each. */
+    public function test_a_companys_locations_come_from_all_of_its_projects(): void
+    {
+        $company = Company::create(['name' => 'Miknas Steel', 'is_active' => true]);
+        $one = ProjectSetting::create(['name' => 'Plant', 'company_id' => $company->id, 'is_active' => true]);
+        $two = ProjectSetting::create(['name' => 'Depot', 'company_id' => $company->id, 'is_active' => true]);
+        Location::create(['name' => 'Yard', 'project_id' => $one->id, 'is_active' => true]);
+        Location::create(['name' => 'Bay 4', 'project_id' => $two->id, 'is_active' => true]);
+        // The same site named under two projects is one option, not two.
+        Location::create(['name' => 'Yard', 'project_id' => $two->id, 'is_active' => true]);
+
+        $response = $this->actingAs($this->requester())
+            ->getJson('/api/v1/purchase/requests/form-options')
+            ->assertOk();
+
+        $this->assertSame(['Bay 4', 'Yard'], $response->json('companies.0.locations'));
     }
 
     public function test_a_project_without_a_company_is_still_offered(): void
@@ -145,7 +245,7 @@ class RequestFormTest extends TestCase
             ->assertCreated();
 
         $pr = PurchaseRequest::firstOrFail();
-        $this->assertSame('Plant Expansion', $pr->project_name);
+        $this->assertSame('Plant Expansion', $pr->company_name);
         $this->assertSame('pending', $pr->status);
         $this->assertSame($requester->id, $pr->requested_by);
         $this->assertSame('1 Week', $pr->required_date_text);
@@ -155,20 +255,132 @@ class RequestFormTest extends TestCase
 
         // The board opens this form, so it answers with a board row.
         $response->assertJsonPath('data.request_number', $pr->request_number);
-        $response->assertJsonPath('data.project_name', 'Plant Expansion');
+        $response->assertJsonPath('data.company_name', 'Plant Expansion');
         $this->assertStringContainsString('submitted successfully', $response->json('message'));
     }
 
-    public function test_a_created_request_is_numbered_mp_r_year_sequence(): void
+    /** The description field completes from the item master. */
+    public function test_form_options_carry_the_item_catalogue(): void
+    {
+        Item::create([
+            'item_code' => 'ITEM-00001', 'item_name' => 'Steel Plate 10mm',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG', 'is_active' => true,
+        ]);
+        Item::create([
+            'item_code' => 'ITEM-00002', 'item_name' => 'Retired Bracket',
+            'category' => 'raw_material', 'unit_of_measure' => 'PCS', 'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->requester())
+            ->getJson('/api/v1/purchase/requests/form-options')
+            ->assertOk();
+
+        // Only what can still be ordered.
+        $this->assertSame(['Steel Plate 10mm'], array_column($response->json('items'), 'name'));
+        $response->assertJsonPath('items.0.unit', 'KG');
+    }
+
+    /**
+     * A material nobody has catalogued is added to the item master, so the
+     * next request completes it instead of spelling it afresh.
+     */
+    public function test_a_material_not_in_the_catalogue_is_added_to_it(): void
     {
         $this->actingAs($this->requester())
-            ->postJson('/api/v1/purchase/requests', $this->payload())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'items' => [
+                    ['description' => 'Brass Fitting 20mm', 'unit' => 'PCS', 'quantity_required' => 4],
+                ],
+            ]))
             ->assertCreated();
 
-        $this->assertMatchesRegularExpression(
-            '/^MPR\d{2}-\d{4}$/',
-            PurchaseRequest::firstOrFail()->request_number
-        );
+        $item = Item::where('item_name', 'Brass Fitting 20mm')->first();
+        $this->assertNotNull($item);
+        $this->assertSame('PCS', $item->unit_of_measure);
+        // An MPR asks for what goes into the work, never for finished product.
+        $this->assertSame('raw_material', $item->category);
+        $this->assertTrue($item->is_active);
+        $this->assertNotEmpty($item->item_code);
+    }
+
+    /** Items must have a unit; a row without one still becomes an item. */
+    public function test_a_material_with_no_unit_is_catalogued_with_the_neutral_one(): void
+    {
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'items' => [['description' => 'Unspecified Widget', 'quantity_required' => 2]],
+            ]))
+            ->assertCreated();
+
+        $this->assertSame('PCS', Item::where('item_name', 'Unspecified Widget')->first()->unit_of_measure);
+    }
+
+    /** One catalogue entry, however it was typed. */
+    public function test_an_existing_material_is_not_duplicated(): void
+    {
+        Item::create([
+            'item_code' => 'ITEM-00001', 'item_name' => 'Steel Plate 10mm',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG', 'is_active' => true,
+        ]);
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'items' => [
+                    ['description' => '  steel plate 10mm ', 'unit' => 'PCS', 'quantity_required' => 4],
+                ],
+            ]))
+            ->assertCreated();
+
+        $this->assertSame(1, Item::where('item_name', 'Steel Plate 10mm')->count());
+        $this->assertSame(1, Item::count());
+    }
+
+    /** The unit is the item's, not the request's, where the catalogue knows one. */
+    public function test_the_catalogue_decides_the_unit_of_a_known_material(): void
+    {
+        Item::create([
+            'item_code' => 'ITEM-00001', 'item_name' => 'Steel Plate 10mm',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG', 'is_active' => true,
+        ]);
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'items' => [
+                    ['description' => 'Steel Plate 10mm', 'unit' => 'PCS', 'quantity_required' => 4],
+                ],
+            ]))
+            ->assertCreated();
+
+        $this->assertSame('KG', PurchaseRequest::firstOrFail()->items->first()->unit);
+    }
+
+    /** The requesting company's own series: MI-MPR-26-0001. */
+    public function test_a_created_request_is_numbered_in_its_companys_series(): void
+    {
+        Company::create(['name' => 'Miknas Industrial', 'lpo_code' => 'MI', 'is_active' => true]);
+        Carbon::setTestNow('2026-09-01');
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload(['company_name' => 'Miknas Industrial']))
+            ->assertCreated();
+
+        $this->assertSame('MI-MPR-26-0001', PurchaseRequest::firstOrFail()->request_number);
+
+        Carbon::setTestNow();
+    }
+
+    /** A company not on record has no code, so the request falls to the house series. */
+    public function test_a_request_naming_an_unknown_company_uses_the_house_series(): void
+    {
+        Carbon::setTestNow('2026-09-01');
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload(['company_name' => 'Someone Else Ltd']))
+            ->assertCreated();
+
+        $this->assertSame('MPR-26-0001', PurchaseRequest::firstOrFail()->request_number);
+
+        Carbon::setTestNow();
     }
 
     public function test_creating_a_request_broadcasts_it_to_the_boards(): void
@@ -187,8 +399,8 @@ class RequestFormTest extends TestCase
         $requester = $this->requester();
 
         $this->actingAs($requester)
-            ->postJson('/api/v1/purchase/requests', $this->payload(['project_name' => '']))
-            ->assertJsonValidationErrors('project_name');
+            ->postJson('/api/v1/purchase/requests', $this->payload(['company_name' => '']))
+            ->assertJsonValidationErrors('company_name');
 
         $this->actingAs($requester)
             ->postJson('/api/v1/purchase/requests', $this->payload(['requested_by_name' => '']))
@@ -235,7 +447,7 @@ class RequestFormTest extends TestCase
         $requester = $this->requester();
         $pr = PurchaseRequest::factory()->create([
             'requested_by' => $requester->id, 'stage' => 'draft',
-            'project_name' => 'Plant Expansion', 'location' => 'Bay 4',
+            'company_name' => 'Plant Expansion', 'location' => 'Bay 4',
             'department' => 'Operations', 'required_date_text' => 'Urgent',
             'remarks' => 'Before the shutdown.',
         ]);
@@ -248,7 +460,7 @@ class RequestFormTest extends TestCase
             ->getJson("/api/v1/purchase/requests/{$pr->id}/edit")
             ->assertOk();
 
-        $response->assertJsonPath('data.project_name', 'Plant Expansion');
+        $response->assertJsonPath('data.company_name', 'Plant Expansion');
         $response->assertJsonPath('data.location', 'Bay 4');
         $response->assertJsonPath('data.required_date_text', 'Urgent');
         $response->assertJsonPath('data.remarks', 'Before the shutdown.');
@@ -290,7 +502,7 @@ class RequestFormTest extends TestCase
             ->assertOk();
 
         $pr->refresh();
-        $this->assertSame('Plant Expansion', $pr->project_name);
+        $this->assertSame('Plant Expansion', $pr->company_name);
         $this->assertSame('Aisha Rahman', $pr->requested_by_name);
         // Rows are replaced wholesale, as the Blade form did.
         $this->assertDatabaseMissing('purchase_request_items', ['id' => $stale->id]);
@@ -316,7 +528,7 @@ class RequestFormTest extends TestCase
 
         Event::assertDispatched(function (PurchaseRequestUpdated $event) use ($pr) {
             return $event->purchaseRequestId === $pr->id
-                && $event->broadcastWith()['project_name'] === 'Plant Expansion';
+                && $event->broadcastWith()['company_name'] === 'Plant Expansion';
         });
     }
 }

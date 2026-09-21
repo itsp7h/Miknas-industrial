@@ -9,7 +9,7 @@ class PurchaseStageService
 {
     const STAGES = [
         'draft', 'gm_approval', 'rfq', 'quoting',
-        'comparison', 'lpo', 'receiving', 'payment', 'complete',
+        'comparison', 'lpo', 'receiving', 'complete',
     ];
 
     public function advance(PurchaseRequest $request): void
@@ -57,7 +57,6 @@ class PurchaseStageService
             'comparison' => 'Quote Comparison',
             'lpo' => 'LPO Issued',
             'receiving' => 'Receiving Materials',
-            'payment' => 'Payment',
             'complete' => 'Complete',
             default => ucfirst($stage),
         };

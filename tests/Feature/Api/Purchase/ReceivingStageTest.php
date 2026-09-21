@@ -120,14 +120,14 @@ class ReceivingStageTest extends TestCase
             ->patchJson("/api/v1/purchase/grns/{$grn->id}/confirm");
     }
 
-    public function test_confirming_the_last_receipt_moves_the_request_on_to_payment(): void
+    public function test_confirming_the_last_receipt_completes_the_request(): void
     {
         $order = $this->order(2);
 
         $this->confirm($this->grnFor($order, 2))->assertOk();
 
         $this->assertSame('received', $order->fresh()->status);
-        $this->assertSame('payment', $this->pr->fresh()->stage);
+        $this->assertSame('complete', $this->pr->fresh()->stage);
     }
 
     /**
@@ -164,7 +164,7 @@ class ReceivingStageTest extends TestCase
         $this->assertSame('receiving', $this->pr->fresh()->stage);
 
         $this->confirm($this->grnFor($second, 3))->assertOk();
-        $this->assertSame('payment', $this->pr->fresh()->stage);
+        $this->assertSame('complete', $this->pr->fresh()->stage);
     }
 
     /**
@@ -179,7 +179,7 @@ class ReceivingStageTest extends TestCase
 
         $this->confirm($this->grnFor($live, 2))->assertOk();
 
-        $this->assertSame('payment', $this->pr->fresh()->stage);
+        $this->assertSame('complete', $this->pr->fresh()->stage);
     }
 
     /** The pipeline can only show a receipt if the payload carries it. */

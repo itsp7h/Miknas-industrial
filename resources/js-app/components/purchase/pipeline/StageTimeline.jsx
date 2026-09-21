@@ -182,12 +182,6 @@ function CurrentActions({ stage, r, on }) {
                 </div>
             );
         }
-        case 'payment':
-            return (
-                <Link to="/app/purchase/payments" style={{ ...ACTION, background: '#0f172a', color: '#fff' }}>
-                    Issue Payment →
-                </Link>
-            );
         default:
             return null;
     }
@@ -261,8 +255,6 @@ function DoneActions({ stage, r, on }) {
                 </div>
             );
         }
-        case 'payment':
-            return <Link to="/app/purchase/payments" style={VIEW}><EyeIcon /> View Payments</Link>;
         default:
             return null;
     }

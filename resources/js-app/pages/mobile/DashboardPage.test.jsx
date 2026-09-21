@@ -30,21 +30,24 @@ describe('mobile DashboardPage', () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue(SUMMARY);
     });
 
-    it('shows the same five figures as desktop', async () => {
+    it('shows the same figures as desktop', async () => {
         renderPage();
-        expect(await screen.findByText('BD 25,651')).toBeInTheDocument();
-        expect(screen.getByText('BD 3,580')).toBeInTheDocument();
-        expect(screen.getByText('BD 10,151')).toBeInTheDocument();
+        expect(await screen.findByText('BD 3,580')).toBeInTheDocument();
+        expect(screen.getByText('3')).toBeInTheDocument();
     });
 
-    it('keeps receivables red, matching desktop and the Blade page', async () => {
+    /** Parked on both, so the two views cannot drift apart on this. */
+    it('leaves out the sales figures here too', async () => {
         renderPage();
-        expect(await screen.findByText('BD 10,151')).toHaveClass('text-red-600');
+        await screen.findByText('BD 3,580');
+
+        expect(screen.queryByText('Total Sales')).not.toBeInTheDocument();
+        expect(screen.queryByText('Receivables')).not.toBeInTheDocument();
     });
 
     it('still renders the quick actions and the visible module cards', async () => {
         renderPage();
-        await screen.findByText('BD 25,651');
+        await screen.findByText('BD 3,580');
         expect(screen.getByText('New Purchase Request')).toBeInTheDocument();
         ['Purchase', 'Inventory']
             .forEach((title) => expect(screen.getByRole('heading', { name: title })).toBeInTheDocument());
@@ -53,7 +56,7 @@ describe('mobile DashboardPage', () => {
     // Hiding is in the shared data module, so both chromes drop them together.
     it('drops the hidden modules here too', async () => {
         renderPage();
-        await screen.findByText('BD 25,651');
+        await screen.findByText('BD 3,580');
         expect(screen.queryByRole('heading', { name: 'Production' })).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Sales' })).not.toBeInTheDocument();
         expect(screen.queryByText('New Sales Order')).not.toBeInTheDocument();

@@ -15,10 +15,11 @@
 // An item without one is open to everyone (the Dashboard); an item with
 // `adminOnly` has no permission name at all and is Admin's alone.
 //
-// `hidden: true` on a group keeps its routes and page titles but drops it from
-// both menus (the desktop sidebar and the mobile drawer/bottom bar). Production
-// and Sales are parked that way: the modules are built and reachable by URL,
-// they are just not in use yet. Remove the flag to bring a group back.
+// `hidden: true` keeps routes and page titles but drops the entry from both
+// menus (the desktop sidebar and the mobile drawer/bottom bar). It works on a
+// group or on a single item. Production and Sales are parked that way, and so
+// is Payments: built, reachable by URL, just not in use. Remove the flag to
+// bring one back.
 
 import { BAG, BOX, BUILDING, CHART, COG, FOLDER, GRID, RECEIPT, USERS } from './navIcons';
 
@@ -37,7 +38,7 @@ export const NAV_GROUPS = [
             { type: 'link', to: '/app/purchase/orders', label: 'Purchase Orders', permission: 'purchase-orders.view' },
             { type: 'link', to: '/app/purchase/grns', label: 'Goods Receipt (GRN)', permission: 'goods-receipts.view' },
             { type: 'link', to: '/app/purchase/invoices', label: 'Supplier Invoices', permission: 'supplier-invoices.view' },
-            { type: 'link', to: '/app/purchase/payments', label: 'Payments', permission: 'supplier-payments.view' },
+            { type: 'link', to: '/app/purchase/payments', label: 'Payments', permission: 'supplier-payments.view', hidden: true },
         ],
     },
     {
@@ -92,13 +93,18 @@ export const NAV_GROUPS = [
             { type: 'link', to: '/app/settings/integrations', label: 'Integrations', icon: COG, adminOnly: true },
             { type: 'link', to: '/app/settings/finance', label: 'Finance', icon: RECEIPT, permission: 'finance.view' },
             { type: 'link', to: '/app/settings/item-categories', label: 'Item Categories', icon: BOX, permission: 'item-categories.view' },
+            { type: 'link', to: '/app/settings/general', label: 'Settings', icon: COG, permission: 'settings.view' },
         ],
     },
 ];
 
 // What the two shells actually render. NAV_GROUPS stays complete so
-// usePageTitle still titles a hidden group's pages when one is opened directly.
-export const MENU_GROUPS = NAV_GROUPS.filter((group) => !group.hidden);
+// usePageTitle still titles a hidden group's or item's page when it is opened
+// directly.
+export const MENU_GROUPS = NAV_GROUPS
+    .filter((group) => !group.hidden)
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.hidden) }))
+    .filter((group) => group.items.length > 0);
 
 /**
  * The menu as one person sees it: tabs they cannot open are not shown.

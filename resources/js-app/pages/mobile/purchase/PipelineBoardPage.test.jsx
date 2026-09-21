@@ -21,8 +21,8 @@ describe('PipelineBoardPage (mobile)', () => {
     it('renders requests as cards, not a table, split into Active and Completed tabs', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
             data: [
-                { id: 1, request_number: 'MPR26-0001', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' },
-                { id: 2, request_number: 'MPR26-0002', stage: 'complete', project_name: 'B', requested_by_name: 'Sam', department: 'Ops', date: '2026-07-01' },
+                { id: 1, request_number: 'MPR26-0001', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' },
+                { id: 2, request_number: 'MPR26-0002', stage: 'complete', company_name: 'B', requested_by_name: 'Sam', department: 'Ops', date: '2026-07-01' },
             ],
         });
 
@@ -39,7 +39,7 @@ describe('PipelineBoardPage (mobile)', () => {
     it("updates a request's stage live without a refetch, preserving the row's other fields", async () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, request_number: 'MPR26-0001', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
+            data: [{ id: 1, request_number: 'MPR26-0001', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
         });
 
         render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
@@ -59,7 +59,7 @@ describe('PipelineBoardPage (mobile)', () => {
 
     it('links each card at the React detail route, not the old Blade page', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
+            data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
         });
 
         render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);

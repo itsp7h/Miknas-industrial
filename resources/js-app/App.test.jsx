@@ -34,7 +34,7 @@ describe('App', () => {
         );
 
         // A KPI figure only the dashboard renders.
-        await screen.findByText('BD 25,651');
+        await screen.findByText('BD 3,580');
     });
 
     /**

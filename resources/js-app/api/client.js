@@ -25,7 +25,9 @@ async function request(path, options = {}) {
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
-        return Promise.reject(body ?? { message: 'Request failed.' });
+        // The status travels with the body: a caller cannot otherwise tell a
+        // refusal (403) from a breakage, and the two deserve different words.
+        return Promise.reject({ ...(body ?? { message: 'Request failed.' }), status: response.status });
     }
 
     return body;
@@ -53,7 +55,9 @@ async function requestForm(path, formData, options = {}) {
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
-        return Promise.reject(body ?? { message: 'Request failed.' });
+        // The status travels with the body: a caller cannot otherwise tell a
+        // refusal (403) from a breakage, and the two deserve different words.
+        return Promise.reject({ ...(body ?? { message: 'Request failed.' }), status: response.status });
     }
 
     return body;

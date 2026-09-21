@@ -34,7 +34,7 @@ class RequestSheetTest extends TestCase
             'requested_by' => $owner->id,
             'stage' => 'draft',
             'status' => 'pending',
-            'project_name' => 'Plant Expansion',
+            'company_name' => 'Plant Expansion',
             'requested_by_name' => 'Aisha Rahman',
             'required_date_text' => '1 Week',
             'location' => 'Bay 4',
@@ -72,7 +72,7 @@ class RequestSheetTest extends TestCase
 
         $response->assertJsonPath('data.request_number', $pr->request_number);
         $response->assertJsonPath('data.status', 'pending');
-        $response->assertJsonPath('data.project_name', 'Plant Expansion');
+        $response->assertJsonPath('data.company_name', 'Plant Expansion');
         $response->assertJsonPath('data.requested_by_name', 'Aisha Rahman');
         $response->assertJsonPath('data.required_date_text', '1 Week');
         $response->assertJsonPath('data.location', 'Bay 4');

@@ -53,7 +53,7 @@ export default function PurchaseOrderDetail({ order, compact = false }) {
                             {order.company_name ?? 'SteelERP'}
                         </div>
                         <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
-                            {request?.project_name ?? 'Manufacturing & Trading'}
+                            {request?.company_name ?? 'Manufacturing & Trading'}
                         </div>
                     </div>
                     <div style={{ textAlign: compact ? 'left' : 'right' }}>

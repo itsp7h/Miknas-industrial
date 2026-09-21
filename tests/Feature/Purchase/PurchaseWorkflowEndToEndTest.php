@@ -39,7 +39,7 @@ class PurchaseWorkflowEndToEndTest extends TestCase
         // The create form is a React modal, so this step is the API call it makes.
         $storeResponse = $this->actingAs($requester)->postJson('/api/v1/purchase/requests', [
             'date' => now()->format('Y-m-d'),
-            'project_name' => 'Test Project',
+            'company_name' => 'Test Project',
             'requested_by_name' => 'Test Person',
             'items' => [
                 ['description' => 'Widget', 'quantity_required' => 5],

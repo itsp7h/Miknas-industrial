@@ -133,10 +133,22 @@ describe('GrnModal', () => {
     });
 
     it('says so when the options cannot be loaded', async () => {
-        vi.spyOn(client, 'apiGet').mockRejectedValue({ message: 'nope' });
+        vi.spyOn(client, 'apiGet').mockRejectedValue({ message: 'nope', status: 500 });
         render(<GrnModal onSaved={() => {}} onCancel={() => {}} />);
 
         expect(await screen.findByRole('alert'))
             .toHaveTextContent('The purchase order and warehouse lists could not be loaded.');
+    });
+
+    it('calls a refusal a refusal, not a loading failure', async () => {
+        vi.spyOn(client, 'apiGet').mockRejectedValue({
+            status: 403, message: 'User does not have the right permissions.',
+        });
+        render(<GrnModal onSaved={() => {}} onCancel={() => {}} />);
+
+        // A view-only account was told the lists "could not be loaded" and went
+        // looking for a fault that was not there.
+        expect(await screen.findByRole('alert'))
+            .toHaveTextContent('You do not have permission to create goods receipts.');
     });
 });

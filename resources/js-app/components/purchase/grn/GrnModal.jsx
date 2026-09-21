@@ -33,7 +33,14 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
     useEffect(() => {
         apiGet('/purchase/grns/form-options')
             .then(setOptions)
-            .catch(() => setMessages(['The purchase order and warehouse lists could not be loaded.']));
+            // A refusal is not a breakage. 403 here means this account may see
+            // goods receipts but not raise them, and saying "could not be
+            // loaded" sent people looking for a fault that was not there.
+            .catch((err) => setMessages([
+                err?.status === 403 || /permission|unauthor/i.test(err?.message ?? '')
+                    ? 'You do not have permission to create goods receipts.'
+                    : 'The purchase order and warehouse lists could not be loaded.',
+            ]));
     }, []);
 
     const selectedOrder = useMemo(

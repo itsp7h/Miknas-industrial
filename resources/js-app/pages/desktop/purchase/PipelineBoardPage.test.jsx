@@ -18,11 +18,32 @@ vi.mock('../../../echo', () => ({
 }));
 
 describe('PipelineBoardPage (desktop)', () => {
+    it('gives the company and the project a column each', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: [{
+                id: 1, request_number: 'MPR26-0001', stage: 'draft',
+                company_name: 'Miknas Industrial', project_name: 'Forkoll',
+                requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01',
+            }],
+        });
+        render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
+
+        // A request belongs to both, and one column standing in for the other
+        // is what the single field got wrong.
+        expect(await screen.findByText('MPR26-0001')).toBeInTheDocument();
+        // Order matters: Project reads as a detail of the department's work,
+        // so it sits after it rather than between Company and Department.
+        expect(screen.getAllByRole('columnheader').map((th) => th.textContent))
+            .toEqual(['Request #', 'Company', 'Department', 'Project', 'Requested By', 'Stage', 'Date', '']);
+        expect(screen.getByText('Miknas Industrial')).toBeInTheDocument();
+        expect(screen.getByText('Forkoll')).toBeInTheDocument();
+    });
+
     it('splits requests into Active and Completed tabs', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
             data: [
-                { id: 1, request_number: 'MPR26-0001', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' },
-                { id: 2, request_number: 'MPR26-0002', stage: 'complete', project_name: 'B', requested_by_name: 'Sam', department: 'Ops', date: '2026-07-01' },
+                { id: 1, request_number: 'MPR26-0001', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' },
+                { id: 2, request_number: 'MPR26-0002', stage: 'complete', company_name: 'B', requested_by_name: 'Sam', department: 'Ops', date: '2026-07-01' },
             ],
         });
 
@@ -38,7 +59,7 @@ describe('PipelineBoardPage (desktop)', () => {
     it("updates a request's stage live without a refetch, preserving the row's other fields", async () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, request_number: 'MPR26-0001', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
+            data: [{ id: 1, request_number: 'MPR26-0001', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
         });
 
         render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
@@ -46,7 +67,7 @@ describe('PipelineBoardPage (desktop)', () => {
         expect(screen.getByText(/Draft/i)).toBeInTheDocument();
 
         // .purchase-request.stage-changed only carries {id, request_number, stage} —
-        // firing it must patch the existing row's stage without blanking project_name etc.
+        // firing it must patch the existing row's stage without blanking company_name etc.
         act(() => {
             handlers['.purchase-request.stage-changed']({ id: 1, request_number: 'MPR26-0001', stage: 'complete' });
         });
@@ -60,7 +81,7 @@ describe('PipelineBoardPage (desktop)', () => {
 
     it('links each row at the React detail route, not the old Blade page', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
+            data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
         });
 
         render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
@@ -73,7 +94,7 @@ describe('PipelineBoardPage (desktop)', () => {
     // link, alone among the purchase list pages (CLAUDE.md #12).
     it('draws the row action as a button, the way every other list page does', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
+            data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
         });
 
         render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
@@ -90,13 +111,13 @@ describe('PipelineBoardPage (desktop)', () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockImplementation((url) => (
             url === '/purchase/pipeline'
-                ? Promise.resolve({ data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }] })
+                ? Promise.resolve({ data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }] })
                 : Promise.resolve({ projects: [], departments: [], units: ['PCS'], today: '2026-09-14' })
         ));
         vi.spyOn(client, 'apiPost').mockResolvedValue({
             message: 'MPR26-0013 submitted successfully.',
             data: {
-                id: 13, request_number: 'MPR26-0013', stage: 'draft', project_name: 'A',
+                id: 13, request_number: 'MPR26-0013', stage: 'draft', company_name: 'A',
                 requested_by_name: 'Jane', department: 'Ops', date: '2026-09-14', requested_by_id: 1,
             },
         });
@@ -124,7 +145,7 @@ describe('PipelineBoardPage (desktop)', () => {
     it('puts a broadcast request on top of the board too', async () => {
         handlers = {};
         vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', project_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
+            data: [{ id: 7, request_number: 'MPR26-0007', stage: 'draft', company_name: 'A', requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01' }],
         });
 
         render(<MemoryRouter><ToastProvider><RequestModalProvider>

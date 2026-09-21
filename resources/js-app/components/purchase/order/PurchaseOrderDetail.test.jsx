@@ -17,7 +17,7 @@ const ORDER = {
         id: 2, name: 'Gulf Metals', contact_person: 'Ali',
         address: 'Sitra', phone: '17000000', email: 'ali@gulf.example',
     },
-    purchase_request: { id: 4, request_number: 'MPR-0004', project_name: 'Plant Expansion' },
+    purchase_request: { id: 4, request_number: 'MPR-0004', company_name: 'Plant Expansion' },
     items: [
         { id: 11, item_name: 'Steel Plate', unit_of_measure: 'KG', quantity: '10.00', rate: '30.00', total_amount: '300.00' },
         { id: 12, item_name: 'Bolt', unit_of_measure: 'PCS', quantity: '9.00', rate: '5.00', total_amount: '45.00' },

@@ -47,7 +47,8 @@ class PurchasePipelineController extends Controller
         // timeline have every count and name they render without N+1 queries.
         $purchaseRequest->load([
             'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
-            'rfqInvitations.supplier', 'supplierQuotes.supplier', 'supplierQuotes.items',
+            'rfqInvitations.supplier', 'rfqInvitations.selectedBy', 'rfqInvitations.sentBy',
+            'supplierQuotes.supplier', 'supplierQuotes.items',
             'purchaseOrders.supplier', 'purchaseOrders.goodsReceiptNotes.warehouse',
         ]);
 
@@ -282,7 +283,8 @@ class PurchasePipelineController extends Controller
     {
         $purchaseRequest->refresh()->load([
             'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
-            'rfqInvitations.supplier', 'supplierQuotes.supplier', 'supplierQuotes.items',
+            'rfqInvitations.supplier', 'rfqInvitations.selectedBy', 'rfqInvitations.sentBy',
+            'supplierQuotes.supplier', 'supplierQuotes.items',
             'purchaseOrders.supplier', 'purchaseOrders.goodsReceiptNotes.warehouse',
         ]);
 

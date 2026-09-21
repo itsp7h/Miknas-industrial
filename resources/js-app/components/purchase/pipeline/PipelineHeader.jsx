@@ -9,7 +9,7 @@ import { formatDate } from './pipelineStyles';
 export default function PipelineHeader({ request, compact = false, onEdit }) {
     const done = request.is_done;
     const meta = [
-        request.project_name && `📁 ${request.project_name}`,
+        request.company_name && `📁 ${request.company_name}`,
         request.department && `🏢 ${request.department}`,
         request.requested_by_name && `👤 ${request.requested_by_name}`,
         request.date && `📅 ${formatDate(request.date)}`,

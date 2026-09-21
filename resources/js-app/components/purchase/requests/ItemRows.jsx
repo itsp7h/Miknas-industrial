@@ -22,7 +22,7 @@ export function isFilled(row) {
  * A new row inherits the last row's required date (Blade's create modal did
  * this; its edit modal left the date blank).
  */
-export default function ItemRows({ items, units, accent, today, compact = false, onChange }) {
+export default function ItemRows({ items, units, catalogue = [], accent, today, compact = false, onChange }) {
     // Description and quantity are required, but only on a row being used. In
     // Blade every added row carried `required` unconditionally, so adding a row
     // and leaving it alone made the form refuse to submit with nothing but a
@@ -32,6 +32,46 @@ export default function ItemRows({ items, units, accent, today, compact = false,
 
     function update(index, field, value) {
         onChange(items.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+    }
+
+    /**
+     * Typing a description that names a catalogued item brings its unit with
+     * it. Anything else leaves the unit alone, so a half-typed word does not
+     * keep wiping a unit the user chose by hand.
+     */
+    function describe(index, value) {
+        const match = catalogue.find(
+            (item) => item.name.trim().toLowerCase() === value.trim().toLowerCase()
+        );
+
+        onChange(items.map((row, i) => (i === index
+            ? { ...row, description: value, ...(match?.unit ? { unit: match.unit } : {}) }
+            : row)));
+    }
+
+    /**
+     * Tab completes the description to the first catalogued material it could
+     * be, the way a shell completes a path: "ste" becomes "Steel Plate 10mm",
+     * and the unit follows as if it had been typed in full.
+     *
+     * Tab is only swallowed when it actually completed something. With nothing
+     * to add — no match, an empty box, or a name already complete — it moves to
+     * the next field as Tab always does, so the key is never trapped.
+     */
+    function completeOnTab(index, event) {
+        if (event.key !== 'Tab' || event.shiftKey) return;
+
+        const typed = (items[index]?.description ?? '').trim().toLowerCase();
+        if (typed === '') return;
+
+        const names = catalogue.map((item) => item.name).filter(Boolean);
+        if (names.some((name) => name.trim().toLowerCase() === typed)) return;
+
+        const match = names.find((name) => name.trim().toLowerCase().startsWith(typed));
+        if (!match) return;
+
+        event.preventDefault();
+        describe(index, match);
     }
 
     function add() {
@@ -81,11 +121,18 @@ export default function ItemRows({ items, units, accent, today, compact = false,
                                     {index + 1}
                                 </td>
                                 <td style={CELL}>
+                                    {/* Completes from the item master, and a description
+                                        that matches one brings that item's unit with it —
+                                        the unit belongs to the item, not to the request.
+                                        A material matching nothing is added to the master
+                                        when the request is saved. */}
                                     <input
                                         type="text" required={mandatory(row)} style={FIELD} placeholder="Material description"
+                                        list="mpr-item-names" autoComplete="off"
                                         aria-label={`Item ${index + 1} description`}
                                         value={row.description ?? ''}
-                                        onChange={(e) => update(index, 'description', e.target.value)}
+                                        onChange={(e) => describe(index, e.target.value)}
+                                        onKeyDown={(e) => completeOnTab(index, e)}
                                     />
                                 </td>
                                 <td style={CELL}>
@@ -148,6 +195,17 @@ export default function ItemRows({ items, units, accent, today, compact = false,
                         ))}
                     </tbody>
                 </table>
+
+                {/* One list for every row: the browser completes from it as you
+                    type, so "ste" offers Steel Plate without a dropdown of our
+                    own to keep in step with the table's layout. */}
+                <datalist id="mpr-item-names">
+                    {catalogue.map((item) => (
+                        <option key={item.id} value={item.name}>
+                            {item.unit ? `${item.name} · ${item.unit}` : item.name}
+                        </option>
+                    ))}
+                </datalist>
             </div>
         </FormSection>
     );

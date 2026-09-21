@@ -5,11 +5,11 @@ import PipelineHeader from './PipelineHeader';
 import PipelineSidebar from './PipelineSidebar';
 import StageTimeline from './StageTimeline';
 
-const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'];
 const LABELS = {
     draft: 'Purchase Request', gm_approval: 'GM Signature', rfq: 'Select Suppliers',
     quoting: 'Awaiting Quotes', comparison: 'Quote Comparison', lpo: 'LPO Issued',
-    receiving: 'Receiving Materials', payment: 'Payment', complete: 'Complete',
+    receiving: 'Receiving Materials', complete: 'Complete',
 };
 
 const base = (overrides = {}) => ({
@@ -22,7 +22,7 @@ const base = (overrides = {}) => ({
     stages: STAGES,
     stage_labels: LABELS,
     status: 'approved',
-    project_name: 'Plant Expansion',
+    company_name: 'Plant Expansion',
     department: 'Operations',
     requested_by_name: 'Admin User',
     date: '2026-09-01',
@@ -90,7 +90,8 @@ describe('StageTimeline', () => {
         renderIn(<StageTimeline request={base()} />);
         expect(screen.getByText('Purchase Request')).toHaveStyle({ color: 'rgb(29, 78, 216)' });
         expect(screen.getByText('LPO Issued')).toHaveStyle({ color: 'rgb(217, 119, 6)' });
-        expect(screen.getByText('Payment')).toHaveStyle({ color: 'rgb(148, 163, 184)' });
+        // A stage the request has not reached yet.
+        expect(screen.getByText('Receiving Materials')).toHaveStyle({ color: 'rgb(148, 163, 184)' });
     });
 
     it('captions completed stages with their counts', () => {
@@ -221,7 +222,7 @@ describe('StageTimeline', () => {
 
     it('links each GRN once the step is behind the request', () => {
         renderIn(<StageTimeline request={base({
-            stage: 'payment', stage_index: 7,
+            stage: 'complete', stage_index: 7,
             goods_receipt_notes: [
                 { id: 1, grn_number: 'GRN-00001', po_number: 'PO-00030', status: 'confirmed' },
             ],
@@ -268,6 +269,49 @@ describe('PipelineSidebar', () => {
         expect(screen.getByText('Request Details')).toBeInTheDocument();
         expect(screen.getByText('Approved')).toBeInTheDocument();
         expect(screen.getByText('Sitra')).toBeInTheDocument();
+    });
+
+    it('names who raised the request, and labels the urgency as a date not a person', () => {
+        renderIn(<PipelineSidebar request={base({
+            requested_by_name: 'Operation manager',
+            location: 'Askar Forkoll',
+            required_date_text: 'Urgent',
+        })} />);
+
+        // Was missing entirely, so the box named nobody who raised it.
+        expect(screen.getByText('Requested By')).toBeInTheDocument();
+        expect(screen.getByText('Operation manager')).toBeInTheDocument();
+
+        // The urgency picker fills this, so "Required By: Urgent" read as a
+        // name. It holds an urgency, and says so.
+        expect(screen.getByText('Required Urgency')).toBeInTheDocument();
+        expect(screen.getByText('Urgent')).toBeInTheDocument();
+        expect(screen.queryByText('Required By')).not.toBeInTheDocument();
+    });
+
+    it('shows the Required Date on its own line, under the urgency', () => {
+        renderIn(<PipelineSidebar request={base({
+            required_date_text: 'Urgent',
+            required_date: '2026-09-21',
+        })} />);
+
+        // Two different facts: the picker's word, and the date the earliest
+        // item is actually needed by.
+        expect(screen.getByText('Required Urgency')).toBeInTheDocument();
+        expect(screen.getByText('Urgent')).toBeInTheDocument();
+        expect(screen.getByText('Required Date')).toBeInTheDocument();
+        // ICU abbreviates September as "Sept" in en-GB; match either so the
+        // spec does not turn red on a Node upgrade.
+        expect(screen.getByText(/21 Sept? 2026/)).toBeInTheDocument();
+    });
+
+    it('formats a picked date as the urgency, and drops the date row when there is none', () => {
+        renderIn(<PipelineSidebar request={base({ required_date_text: '2026-10-02', required_date: null })} />);
+
+        expect(screen.getByText('Required Urgency')).toBeInTheDocument();
+        expect(screen.getByText('02 Oct 2026')).toBeInTheDocument();
+        expect(screen.queryByText('2026-10-02')).not.toBeInTheDocument();
+        expect(screen.queryByText('Required Date')).not.toBeInTheDocument();
     });
 
     it('shows supplier status pills and the channel for non-email invitations', () => {

@@ -72,6 +72,21 @@ class AccessCatalog
             ->all();
     }
 
+    /**
+     * What a profile starts a person off with.
+     *
+     * The template behind both "pick a profile" and "Reset to default" on the
+     * Users page, and what a newly created user is granted.
+     */
+    public static function defaultPermissionsFor(?string $profile): array
+    {
+        if (! $profile) {
+            return [];
+        }
+
+        return config("access.profiles.{$profile}.permissions", []);
+    }
+
     public static function profileNames(): array
     {
         return array_keys(config('access.profiles'));

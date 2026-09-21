@@ -9,11 +9,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PurchaseRequestBoardResource;
 use App\Http\Resources\PurchaseRequestDetailResource;
 use App\Http\Resources\PurchaseRequestSheetResource;
+use App\Models\Item;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
+use App\Models\Settings\Company;
 use App\Models\Settings\Department;
 use App\Models\Settings\ProjectSetting;
 use App\Models\User;
+use App\Services\DocumentNumberService;
+use App\Services\ItemCatalogue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -56,7 +60,20 @@ class PurchaseRequestController extends Controller
             ->orderBy('name')
             ->get();
 
+        // The MPR names a company, not a project. Locations still belong to
+        // projects, so a company offers every location under its own projects
+        // — otherwise choosing one would empty the Location list.
+        $companies = Company::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
         return response()->json([
+            'companies' => $companies->map(fn ($company) => [
+                'id' => $company->id,
+                'name' => $company->name,
+                'locations' => $projects
+                    ->where('company_id', $company->id)
+                    ->flatMap(fn ($project) => $project->locations->pluck('name'))
+                    ->unique()->sort()->values(),
+            ])->values(),
             'projects' => $projects->map(fn ($project) => [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -72,6 +89,17 @@ class PurchaseRequestController extends Controller
             // one three ways. The form picks from these; only the name is
             // stored, since requested_by stays whoever created the request.
             'requesters' => User::orderBy('name')->pluck('name')->values(),
+            // What the description field completes from, and where it takes
+            // each material's unit. Name and unit only: the form needs nothing
+            // else, and the list is sent whole on every open.
+            'items' => Item::where('is_active', true)
+                ->orderBy('item_name')
+                ->get(['id', 'item_name', 'unit_of_measure'])
+                ->map(fn (Item $item) => [
+                    'id' => $item->id,
+                    'name' => $item->item_name,
+                    'unit' => $item->unit_of_measure,
+                ])->values(),
             'units' => self::UNITS,
             'today' => now()->toDateString(),
         ]);
@@ -105,6 +133,7 @@ class PurchaseRequestController extends Controller
             'id' => $purchaseRequest->id,
             'request_number' => $purchaseRequest->request_number,
             'date' => $purchaseRequest->date?->toDateString(),
+            'company_name' => $purchaseRequest->company_name,
             'project_name' => $purchaseRequest->project_name,
             'requested_by_name' => $purchaseRequest->requested_by_name,
             'required_date_text' => $purchaseRequest->required_date_text,
@@ -129,7 +158,7 @@ class PurchaseRequestController extends Controller
 
         $pr = DB::transaction(function () use ($data) {
             $pr = PurchaseRequest::create($this->fields($data) + [
-                'request_number' => $this->nextRequestNumber(),
+                'request_number' => $this->nextRequestNumber($data['company_name'] ?? null),
                 'status' => 'pending',
                 'requested_by' => auth()->id(),
             ]);
@@ -140,7 +169,7 @@ class PurchaseRequestController extends Controller
         });
 
         event(new PurchaseRequestCreated(
-            $pr->id, $pr->request_number, $pr->date->toDateString(), $pr->project_name,
+            $pr->id, $pr->request_number, $pr->date->toDateString(), $pr->company_name,
             $pr->requested_by_name, $pr->department, $pr->stage, $pr->requested_by
         ));
 
@@ -171,7 +200,7 @@ class PurchaseRequestController extends Controller
 
         event(new PurchaseRequestUpdated(
             $purchaseRequest->id, $purchaseRequest->request_number,
-            $purchaseRequest->date?->toDateString(), $purchaseRequest->project_name,
+            $purchaseRequest->date?->toDateString(), $purchaseRequest->company_name,
             $purchaseRequest->requested_by_name, $purchaseRequest->department,
             $purchaseRequest->stage, $purchaseRequest->requested_by
         ));
@@ -207,7 +236,10 @@ class PurchaseRequestController extends Controller
     {
         return $request->validate([
             'date' => 'required|date',
-            'project_name' => 'required|string|max:255',
+            'company_name' => 'required|string|max:255',
+            // A request always belongs to a company; it does not always belong
+            // to a project, so this one is optional.
+            'project_name' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
             'requested_by_name' => 'required|string|max:255',
             'required_date_text' => 'nullable|string|max:100',
@@ -226,7 +258,8 @@ class PurchaseRequestController extends Controller
     {
         return [
             'date' => $data['date'],
-            'project_name' => $data['project_name'],
+            'company_name' => $data['company_name'],
+            'project_name' => $data['project_name'] ?? null,
             'department' => $data['department'] ?? null,
             'requested_by_name' => $data['requested_by_name'],
             'required_date_text' => $data['required_date_text'] ?? null,
@@ -244,10 +277,19 @@ class PurchaseRequestController extends Controller
                 continue;
             }
 
+            // A material someone has actually requested belongs in the item
+            // master. Typed descriptions that match nothing are added there,
+            // so the next request completes them instead of spelling them
+            // afresh — which is how "Steel Plate" became three items.
+            $catalogued = app(ItemCatalogue::class)
+                ->findOrCreateByName($item['description'], $item['unit'] ?? null);
+
             PurchaseRequestItem::create([
                 'purchase_request_id' => $pr->id,
                 'description' => $item['description'],
-                'unit' => $item['unit'] ?? null,
+                // The catalogue decides the unit where it knows one: an item's
+                // unit is a property of the item, not of the request.
+                'unit' => $catalogued?->unit_of_measure ?: ($item['unit'] ?? null),
                 'quantity_required' => $item['quantity_required'],
                 'purpose_use' => $item['purpose_use'] ?? null,
                 'required_date' => $item['required_date'] ?? null,
@@ -255,9 +297,17 @@ class PurchaseRequestController extends Controller
         }
     }
 
-    private function nextRequestNumber(): string
+    /**
+     * The requesting company's series — MI-MPR-26-0001 — from the company the
+     * form named. A request always names one, so there is normally no house
+     * series here; it exists for a request whose company is not on record.
+     */
+    private function nextRequestNumber(?string $companyName): string
     {
-        return 'MPR'.now()->format('y').'-'
-            .str_pad((string) (PurchaseRequest::max('id') + 1), 4, '0', STR_PAD_LEFT);
+        $company = $companyName
+            ? Company::where('name', $companyName)->first()
+            : null;
+
+        return app(DocumentNumberService::class)->next($company, DocumentNumberService::MPR);
     }
 }

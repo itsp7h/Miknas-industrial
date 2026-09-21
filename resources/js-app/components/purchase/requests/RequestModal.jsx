@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import useViewport from '../../../hooks/useViewport';
 import FormModal, { FormSection } from '../../ui/FormModal';
 import ItemRows, { blankRow } from './ItemRows';
+import CompanyPicker from './CompanyPicker';
 import ProjectPicker from './ProjectPicker';
 import UrgencyPicker from './UrgencyPicker';
 
@@ -39,20 +40,61 @@ export default function RequestModal({
     // every page uses.
     const compact = useViewport() === 'mobile';
 
-    const projects = options?.projects ?? [];
+    const companies = options?.companies ?? [];
+    const allProjects = options?.projects ?? [];
     const units = options?.units ?? [];
+    const catalogue = options?.items ?? [];
     const requesters = options?.requesters ?? [];
     const today = options?.today ?? '';
 
+    // A request belongs to a company and, usually, to a project within it.
+    const company = companies.find((c) => c.name === values.company_name);
+    // Only the chosen company's projects, so nobody files against another
+    // company's site.
+    const projects = useMemo(
+        () => (company?.id ? allProjects.filter((p) => p.company_id === company.id) : []),
+        [allProjects, company]
+    );
     const project = projects.find((p) => p.name === values.project_name);
-    const locations = project?.locations ?? [];
-    // Departments belong to a company, so choosing a project narrows them. With
-    // no project — or a project with no company — the whole list stays offered.
+    // Locations belong to a project. With none chosen the company's own list —
+    // every location under its projects — keeps the field usable.
+    const locations = project?.locations ?? company?.locations ?? [];
+    // A department belongs to one company, so there is nothing sensible to
+    // offer until a company is chosen — listing every company's departments
+    // invites filing a request against a department that is not theirs.
     const departments = useMemo(() => {
-        const all = options?.departments ?? [];
+        if (! company?.id) return [];
 
-        return project?.company_id ? all.filter((d) => d.company_id === project.company_id) : all;
-    }, [options, project]);
+        return (options?.departments ?? []).filter((d) => d.company_id === company.id);
+    }, [options, company]);
+
+    /**
+     * What choosing a company settles on its own.
+     *
+     * A field with exactly one option is not a choice, so it is filled: one
+     * project, one department, one location. It cascades — a company with a
+     * single project takes that project's locations, not the company's whole
+     * list, so a lone location beneath it is filled too.
+     *
+     * With more than one on offer nothing is picked, because choosing for
+     * someone would put a project or a site on the request that nobody chose.
+     */
+    function settledFor(companyName) {
+        const chosen = companies.find((c) => c.name === companyName);
+        const theirProjects = chosen ? allProjects.filter((p) => p.company_id === chosen.id) : [];
+        const onlyProject = theirProjects.length === 1 ? theirProjects[0] : null;
+        const offeredLocations = onlyProject ? (onlyProject.locations ?? []) : (chosen?.locations ?? []);
+        const theirDepartments = chosen
+            ? (options?.departments ?? []).filter((d) => d.company_id === chosen.id)
+            : [];
+
+        return {
+            company_name: companyName,
+            project_name: onlyProject?.name ?? '',
+            location: offeredLocations.length === 1 ? offeredLocations[0] : '',
+            department: theirDepartments.length === 1 ? theirDepartments[0].name : '',
+        };
+    }
 
     function set(field, value) {
         setValues((current) => ({ ...current, [field]: value }));
@@ -83,7 +125,7 @@ export default function RequestModal({
             onClose={onClose}
         >
             <form id="mpr-form" onSubmit={submit}>
-                <FormSection accent={accent} title="Project / Department Details">
+                <FormSection accent={accent} title="Company / Department Details">
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: compact ? '1fr' : 'repeat(3,minmax(0,1fr))',
@@ -99,16 +141,32 @@ export default function RequestModal({
                             />
                         </div>
 
+                        <CompanyPicker
+                            companies={companies}
+                            value={values.company_name}
+                            onChange={(name) => setValues((current) => ({
+                                // The project belongs to the old company, the department
+                                // and the location to the old project, so none of them
+                                // survives the company changing under them — they are
+                                // replaced wholesale by whatever the new one settles.
+                                ...current,
+                                ...settledFor(name),
+                            }))}
+                        />
+
                         <ProjectPicker
                             projects={projects}
+                            disabled={!company}
                             value={values.project_name}
                             onChange={(name) => setValues((current) => {
-                                // A location belongs to one project, so it cannot survive
-                                // the project changing under it. Where the new project
-                                // offers exactly one there is no choice to make, so make
-                                // it; with several, choosing for the user would put a site
-                                // nobody picked on the request.
-                                const offered = projects.find((p) => p.name === name)?.locations ?? [];
+                                // Where the new project offers exactly one location there
+                                // is no choice to make, so make it; with several, choosing
+                                // for the user would put a site nobody picked on the
+                                // request. Clearing the project falls back to the
+                                // company's own list.
+                                const offered = name
+                                    ? (projects.find((p) => p.name === name)?.locations ?? [])
+                                    : (company?.locations ?? []);
 
                                 return {
                                     ...current,
@@ -144,7 +202,7 @@ export default function RequestModal({
                         />
 
                         <div>
-                            <label className="form-label" htmlFor="mpr-location">Location / Site</label>
+                            <label className="form-label" htmlFor="mpr-location">Location / Project</label>
                             <select
                                 id="mpr-location" className="form-input"
                                 disabled={locations.length === 0}
@@ -162,14 +220,23 @@ export default function RequestModal({
                             </select>
                         </div>
 
-                        <div>
+                        {/* Last of seven in a three-column grid, so on its own row.
+                            Spanning it fills the space rather than leaving two
+                            thirds of the row empty beside a short select. */}
+                        <div style={{ gridColumn: compact ? 'auto' : '1 / -1' }}>
                             <label className="form-label" htmlFor="mpr-department">Department</label>
                             <select
-                                id="mpr-department" className="form-input"
+                                id="mpr-department" className="form-input" style={{ width: '100%' }}
+                                disabled={!company}
                                 value={values.department ?? ''}
                                 onChange={(e) => set('department', e.target.value)}
                             >
-                                <option value="">— Select Department —</option>
+                                <option value="">
+                                    {company ? '— Select Department —' : '— Choose a company first —'}
+                                </option>
+                                {/* A department saved before its company was known, or
+                                    since deactivated, stays visible instead of the form
+                                    silently dropping it. */}
                                 {values.department && !departments.some((d) => d.name === values.department) && (
                                     <option value={values.department}>{values.department}</option>
                                 )}
@@ -180,7 +247,8 @@ export default function RequestModal({
                 </FormSection>
 
                 <ItemRows
-                    items={values.items} units={units} accent={accent} today={today} compact={compact}
+                    items={values.items} units={units} catalogue={catalogue}
+                    accent={accent} today={today} compact={compact}
                     onChange={(items) => set('items', items)}
                 />
 

@@ -35,6 +35,7 @@ export const formatKpi = (value, isMoney = false) => {
 const ALL_KPIS = [
     {
         key: 'total_sales',
+        hidden: true,
         money: true,
         label: 'Total Sales',
         caption: 'All time invoiced',
@@ -72,6 +73,7 @@ const ALL_KPIS = [
     },
     {
         key: 'outstanding_receivables',
+        hidden: true,
         money: true,
         label: 'Receivables',
         caption: 'Outstanding',

@@ -9,7 +9,7 @@ import ViewSuppliersModal from './ViewSuppliersModal';
 import { ToastProvider } from '../../ui/Toast';
 import * as client from '../../../api/client';
 
-const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'];
 const LABELS = {
     draft: 'Purchase Request', gm_approval: 'GM Signature', rfq: 'Select Suppliers',
     quoting: 'Awaiting Quotes', comparison: 'Quote Comparison', lpo: 'LPO Issued',
@@ -19,7 +19,7 @@ const LABELS = {
 const base = (overrides = {}) => ({
     id: 3, request_number: 'MPR-0003', stage: 'gm_approval', stage_index: 1, progress_pct: 12,
     is_done: false, stages: STAGES, stage_labels: LABELS, status: 'pending',
-    project_name: null, department: null, requested_by_name: 'Admin User', date: null,
+    company_name: null, department: null, requested_by_name: 'Admin User', date: null,
     created_at: '2026-09-01', location: null, required_date_text: null, verified_by_name: null,
     signature: null, rejection: null, rfq_invitations: [], pending_invitation_count: 0, sent_invitation_count: 0,
     items: [], supplier_quotes: [], awarded_supplier_names: [], purchase_orders: [],
@@ -277,6 +277,35 @@ describe('ViewSuppliersModal', () => {
         expect(screen.getByText('Unsent')).toBeInTheDocument();
         expect(screen.getByText('Quoted')).toBeInTheDocument();
         expect(screen.getByText('Open in WhatsApp')).toHaveAttribute('href', 'https://wa.me/97333?text=x');
+    });
+
+    it('names who selected each supplier, and who sent it', () => {
+        const attributed = base({
+            stage: 'rfq',
+            rfq_invitations: [
+                {
+                    id: 9, supplier_id: 1, supplier_name: 'Gulf Steel', channel: 'email',
+                    status: 'sent', portal_url: 'http://erp.test/rfq/tok', whatsapp_link: null,
+                    selected_by: 'Ali Hassan', sent_by: 'Sara Ali', sent_at: '21 Sep 2026, 09:30',
+                },
+            ],
+        });
+        wrap(<ViewSuppliersModal open request={attributed} onClose={() => {}} onSend={() => {}} />);
+
+        // Label and name are separate elements so the name can carry the weight.
+        expect(screen.getByText('Selected by')).toBeInTheDocument();
+        expect(screen.getByText('Ali Hassan')).toBeInTheDocument();
+        expect(screen.getByText('Sent by')).toBeInTheDocument();
+        expect(screen.getByText('Sara Ali')).toBeInTheDocument();
+        expect(screen.getByText('· 21 Sep 2026, 09:30')).toBeInTheDocument();
+    });
+
+    it('says nothing about who, for an invitation recorded before it was tracked', () => {
+        wrap(<ViewSuppliersModal open request={request} onClose={() => {}} onSend={() => {}} />);
+
+        // Inventing a name would be worse than admitting there is none.
+        expect(screen.queryByText('Selected by')).not.toBeInTheDocument();
+        expect(screen.queryByText('Sent by')).not.toBeInTheDocument();
     });
 
     it('offers to send the unsent ones', async () => {

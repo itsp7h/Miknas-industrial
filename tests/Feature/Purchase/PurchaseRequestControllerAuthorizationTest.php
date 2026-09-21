@@ -15,7 +15,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     {
         return [
             'date' => now()->format('Y-m-d'),
-            'project_name' => 'Test Project',
+            'company_name' => 'Test Project',
             'requested_by_name' => 'Test Person',
             'items' => [
                 ['description' => 'Widget', 'quantity_required' => 5],

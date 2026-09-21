@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\Settings;
 
 use App\Models\User;
+use App\Support\AccessCatalog;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -281,6 +282,96 @@ class UserControllerTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('password');
 
         $this->assertDatabaseMissing('users', ['email' => 'confused@example.test']);
+    }
+
+    /**
+     * The point of the whole grid: what an Admin ticks is what the person gets.
+     *
+     * The GM profile grants fifteen squares. Cut back to two, the other
+     * thirteen must be gone — the profile stays on them as a label, and the
+     * role itself hands back nothing.
+     */
+    public function test_the_selection_is_exactly_what_the_user_ends_up_with(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $gm = User::factory()->create();
+        $gm->assignRole('GM');
+        $gm->syncPermissions(AccessCatalog::defaultPermissionsFor('GM'));
+        $this->assertCount(15, $gm->fresh()->getAllPermissions());
+
+        $this->actingAs($admin)->putJson('/api/v1/settings/users/'.$gm->id, [
+            'roles' => ['GM'],
+            'permissions' => ['pipeline.view', 'pipeline.approve'],
+        ])->assertOk();
+
+        $gm = $gm->fresh();
+        $this->assertSame(['GM'], $gm->roles->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(
+            ['pipeline.view', 'pipeline.approve'],
+            $gm->getAllPermissions()->pluck('name')->all()
+        );
+        // The sidebar is built from these, so the tabs go with them.
+        $this->assertFalse($gm->can('raw-materials.view'));
+        $this->assertFalse($gm->can('suppliers.view'));
+        $this->assertTrue($gm->can('pipeline.approve'));
+    }
+
+    /** Taking every square away leaves nothing, profile or no profile. */
+    public function test_clearing_every_square_leaves_the_user_with_no_access(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $gm = User::factory()->create();
+        $gm->assignRole('GM');
+        $gm->syncPermissions(AccessCatalog::defaultPermissionsFor('GM'));
+
+        $this->actingAs($admin)->putJson('/api/v1/settings/users/'.$gm->id, [
+            'roles' => ['GM'],
+            'permissions' => [],
+        ])->assertOk();
+
+        $this->assertCount(0, $gm->fresh()->getAllPermissions());
+    }
+
+    /** A new user is granted their profile's template, since the role grants nothing. */
+    public function test_creating_a_user_lays_down_the_profiles_default_squares(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
+            'name' => 'New GM',
+            'email' => 'newgm@example.test',
+            'roles' => ['GM'],
+        ])->assertCreated();
+
+        $created = User::where('email', 'newgm@example.test')->first();
+        $this->assertEqualsCanonicalizing(
+            AccessCatalog::defaultPermissionsFor('GM'),
+            $created->getAllPermissions()->pluck('name')->all()
+        );
+    }
+
+    /** No profile means no squares, rather than a silent inheritance. */
+    public function test_creating_a_user_without_a_profile_grants_nothing(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson('/api/v1/settings/users', [
+            'name' => 'No Profile',
+            'email' => 'noprofile@example.test',
+        ])->assertCreated();
+
+        $created = User::where('email', 'noprofile@example.test')->first();
+        $this->assertCount(0, $created->getAllPermissions());
     }
 
     public function test_admin_can_email_an_existing_user_a_password_reset_link(): void

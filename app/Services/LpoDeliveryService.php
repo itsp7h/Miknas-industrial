@@ -6,7 +6,6 @@ use App\Mail\LpoIssuedMail;
 use App\Models\MailAccount;
 use App\Models\PurchaseOrder;
 use App\Models\Setting;
-use App\Models\Settings\ProjectSetting;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
@@ -119,9 +118,7 @@ class LpoDeliveryService
     {
         $order->load(['supplier', 'items.item', 'createdBy', 'purchaseRequest']);
 
-        $company = $order->purchaseRequest
-            ? ProjectSetting::where('name', $order->purchaseRequest->project_name)->with('company')->first()?->company
-            : null;
+        $company = $order->purchaseRequest?->resolveCompany();
 
         $subtotal = (float) $order->items->sum('total_amount');
         $vatRate = (float) Setting::get('vat_rate', 0);

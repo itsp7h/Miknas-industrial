@@ -23,9 +23,13 @@ class AccessSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission]);
         }
 
+        // A profile is a template, not a container. Its permission list seeds
+        // a person the moment the profile is chosen for them, and the squares
+        // on that person are then the whole of what they can reach. A role that
+        // granted permissions of its own would keep handing back access the
+        // Users page had just taken away.
         foreach (AccessCatalog::profiles() as $profile) {
-            Role::firstOrCreate(['name' => $profile['name']])
-                ->syncPermissions($profile['permissions']);
+            Role::firstOrCreate(['name' => $profile['name']])->syncPermissions([]);
         }
     }
 }

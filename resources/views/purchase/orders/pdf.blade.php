@@ -105,7 +105,7 @@
                     </td>
                     <td style="padding:0 0 0 10px;vertical-align:middle;">
                         <div class="brand-name">{{ $company->name ?? 'SteelERP' }}</div>
-                        <div class="brand-sub">{{ $order->purchaseRequest->project_name ?? 'Manufacturing & Trading' }}</div>
+                        <div class="brand-sub">{{ $order->purchaseRequest->company_name ?? 'Manufacturing & Trading' }}</div>
                     </td>
                 </tr>
             </table>
@@ -160,10 +160,10 @@
             @if($order->purchaseRequest?->location)
                 <div class="party-line">{{ $order->purchaseRequest->location }}</div>
             @endif
-            @if($order->purchaseRequest?->project_name)
+            @if($order->purchaseRequest?->company_name)
             <div class="site-box">
                 <div class="site-label">Site / Project</div>
-                <div class="site-value">{{ $order->purchaseRequest->project_name }}</div>
+                <div class="site-value">{{ $order->purchaseRequest->company_name }}</div>
             </div>
             @endif
         </td>
