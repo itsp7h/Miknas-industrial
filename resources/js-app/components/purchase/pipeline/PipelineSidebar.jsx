@@ -57,6 +57,7 @@ export default function PipelineSidebar({ request }) {
                         on the request, and it was missing here while the sheet,
                         the board and the printed MPR all carried it. */}
                     {r.company_name && <DetailRow label="Company" value={r.company_name} />}
+                    {r.project_name && <DetailRow label="Project" value={r.project_name} />}
                     {r.requested_by_name && <DetailRow label="Requested By" value={r.requested_by_name} />}
                     {r.location && <DetailRow label="Location" value={r.location} />}
                     {/* Two different facts, on two lines. The urgency is the

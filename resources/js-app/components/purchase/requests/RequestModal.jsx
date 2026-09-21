@@ -3,6 +3,7 @@ import useViewport from '../../../hooks/useViewport';
 import FormModal, { FormSection } from '../../ui/FormModal';
 import ItemRows, { blankRow } from './ItemRows';
 import CompanyPicker from './CompanyPicker';
+import ProjectPicker from './ProjectPicker';
 import UrgencyPicker from './UrgencyPicker';
 
 /** Flattens a Laravel 422 body into the bullet list Blade rendered from $errors->all(). */
@@ -40,17 +41,23 @@ export default function RequestModal({
     const compact = useViewport() === 'mobile';
 
     const companies = options?.companies ?? [];
+    const allProjects = options?.projects ?? [];
     const units = options?.units ?? [];
     const requesters = options?.requesters ?? [];
     const today = options?.today ?? '';
 
-    // The field names the company now, though the column it writes is still
-    // `company_name` — renaming that reaches the sheet, the print and the board,
-    // and is worth its own change.
+    // A request belongs to a company and, usually, to a project within it.
     const company = companies.find((c) => c.name === values.company_name);
-    // Locations still belong to projects, so a company offers every location
-    // under its own projects.
-    const locations = company?.locations ?? [];
+    // Only the chosen company's projects, so nobody files against another
+    // company's site.
+    const projects = useMemo(
+        () => (company?.id ? allProjects.filter((p) => p.company_id === company.id) : []),
+        [allProjects, company]
+    );
+    const project = projects.find((p) => p.name === values.project_name);
+    // Locations belong to a project. With none chosen the company's own list —
+    // every location under its projects — keeps the field usable.
+    const locations = project?.locations ?? company?.locations ?? [];
     // Departments belong to a company, so choosing one narrows them directly.
     // With no company chosen, the whole list stays offered.
     const departments = useMemo(() => {
@@ -108,16 +115,37 @@ export default function RequestModal({
                             companies={companies}
                             value={values.company_name}
                             onChange={(name) => setValues((current) => {
-                                // A location belongs to one company's projects, so it
-                                // cannot survive the company changing under it. Where the
-                                // new one offers exactly one there is no choice to make,
-                                // so make it; with several, choosing for the user would
-                                // put a site nobody picked on the request.
+                                // The project belongs to the old company, and the
+                                // location to the old project, so neither survives the
+                                // company changing under them.
                                 const offered = companies.find((c) => c.name === name)?.locations ?? [];
 
                                 return {
                                     ...current,
                                     company_name: name,
+                                    project_name: '',
+                                    location: offered.length === 1 ? offered[0] : '',
+                                };
+                            })}
+                        />
+
+                        <ProjectPicker
+                            projects={projects}
+                            disabled={!company}
+                            value={values.project_name}
+                            onChange={(name) => setValues((current) => {
+                                // Where the new project offers exactly one location there
+                                // is no choice to make, so make it; with several, choosing
+                                // for the user would put a site nobody picked on the
+                                // request. Clearing the project falls back to the
+                                // company's own list.
+                                const offered = name
+                                    ? (projects.find((p) => p.name === name)?.locations ?? [])
+                                    : (company?.locations ?? []);
+
+                                return {
+                                    ...current,
+                                    project_name: name,
                                     location: offered.length === 1 ? offered[0] : '',
                                 };
                             })}

@@ -199,6 +199,10 @@
                 <div class="info-value">{{ $purchaseRequest->company_name ?? '—' }}</div>
             </div>
             <div>
+                <div class="info-label">Project</div>
+                <div class="info-value">{{ $purchaseRequest->project_name ?? '—' }}</div>
+            </div>
+            <div>
                 <div class="info-label">Requested By</div>
                 <div class="info-value">{{ $purchaseRequest->requested_by_name ?? $purchaseRequest->requestedBy?->name ?? '—' }}</div>
             </div>

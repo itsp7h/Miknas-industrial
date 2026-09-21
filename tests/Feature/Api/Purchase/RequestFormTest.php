@@ -108,6 +108,38 @@ class RequestFormTest extends TestCase
     }
 
     /** An inactive company is not offered, the way an inactive project is not. */
+    /** A request records both: the company, and the project within it. */
+    public function test_it_stores_the_company_and_the_project(): void
+    {
+        $response = $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'company_name' => 'Miknas Industrial',
+                'project_name' => 'Forkoll',
+            ]))
+            ->assertCreated();
+
+        $pr = PurchaseRequest::latest('id')->first();
+        $this->assertSame('Miknas Industrial', $pr->company_name);
+        $this->assertSame('Forkoll', $pr->project_name);
+        $response->assertJsonPath('data.company_name', 'Miknas Industrial');
+        $response->assertJsonPath('data.project_name', 'Forkoll');
+    }
+
+    /** A request always has a company; it does not always have a project. */
+    public function test_the_project_is_optional_but_the_company_is_not(): void
+    {
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload(['project_name' => null]))
+            ->assertCreated();
+
+        $this->assertNull(PurchaseRequest::latest('id')->first()->project_name);
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload(['company_name' => '']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('company_name');
+    }
+
     /** The MPR names a company, and the company record is found by that name. */
     public function test_a_request_resolves_its_company_by_name(): void
     {

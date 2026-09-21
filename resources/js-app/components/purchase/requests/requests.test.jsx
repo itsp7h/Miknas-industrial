@@ -8,11 +8,16 @@ import UrgencyPicker from './UrgencyPicker';
 import * as client from '../../../api/client';
 
 const OPTIONS = {
-    // The MPR names a company; locations come from that company's projects.
+    // A request names a company and, within it, a project.
     companies: [
         { id: 3, name: 'Miknas Steel', locations: ['Bay 4', 'Yard'] },
         { id: 4, name: 'Gulf Marine', locations: [] },
         { id: 5, name: 'Desert Logistics', locations: ['Main Store'] },
+    ],
+    projects: [
+        { id: 1, name: 'Plant Expansion', company_id: 3, locations: ['Bay 4'] },
+        { id: 2, name: 'Yard Works', company_id: 3, locations: ['Yard'] },
+        { id: 3, name: 'Harbour Works', company_id: 4, locations: [] },
     ],
     departments: [
         { id: 10, name: 'Operations', company_id: 3 },
@@ -305,5 +310,55 @@ describe('the edit-request modal', () => {
 
         // Gulf Marine has no locations of its own, so nothing stale survives.
         expect(screen.getByLabelText('Location / Project')).toHaveValue('');
+    });
+});
+
+describe('the project field beside the company', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+    });
+
+    it('offers nothing until a company is chosen', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        // Listing every project would let someone file against another
+        // company's site.
+        expect(screen.getByLabelText('Project')).toBeDisabled();
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Choose a company first');
+    });
+
+    it('offers only the chosen company\u2019s projects', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+
+        fireEvent.click(screen.getByLabelText('Project'));
+        expect(screen.getByText('Plant Expansion')).toBeInTheDocument();
+        expect(screen.getByText('Yard Works')).toBeInTheDocument();
+        expect(screen.queryByText('Harbour Works')).not.toBeInTheDocument();
+    });
+
+    it('drops the project when the company changes under it', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+        fireEvent.click(screen.getByLabelText('Project'));
+        fireEvent.click(screen.getByText('Plant Expansion'));
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Plant Expansion');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Gulf Marine'));
+
+        // The project belonged to the old company.
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Select Project');
     });
 });

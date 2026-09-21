@@ -12,7 +12,7 @@ class PurchaseRequest extends Model
     use HasFactory;
 
     protected $fillable = [
-        'request_number', 'date', 'company_name', 'department',
+        'request_number', 'date', 'company_name', 'project_name', 'department',
         'requested_by_name', 'required_date_text', 'location',
         'remarks', 'status', 'stage', 'verified_by_name',
         'requested_by', 'approved_by', 'approved_at',
@@ -28,10 +28,11 @@ class PurchaseRequest extends Model
     /**
      * The company this request belongs to, as a record.
      *
-     * `company_name` holds whatever the MPR form named. Requests raised before
-     * that field listed companies hold a *project* name, so a project of that
-     * name is tried next and its company taken — otherwise every historical
-     * LPO would lose the company from its letterhead the day the form changed.
+     * The LPO letterhead needs the company itself, not just its name. Requests
+     * raised while the form had a single field were moved across by migration,
+     * so `company_name` is the company on every row; the project fallback is
+     * kept for a row written before that ran, where the value is still a
+     * project name.
      */
     public function resolveCompany(): ?Company
     {

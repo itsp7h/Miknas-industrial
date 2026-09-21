@@ -77,6 +77,7 @@ export function RequestModalProvider({ children }) {
     const createInitial = useMemo(() => ({
         date: options?.today ?? '',
         company_name: '',
+        project_name: '',
         requested_by_name: '',
         required_date_text: '',
         location: '',
@@ -88,6 +89,7 @@ export function RequestModalProvider({ children }) {
     const editInitial = useMemo(() => (editing ? {
         date: editing.date ?? '',
         company_name: editing.company_name ?? '',
+        project_name: editing.project_name ?? '',
         requested_by_name: editing.requested_by_name ?? '',
         required_date_text: editing.required_date_text ?? '',
         location: editing.location ?? '',

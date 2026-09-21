@@ -120,6 +120,7 @@ class PurchaseRequestController extends Controller
             'request_number' => $purchaseRequest->request_number,
             'date' => $purchaseRequest->date?->toDateString(),
             'company_name' => $purchaseRequest->company_name,
+            'project_name' => $purchaseRequest->project_name,
             'requested_by_name' => $purchaseRequest->requested_by_name,
             'required_date_text' => $purchaseRequest->required_date_text,
             'location' => $purchaseRequest->location,
@@ -222,6 +223,9 @@ class PurchaseRequestController extends Controller
         return $request->validate([
             'date' => 'required|date',
             'company_name' => 'required|string|max:255',
+            // A request always belongs to a company; it does not always belong
+            // to a project, so this one is optional.
+            'project_name' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
             'requested_by_name' => 'required|string|max:255',
             'required_date_text' => 'nullable|string|max:100',
@@ -241,6 +245,7 @@ class PurchaseRequestController extends Controller
         return [
             'date' => $data['date'],
             'company_name' => $data['company_name'],
+            'project_name' => $data['project_name'] ?? null,
             'department' => $data['department'] ?? null,
             'requested_by_name' => $data['requested_by_name'],
             'required_date_text' => $data['required_date_text'] ?? null,

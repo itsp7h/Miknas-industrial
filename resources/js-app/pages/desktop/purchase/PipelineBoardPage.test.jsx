@@ -18,23 +18,24 @@ vi.mock('../../../echo', () => ({
 }));
 
 describe('PipelineBoardPage (desktop)', () => {
-    it('names the company in its own column', async () => {
+    it('gives the company and the project a column each', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({
             data: [{
                 id: 1, request_number: 'MPR26-0001', stage: 'draft',
-                company_name: 'Miknas Industrial', requested_by_name: 'Jane',
-                department: 'Ops', date: '2026-08-01',
+                company_name: 'Miknas Industrial', project_name: 'Forkoll',
+                requested_by_name: 'Jane', department: 'Ops', date: '2026-08-01',
             }],
         });
         render(<MemoryRouter><ToastProvider><RequestModalProvider><PipelineBoardPage /></RequestModalProvider></ToastProvider></MemoryRouter>);
 
-        // The column carried the company all along but was headed "Project",
-        // left over from when the MPR form picked one.
+        // A request belongs to both, and one column standing in for the other
+        // is what the single field got wrong.
         expect(await screen.findByText('MPR26-0001')).toBeInTheDocument();
-        expect(screen.getAllByRole('columnheader').map((th) => th.textContent))
-            .toContain('Company');
-        expect(screen.queryByText('Project')).not.toBeInTheDocument();
+        const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+        expect(headers).toContain('Company');
+        expect(headers).toContain('Project');
         expect(screen.getByText('Miknas Industrial')).toBeInTheDocument();
+        expect(screen.getByText('Forkoll')).toBeInTheDocument();
     });
 
     it('splits requests into Active and Completed tabs', async () => {

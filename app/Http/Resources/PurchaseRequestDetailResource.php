@@ -39,6 +39,7 @@ class PurchaseRequestDetailResource extends JsonResource
 
             'status' => $this->status,
             'company_name' => $this->company_name,
+            'project_name' => $this->project_name,
             'department' => $this->department,
             'requested_by_name' => $this->requested_by_name ?: $this->requestedBy?->name,
             'date' => $this->date ? $this->date->toDateString() : null,

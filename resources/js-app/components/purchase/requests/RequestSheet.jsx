@@ -66,6 +66,7 @@ export default function RequestSheet({ request, compact = false }) {
                     <Field label="MPR Number" value={request.request_number} />
                     <Field label="Date" value={ddmmyyyy(request.date)} />
                     <Field label="Company" value={request.company_name} />
+                    <Field label="Project" value={request.project_name} />
                     <Field label="Requested By" value={request.requested_by_name} />
                     <Field label="Required Urgency" value={formatRequiredWhen(request.required_date_text)} />
                     <Field label="Location / Project" value={request.location} />
