@@ -41,7 +41,14 @@ class PurchaseOrderControllerTest extends TestCase
     private function procurementUser(): User
     {
         $user = User::factory()->create();
-        $user->assignRole('Procurement Officer');
+        $user->givePermissionTo([
+            'pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo', 'pipeline.view-active-pipeline',
+            'purchase-orders.view', 'purchase-orders.create',
+            'purchase-orders.edit', 'purchase-orders.delete',
+            'goods-receipts.view', 'goods-receipts.create',
+            'goods-receipts.edit', 'goods-receipts.delete',
+        ]);
 
         return $user;
     }

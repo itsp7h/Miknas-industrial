@@ -38,7 +38,7 @@ describe('mobile CustomerListPage', () => {
     it('flags a non-zero outstanding balance in red', async () => {
         renderPage();
         await screen.findByText('Gulf Steel');
-        expect(screen.getByText('250.00')).toHaveClass('text-red-600', 'font-semibold');
+        expect(screen.getByText('BD 250.000')).toHaveClass('text-red-600', 'font-semibold');
     });
 
     it('badges the status rather than colouring a word', async () => {

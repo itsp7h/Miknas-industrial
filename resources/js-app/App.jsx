@@ -31,6 +31,8 @@ import DesktopItemListPage from './pages/desktop/inventory/ItemListPage';
 import MobileItemListPage from './pages/mobile/inventory/ItemListPage';
 import DesktopWarehouseListPage from './pages/desktop/inventory/WarehouseListPage';
 import MobileWarehouseListPage from './pages/mobile/inventory/WarehouseListPage';
+import DesktopWarehouseDetailPage from './pages/desktop/inventory/WarehouseDetailPage';
+import MobileWarehouseDetailPage from './pages/mobile/inventory/WarehouseDetailPage';
 import DesktopStockMovementPage from './pages/desktop/inventory/StockMovementPage';
 import MobileStockMovementPage from './pages/mobile/inventory/StockMovementPage';
 import DesktopMovementReportPage from './pages/desktop/inventory/reports/MovementReportPage';
@@ -69,8 +71,10 @@ import DesktopIntegrationsPage from './pages/desktop/settings/IntegrationsPage';
 import MobileIntegrationsPage from './pages/mobile/settings/IntegrationsPage';
 import DesktopProfilePage from './pages/desktop/profile/ProfilePage';
 import MobileProfilePage from './pages/mobile/profile/ProfilePage';
-import DesktopVatPage from './pages/desktop/settings/VatPage';
-import MobileVatPage from './pages/mobile/settings/VatPage';
+import DesktopFinancePage from './pages/desktop/settings/FinancePage';
+import MobileFinancePage from './pages/mobile/settings/FinancePage';
+import DesktopItemCategoryPage from './pages/desktop/settings/ItemCategoryPage';
+import MobileItemCategoryPage from './pages/mobile/settings/ItemCategoryPage';
 import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
 import MobileProductionOutputListPage from './pages/mobile/production/ProductionOutputListPage';
 
@@ -93,6 +97,7 @@ export default function App({
     const PurchaseOrderDetailPage = viewport === 'mobile' ? MobilePurchaseOrderDetailPage : DesktopPurchaseOrderDetailPage;
     const ItemListPage = viewport === 'mobile' ? MobileItemListPage : DesktopItemListPage;
     const WarehouseListPage = viewport === 'mobile' ? MobileWarehouseListPage : DesktopWarehouseListPage;
+    const WarehouseDetailPage = viewport === 'mobile' ? MobileWarehouseDetailPage : DesktopWarehouseDetailPage;
     const StockMovementPage = viewport === 'mobile' ? MobileStockMovementPage : DesktopStockMovementPage;
     const MovementReportPage = viewport === 'mobile' ? MobileMovementReportPage : DesktopMovementReportPage;
     const LowStockPage = viewport === 'mobile' ? MobileLowStockPage : DesktopLowStockPage;
@@ -112,7 +117,8 @@ export default function App({
     const ProjectSettingsPage = viewport === 'mobile' ? MobileProjectSettingsPage : DesktopProjectSettingsPage;
     const UserListPage = viewport === 'mobile' ? MobileUserListPage : DesktopUserListPage;
     const IntegrationsPage = viewport === 'mobile' ? MobileIntegrationsPage : DesktopIntegrationsPage;
-    const VatPage = viewport === 'mobile' ? MobileVatPage : DesktopVatPage;
+    const FinancePage = viewport === 'mobile' ? MobileFinancePage : DesktopFinancePage;
+    const ItemCategoryPage = viewport === 'mobile' ? MobileItemCategoryPage : DesktopItemCategoryPage;
     const ProfilePage = viewport === 'mobile' ? MobileProfilePage : DesktopProfilePage;
 
     return (
@@ -153,7 +159,21 @@ export default function App({
                     <Route path="/app/purchase/invoices" element={<SupplierInvoiceListPage />} />
                     <Route path="/app/purchase/payments" element={<SupplierPaymentListPage />} />
                     <Route path="/app/inventory/items" element={<ItemListPage />} />
+                    {/* Same page over the other slice of items.category. Your own
+                        product is made and sold, not bought and consumed, so it
+                        does not belong on a page called Raw Materials. */}
+                    <Route
+                        path="/app/inventory/finished-goods"
+                        element={(
+                            <ItemListPage
+                                category="finished_good"
+                                title="Finished Goods"
+                                subtitle="Product made in-house and sold"
+                            />
+                        )}
+                    />
                     <Route path="/app/inventory/warehouses" element={<WarehouseListPage />} />
+                    <Route path="/app/inventory/warehouses/:id" element={<WarehouseDetailPage />} />
                     <Route path="/app/inventory/movements" element={<StockMovementPage />} />
                     {/* The stock summary is gone: the Raw Materials page answers the same
                         question, and its warehouse filter rescopes each row to one
@@ -181,7 +201,14 @@ export default function App({
                     <Route path="/app/settings/projects" element={<ProjectSettingsPage />} />
                     <Route path="/app/settings/users" element={<UserListPage />} />
                     <Route path="/app/settings/integrations" element={<IntegrationsPage />} />
-                    <Route path="/app/settings/vat" element={<VatPage />} />
+                    <Route path="/app/settings/finance" element={<FinancePage />} />
+                    {/* VAT had its own page and its own menu entry; both are now
+                        Finance. The URL was linked long enough to be bookmarked. */}
+                    <Route
+                        path="/app/settings/vat"
+                        element={<Navigate to="/app/settings/finance" replace />}
+                    />
+                    <Route path="/app/settings/item-categories" element={<ItemCategoryPage />} />
                     <Route path="/app/profile" element={<ProfilePage />} />
                     <Route path="*" element={<div>Page not found.</div>} />
                 </Routes>

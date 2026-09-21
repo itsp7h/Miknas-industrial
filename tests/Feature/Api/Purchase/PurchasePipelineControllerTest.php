@@ -21,7 +21,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_index_returns_requests_the_user_can_view(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('pipeline.view-all');
+        $user->givePermissionTo(['pipeline.view', 'pipeline.view-all']);
         $this->actingAs($user);
         PurchaseRequest::factory()->count(3)->create();
 
@@ -34,7 +34,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_index_filters_to_own_requests_for_view_own_permission(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('pipeline.view-own');
+        $user->givePermissionTo(['pipeline.view', 'pipeline.view-own']);
         $this->actingAs($user);
         PurchaseRequest::factory()->create(['requested_by' => $user->id]);
         PurchaseRequest::factory()->create(['requested_by' => User::factory()->create()->id]);
@@ -48,7 +48,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_index_filters_to_active_pipeline_stages_for_view_active_pipeline_permission(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('pipeline.view-active-pipeline');
+        $user->givePermissionTo(['pipeline.view', 'pipeline.view-active-pipeline']);
         $this->actingAs($user);
         PurchaseRequest::factory()->create(['stage' => 'draft']);
         PurchaseRequest::factory()->create(['stage' => 'rfq']);
@@ -60,16 +60,18 @@ class PurchasePipelineControllerTest extends TestCase
         $this->assertCount(2, $response->json('data'));
     }
 
-    public function test_index_returns_nothing_without_any_purchase_request_permission(): void
+    /**
+     * Without `pipeline.view` the tab is shut. It used to open and simply show
+     * nothing, which told the person the pipeline was empty rather than that it
+     * was not theirs.
+     */
+    public function test_index_is_refused_without_permission_to_open_the_tab(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
         PurchaseRequest::factory()->create();
 
-        $response = $this->getJson('/api/v1/purchase/pipeline');
-
-        $response->assertOk();
-        $this->assertCount(0, $response->json('data'));
+        $this->getJson('/api/v1/purchase/pipeline')->assertForbidden();
     }
 
     /**
@@ -89,7 +91,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_a_requester_can_open_their_own_request(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.view', 'pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
         $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
 
         $this->actingAs($requester)
@@ -100,7 +102,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_index_serializes_date_as_a_plain_y_m_d_string(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('pipeline.view-all');
+        $user->givePermissionTo(['pipeline.view', 'pipeline.view-all']);
         $this->actingAs($user);
         PurchaseRequest::factory()->create(['date' => '2026-08-02']);
 

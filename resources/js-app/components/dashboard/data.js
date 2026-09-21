@@ -1,17 +1,41 @@
+import { currencySymbol } from '../../currency';
 import {
     CurrencyIcon, BoxIcon, CogIcon, ClockIcon, ClipboardIcon,
     PlusIcon, WarningIcon,
 } from './icons';
 
-/** Matches the Blade dashboard's `number_format($value, 0)`. */
-export const formatKpi = (value) =>
-    Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+// `hidden: true` parks an entry without deleting it — same flag, same reason as
+// the Production and Sales groups in layouts/navItems.js: the modules are built
+// and still reachable by URL, they are just not in use yet. Delete the flag to
+// bring an entry back, and the grids below re-widen on their own.
+const visible = (entries) => entries.filter((entry) => !entry.hidden);
+
+// Tailwind JIT only compiles class strings it can see spelled out in source
+// (CLAUDE.md #1), so the widths each grid can take are listed here rather than
+// interpolated from an array length — `lg:grid-cols-${n}` would never reach the
+// compiled CSS, and the dashboard would silently fall back to one column.
+const XL_COLS = { 1: 'xl:grid-cols-1', 2: 'xl:grid-cols-2', 3: 'xl:grid-cols-3', 4: 'xl:grid-cols-4', 5: 'xl:grid-cols-5' };
+const LG_COLS = { 1: 'lg:grid-cols-1', 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4' };
+
+/**
+ * Matches the Blade dashboard's `number_format($value, 0)`.
+ *
+ * Three of the five cards are amounts and two are counts of orders, so the
+ * card says which it is rather than every figure getting a currency.
+ * Whole units on purpose: a headline reads better as BD 25,651 than to the fils.
+ */
+export const formatKpi = (value, isMoney = false) => {
+    const figure = Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+    return isMoney ? `${currencySymbol()} ${figure}` : figure;
+};
 
 // The five KPI cards, in the Blade page's order. `to` makes a card a link —
 // only Purchase Pipeline had one.
-export const KPIS = [
+const ALL_KPIS = [
     {
         key: 'total_sales',
+        money: true,
         label: 'Total Sales',
         caption: 'All time invoiced',
         Icon: CurrencyIcon,
@@ -20,6 +44,7 @@ export const KPIS = [
     },
     {
         key: 'inventory_value',
+        money: true,
         label: 'Inventory Value',
         caption: 'All warehouses',
         Icon: BoxIcon,
@@ -28,6 +53,7 @@ export const KPIS = [
     },
     {
         key: 'production_in_progress',
+        hidden: true,
         label: 'Production Active',
         caption: 'Orders in progress',
         Icon: CogIcon,
@@ -46,6 +72,7 @@ export const KPIS = [
     },
     {
         key: 'outstanding_receivables',
+        money: true,
         label: 'Receivables',
         caption: 'Outstanding',
         Icon: ClipboardIcon,
@@ -56,7 +83,10 @@ export const KPIS = [
     },
 ];
 
-export const QUICK_ACTIONS = [
+export const KPIS = visible(ALL_KPIS);
+export const KPI_COLUMNS = XL_COLS[KPIS.length];
+
+const ALL_QUICK_ACTIONS = [
     {
         label: 'New Purchase Request',
         caption: 'Raise a PR for approval',
@@ -70,6 +100,7 @@ export const QUICK_ACTIONS = [
         labelHover: 'group-hover:text-amber-700',
     },
     {
+        hidden: true,
         label: 'New Sales Order',
         caption: 'Create order for a customer',
         to: '/app/sales/orders',
@@ -80,6 +111,7 @@ export const QUICK_ACTIONS = [
         labelHover: 'group-hover:text-violet-700',
     },
     {
+        hidden: true,
         label: 'New Production Order',
         caption: 'Schedule a production run',
         to: '/app/production/orders',
@@ -101,7 +133,10 @@ export const QUICK_ACTIONS = [
     },
 ];
 
-export const MODULES = [
+export const QUICK_ACTIONS = visible(ALL_QUICK_ACTIONS);
+export const QUICK_ACTION_COLUMNS = LG_COLS[QUICK_ACTIONS.length];
+
+const ALL_MODULES = [
     {
         title: 'Purchase',
         caption: 'Procurement workflow',
@@ -121,13 +156,13 @@ export const MODULES = [
         captionColor: 'text-emerald-100',
         linkHover: 'hover:text-emerald-600',
         links: [
-            { label: 'Item Master', to: '/app/inventory/items' },
-            { label: 'Stock Summary', to: '/app/inventory/reports/summary' },
+            { label: 'Raw Materials', to: '/app/inventory/items' },
             { label: 'Inventory Valuation', to: '/app/inventory/reports/valuation' },
         ],
     },
     {
         title: 'Production',
+        hidden: true,
         caption: 'Manufacturing operations',
         header: 'bg-gradient-to-r from-orange-500 to-orange-400',
         captionColor: 'text-orange-100',
@@ -140,6 +175,7 @@ export const MODULES = [
     },
     {
         title: 'Sales',
+        hidden: true,
         caption: 'Customer & revenue',
         header: 'bg-gradient-to-r from-violet-500 to-violet-400',
         captionColor: 'text-violet-100',
@@ -151,3 +187,6 @@ export const MODULES = [
         ],
     },
 ];
+
+export const MODULES = visible(ALL_MODULES);
+export const MODULE_COLUMNS = LG_COLS[MODULES.length];

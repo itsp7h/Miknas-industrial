@@ -187,6 +187,73 @@ describe('settings UserListPage', () => {
         expect(await screen.findByText('The email has already been taken.')).toBeInTheDocument();
     });
 
+    it('opens the reset-password modal for the chosen user, email mode first', async () => {
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Alan Operations');
+        fireEvent.click(screen.getAllByText('Reset Password')[1]);
+
+        expect(await screen.findByRole('heading', { name: 'Reset Password' })).toBeInTheDocument();
+        // The dot-prefixed email is the modal's own line, not the table row's.
+        expect(screen.getByText(/· zoe@example\.test/)).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Email reset link/ })).toBeChecked();
+        // The password fields stay out of the way until they are asked for.
+        expect(screen.queryByLabelText('New Password')).not.toBeInTheDocument();
+    });
+
+    it('emails a reset link without sending a password', async () => {
+        const post = vi.spyOn(client, 'apiPost').mockResolvedValue({
+            message: 'A password-reset email has been sent to alan@example.test.',
+        });
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Alan Operations');
+        fireEvent.click(screen.getAllByText('Reset Password')[0]);
+        fireEvent.click(await screen.findByText('Send Reset Link'));
+
+        await waitFor(() => expect(post).toHaveBeenCalledWith(
+            '/settings/users/1/reset-password', { mode: 'email' }
+        ));
+        expect(await screen.findByText('A password-reset email has been sent to alan@example.test.')).toBeInTheDocument();
+    });
+
+    it('reveals the password fields and sets one directly', async () => {
+        const post = vi.spyOn(client, 'apiPost').mockResolvedValue({
+            message: 'Password updated for Alan Operations.',
+        });
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Alan Operations');
+        fireEvent.click(screen.getAllByText('Reset Password')[0]);
+        fireEvent.click(await screen.findByRole('radio', { name: /Set password now/ }));
+
+        fireEvent.change(screen.getByLabelText('New Password'), { target: { value: 'CorrectHorseBattery9!' } });
+        fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'CorrectHorseBattery9!' } });
+        fireEvent.click(screen.getByText('Set Password'));
+
+        await waitFor(() => expect(post).toHaveBeenCalledWith('/settings/users/1/reset-password', {
+            mode: 'password',
+            password: 'CorrectHorseBattery9!',
+            password_confirmation: 'CorrectHorseBattery9!',
+        }));
+        expect(await screen.findByText('Password updated for Alan Operations.')).toBeInTheDocument();
+    });
+
+    it('shows a server validation error against the password field', async () => {
+        vi.spyOn(client, 'apiPost').mockRejectedValue({
+            errors: { password: ['The password field must be at least 8 characters.'] },
+        });
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Alan Operations');
+        fireEvent.click(screen.getAllByText('Reset Password')[0]);
+        fireEvent.click(await screen.findByRole('radio', { name: /Set password now/ }));
+        fireEvent.change(screen.getByLabelText('New Password'), { target: { value: 'short' } });
+        fireEvent.click(screen.getByText('Set Password'));
+
+        expect(await screen.findByText('The password field must be at least 8 characters.')).toBeInTheDocument();
+    });
+
     it('mobile lists users as cards with a full-width add button', async () => {
         wrap(MobileUserListPage);
 

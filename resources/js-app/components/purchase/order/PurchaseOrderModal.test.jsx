@@ -70,7 +70,7 @@ describe('PurchaseOrderModal', () => {
         fireEvent.change(screen.getByLabelText('Rate for row 1'), { target: { value: '2.5' } });
 
         expect(screen.getByText('kg')).toBeInTheDocument();
-        expect(screen.getAllByText('25.00').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('BD 25.000').length).toBeGreaterThan(0);
     });
 
     it('adds and removes rows, never dropping the last one', async () => {

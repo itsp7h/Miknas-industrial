@@ -116,7 +116,7 @@ describe('desktop sales flow pages', () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: INVOICES });
         wrap(<InvoiceListPage />);
         await screen.findByText('INV-00001');
-        expect(screen.getByText('70.00')).toBeInTheDocument();
+        expect(screen.getByText('BD 70.000')).toBeInTheDocument();
         expect(screen.getByText('Part Paid')).toBeInTheDocument();
     });
 
@@ -133,8 +133,8 @@ describe('desktop sales flow pages', () => {
         expect(screen.getByText('06 Aug 2026')).toBeInTheDocument();
         expect(screen.getByText('Part Paid')).toHaveClass('badge-yellow');
         expect(screen.getByText('Unpaid')).toHaveClass('badge-red');
-        expect(screen.getByText('70.00')).toHaveClass('text-red-600', 'font-semibold');
-        expect(screen.getByText('40.00')).toHaveClass('text-green-700');
+        expect(screen.getByText('BD 70.000')).toHaveClass('text-red-600', 'font-semibold');
+        expect(screen.getByText('BD 40.000')).toHaveClass('text-green-700');
     });
 
     // The port had no actions on this page at all — no way to receive a payment,
@@ -226,7 +226,7 @@ describe('desktop sales flow pages', () => {
         expect(await screen.findByText('Record Customer Receipt')).toBeInTheDocument();
         expect(screen.getByLabelText(/Invoice/)).toHaveValue('4');
         // Blade named the outstanding figure on each option, and beside Amount.
-        expect(screen.getByText('70.00 outstanding on this invoice.')).toBeInTheDocument();
+        expect(screen.getByText('BD 70.000 outstanding on this invoice.')).toBeInTheDocument();
     });
 
     it('payments label the method rather than showing the raw enum', async () => {

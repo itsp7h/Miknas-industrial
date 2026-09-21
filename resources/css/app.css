@@ -1,3 +1,8 @@
+/* Leaflet's own stylesheet, for the warehouse location picker. It has to come
+   before the Tailwind layers: @import is only legal at the top of a stylesheet,
+   and Leaflet's positioning rules are plain CSS that nothing here overrides. */
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

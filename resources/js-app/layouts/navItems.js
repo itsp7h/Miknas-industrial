@@ -46,6 +46,7 @@ export const NAV_GROUPS = [
         icon: BOX,
         items: [
             { type: 'link', to: '/app/inventory/items', label: 'Raw Materials', permission: 'raw-materials.view' },
+            { type: 'link', to: '/app/inventory/finished-goods', label: 'Finished Goods', permission: 'finished-goods.view' },
             { type: 'link', to: '/app/inventory/warehouses', label: 'Warehouses', permission: 'warehouses.view' },
             { type: 'link', to: '/app/inventory/movements', label: 'Stock Movements', permission: 'stock-movements.view' },
             { type: 'link', to: '/app/inventory/reports/movement', label: 'Movement Report', permission: 'movement-report.view' },
@@ -89,7 +90,8 @@ export const NAV_GROUPS = [
             { type: 'link', to: '/app/settings/projects', label: 'Projects', icon: FOLDER, permission: 'projects.view' },
             { type: 'link', to: '/app/settings/users', label: 'Users', icon: USERS, adminOnly: true },
             { type: 'link', to: '/app/settings/integrations', label: 'Integrations', icon: COG, adminOnly: true },
-            { type: 'link', to: '/app/settings/vat', label: 'VAT Settings', icon: RECEIPT, permission: 'finance.view' },
+            { type: 'link', to: '/app/settings/finance', label: 'Finance', icon: RECEIPT, permission: 'finance.view' },
+            { type: 'link', to: '/app/settings/item-categories', label: 'Item Categories', icon: BOX, permission: 'item-categories.view' },
         ],
     },
 ];

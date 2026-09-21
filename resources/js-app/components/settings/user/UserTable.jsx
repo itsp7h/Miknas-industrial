@@ -4,7 +4,7 @@ const ROLE_PILL = {
 };
 
 /** Blade's four columns, roles as blue pills. */
-export default function UserTable({ users, onEditAccess }) {
+export default function UserTable({ users, onEditAccess, onResetPassword }) {
     return (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' }}>
             <table className="table-base" style={{ width: '100%' }}>
@@ -27,6 +27,12 @@ export default function UserTable({ users, onEditAccess }) {
                                     : user.roles.map((role) => <span key={role} style={ROLE_PILL}>{role}</span>)}
                             </td>
                             <td className="text-right">
+                                <button
+                                    type="button" onClick={() => onResetPassword(user)}
+                                    className="btn-secondary btn-sm" style={{ marginRight: 8 }}
+                                >
+                                    Reset Password
+                                </button>
                                 <button type="button" onClick={() => onEditAccess(user)} className="btn-secondary btn-sm">
                                     Edit Access
                                 </button>

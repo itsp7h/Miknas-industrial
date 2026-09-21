@@ -12,8 +12,10 @@ use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
 use App\Models\Supplier;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
+use App\Services\LpoDeliveryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class PurchaseOrderController extends Controller
 {
@@ -138,6 +140,35 @@ class PurchaseOrderController extends Controller
         event(new PurchaseOrderDeleted($id));
 
         return response()->json(['deleted' => true]);
+    }
+
+    /**
+     * Email the LPO to its supplier again.
+     *
+     * The pipeline sends on issue, but a send can fail — no mail account
+     * configured, a bad address, an SMTP outage — and the LPO is still validly
+     * issued. Without this the only recovery was re-generating the order, which
+     * the generator refuses once goods or an invoice are recorded against it.
+     */
+    public function send(PurchaseOrder $purchaseOrder, LpoDeliveryService $delivery)
+    {
+        // The bare permission, not authorizeOrderAccess: that one gates on the
+        // request still sitting at the 'lpo' stage, which issuing moves it off.
+        // Re-sending an order that already exists generates nothing, so the
+        // stage has no say in it — gating it there would mean a send could
+        // never be retried after the very action that sent it.
+        abort_unless(auth()->user()?->can('pipeline.generate-lpo'), 403);
+
+        try {
+            $delivery->deliver($purchaseOrder);
+        } catch (RuntimeException $e) {
+            abort(422, $e->getMessage());
+        }
+
+        event(new PurchaseOrderSaved($purchaseOrder));
+
+        return (new PurchaseOrderResource($purchaseOrder->load(['supplier', 'items.item'])))
+            ->additional(['message' => 'LPO emailed to '.$purchaseOrder->sent_to.'.']);
     }
 
     /**

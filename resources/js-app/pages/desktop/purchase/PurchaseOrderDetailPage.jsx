@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PurchaseOrderDetail from '../../../components/purchase/order/PurchaseOrderDetail';
+import LpoDeliveryStatus from '../../../components/purchase/order/LpoDeliveryStatus';
 import { apiGet } from '../../../api/client';
 import { useToast } from '../../../components/ui/Toast';
 
@@ -55,6 +56,7 @@ export default function PurchaseOrderDetailPage() {
 
             {loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
             {!loading && !order && <p style={{ fontSize: 14, color: '#64748b' }}>That purchase order could not be found.</p>}
+            <LpoDeliveryStatus order={order} onSent={setOrder} />
             <PurchaseOrderDetail order={order} />
         </div>
     );

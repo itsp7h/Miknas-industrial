@@ -21,7 +21,7 @@
     <div style="padding:32px;">
       <p style="font-size:15px;color:#334155;margin:0 0 12px;">Dear <strong>{{ $invitation->supplier->name }}</strong>,</p>
       <p style="font-size:14px;color:#475569;line-height:1.65;margin:0 0 28px;">
-        You have been invited to submit a price quotation. Please click the button below to view the required items and submit your quote. The link is private to your company and expires in 7 days.
+        You have been invited to submit a price quotation. Please click the button below to view the required items and submit your quote. The link is private to your company and expires in {{ $invitation->expiresInDays() }} days.
       </p>
 
       <a href="{{ route('rfq.show', $invitation->token) }}"

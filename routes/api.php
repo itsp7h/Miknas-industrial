@@ -27,11 +27,12 @@ use App\Http\Controllers\Api\Sales\PaymentReceiptController;
 use App\Http\Controllers\Api\Sales\SalesInvoiceController;
 use App\Http\Controllers\Api\Sales\SalesOrderController;
 use App\Http\Controllers\Api\Settings\CompanyController;
+use App\Http\Controllers\Api\Settings\FinanceController;
 use App\Http\Controllers\Api\Settings\IntegrationController;
+use App\Http\Controllers\Api\Settings\ItemCategoryController;
 use App\Http\Controllers\Api\Settings\MailAccountController;
 use App\Http\Controllers\Api\Settings\ProjectController;
 use App\Http\Controllers\Api\Settings\UserController;
-use App\Http\Controllers\Api\Settings\VatController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -75,6 +76,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('items/{item}', [ItemController::class, 'destroy'])->middleware('permission:raw-materials.delete|finished-goods.delete');
 
             Route::get('warehouses', [WarehouseController::class, 'index'])->middleware('permission:warehouses.view');
+            Route::get('warehouses/{warehouse}', [WarehouseController::class, 'show'])->middleware('permission:warehouses.view');
             Route::post('warehouses', [WarehouseController::class, 'store'])->middleware('permission:warehouses.create');
             Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update'])->middleware('permission:warehouses.edit');
             Route::delete('warehouses/{warehouse}', [WarehouseController::class, 'destroy'])->middleware('permission:warehouses.delete');
@@ -173,9 +175,17 @@ Route::prefix('v1')->group(function () {
             Route::put('projects/{project}/locations/{location}', [ProjectController::class, 'updateLocation'])->middleware('permission:projects.edit');
             Route::delete('projects/{project}/locations/{location}', [ProjectController::class, 'destroyLocation'])->middleware('permission:projects.delete');
 
+            // Item sections — "Raw Materials / Chemical Materials".
+            Route::get('item-categories', [ItemCategoryController::class, 'index'])->middleware('permission:item-categories.view');
+            Route::post('item-categories', [ItemCategoryController::class, 'store'])->middleware('permission:item-categories.create');
+            Route::put('item-categories/{itemCategory}', [ItemCategoryController::class, 'update'])->middleware('permission:item-categories.edit');
+            Route::delete('item-categories/{itemCategory}', [ItemCategoryController::class, 'destroy'])->middleware('permission:item-categories.delete');
+
             Route::get('users', [UserController::class, 'index'])->middleware('role:Admin');
             Route::post('users', [UserController::class, 'store'])->middleware('role:Admin');
             Route::put('users/{user}', [UserController::class, 'update'])->middleware('role:Admin');
+            // The suffix keeps this clear of the `users/{user}` wildcard above.
+            Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('role:Admin');
 
             Route::get('integrations/whatsapp', [IntegrationController::class, 'whatsapp'])->middleware('role:Admin');
             Route::put('integrations/whatsapp', [IntegrationController::class, 'updateWhatsapp'])->middleware('role:Admin');
@@ -191,8 +201,9 @@ Route::prefix('v1')->group(function () {
             Route::post('mail-accounts/{mailAccount}/test', [MailAccountController::class, 'testConnection'])->middleware('role:Admin');
             Route::post('mail-accounts/{mailAccount}/send-test', [MailAccountController::class, 'sendTestEmail'])->middleware('role:Admin');
 
-            Route::get('vat', [VatController::class, 'show'])->middleware('role:Admin');
-            Route::put('vat', [VatController::class, 'update'])->middleware('role:Admin');
+            // VAT and the display currency — one subject, one page.
+            Route::get('finance', [FinanceController::class, 'show'])->middleware('permission:finance.view');
+            Route::put('finance', [FinanceController::class, 'update'])->middleware('permission:finance.edit');
         });
 
         Route::prefix('purchase')->group(function () {
@@ -237,6 +248,7 @@ Route::prefix('v1')->group(function () {
             Route::get('orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->middleware('permission:purchase-orders.view');
             Route::post('orders', [PurchaseOrderController::class, 'store'])->middleware('permission:purchase-orders.create');
             Route::put('orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->middleware('permission:purchase-orders.edit');
+            Route::post('orders/{purchaseOrder}/send', [PurchaseOrderController::class, 'send'])->middleware('permission:purchase-orders.edit');
             Route::delete('orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy'])->middleware('permission:purchase-orders.delete');
 
             // `grns/form-options` must precede `grns/{grn}` or the wildcard eats it.

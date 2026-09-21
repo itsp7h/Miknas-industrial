@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { ToastProvider } from './components/ui/Toast';
+import { setActiveCurrency } from './currency';
 
 const container = document.getElementById('react-app');
 const currentUserId = Number(container.dataset.userId) || null;
@@ -15,6 +16,9 @@ const canViewAllPurchaseRequests = container.dataset.canViewAllPurchaseRequests 
 const canViewActivePipeline = container.dataset.canViewActivePipeline === '1';
 const canViewOwnPurchaseRequests = container.dataset.canViewOwnPurchaseRequests === '1';
 
+// Before the first render: money helpers are plain functions called from
+// table column definitions, not hooks, so they read this rather than context.
+setActiveCurrency(container.dataset.currency);
 
 let permissions = [];
 try {

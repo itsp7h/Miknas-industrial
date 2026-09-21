@@ -9,6 +9,7 @@ use App\Models\PurchaseRequest;
 use App\Models\PurchaseSignature;
 use App\Models\Supplier;
 use App\Policies\PurchaseRequestPolicy;
+use App\Services\LpoDeliveryService;
 use App\Services\LpoGenerationService;
 use App\Services\PurchaseStageService;
 use App\Services\RfqInvitationService;
@@ -47,7 +48,7 @@ class PurchasePipelineController extends Controller
         $purchaseRequest->load([
             'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
             'rfqInvitations.supplier', 'supplierQuotes.supplier', 'supplierQuotes.items',
-            'purchaseOrders.supplier',
+            'purchaseOrders.supplier', 'purchaseOrders.goodsReceiptNotes.warehouse',
         ]);
 
         return new PurchaseRequestDetailResource($purchaseRequest);
@@ -148,17 +149,44 @@ class PurchasePipelineController extends Controller
 
         abort_if($pending->isEmpty(), 422, 'No unsent invitations. Select suppliers first.');
 
+        // One supplier's bad address must not cost the others their invitation,
+        // so each is sent on its own and the failures are collected.
+        $sent = 0;
+        $failed = [];
+
         foreach ($pending as $invitation) {
-            $service->sendInvitation($invitation);
+            try {
+                $service->sendInvitation($invitation);
+                $sent++;
+            } catch (RuntimeException $e) {
+                $failed[$invitation->supplier->name] = $e->getMessage();
+            }
         }
+
+        // Nothing got through. The request stays where it is and the caller is
+        // told why, rather than being shown a success it did not get.
+        abort_if($sent === 0, 422, 'Could not send any invitation. '.reset($failed));
 
         $stages->setStage($purchaseRequest, 'quoting');
 
-        return $this->fresh($purchaseRequest, $pending->count().' supplier(s) notified. Waiting for quotes.');
+        return $this->fresh($purchaseRequest, $failed
+            ? $sent.' of '.$pending->count().' supplier(s) notified. Could not reach '
+                .implode(', ', array_keys($failed)).' — their invitations are still unsent.'
+            : $pending->count().' supplier(s) notified. Waiting for quotes.');
     }
 
-    public function generateLpo(PurchaseRequest $purchaseRequest, LpoGenerationService $service, PurchaseStageService $stages)
-    {
+    /**
+     * Issuing an LPO is not finished until the supplier has it. Generating the
+     * order and emailing it were separate ideas before — the second one written
+     * and never wired up — so an LPO was created with status 'sent' and the
+     * supplier heard nothing.
+     */
+    public function generateLpo(
+        PurchaseRequest $purchaseRequest,
+        LpoGenerationService $service,
+        PurchaseStageService $stages,
+        LpoDeliveryService $delivery
+    ) {
         $this->authorize('generateLpo', $purchaseRequest);
 
         try {
@@ -171,10 +199,15 @@ class PurchasePipelineController extends Controller
 
         $stages->setStage($purchaseRequest, 'receiving');
 
-        return $this->fresh(
-            $purchaseRequest,
-            $orders->count().' LPO(s) generated: '.$orders->pluck('po_number')->implode(', ')
-        );
+        // A send that fails does not undo the LPO — the order is legitimately
+        // issued, and the supplier can be retried from the order itself. But it
+        // is said out loud rather than left in the log.
+        $failed = $delivery->deliverAll($orders);
+        $issued = $orders->count().' LPO(s) generated: '.$orders->pluck('po_number')->implode(', ');
+
+        return $this->fresh($purchaseRequest, $failed
+            ? $issued.'. Could not email '.implode('; ', $failed).' Re-send from the order once that is fixed.'
+            : $issued.', and emailed to the supplier(s).');
     }
 
     public function storeSignature(Request $request, PurchaseRequest $purchaseRequest, PurchaseStageService $stages)
@@ -250,7 +283,7 @@ class PurchasePipelineController extends Controller
         $purchaseRequest->refresh()->load([
             'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
             'rfqInvitations.supplier', 'supplierQuotes.supplier', 'supplierQuotes.items',
-            'purchaseOrders.supplier',
+            'purchaseOrders.supplier', 'purchaseOrders.goodsReceiptNotes.warehouse',
         ]);
 
         return (new PurchaseRequestDetailResource($purchaseRequest))

@@ -1,9 +1,10 @@
+import { money } from '../../../currency';
 import { useEffect, useMemo, useState } from 'react';
 import FormField from '../../ui/FormField';
 import Button from '../../ui/Button';
 import { apiGet, apiPost, apiPut } from '../../../api/client';
 
-const money = (value) => Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
 const emptyLine = () => ({ item_id: '', quantity: '', price: '' });
 

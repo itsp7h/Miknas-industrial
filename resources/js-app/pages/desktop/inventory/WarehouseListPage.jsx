@@ -46,6 +46,7 @@ export default function WarehouseListPage() {
                 open={w.modalOpen}
                 title={w.editing ? `Edit ${w.editing.name}` : 'New Warehouse'}
                 onClose={() => w.setModalOpen(false)}
+                maxWidth="40rem"
             >
                 <WarehouseForm warehouse={w.editing} onSaved={w.handleSaved} onCancel={() => w.setModalOpen(false)} />
             </Modal>

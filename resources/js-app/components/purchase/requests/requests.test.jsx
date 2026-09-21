@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { ToastProvider } from '../../ui/Toast';
 import { RequestModalProvider, useRequestModal } from './RequestModalProvider';
 import ItemRows, { blankRow } from './ItemRows';
@@ -27,6 +27,7 @@ const OPTIONS = {
         { id: 11, name: 'Marine Ops', company_id: 4 },
     ],
     units: ['PCS', 'KG'],
+    requesters: ['Admin User', 'Ali', 'nelson'],
     today: '2026-09-01',
 };
 
@@ -198,6 +199,18 @@ describe('the new-request modal', () => {
         fireEvent.click(screen.getByText('Plant Expansion'));
         expect(screen.getByLabelText('Location / Site')).toHaveValue('');
     });
+    // Requested By was a free-text box, so one person arrived spelled three ways.
+    it('picks the requester from the system users', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText(/Requested By/);
+        expect(field.tagName).toBe('SELECT');
+        expect(within(field).getByRole('option', { name: 'Ali' })).toBeInTheDocument();
+        expect(within(field).getByRole('option', { name: 'nelson' })).toBeInTheDocument();
+    });
+
     it('posts the form and drops rows left blank', async () => {
         const post = vi.spyOn(client, 'apiPost').mockResolvedValue({
             data: { id: 9, request_number: 'MPR26-0009' }, message: 'MPR26-0009 submitted successfully.',
@@ -208,7 +221,7 @@ describe('the new-request modal', () => {
 
         fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
         fireEvent.click(screen.getByText('Plant Expansion'));
-        fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'Aisha Rahman' } });
+        fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'Ali' } });
         fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Steel Plate 10mm' } });
         fireEvent.change(screen.getByLabelText('Item 1 quantity'), { target: { value: '500' } });
         // A second row the user added and left empty must not be submitted.
@@ -219,7 +232,7 @@ describe('the new-request modal', () => {
         const [path, payload] = post.mock.calls[0];
         expect(path).toBe('/purchase/requests');
         expect(payload.project_name).toBe('Plant Expansion');
-        expect(payload.requested_by_name).toBe('Aisha Rahman');
+        expect(payload.requested_by_name).toBe('Ali');
         expect(payload.items).toHaveLength(1);
         expect(payload.items[0].description).toBe('Steel Plate 10mm');
 
@@ -280,12 +293,12 @@ describe('the edit-request modal', () => {
         fireEvent.click(screen.getByText('open edit'));
         await waitFor(() => expect(screen.getByLabelText(/^Requested By/)).toHaveValue('Omar Said'));
 
-        fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'Layla Hassan' } });
+        fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'nelson' } });
         fireEvent.submit(screen.getByLabelText('Item 1 description').closest('form'));
 
         await waitFor(() => expect(put).toHaveBeenCalled());
         expect(put.mock.calls[0][0]).toBe('/purchase/requests/7');
-        expect(put.mock.calls[0][1].requested_by_name).toBe('Layla Hassan');
+        expect(put.mock.calls[0][1].requested_by_name).toBe('nelson');
         await waitFor(() => expect(screen.getByText('MPR26-0007 updated successfully.')).toBeInTheDocument());
     });
 

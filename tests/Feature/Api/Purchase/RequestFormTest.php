@@ -25,7 +25,7 @@ class RequestFormTest extends TestCase
     private function requester(): User
     {
         $user = User::factory()->create();
-        $user->assignRole('Requester');
+        $user->givePermissionTo(['pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
 
         return $user;
     }
@@ -56,6 +56,28 @@ class RequestFormTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->getJson('/api/v1/purchase/requests/form-options')
             ->assertForbidden();
+    }
+
+    /**
+     * Requested By was a free-text box, so the same person was recorded three
+     * different ways. The form picks from the system's users instead.
+     */
+    public function test_form_options_carry_the_users_a_request_can_be_raised_for(): void
+    {
+        User::factory()->create(['name' => 'Zainab Ali']);
+        User::factory()->create(['name' => 'Ahmed Khan']);
+
+        $names = $this->actingAs($this->requester())
+            ->getJson('/api/v1/purchase/requests/form-options')
+            ->assertOk()
+            ->json('requesters');
+
+        $this->assertContains('Zainab Ali', $names);
+        $this->assertContains('Ahmed Khan', $names);
+        // Sorted, so the dropdown reads the way the settings list does.
+        $sorted = $names;
+        sort($sorted);
+        $this->assertSame($sorted, $names);
     }
 
     public function test_form_options_carry_projects_with_their_company_and_locations(): void

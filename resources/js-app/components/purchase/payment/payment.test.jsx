@@ -28,8 +28,8 @@ describe('paymentStyles', () => {
         expect(methodLabel('some_new_method')).toBe('some new method');
     });
 
-    it('formats money and dates the way the Blade page did', () => {
-        expect(money('75.5')).toBe('75.50');
+    it('formats money with the currency, and dates the Blade way', () => {
+        expect(money('75.5')).toBe('BD 75.500');
         expect(formatDate('2026-09-01')).toBe('01 Sep 2026');
     });
 });
@@ -67,7 +67,7 @@ describe('SupplierPaymentTable', () => {
 
     it('right-aligns the amount', () => {
         renderTable([PAYMENTS[0]]);
-        expect(screen.getByText('400.00')).toHaveClass('text-right');
+        expect(screen.getByText('BD 400.000')).toHaveClass('text-right');
     });
 
     it('calls back with the row on edit and delete', () => {

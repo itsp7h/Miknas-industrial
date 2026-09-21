@@ -283,6 +283,147 @@ class UserControllerTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'confused@example.test']);
     }
 
+    public function test_admin_can_email_an_existing_user_a_password_reset_link(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $target = User::factory()->create(['name' => 'Sara Ali', 'email' => 'sara@example.test']);
+        $original = $target->password;
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', ['mode' => 'email'])
+            ->assertOk()
+            ->assertJson(['message' => 'A password-reset email has been sent to sara@example.test.']);
+
+        Notification::assertSentTo($target, ResetPassword::class);
+        // Their current password keeps working until they follow the link.
+        $this->assertSame($original, $target->fresh()->password);
+    }
+
+    public function test_email_is_the_default_when_no_mode_is_given(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', [])
+            ->assertOk();
+
+        Notification::assertSentTo($target, ResetPassword::class);
+    }
+
+    public function test_admin_can_set_an_existing_users_password_directly(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $target = User::factory()->create(['name' => 'Sara Ali']);
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', [
+                'mode' => 'password',
+                'password' => 'CorrectHorseBattery9!',
+                'password_confirmation' => 'CorrectHorseBattery9!',
+            ])
+            ->assertOk()
+            ->assertJson(['message' => 'Password updated for Sara Ali.']);
+
+        $this->assertTrue(Hash::check('CorrectHorseBattery9!', $target->fresh()->password));
+        Notification::assertNothingSent();
+    }
+
+    public function test_resetting_a_password_rotates_the_remember_token(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $target = User::factory()->create(['remember_token' => 'stale-token']);
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', [
+                'mode' => 'password',
+                'password' => 'CorrectHorseBattery9!',
+                'password_confirmation' => 'CorrectHorseBattery9!',
+            ])
+            ->assertOk();
+
+        // A reset that left an old "remember me" cookie working is not a reset.
+        $this->assertNotSame('stale-token', $target->fresh()->remember_token);
+    }
+
+    public function test_a_password_sent_while_resetting_in_email_mode_is_rejected(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', [
+                'mode' => 'email',
+                'password' => 'CorrectHorseBattery9!',
+                'password_confirmation' => 'CorrectHorseBattery9!',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('password');
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_resetting_with_a_short_password_fails_validation(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', [
+                'mode' => 'password',
+                'password' => 'short',
+                'password_confirmation' => 'short',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('password');
+    }
+
+    public function test_resetting_with_mismatched_passwords_fails_validation(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', [
+                'mode' => 'password',
+                'password' => 'CorrectHorseBattery9!',
+                'password_confirmation' => 'SomethingElse9!',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('password');
+    }
+
+    public function test_non_admin_cannot_reset_another_users_password(): void
+    {
+        Notification::fake();
+
+        $target = User::factory()->create();
+
+        $this->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', ['mode' => 'email'])
+            ->assertUnauthorized();
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/api/v1/settings/users/'.$target->id.'/reset-password', ['mode' => 'email'])
+            ->assertForbidden();
+
+        Notification::assertNothingSent();
+    }
+
     public function test_creating_a_user_with_an_uppercase_email_fails_validation(): void
     {
         $admin = User::factory()->create();

@@ -124,6 +124,28 @@ class PurchaseRequestDetailResource extends JsonResource
                 'status' => $po->status ?? 'draft',
             ])->values()),
 
+            // What has actually been received against those LPOs. Without this
+            // the pipeline's Receiving step had nothing to show: a recorded GRN
+            // left the screen looking exactly as it did before, so there was no
+            // way to tell whether anything had happened.
+            'goods_receipt_notes' => $this->whenLoaded(
+                'purchaseOrders',
+                fn () => $this->purchaseOrders
+                    ->flatMap(fn ($po) => $po->relationLoaded('goodsReceiptNotes')
+                        ? $po->goodsReceiptNotes->map(fn ($grn) => [
+                            'id' => $grn->id,
+                            'grn_number' => $grn->grn_number ?? 'GRN-'.str_pad((string) $grn->id, 5, '0', STR_PAD_LEFT),
+                            'po_number' => $po->po_number,
+                            'warehouse_name' => $grn->warehouse?->name,
+                            'received_date' => $grn->received_date?->toDateString(),
+                            // 'draft' means the goods are recorded but no stock
+                            // has moved — confirming is what does that.
+                            'status' => $grn->status ?? 'draft',
+                        ])
+                        : collect())
+                    ->values()
+            ),
+
             'permissions' => [
                 'update' => (bool) $user?->can('update', $this->resource),
                 'approve' => (bool) $user?->can('approve', $this->resource),

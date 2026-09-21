@@ -11,6 +11,7 @@ export default function useUserList() {
     const [query, setQuery] = useState('');
     const [newUserOpen, setNewUserOpen] = useState(false);
     const [editing, setEditing] = useState(null);
+    const [resetting, setResetting] = useState(null);
     const { showToast } = useToast();
 
     const load = useCallback(() => apiGet('/settings/users')
@@ -45,6 +46,13 @@ export default function useUserList() {
         showToast(response.message, 'success');
     }
 
+    async function resetPassword(user, payload) {
+        const response = await apiPost(`/settings/users/${user.id}/reset-password`, payload);
+        // Nothing on the row changes, but the server's own wording says which
+        // of the two things happened, so it is what gets shown.
+        showToast(response.message, 'success');
+    }
+
     const q = query.trim().toLowerCase();
     const filtered = q
         ? users.filter((user) => [user.name, user.email, ...(user.roles ?? [])]
@@ -56,5 +64,6 @@ export default function useUserList() {
         query, setQuery,
         newUserOpen, setNewUserOpen, createUser,
         editing, setEditing, saveAccess,
+        resetting, setResetting, resetPassword,
     };
 }

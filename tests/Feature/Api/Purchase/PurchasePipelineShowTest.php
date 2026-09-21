@@ -21,7 +21,7 @@ class PurchasePipelineShowTest extends TestCase
     private function viewer(): User
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('pipeline.view-all');
+        $user->givePermissionTo(['pipeline.view', 'pipeline.view-all']);
 
         return $user;
     }
@@ -46,7 +46,7 @@ class PurchasePipelineShowTest extends TestCase
     public function test_view_own_permission_cannot_read_someone_elses_request(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('pipeline.view-own');
+        $user->givePermissionTo(['pipeline.view', 'pipeline.view-own']);
         $theirs = PurchaseRequest::factory()->create(['requested_by' => User::factory()->create()->id]);
 
         $this->actingAs($user)
@@ -104,7 +104,9 @@ class PurchasePipelineShowTest extends TestCase
             ->assertJsonPath('data.permissions.approve', false);
 
         $officer = User::factory()->create();
-        $officer->assignRole('Procurement Officer');
+        $officer->givePermissionTo(['pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
 
         $this->actingAs($officer)
             ->getJson("/api/v1/purchase/pipeline/{$request->id}")

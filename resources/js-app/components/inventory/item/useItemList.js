@@ -2,11 +2,18 @@ import { useState } from 'react';
 import useLiveList from '../../../hooks/useLiveList';
 import { apiDelete, apiPostForm } from '../../../api/client';
 import { useToast } from '../../ui/Toast';
-import { categoryLabel } from './itemStyles';
+import {
+    categorySearchText, scopeToWarehouse, sectionOptions, warehouseNames, warehouseOptions,
+} from './itemStyles';
 
 /** List, import and delete behaviour shared by both viewports. */
-export default function useItemList() {
-    const { items, upsertItem, removeItem, refetch } = useLiveList({
+/**
+ * @param onlyCategory  restricts the page to one items.category, so the Raw
+ *                      Materials page shows raw materials and the Finished
+ *                      Goods page shows finished goods. Omitted, it shows all.
+ */
+export default function useItemList(onlyCategory = null) {
+    const { items: allItems, meta, upsertItem, removeItem, refetch } = useLiveList({
         endpoint: '/inventory/items',
         channel: 'inventory',
         event: '.item.saved',
@@ -15,6 +22,8 @@ export default function useItemList() {
         errorMessage: 'Failed to load items.',
     });
     const [query, setQuery] = useState('');
+    const [warehouseId, setWarehouseId] = useState('');
+    const [sectionId, setSectionId] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -69,17 +78,40 @@ export default function useItemList() {
         }
     }
 
-    const filtered = items.filter((item) => {
+    // The page's own slice of the list. Everything below — the counts, the
+    // filter options, the search — reads this, never the unfiltered set, so
+    // nothing offers a choice that leads to an empty page.
+    const items = onlyCategory ? allItems.filter((item) => item.category === onlyCategory) : allItems;
+
+    const warehouses = warehouseOptions(items);
+    const sections = sectionOptions(items);
+
+    const activeSectionId = sections.some((s) => String(s.id) === sectionId) ? sectionId : '';
+
+    // A warehouse that empties out while its filter is on would otherwise leave
+    // the page stuck on an option no longer offered, showing nothing.
+    const activeWarehouseId = warehouses.some((w) => String(w.id) === warehouseId) ? warehouseId : '';
+
+    // Narrow to the warehouse first, so the search reads the scoped rows and
+    // the count below the box counts what is actually on screen.
+    const inScope = scopeToWarehouse(items, activeWarehouseId)
+        .filter((item) => !activeSectionId || String(item.item_category_id) === activeSectionId);
+
+    const filtered = inScope.filter((item) => {
         const q = query.trim().toLowerCase();
         if (!q) return true;
 
-        return [item.item_code, item.item_name, categoryLabel(item.category), item.unit_of_measure]
+        return [item.item_code, item.item_name, categorySearchText(item), item.unit_of_measure, warehouseNames(item)]
             .some((field) => String(field ?? '').toLowerCase().includes(q));
     });
 
     return {
-        items, filtered,
+        items, filtered, inScope,
+        categoryOptions: meta.category_options ?? [],
+        allWarehouses: meta.warehouses ?? [],
         query, setQuery,
+        warehouses, warehouseId: activeWarehouseId, setWarehouseId,
+        sections, sectionId: activeSectionId, setSectionId,
         modalOpen, setModalOpen,
         importOpen, setImportOpen, handleImport,
         editing, openCreate, openEdit, handleSaved,

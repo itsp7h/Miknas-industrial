@@ -19,16 +19,24 @@ class RfqInvitationService
             'supplier_id' => $supplier->id,
             'token' => bin2hex(random_bytes(32)),
             'channel' => $channel,
-            'expires_at' => now()->addDays(14),
+            'expires_at' => now()->addDays(RfqInvitation::EXPIRY_DAYS),
             'status' => 'pending',
             'item_ids' => empty($itemIds) ? null : $itemIds,
         ]);
     }
 
+    /**
+     * Delivers the invitation and, only if that worked, records it as sent.
+     *
+     * The order matters: this used to stamp 'sent' first and swallow whatever
+     * went wrong, so a request whose email never left reported success to the
+     * screen, kept a sent_at timestamp, and left the failure in the log where
+     * nobody would look until the supplier failed to quote.
+     *
+     * @throws \RuntimeException when nothing could be delivered
+     */
     public function sendInvitation(RfqInvitation $invitation): void
     {
-        $invitation->update(['status' => 'sent', 'sent_at' => now()]);
-
         $supplier = $invitation->supplier;
         $hasWhatsapp = (bool) preg_replace('/\D/', '', $supplier->phone ?? '');
 
@@ -38,7 +46,13 @@ class RfqInvitationService
         $wantsEmail = in_array($invitation->channel, ['email', 'both'])
             || ($invitation->channel === 'whatsapp' && ! $hasWhatsapp);
 
-        if ($wantsEmail && $supplier->email) {
+        if ($wantsEmail) {
+            // An email channel with no address to send to delivers nothing. That
+            // was previously recorded as sent too.
+            if (! $supplier->email) {
+                throw new \RuntimeException("{$supplier->name} has no email address.");
+            }
+
             $account = MailAccount::where('enabled', true)->first();
 
             try {
@@ -55,8 +69,14 @@ class RfqInvitationService
                     'mail_account' => $account?->name,
                     'error' => $e->getMessage(),
                 ]);
+
+                // The log line stays — it carries the detail — but the caller now
+                // hears about it too, so the UI can say so.
+                throw new \RuntimeException("Could not email {$supplier->name}: {$e->getMessage()}", 0, $e);
             }
         }
+
+        $invitation->update(['status' => 'sent', 'sent_at' => now()]);
     }
 
     public function invite(PurchaseRequest $purchaseRequest, Supplier $supplier, string $channel): RfqInvitation
@@ -73,7 +93,7 @@ class RfqInvitationService
         $text = "Hello {$invitation->supplier->name},\n\n"
                ."You are invited to submit a quote for purchase request {$invitation->purchaseRequest->request_number}.\n\n"
                ."Please click the link below to submit your quote:\n{$url}\n\n"
-               .'This link expires in 7 days and can only be used once.';
+               ."This link expires in {$invitation->expiresInDays()} days and can only be used once.";
         $phone = preg_replace('/\D/', '', $invitation->supplier->phone ?? '');
 
         return 'https://wa.me/'.$phone.'?text='.rawurlencode($text);
