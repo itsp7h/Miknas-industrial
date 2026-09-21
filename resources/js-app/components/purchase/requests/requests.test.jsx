@@ -18,10 +18,13 @@ const OPTIONS = {
         { id: 1, name: 'Plant Expansion', company_id: 3, locations: ['Bay 4'] },
         { id: 2, name: 'Yard Works', company_id: 3, locations: ['Yard'] },
         { id: 3, name: 'Harbour Works', company_id: 4, locations: [] },
+        // Desert Logistics has exactly one of everything.
+        { id: 4, name: 'Coastal Depot', company_id: 5, locations: ['Main Store'] },
     ],
     departments: [
         { id: 10, name: 'Operations', company_id: 3 },
         { id: 11, name: 'Marine Ops', company_id: 4 },
+        { id: 12, name: 'Logistics', company_id: 5 },
     ],
     items: [
         { id: 1, name: 'Steel Plate 10mm', unit: 'KG' },
@@ -324,6 +327,61 @@ describe('the edit-request modal', () => {
     });
 });
 
+describe('a company with only one of something', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+    });
+
+    it('fills the project, the location and the department when each is the only one', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
+
+        // One of each, so there is no choice to make and nothing to click.
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Coastal Depot');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('Main Store');
+        expect(screen.getByLabelText('Department')).toHaveValue('Logistics');
+    });
+
+    it('picks nothing where there is more than one on offer', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+
+        // Two projects and two locations beneath them: choosing for someone
+        // would put a site on the request that nobody picked.
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Select Project');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('');
+        // Its one department is still settled.
+        expect(screen.getByLabelText('Department')).toHaveValue('Operations');
+    });
+
+    it('clears what the old company settled when the company changes', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
+        expect(screen.getByLabelText('Department')).toHaveValue('Logistics');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Gulf Marine'));
+
+        // Gulf Marine has one project with no locations, and one department.
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Harbour Works');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('');
+        expect(screen.getByLabelText('Department')).toHaveValue('Marine Ops');
+    });
+});
+
 describe('the description field completing from the item master', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
@@ -481,16 +539,16 @@ describe('the project field beside the company', () => {
         fireEvent.click(screen.getByText('open new'));
         await screen.findByText('New Purchase Request');
 
+        // Desert Logistics has one project, so choosing it settles Coastal Depot.
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Coastal Depot');
+
         fireEvent.click(screen.getByLabelText(/Company/));
         fireEvent.click(screen.getByText('Miknas Steel'));
-        fireEvent.click(screen.getByLabelText('Project'));
-        fireEvent.click(screen.getByText('Plant Expansion'));
-        expect(screen.getByLabelText('Project')).toHaveTextContent('Plant Expansion');
 
-        fireEvent.click(screen.getByLabelText(/Company/));
-        fireEvent.click(screen.getByText('Gulf Marine'));
-
-        // The project belonged to the old company.
+        // The project belonged to the old company, and Miknas Steel has two,
+        // so there is nothing to settle in its place.
         expect(screen.getByLabelText('Project')).toHaveTextContent('Select Project');
     });
 });

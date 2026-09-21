@@ -68,6 +68,34 @@ export default function RequestModal({
         return (options?.departments ?? []).filter((d) => d.company_id === company.id);
     }, [options, company]);
 
+    /**
+     * What choosing a company settles on its own.
+     *
+     * A field with exactly one option is not a choice, so it is filled: one
+     * project, one department, one location. It cascades — a company with a
+     * single project takes that project's locations, not the company's whole
+     * list, so a lone location beneath it is filled too.
+     *
+     * With more than one on offer nothing is picked, because choosing for
+     * someone would put a project or a site on the request that nobody chose.
+     */
+    function settledFor(companyName) {
+        const chosen = companies.find((c) => c.name === companyName);
+        const theirProjects = chosen ? allProjects.filter((p) => p.company_id === chosen.id) : [];
+        const onlyProject = theirProjects.length === 1 ? theirProjects[0] : null;
+        const offeredLocations = onlyProject ? (onlyProject.locations ?? []) : (chosen?.locations ?? []);
+        const theirDepartments = chosen
+            ? (options?.departments ?? []).filter((d) => d.company_id === chosen.id)
+            : [];
+
+        return {
+            company_name: companyName,
+            project_name: onlyProject?.name ?? '',
+            location: offeredLocations.length === 1 ? offeredLocations[0] : '',
+            department: theirDepartments.length === 1 ? theirDepartments[0].name : '',
+        };
+    }
+
     function set(field, value) {
         setValues((current) => ({ ...current, [field]: value }));
     }
@@ -116,19 +144,14 @@ export default function RequestModal({
                         <CompanyPicker
                             companies={companies}
                             value={values.company_name}
-                            onChange={(name) => setValues((current) => {
-                                // The project belongs to the old company, and the
-                                // location to the old project, so neither survives the
-                                // company changing under them.
-                                const offered = companies.find((c) => c.name === name)?.locations ?? [];
-
-                                return {
-                                    ...current,
-                                    company_name: name,
-                                    project_name: '',
-                                    location: offered.length === 1 ? offered[0] : '',
-                                };
-                            })}
+                            onChange={(name) => setValues((current) => ({
+                                // The project belongs to the old company, the department
+                                // and the location to the old project, so none of them
+                                // survives the company changing under them — they are
+                                // replaced wholesale by whatever the new one settles.
+                                ...current,
+                                ...settledFor(name),
+                            }))}
                         />
 
                         <ProjectPicker
