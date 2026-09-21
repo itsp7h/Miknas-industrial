@@ -58,12 +58,13 @@ export default function RequestModal({
     // Locations belong to a project. With none chosen the company's own list —
     // every location under its projects — keeps the field usable.
     const locations = project?.locations ?? company?.locations ?? [];
-    // Departments belong to a company, so choosing one narrows them directly.
-    // With no company chosen, the whole list stays offered.
+    // A department belongs to one company, so there is nothing sensible to
+    // offer until a company is chosen — listing every company's departments
+    // invites filing a request against a department that is not theirs.
     const departments = useMemo(() => {
-        const all = options?.departments ?? [];
+        if (! company?.id) return [];
 
-        return company?.id ? all.filter((d) => d.company_id === company.id) : all;
+        return (options?.departments ?? []).filter((d) => d.company_id === company.id);
     }, [options, company]);
 
     function set(field, value) {
@@ -195,14 +196,23 @@ export default function RequestModal({
                             </select>
                         </div>
 
-                        <div>
+                        {/* Last of seven in a three-column grid, so on its own row.
+                            Spanning it fills the space rather than leaving two
+                            thirds of the row empty beside a short select. */}
+                        <div style={{ gridColumn: compact ? 'auto' : '1 / -1' }}>
                             <label className="form-label" htmlFor="mpr-department">Department</label>
                             <select
-                                id="mpr-department" className="form-input"
+                                id="mpr-department" className="form-input" style={{ width: '100%' }}
+                                disabled={!company}
                                 value={values.department ?? ''}
                                 onChange={(e) => set('department', e.target.value)}
                             >
-                                <option value="">— Select Department —</option>
+                                <option value="">
+                                    {company ? '— Select Department —' : '— Choose a company first —'}
+                                </option>
+                                {/* A department saved before its company was known, or
+                                    since deactivated, stays visible instead of the form
+                                    silently dropping it. */}
                                 {values.department && !departments.some((d) => d.name === values.department) && (
                                     <option value={values.department}>{values.department}</option>
                                 )}

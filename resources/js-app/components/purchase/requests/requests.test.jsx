@@ -166,9 +166,12 @@ describe('the new-request modal', () => {
         fireEvent.click(screen.getByText('open new'));
         await screen.findByText('New Purchase Request');
 
-        // With no project chosen, every department is on offer.
-        expect(screen.getByText('Operations')).toBeInTheDocument();
-        expect(screen.getByText('Marine Ops')).toBeInTheDocument();
+        // A department belongs to one company, so with none chosen there is
+        // nothing sensible to offer — not every company's departments at once.
+        expect(screen.getByLabelText('Department')).toBeDisabled();
+        expect(screen.getByLabelText('Department')).toHaveTextContent('Choose a company first');
+        expect(screen.queryByText('Operations')).not.toBeInTheDocument();
+        expect(screen.queryByText('Marine Ops')).not.toBeInTheDocument();
         expect(screen.getByLabelText('Location / Project')).toBeDisabled();
 
         fireEvent.click(screen.getByLabelText(/Company/));
@@ -176,7 +179,10 @@ describe('the new-request modal', () => {
 
         expect(screen.getByLabelText('Location / Project')).not.toBeDisabled();
         expect(screen.getByRole('option', { name: 'Bay 4' })).toBeInTheDocument();
-        // Marine Ops belongs to the other company, so it drops out.
+        // Its own department is offered now...
+        expect(screen.getByLabelText('Department')).not.toBeDisabled();
+        expect(screen.getByRole('option', { name: 'Operations' })).toBeInTheDocument();
+        // ...and Marine Ops, belonging to the other company, is not.
         expect(screen.queryByText('Marine Ops')).not.toBeInTheDocument();
     });
 
