@@ -8,7 +8,7 @@ use App\Models\User;
 class PurchaseRequestPolicy
 {
     public const ACTIVE_PIPELINE_STAGES = [
-        'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete',
+        'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete',
     ];
 
     public function view(User $user, PurchaseRequest $purchaseRequest): bool

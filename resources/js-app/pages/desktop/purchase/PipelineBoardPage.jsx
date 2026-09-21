@@ -14,7 +14,7 @@ const STAGE_LABELS = {
 
 // Mirrors App\Policies\PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES exactly — kept
 // in sync by hand since the frontend can't import PHP constants.
-const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'];
 
 const COLUMNS = [
     { key: 'request_number', label: 'Request #' },

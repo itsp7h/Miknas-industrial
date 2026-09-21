@@ -115,9 +115,10 @@ class PurchaseStageServiceTest extends TestCase
     public function test_stage_index_reflects_pipeline_order(): void
     {
         $this->assertSame(0, $this->service->stageIndex('draft'));
-        $this->assertSame(8, $this->service->stageIndex('complete'));
+        // Payment was the eighth; the pipeline ends at receiving now.
+        $this->assertSame(7, $this->service->stageIndex('complete'));
         $this->assertLessThan(
-            $this->service->stageIndex('payment'),
+            $this->service->stageIndex('receiving'),
             $this->service->stageIndex('lpo')
         );
     }

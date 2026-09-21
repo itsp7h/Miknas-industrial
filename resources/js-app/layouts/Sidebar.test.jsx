@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Sidebar, { SidebarLink } from './Sidebar';
+import { MENU_GROUPS, NAV_GROUPS, visibleGroups } from './navItems';
 
 const renderSidebar = (props = {}) =>
     render(
@@ -183,5 +184,23 @@ describe('SidebarLink', () => {
         renderSidebar();
 
         expect(screen.getByTitle('Your profile')).toHaveAttribute('href', '/app/profile');
+    });
+});
+
+describe('a parked entry', () => {
+    it('keeps Payments out of the menu while its route still works', () => {
+        const payments = NAV_GROUPS
+            .flatMap((group) => group.items)
+            .find((item) => item.to === '/app/purchase/payments');
+
+        // Still declared, so usePageTitle titles the page and the URL works.
+        expect(payments).toBeDefined();
+        expect(payments.hidden).toBe(true);
+
+        // But absent from what either shell renders.
+        expect(MENU_GROUPS.flatMap((group) => group.items).map((item) => item.to))
+            .not.toContain('/app/purchase/payments');
+        expect(visibleGroups({ isAdmin: true }).flatMap((group) => group.items).map((item) => item.to))
+            .not.toContain('/app/purchase/payments');
     });
 });

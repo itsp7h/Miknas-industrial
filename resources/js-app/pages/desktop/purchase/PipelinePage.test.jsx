@@ -25,7 +25,7 @@ const DETAIL = {
     stage_index: 5,
     progress_pct: 63,
     is_done: false,
-    stages: ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'],
+    stages: ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'],
     stage_labels: {
         draft: 'Purchase Request', gm_approval: 'GM Signature', rfq: 'Select Suppliers',
         quoting: 'Awaiting Quotes', comparison: 'Quote Comparison', lpo: 'LPO Issued',

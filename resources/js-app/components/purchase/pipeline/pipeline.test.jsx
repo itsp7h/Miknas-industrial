@@ -5,11 +5,11 @@ import PipelineHeader from './PipelineHeader';
 import PipelineSidebar from './PipelineSidebar';
 import StageTimeline from './StageTimeline';
 
-const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'];
 const LABELS = {
     draft: 'Purchase Request', gm_approval: 'GM Signature', rfq: 'Select Suppliers',
     quoting: 'Awaiting Quotes', comparison: 'Quote Comparison', lpo: 'LPO Issued',
-    receiving: 'Receiving Materials', payment: 'Payment', complete: 'Complete',
+    receiving: 'Receiving Materials', complete: 'Complete',
 };
 
 const base = (overrides = {}) => ({
@@ -90,7 +90,8 @@ describe('StageTimeline', () => {
         renderIn(<StageTimeline request={base()} />);
         expect(screen.getByText('Purchase Request')).toHaveStyle({ color: 'rgb(29, 78, 216)' });
         expect(screen.getByText('LPO Issued')).toHaveStyle({ color: 'rgb(217, 119, 6)' });
-        expect(screen.getByText('Payment')).toHaveStyle({ color: 'rgb(148, 163, 184)' });
+        // A stage the request has not reached yet.
+        expect(screen.getByText('Receiving Materials')).toHaveStyle({ color: 'rgb(148, 163, 184)' });
     });
 
     it('captions completed stages with their counts', () => {
@@ -221,7 +222,7 @@ describe('StageTimeline', () => {
 
     it('links each GRN once the step is behind the request', () => {
         renderIn(<StageTimeline request={base({
-            stage: 'payment', stage_index: 7,
+            stage: 'complete', stage_index: 7,
             goods_receipt_notes: [
                 { id: 1, grn_number: 'GRN-00001', po_number: 'PO-00030', status: 'confirmed' },
             ],

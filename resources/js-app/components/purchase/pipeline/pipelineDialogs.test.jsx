@@ -9,7 +9,7 @@ import ViewSuppliersModal from './ViewSuppliersModal';
 import { ToastProvider } from '../../ui/Toast';
 import * as client from '../../../api/client';
 
-const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'];
 const LABELS = {
     draft: 'Purchase Request', gm_approval: 'GM Signature', rfq: 'Select Suppliers',
     quoting: 'Awaiting Quotes', comparison: 'Quote Comparison', lpo: 'LPO Issued',
