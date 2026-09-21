@@ -364,6 +364,61 @@ describe('the description field completing from the item master', () => {
         expect(screen.getByLabelText('Item 1 unit')).toHaveValue('PCS');
     });
 
+    it('completes the description on Tab, and takes the unit with it', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText('Item 1 description');
+        fireEvent.change(field, { target: { value: 'ste' } });
+        fireEvent.keyDown(field, { key: 'Tab' });
+
+        expect(field).toHaveValue('Steel Plate 10mm');
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('KG');
+    });
+
+    it('completes on Tab whatever the case', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText('Item 1 description');
+        fireEvent.change(field, { target: { value: 'WELD' } });
+        fireEvent.keyDown(field, { key: 'Tab' });
+
+        expect(field).toHaveValue('Welding Rod');
+    });
+
+    /** Tab must not be swallowed when there is nothing to complete. */
+    it('lets Tab through when nothing matches, and when the name is already whole', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText('Item 1 description');
+
+        fireEvent.change(field, { target: { value: 'Brass Fitting' } });
+        const unmatched = fireEvent.keyDown(field, { key: 'Tab' });
+        expect(field).toHaveValue('Brass Fitting');
+        // Not prevented, so focus moves on as Tab always does.
+        expect(unmatched).toBe(true);
+
+        fireEvent.change(field, { target: { value: 'Steel Plate 10mm' } });
+        expect(fireEvent.keyDown(field, { key: 'Tab' })).toBe(true);
+    });
+
+    it('does not complete on Shift+Tab, which is going backwards', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText('Item 1 description');
+        fireEvent.change(field, { target: { value: 'ste' } });
+        fireEvent.keyDown(field, { key: 'Tab', shiftKey: true });
+
+        expect(field).toHaveValue('ste');
+    });
+
     it('leaves a hand-picked unit alone while the description matches nothing', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open new'));

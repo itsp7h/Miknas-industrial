@@ -49,6 +49,31 @@ export default function ItemRows({ items, units, catalogue = [], accent, today, 
             : row)));
     }
 
+    /**
+     * Tab completes the description to the first catalogued material it could
+     * be, the way a shell completes a path: "ste" becomes "Steel Plate 10mm",
+     * and the unit follows as if it had been typed in full.
+     *
+     * Tab is only swallowed when it actually completed something. With nothing
+     * to add — no match, an empty box, or a name already complete — it moves to
+     * the next field as Tab always does, so the key is never trapped.
+     */
+    function completeOnTab(index, event) {
+        if (event.key !== 'Tab' || event.shiftKey) return;
+
+        const typed = (items[index]?.description ?? '').trim().toLowerCase();
+        if (typed === '') return;
+
+        const names = catalogue.map((item) => item.name).filter(Boolean);
+        if (names.some((name) => name.trim().toLowerCase() === typed)) return;
+
+        const match = names.find((name) => name.trim().toLowerCase().startsWith(typed));
+        if (!match) return;
+
+        event.preventDefault();
+        describe(index, match);
+    }
+
     function add() {
         const last = items[items.length - 1];
         onChange([...items, blankRow(last?.required_date || today)]);
@@ -107,6 +132,7 @@ export default function ItemRows({ items, units, catalogue = [], accent, today, 
                                         aria-label={`Item ${index + 1} description`}
                                         value={row.description ?? ''}
                                         onChange={(e) => describe(index, e.target.value)}
+                                        onKeyDown={(e) => completeOnTab(index, e)}
                                     />
                                 </td>
                                 <td style={CELL}>
