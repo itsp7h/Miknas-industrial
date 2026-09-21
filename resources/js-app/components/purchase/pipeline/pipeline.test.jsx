@@ -270,6 +270,24 @@ describe('PipelineSidebar', () => {
         expect(screen.getByText('Sitra')).toBeInTheDocument();
     });
 
+    it('names who raised the request, and labels the urgency as a date not a person', () => {
+        renderIn(<PipelineSidebar request={base({
+            requested_by_name: 'Operation manager',
+            location: 'Askar Forkoll',
+            required_date_text: 'Urgent',
+        })} />);
+
+        // Was missing entirely, so the box named nobody who raised it.
+        expect(screen.getByText('Requested By')).toBeInTheDocument();
+        expect(screen.getByText('Operation manager')).toBeInTheDocument();
+
+        // The urgency picker fills this, so "Required By: Urgent" read as a
+        // name. The sheet and the printed MPR both call it Required Date.
+        expect(screen.getByText('Required Date')).toBeInTheDocument();
+        expect(screen.getByText('Urgent')).toBeInTheDocument();
+        expect(screen.queryByText('Required By')).not.toBeInTheDocument();
+    });
+
     it('shows supplier status pills and the channel for non-email invitations', () => {
         renderIn(<PipelineSidebar request={rich} />);
         expect(screen.getByText('Suppliers (2)')).toBeInTheDocument();
