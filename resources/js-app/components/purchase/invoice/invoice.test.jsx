@@ -30,8 +30,8 @@ describe('invoiceStyles', () => {
         expect(badgeClassFor('odd')).toBe('badge-gray');
     });
 
-    it('formats money to two decimals and dates as d M Y', () => {
-        expect(money('75.5')).toBe('75.50');
+    it('formats money with the currency and dates as d M Y', () => {
+        expect(money('75.5')).toBe('BD 75.500');
         expect(formatDate('2026-09-01')).toBe('01 Sep 2026');
     });
 });
@@ -70,13 +70,13 @@ describe('SupplierInvoiceTable', () => {
      */
     it('reddens a non-zero outstanding figure', () => {
         renderTable([INVOICES[1]]);
-        expect(screen.getByText('300.00')).toHaveClass('text-red-600', 'font-semibold');
+        expect(screen.getByText('BD 300.000')).toHaveClass('text-red-600', 'font-semibold');
     });
 
     it('greys a settled outstanding figure', () => {
         renderTable([INVOICES[0]]);
         // 110.00 appears as both total and paid; 0.00 is the outstanding cell alone.
-        expect(screen.getByText('0.00')).toHaveClass('text-gray-500');
+        expect(screen.getByText('BD 0.000')).toHaveClass('text-gray-500');
     });
 
     it('shows a dash where no purchase order is linked', () => {

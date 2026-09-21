@@ -1,3 +1,4 @@
+import { money } from '../../../currency';
 // Colour maps copied from resources/views/purchase/pipeline/show.blade.php.
 
 /** RFQ invitation status pill. */
@@ -30,9 +31,8 @@ export const PILL = {
     padding: '2px 8px', borderRadius: 12, fontWeight: 700, fontSize: 10,
 };
 
-/** The Blade page printed quote and LPO money to three decimals, prefixed BD. */
-export const bd = (value) =>
-    `BD ${Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
+/** Kept as a name the quotes and pipeline screens already use. */
+export const bd = money;
 
 export const formatDate = (value) => {
     if (!value) return '—';

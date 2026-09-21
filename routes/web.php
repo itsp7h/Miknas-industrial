@@ -120,9 +120,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::redirect('settings/projects', '/app/settings/companies')->name('settings.projects.index');
         Route::redirect('settings/projects-overview', '/app/settings/projects')->name('settings.projects.overview');
 
-        // VAT is served by the React shell at /app/settings/vat; the rate itself
-        // lives behind GET/PUT /api/v1/settings/vat.
-        Route::redirect('settings/vat', '/app/settings/vat')->name('settings.vat');
+        // VAT moved onto the Finance page, which also carries the display
+        // currency; the settings themselves live behind
+        // GET/PUT /api/v1/settings/finance. The old URL was linked long enough
+        // to be bookmarked, so it hops rather than 404s.
+        Route::redirect('settings/vat', '/app/settings/finance')->name('settings.vat');
 
         // User management is served by the React shell at /app/settings/users;
         // its endpoints live in routes/api.php.

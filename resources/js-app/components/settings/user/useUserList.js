@@ -5,8 +5,8 @@ import { useToast } from '../../ui/Toast';
 /** Users, the role list and the per-permission toggles. */
 export default function useUserList() {
     const [users, setUsers] = useState([]);
-    const [roles, setRoles] = useState([]);
-    const [permissions, setPermissions] = useState([]);
+    const [profiles, setProfiles] = useState([]);
+    const [grid, setGrid] = useState([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState('');
     const [newUserOpen, setNewUserOpen] = useState(false);
@@ -16,8 +16,8 @@ export default function useUserList() {
     const load = useCallback(() => apiGet('/settings/users')
         .then((response) => {
             setUsers(response.data);
-            setRoles(response.roles ?? []);
-            setPermissions(response.permissions ?? []);
+            setProfiles(response.profiles ?? []);
+            setGrid(response.grid ?? []);
         })
         .catch(() => showToast('Failed to load users.', 'error'))
         .finally(() => setLoading(false)),
@@ -52,7 +52,7 @@ export default function useUserList() {
         : users;
 
     return {
-        users, filtered, roles, permissions, loading,
+        users, filtered, profiles, grid, loading,
         query, setQuery,
         newUserOpen, setNewUserOpen, createUser,
         editing, setEditing, saveAccess,

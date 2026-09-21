@@ -1,7 +1,7 @@
+import { money, qty } from '../../../currency';
 import { categoryBadgeClass, categoryLabel } from '../item/itemStyles';
 
-const num = (value) =>
-    Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = qty;
 
 /** Columns as the Blade valuation report headed them. */
 export const VALUATION_COLUMNS = [
@@ -26,14 +26,14 @@ export const VALUATION_COLUMNS = [
         label: 'Cost Price',
         align: 'right',
         cellClassName: () => 'text-gray-600',
-        render: (row) => num(row.cost_price),
+        render: (row) => money(row.cost_price),
     },
     {
         key: 'total_value',
         label: 'Total Value',
         align: 'right',
         cellClassName: () => 'font-semibold text-gray-800',
-        render: (row) => num(row.total_value),
+        render: (row) => money(row.total_value),
     },
 ];
 
@@ -46,7 +46,7 @@ export const valuationFooter = (rows) => (
         <tr>
             <td colSpan={5} className="px-4 py-3 text-right font-bold text-gray-800 text-sm">Grand Total</td>
             <td className="px-4 py-3 text-right font-bold text-blue-700 text-base">
-                {num(rows.reduce((sum, row) => sum + Number(row.total_value ?? 0), 0))}
+                {money(rows.reduce((sum, row) => sum + Number(row.total_value ?? 0), 0))}
             </td>
         </tr>
     </tfoot>

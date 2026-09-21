@@ -5,17 +5,26 @@ import ItemForm from '../../../components/inventory/item/ItemForm';
 import ItemToolbar from '../../../components/inventory/item/ItemToolbar';
 import ItemImportModal from '../../../components/inventory/item/ItemImportModal';
 import useItemList from '../../../components/inventory/item/useItemList';
-import { categoryBadgeClass, categoryLabel, num } from '../../../components/inventory/item/itemStyles';
+import { categoryBadgeClass, categoryLabel, isLow, money, num, warehouseLabel } from '../../../components/inventory/item/itemStyles';
 
-export default function ItemListPage() {
-    const it = useItemList();
+/**
+ * One page, two entries: Raw Materials and Finished Goods show the same
+ * table over different slices of items.category. A page named after a type
+ * that listed every type was the complaint that started this.
+ */
+export default function ItemListPage({
+    category = 'raw_material',
+    title = 'Raw Materials',
+    subtitle = 'Materials bought and consumed in production',
+}) {
+    const it = useItemList(category);
     const [actionsOpen, setActionsOpen] = useState(false);
 
     return (
         <div>
             <div style={{ marginBottom: 12 }}>
-                <h1 className="page-title">Inventory Items</h1>
-                <p className="page-subtitle">Manage all stock items</p>
+                <h1 className="page-title">{title}</h1>
+                <p className="page-subtitle">{subtitle}</p>
             </div>
 
             {/* Import/export stay behind an Actions sheet so the header does not
@@ -34,12 +43,39 @@ export default function ItemListPage() {
                     type="search"
                     value={it.query}
                     onChange={(e) => it.setQuery(e.target.value)}
-                    placeholder="Search code, name, category, unit…"
+                    placeholder="Search code, name, category, unit, warehouse…"
                     aria-label="Search items"
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
                 />
+                <select
+                    aria-label="Filter by warehouse"
+                    value={it.warehouseId}
+                    onChange={(e) => it.setWarehouseId(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
+                    style={{ marginTop: 8, background: '#fff' }}
+                >
+                    <option value="">All warehouses</option>
+                    {it.warehouses.map((warehouse) => (
+                        <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+                    ))}
+                </select>
+                {it.sections.length > 0 && (
+                    <select
+                        aria-label="Filter by section"
+                        value={it.sectionId}
+                        onChange={(e) => it.setSectionId(e.target.value)}
+                        className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
+                        style={{ marginTop: 8, background: '#fff' }}
+                    >
+                        <option value="">All sections</option>
+                        {it.sections.map((section) => (
+                            <option key={section.id} value={section.id}>{section.name}</option>
+                        ))}
+                    </select>
+                )}
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    {it.query ? `${it.filtered.length} of ${it.items.length} items` : `${it.items.length} items`}
+                    {it.query ? `${it.filtered.length} of ${it.inScope.length} items` : `${it.inScope.length} items`}
+                    {it.warehouseId && ` in ${it.warehouses.find((w) => String(w.id) === String(it.warehouseId))?.name}`}
                 </div>
             </div>
 
@@ -49,7 +85,7 @@ export default function ItemListPage() {
                 </p>
             )}
 
-            {/* An eight-column table does not fit a phone, so each item is a card. */}
+            {/* A ten-column table does not fit a phone, so each item is a card. */}
             {it.filtered.map((item) => (
                 <div key={item.id} style={{
                     background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
@@ -67,12 +103,21 @@ export default function ItemListPage() {
 
                     <div style={{ marginTop: 6 }}>
                         <span className={categoryBadgeClass(item.category)}>{categoryLabel(item.category)}</span>
+                        {item.item_category_name && (
+                            <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 8 }}>{item.item_category_name}</span>
+                        )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginTop: 8, fontSize: 12 }}>
                         <div>
                             <div style={{ color: '#94a3b8' }}>UOM</div>
                             <div style={{ fontWeight: 600, color: '#1f2937' }}>{item.unit_of_measure}</div>
+                        </div>
+                        <div>
+                            <div style={{ color: '#94a3b8' }}>Quantity</div>
+                            <div style={{ fontWeight: 600, color: isLow(item) ? '#dc2626' : '#1f2937' }}>
+                                {num(item.quantity)}
+                            </div>
                         </div>
                         <div>
                             <div style={{ color: '#94a3b8' }}>Min Stock</div>
@@ -80,7 +125,11 @@ export default function ItemListPage() {
                         </div>
                         <div>
                             <div style={{ color: '#94a3b8' }}>Cost Price</div>
-                            <div style={{ fontWeight: 600, color: '#1f2937' }}>{num(item.cost_price)}</div>
+                            <div style={{ fontWeight: 600, color: '#1f2937' }}>{money(item.cost_price)}</div>
+                        </div>
+                        <div>
+                            <div style={{ color: '#94a3b8' }}>Warehouse</div>
+                            <div style={{ fontWeight: 600, color: '#1f2937' }}>{warehouseLabel(item)}</div>
                         </div>
                     </div>
 
@@ -96,7 +145,14 @@ export default function ItemListPage() {
                 title={it.editing ? `Edit ${it.editing.item_name}` : 'New Item'}
                 onClose={() => it.setModalOpen(false)}
             >
-                <ItemForm item={it.editing} onSaved={it.handleSaved} onCancel={() => it.setModalOpen(false)} />
+                <ItemForm
+                    item={it.editing}
+                    categoryOptions={it.categoryOptions}
+                    warehouses={it.allWarehouses}
+                    defaultCategory={category}
+                    onSaved={it.handleSaved}
+                    onCancel={() => it.setModalOpen(false)}
+                />
             </Modal>
             <Modal open={actionsOpen} title="Actions" onClose={() => setActionsOpen(false)}>
                 <ItemToolbar

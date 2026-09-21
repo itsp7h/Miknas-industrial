@@ -1,17 +1,19 @@
+import { money } from '../../../currency';
 import { Link } from 'react-router-dom';
 import Modal from '../../ui/Modal';
+import { liveOrders } from './purchaseOrders';
 
-const money = (value) => Number(value ?? 0).toLocaleString(undefined, {
-    minimumFractionDigits: 3, maximumFractionDigits: 3,
-});
+
 
 /**
  * Blade's select-GRN modal: choose which LPO you are receiving against, then
  * hand off to the GRN page with that order preselected. A fully received order
- * drops out — there is nothing left to receive.
+ * drops out — there is nothing left to receive — and so does a cancelled one,
+ * which this used to offer: goods could be booked in against an LPO that had
+ * been superseded by a re-issue.
  */
 export default function RecordGrnModal({ open, request, onClose }) {
-    const receivable = (request?.purchase_orders ?? []).filter((po) => po.status !== 'received');
+    const receivable = liveOrders(request).filter((po) => po.status !== 'received');
 
     return (
         <Modal open={open} title="Record Goods Receipt" onClose={onClose}>
@@ -38,7 +40,7 @@ export default function RecordGrnModal({ open, request, onClose }) {
                     <div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{po.supplier_name ?? '—'}</div>
                         <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                            {po.po_number} · BD {money(po.total_amount)}
+                            {po.po_number} · {money(po.total_amount)}
                         </div>
                     </div>
                     <span style={{ color: '#94a3b8', fontWeight: 700 }}>›</span>

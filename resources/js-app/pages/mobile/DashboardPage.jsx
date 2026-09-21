@@ -20,7 +20,7 @@ function KpiBody({ kpi, summary }) {
             <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider leading-tight">{kpi.label}</p>
                 <p className={`text-xl font-bold ${kpi.valueColor ?? 'text-slate-800'} mt-0.5 truncate`}>
-                    {summary ? formatKpi(summary[kpi.key]) : '—'}
+                    {summary ? formatKpi(summary[kpi.key], kpi.money) : '—'}
                 </p>
             </div>
         </>

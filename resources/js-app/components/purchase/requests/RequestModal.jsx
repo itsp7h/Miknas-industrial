@@ -41,6 +41,7 @@ export default function RequestModal({
 
     const projects = options?.projects ?? [];
     const units = options?.units ?? [];
+    const requesters = options?.requesters ?? [];
     const today = options?.today ?? '';
 
     const project = projects.find((p) => p.name === values.project_name);
@@ -121,12 +122,20 @@ export default function RequestModal({
                             <label className="form-label" htmlFor="mpr-requested-by">
                                 Requested By <span className="text-red-500">*</span>
                             </label>
-                            <input
-                                id="mpr-requested-by" type="text" required className="form-input"
-                                placeholder="Person's name"
+                            <select
+                                id="mpr-requested-by" required className="form-input"
                                 value={values.requested_by_name ?? ''}
                                 onChange={(e) => set('requested_by_name', e.target.value)}
-                            />
+                            >
+                                <option value="">— Select Person —</option>
+                                {/* A name typed before this was a picker, or a user
+                                    since renamed or removed, stays selectable rather
+                                    than silently emptying the field on the next save. */}
+                                {values.requested_by_name && !requesters.includes(values.requested_by_name) && (
+                                    <option value={values.requested_by_name}>{values.requested_by_name}</option>
+                                )}
+                                {requesters.map((name) => <option key={name} value={name}>{name}</option>)}
+                            </select>
                         </div>
 
                         <UrgencyPicker

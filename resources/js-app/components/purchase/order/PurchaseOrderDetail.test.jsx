@@ -53,7 +53,7 @@ describe('PurchaseOrderDetail', () => {
         render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(screen.getByText('Steel Plate')).toBeInTheDocument();
-        expect(screen.getByText('BD 345.00')).toBeInTheDocument();
+        expect(screen.getByText('BD 345.000')).toBeInTheDocument();
     });
 
     // A five-column table cannot be read on a phone, so mobile stacks the lines.

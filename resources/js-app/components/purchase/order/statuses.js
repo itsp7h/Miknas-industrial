@@ -1,3 +1,4 @@
+import { money } from '../../../currency';
 // The Blade purchase-orders index badged status with these shared classes from
 // resources/css/app.css, which the React shell also loads.
 export const STATUS_BADGE_CLASS = {
@@ -30,8 +31,9 @@ export const STATUS_BACKGROUNDS = {
     cancelled: '#fee2e2',
 };
 
-export const money = (value) =>
-    Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Money goes through the shared helper so the symbol and the currency's own
+// precision come from one place — see resources/js-app/currency.js.
+export { money };
 
 /** The Blade pages rendered dates as `d M Y`; keep that rather than raw ISO. */
 export const formatDate = (value) => {

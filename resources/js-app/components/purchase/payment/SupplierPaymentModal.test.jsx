@@ -73,7 +73,7 @@ describe('SupplierPaymentModal', () => {
         fireEvent.change(screen.getByLabelText(/Invoice/), { target: { value: '6' } });
 
         expect(screen.getByText(/Outstanding on this invoice/)).toBeInTheDocument();
-        expect(screen.getByText('80.00')).toBeInTheDocument();
+        expect(screen.getByText('BD 80.000')).toBeInTheDocument();
     });
 
     it('honours the invoice the invoices page sent it', async () => {

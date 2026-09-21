@@ -38,11 +38,11 @@ export default function UserListPage() {
             {!u.loading && <UserTable users={u.filtered} onEditAccess={u.setEditing} />}
 
             <NewUserModal
-                open={u.newUserOpen} roles={u.roles}
+                open={u.newUserOpen} profiles={u.profiles}
                 onClose={() => u.setNewUserOpen(false)} onSave={u.createUser}
             />
             <EditAccessModal
-                user={u.editing} roles={u.roles} permissions={u.permissions}
+                user={u.editing} profiles={u.profiles} grid={u.grid}
                 onClose={() => u.setEditing(null)} onSave={u.saveAccess}
             />
         </div>

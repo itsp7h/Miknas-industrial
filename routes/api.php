@@ -27,11 +27,12 @@ use App\Http\Controllers\Api\Sales\PaymentReceiptController;
 use App\Http\Controllers\Api\Sales\SalesInvoiceController;
 use App\Http\Controllers\Api\Sales\SalesOrderController;
 use App\Http\Controllers\Api\Settings\CompanyController;
+use App\Http\Controllers\Api\Settings\FinanceController;
 use App\Http\Controllers\Api\Settings\IntegrationController;
+use App\Http\Controllers\Api\Settings\ItemCategoryController;
 use App\Http\Controllers\Api\Settings\MailAccountController;
 use App\Http\Controllers\Api\Settings\ProjectController;
 use App\Http\Controllers\Api\Settings\UserController;
-use App\Http\Controllers\Api\Settings\VatController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -66,27 +67,27 @@ Route::prefix('v1')->group(function () {
         Route::post('profile/verification-notification', [ProfileController::class, 'sendVerificationNotification']);
 
         Route::prefix('inventory')->group(function () {
-            Route::get('items', [ItemController::class, 'index']);
-            Route::post('items', [ItemController::class, 'store']);
-            Route::post('items/import', [ItemController::class, 'import']);
-            Route::get('items/template', [ItemController::class, 'downloadTemplate']);
-            Route::get('items/export-pdf', [ItemController::class, 'exportPdf']);
-            Route::put('items/{item}', [ItemController::class, 'update']);
-            Route::delete('items/{item}', [ItemController::class, 'destroy']);
+            Route::get('items', [ItemController::class, 'index'])->middleware('permission:raw-materials.view|finished-goods.view');
+            Route::post('items', [ItemController::class, 'store'])->middleware('permission:raw-materials.create|finished-goods.create');
+            Route::post('items/import', [ItemController::class, 'import'])->middleware('permission:raw-materials.create|finished-goods.create');
+            Route::get('items/template', [ItemController::class, 'downloadTemplate'])->middleware('permission:raw-materials.view|finished-goods.view');
+            Route::get('items/export-pdf', [ItemController::class, 'exportPdf'])->middleware('permission:raw-materials.view|finished-goods.view');
+            Route::put('items/{item}', [ItemController::class, 'update'])->middleware('permission:raw-materials.edit|finished-goods.edit');
+            Route::delete('items/{item}', [ItemController::class, 'destroy'])->middleware('permission:raw-materials.delete|finished-goods.delete');
 
-            Route::get('warehouses', [WarehouseController::class, 'index']);
-            Route::post('warehouses', [WarehouseController::class, 'store']);
-            Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update']);
-            Route::delete('warehouses/{warehouse}', [WarehouseController::class, 'destroy']);
+            Route::get('warehouses', [WarehouseController::class, 'index'])->middleware('permission:warehouses.view');
+            Route::get('warehouses/{warehouse}', [WarehouseController::class, 'show'])->middleware('permission:warehouses.view');
+            Route::post('warehouses', [WarehouseController::class, 'store'])->middleware('permission:warehouses.create');
+            Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update'])->middleware('permission:warehouses.edit');
+            Route::delete('warehouses/{warehouse}', [WarehouseController::class, 'destroy'])->middleware('permission:warehouses.delete');
 
-            Route::get('movements', [StockMovementController::class, 'index']);
-            Route::get('movements/form-options', [StockMovementController::class, 'formOptions']);
-            Route::post('movements', [StockMovementController::class, 'store']);
+            Route::get('movements', [StockMovementController::class, 'index'])->middleware('permission:stock-movements.view');
+            Route::get('movements/form-options', [StockMovementController::class, 'formOptions'])->middleware('permission:stock-movements.create');
+            Route::post('movements', [StockMovementController::class, 'store'])->middleware('permission:stock-movements.create');
 
-            Route::get('reports/summary', [StockReportController::class, 'summary']);
-            Route::get('reports/movement', [StockReportController::class, 'movement']);
-            Route::get('reports/low-stock', [StockReportController::class, 'lowStock']);
-            Route::get('reports/valuation', [StockReportController::class, 'valuation']);
+            Route::get('reports/movement', [StockReportController::class, 'movement'])->middleware('permission:movement-report.view');
+            Route::get('reports/low-stock', [StockReportController::class, 'lowStock'])->middleware('permission:low-stock.view');
+            Route::get('reports/valuation', [StockReportController::class, 'valuation'])->middleware('permission:valuation.view');
         });
 
         Route::prefix('sales')->group(function () {
@@ -150,56 +151,66 @@ Route::prefix('v1')->group(function () {
 
         // Settings are Admin-only, matching the `role:Admin` group the Blade
         // settings pages live in.
-        Route::prefix('settings')->middleware('role:Admin')->group(function () {
-            Route::get('companies', [CompanyController::class, 'index']);
-            Route::post('companies', [CompanyController::class, 'store']);
-            Route::put('companies/{company}', [CompanyController::class, 'update']);
-            Route::delete('companies/{company}', [CompanyController::class, 'destroy']);
-            Route::post('companies/{company}/departments', [CompanyController::class, 'storeDepartment']);
-            Route::put('companies/{company}/departments/{department}', [CompanyController::class, 'updateDepartment']);
-            Route::delete('companies/{company}/departments/{department}', [CompanyController::class, 'destroyDepartment']);
+        // Users and Integrations are Admin's alone — they carry no permission
+        // name at all, so nobody can be granted them. The rest of Settings is
+        // grantable per tab like everything else.
+        Route::prefix('settings')->group(function () {
+            Route::get('companies', [CompanyController::class, 'index'])->middleware('permission:companies.view');
+            Route::post('companies', [CompanyController::class, 'store'])->middleware('permission:companies.create');
+            Route::put('companies/{company}', [CompanyController::class, 'update'])->middleware('permission:companies.edit');
+            Route::delete('companies/{company}', [CompanyController::class, 'destroy'])->middleware('permission:companies.delete');
+            Route::post('companies/{company}/departments', [CompanyController::class, 'storeDepartment'])->middleware('permission:companies.create');
+            Route::put('companies/{company}/departments/{department}', [CompanyController::class, 'updateDepartment'])->middleware('permission:companies.edit');
+            Route::delete('companies/{company}/departments/{department}', [CompanyController::class, 'destroyDepartment'])->middleware('permission:companies.delete');
 
             // `projects/import` and `projects/template` must precede
             // `projects/{project}` or the wildcard swallows them.
-            Route::get('projects', [ProjectController::class, 'index']);
-            Route::post('projects/import', [ProjectController::class, 'import']);
-            Route::get('projects/template', [ProjectController::class, 'downloadTemplate']);
-            Route::post('projects', [ProjectController::class, 'store']);
-            Route::put('projects/{project}', [ProjectController::class, 'update']);
-            Route::delete('projects/{project}', [ProjectController::class, 'destroy']);
-            Route::post('projects/{project}/locations', [ProjectController::class, 'storeLocation']);
-            Route::put('projects/{project}/locations/{location}', [ProjectController::class, 'updateLocation']);
-            Route::delete('projects/{project}/locations/{location}', [ProjectController::class, 'destroyLocation']);
+            Route::get('projects', [ProjectController::class, 'index'])->middleware('permission:projects.view');
+            Route::post('projects/import', [ProjectController::class, 'import'])->middleware('permission:projects.create');
+            Route::get('projects/template', [ProjectController::class, 'downloadTemplate'])->middleware('permission:projects.view');
+            Route::post('projects', [ProjectController::class, 'store'])->middleware('permission:projects.create');
+            Route::put('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:projects.edit');
+            Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->middleware('permission:projects.delete');
+            Route::post('projects/{project}/locations', [ProjectController::class, 'storeLocation'])->middleware('permission:projects.create');
+            Route::put('projects/{project}/locations/{location}', [ProjectController::class, 'updateLocation'])->middleware('permission:projects.edit');
+            Route::delete('projects/{project}/locations/{location}', [ProjectController::class, 'destroyLocation'])->middleware('permission:projects.delete');
 
-            Route::get('users', [UserController::class, 'index']);
-            Route::post('users', [UserController::class, 'store']);
-            Route::put('users/{user}', [UserController::class, 'update']);
+            // Item sections — "Raw Materials / Chemical Materials".
+            Route::get('item-categories', [ItemCategoryController::class, 'index'])->middleware('permission:item-categories.view');
+            Route::post('item-categories', [ItemCategoryController::class, 'store'])->middleware('permission:item-categories.create');
+            Route::put('item-categories/{itemCategory}', [ItemCategoryController::class, 'update'])->middleware('permission:item-categories.edit');
+            Route::delete('item-categories/{itemCategory}', [ItemCategoryController::class, 'destroy'])->middleware('permission:item-categories.delete');
 
-            Route::get('integrations/whatsapp', [IntegrationController::class, 'whatsapp']);
-            Route::put('integrations/whatsapp', [IntegrationController::class, 'updateWhatsapp']);
-            Route::post('integrations/whatsapp/test', [IntegrationController::class, 'testConnection']);
-            Route::post('integrations/whatsapp/test-message', [IntegrationController::class, 'sendTestMessage']);
+            Route::get('users', [UserController::class, 'index'])->middleware('role:Admin');
+            Route::post('users', [UserController::class, 'store'])->middleware('role:Admin');
+            Route::put('users/{user}', [UserController::class, 'update'])->middleware('role:Admin');
 
-            Route::get('mail-accounts', [MailAccountController::class, 'index']);
-            Route::get('mail-accounts/{mailAccount}', [MailAccountController::class, 'show']);
-            Route::post('mail-accounts', [MailAccountController::class, 'store']);
-            Route::put('mail-accounts/{mailAccount}', [MailAccountController::class, 'update']);
-            Route::delete('mail-accounts/{mailAccount}', [MailAccountController::class, 'destroy']);
+            Route::get('integrations/whatsapp', [IntegrationController::class, 'whatsapp'])->middleware('role:Admin');
+            Route::put('integrations/whatsapp', [IntegrationController::class, 'updateWhatsapp'])->middleware('role:Admin');
+            Route::post('integrations/whatsapp/test', [IntegrationController::class, 'testConnection'])->middleware('role:Admin');
+            Route::post('integrations/whatsapp/test-message', [IntegrationController::class, 'sendTestMessage'])->middleware('role:Admin');
+
+            Route::get('mail-accounts', [MailAccountController::class, 'index'])->middleware('role:Admin');
+            Route::get('mail-accounts/{mailAccount}', [MailAccountController::class, 'show'])->middleware('role:Admin');
+            Route::post('mail-accounts', [MailAccountController::class, 'store'])->middleware('role:Admin');
+            Route::put('mail-accounts/{mailAccount}', [MailAccountController::class, 'update'])->middleware('role:Admin');
+            Route::delete('mail-accounts/{mailAccount}', [MailAccountController::class, 'destroy'])->middleware('role:Admin');
             Route::patch('mail-accounts/{mailAccount}/toggle', [MailAccountController::class, 'toggleEnabled']);
-            Route::post('mail-accounts/{mailAccount}/test', [MailAccountController::class, 'testConnection']);
-            Route::post('mail-accounts/{mailAccount}/send-test', [MailAccountController::class, 'sendTestEmail']);
+            Route::post('mail-accounts/{mailAccount}/test', [MailAccountController::class, 'testConnection'])->middleware('role:Admin');
+            Route::post('mail-accounts/{mailAccount}/send-test', [MailAccountController::class, 'sendTestEmail'])->middleware('role:Admin');
 
-            Route::get('vat', [VatController::class, 'show']);
-            Route::put('vat', [VatController::class, 'update']);
+            // VAT and the display currency — one subject, one page.
+            Route::get('finance', [FinanceController::class, 'show'])->middleware('permission:finance.view');
+            Route::put('finance', [FinanceController::class, 'update'])->middleware('permission:finance.edit');
         });
 
         Route::prefix('purchase')->group(function () {
             // `pipeline/{purchaseRequest}/…` action paths sit under the
             // wildcard, so they must come after the bare show route but their
             // own suffixes keep them distinct.
-            Route::get('pipeline', [PurchasePipelineController::class, 'index']);
-            Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show']);
-            Route::get('pipeline/{purchaseRequest}/form-options', [PurchasePipelineController::class, 'formOptions']);
+            Route::get('pipeline', [PurchasePipelineController::class, 'index'])->middleware('permission:pipeline.view');
+            Route::get('pipeline/{purchaseRequest}', [PurchasePipelineController::class, 'show'])->middleware('permission:pipeline.view');
+            Route::get('pipeline/{purchaseRequest}/form-options', [PurchasePipelineController::class, 'formOptions'])->middleware('permission:pipeline.view');
             Route::post('pipeline/{purchaseRequest}/suppliers', [PurchasePipelineController::class, 'selectSuppliers']);
             Route::post('pipeline/{purchaseRequest}/send-invitations', [PurchasePipelineController::class, 'sendInvitations']);
             Route::post('pipeline/{purchaseRequest}/lpo', [PurchasePipelineController::class, 'generateLpo']);
@@ -208,58 +219,59 @@ Route::prefix('v1')->group(function () {
 
             // The MPR create/edit forms. `requests/form-options` must precede
             // the `{purchaseRequest}` routes or the wildcard swallows it.
-            Route::get('requests/form-options', [PurchaseRequestController::class, 'formOptions']);
-            Route::post('requests', [PurchaseRequestController::class, 'store']);
-            Route::get('requests/{purchaseRequest}/edit', [PurchaseRequestController::class, 'edit']);
-            Route::get('requests/{purchaseRequest}', [PurchaseRequestController::class, 'show']);
-            Route::put('requests/{purchaseRequest}', [PurchaseRequestController::class, 'update']);
-            Route::delete('requests/{purchaseRequest}', [PurchaseRequestController::class, 'destroy']);
+            Route::get('requests/form-options', [PurchaseRequestController::class, 'formOptions'])->middleware('permission:pipeline.create|pipeline.edit');
+            Route::post('requests', [PurchaseRequestController::class, 'store'])->middleware('permission:pipeline.create');
+            Route::get('requests/{purchaseRequest}/edit', [PurchaseRequestController::class, 'edit'])->middleware('permission:pipeline.edit');
+            Route::get('requests/{purchaseRequest}', [PurchaseRequestController::class, 'show'])->middleware('permission:pipeline.view');
+            Route::put('requests/{purchaseRequest}', [PurchaseRequestController::class, 'update'])->middleware('permission:pipeline.edit');
+            Route::delete('requests/{purchaseRequest}', [PurchaseRequestController::class, 'destroy'])->middleware('permission:pipeline.delete');
 
             // The quotes workspace: one page for "view quotes" and "compare &
             // award", as in Blade.
             Route::get('requests/{purchaseRequest}/quotes', [SupplierQuoteController::class, 'index']);
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award', [SupplierQuoteController::class, 'award']);
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unaward']);
-            Route::get('suppliers', [SupplierController::class, 'index']);
-            Route::post('suppliers', [SupplierController::class, 'store']);
-            Route::post('suppliers/import', [SupplierController::class, 'import']);
-            Route::get('suppliers/template', [SupplierController::class, 'downloadTemplate']);
-            Route::get('suppliers/export-pdf', [SupplierController::class, 'exportPdf']);
-            Route::put('suppliers/{supplier}', [SupplierController::class, 'update']);
-            Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy']);
+            Route::get('suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers.view');
+            Route::post('suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');
+            Route::post('suppliers/import', [SupplierController::class, 'import'])->middleware('permission:suppliers.create');
+            Route::get('suppliers/template', [SupplierController::class, 'downloadTemplate'])->middleware('permission:suppliers.view');
+            Route::get('suppliers/export-pdf', [SupplierController::class, 'exportPdf'])->middleware('permission:suppliers.view');
+            Route::put('suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit');
+            Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete');
 
             // `orders/form-options` must precede `orders/{purchaseOrder}` or the
             // wildcard swallows it.
-            Route::get('orders', [PurchaseOrderController::class, 'index']);
-            Route::get('orders/form-options', [PurchaseOrderController::class, 'formOptions']);
-            Route::get('orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
-            Route::post('orders', [PurchaseOrderController::class, 'store']);
-            Route::put('orders/{purchaseOrder}', [PurchaseOrderController::class, 'update']);
-            Route::delete('orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
+            Route::get('orders', [PurchaseOrderController::class, 'index'])->middleware('permission:purchase-orders.view');
+            Route::get('orders/form-options', [PurchaseOrderController::class, 'formOptions'])->middleware('permission:purchase-orders.create|purchase-orders.edit');
+            Route::get('orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->middleware('permission:purchase-orders.view');
+            Route::post('orders', [PurchaseOrderController::class, 'store'])->middleware('permission:purchase-orders.create');
+            Route::put('orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->middleware('permission:purchase-orders.edit');
+            Route::post('orders/{purchaseOrder}/send', [PurchaseOrderController::class, 'send'])->middleware('permission:purchase-orders.edit');
+            Route::delete('orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy'])->middleware('permission:purchase-orders.delete');
 
             // `grns/form-options` must precede `grns/{grn}` or the wildcard eats it.
-            Route::get('grns', [GoodsReceiptNoteController::class, 'index']);
-            Route::get('grns/form-options', [GoodsReceiptNoteController::class, 'formOptions']);
-            Route::get('grns/{grn}', [GoodsReceiptNoteController::class, 'show']);
-            Route::post('grns', [GoodsReceiptNoteController::class, 'store']);
-            Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm']);
-            Route::delete('grns/{grn}', [GoodsReceiptNoteController::class, 'destroy']);
+            Route::get('grns', [GoodsReceiptNoteController::class, 'index'])->middleware('permission:goods-receipts.view');
+            Route::get('grns/form-options', [GoodsReceiptNoteController::class, 'formOptions'])->middleware('permission:goods-receipts.create');
+            Route::get('grns/{grn}', [GoodsReceiptNoteController::class, 'show'])->middleware('permission:goods-receipts.view');
+            Route::post('grns', [GoodsReceiptNoteController::class, 'store'])->middleware('permission:goods-receipts.create');
+            Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm'])->middleware('permission:goods-receipts.edit');
+            Route::delete('grns/{grn}', [GoodsReceiptNoteController::class, 'destroy'])->middleware('permission:goods-receipts.delete');
 
             // `invoices/form-options` must precede `invoices/{supplierInvoice}`.
-            Route::get('invoices', [PurchaseInvoiceController::class, 'index']);
-            Route::get('invoices/form-options', [PurchaseInvoiceController::class, 'formOptions']);
-            Route::get('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'show']);
-            Route::post('invoices', [PurchaseInvoiceController::class, 'store']);
-            Route::put('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'update']);
-            Route::delete('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'destroy']);
+            Route::get('invoices', [PurchaseInvoiceController::class, 'index'])->middleware('permission:supplier-invoices.view');
+            Route::get('invoices/form-options', [PurchaseInvoiceController::class, 'formOptions'])->middleware('permission:supplier-invoices.create|supplier-invoices.edit');
+            Route::get('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'show'])->middleware('permission:supplier-invoices.view');
+            Route::post('invoices', [PurchaseInvoiceController::class, 'store'])->middleware('permission:supplier-invoices.create');
+            Route::put('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'update'])->middleware('permission:supplier-invoices.edit');
+            Route::delete('invoices/{supplierInvoice}', [PurchaseInvoiceController::class, 'destroy'])->middleware('permission:supplier-invoices.delete');
 
             // `payments/form-options` must precede `payments/{supplierPayment}`.
-            Route::get('payments', [PurchasePaymentController::class, 'index']);
-            Route::get('payments/form-options', [PurchasePaymentController::class, 'formOptions']);
-            Route::get('payments/{supplierPayment}', [PurchasePaymentController::class, 'show']);
-            Route::post('payments', [PurchasePaymentController::class, 'store']);
-            Route::put('payments/{supplierPayment}', [PurchasePaymentController::class, 'update']);
-            Route::delete('payments/{supplierPayment}', [PurchasePaymentController::class, 'destroy']);
+            Route::get('payments', [PurchasePaymentController::class, 'index'])->middleware('permission:supplier-payments.view');
+            Route::get('payments/form-options', [PurchasePaymentController::class, 'formOptions'])->middleware('permission:supplier-payments.create|supplier-payments.edit');
+            Route::get('payments/{supplierPayment}', [PurchasePaymentController::class, 'show'])->middleware('permission:supplier-payments.view');
+            Route::post('payments', [PurchasePaymentController::class, 'store'])->middleware('permission:supplier-payments.create');
+            Route::put('payments/{supplierPayment}', [PurchasePaymentController::class, 'update'])->middleware('permission:supplier-payments.edit');
+            Route::delete('payments/{supplierPayment}', [PurchasePaymentController::class, 'destroy'])->middleware('permission:supplier-payments.delete');
         });
     });
 });

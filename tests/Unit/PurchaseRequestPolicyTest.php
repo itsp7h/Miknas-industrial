@@ -14,7 +14,7 @@ class PurchaseRequestPolicyTest extends TestCase
     public function test_requester_can_view_own_request_but_not_others(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
         $own = PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
         $other = PurchaseRequest::factory()->create();
 
@@ -25,7 +25,9 @@ class PurchaseRequestPolicyTest extends TestCase
     public function test_requester_can_update_own_draft_but_not_after_draft_or_someone_elses(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo([
+            'pipeline.create', 'pipeline.edit', 'pipeline.delete', 'pipeline.view-own',
+        ]);
         $ownDraft = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
         $ownRfq = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'rfq']);
         $othersDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
@@ -42,7 +44,7 @@ class PurchaseRequestPolicyTest extends TestCase
         // only advances it to gm_approval afterwards. 'gm_approval' is also allowed
         // so a re-check against an already-advanced request still passes.
         $manager = User::factory()->create();
-        $manager->assignRole('Purchase Manager');
+        $manager->givePermissionTo(['pipeline.approve', 'pipeline.view-all']);
         $atDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
         $atGmApproval = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
         $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
@@ -55,7 +57,7 @@ class PurchaseRequestPolicyTest extends TestCase
     public function test_purchase_manager_can_view_all_but_cannot_award(): void
     {
         $manager = User::factory()->create();
-        $manager->assignRole('Purchase Manager');
+        $manager->givePermissionTo(['pipeline.approve', 'pipeline.view-all']);
         $anyRequest = PurchaseRequest::factory()->create(['stage' => 'comparison']);
 
         $this->assertTrue($manager->can('view', $anyRequest));
@@ -65,7 +67,9 @@ class PurchaseRequestPolicyTest extends TestCase
     public function test_procurement_officer_cannot_see_draft_stage_requests(): void
     {
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $draft = PurchaseRequest::factory()->create(['stage' => 'draft']);
         $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
 
@@ -79,7 +83,9 @@ class PurchaseRequestPolicyTest extends TestCase
         // is authorized against 'manageRfq' right after the GM signature advances the
         // request to gm_approval, and it is itself the action that sets stage to 'rfq'.
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $atGmApproval = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
         $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
         $atDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
@@ -95,7 +101,9 @@ class PurchaseRequestPolicyTest extends TestCase
         // "Re-issue LPO" affordance — so it must stay open through 'lpo' or that
         // affordance becomes unreachable once award() itself allows 'lpo'.
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $atQuoting = PurchaseRequest::factory()->create(['stage' => 'quoting']);
         $atComparison = PurchaseRequest::factory()->create(['stage' => 'comparison']);
         $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
@@ -110,7 +118,9 @@ class PurchaseRequestPolicyTest extends TestCase
     public function test_requester_can_delete_own_draft_request_but_not_after_draft_or_someone_elses(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo([
+            'pipeline.create', 'pipeline.edit', 'pipeline.delete', 'pipeline.view-own',
+        ]);
         $ownDraft = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
         $ownRfq = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'rfq']);
         $othersDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
@@ -123,7 +133,9 @@ class PurchaseRequestPolicyTest extends TestCase
     public function test_procurement_officer_can_award_at_comparison_or_lpo_stage(): void
     {
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $atComparison = PurchaseRequest::factory()->create(['stage' => 'comparison']);
         $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
         $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
@@ -136,7 +148,9 @@ class PurchaseRequestPolicyTest extends TestCase
     public function test_procurement_officer_can_generate_lpo_only_at_lpo_stage(): void
     {
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
         $atComparison = PurchaseRequest::factory()->create(['stage' => 'comparison']);
 
@@ -162,8 +176,8 @@ class PurchaseRequestPolicyTest extends TestCase
     public function test_custom_toggle_grants_access_beyond_profile(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
-        $requester->givePermissionTo('purchase-requests.view-all');
+        $requester->givePermissionTo(['pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
+        $requester->givePermissionTo('pipeline.view-all');
         $othersRequest = PurchaseRequest::factory()->create(['stage' => 'lpo']);
 
         $this->assertTrue($requester->can('view', $othersRequest));

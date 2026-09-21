@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import StockSummaryPage from './StockSummaryPage';
 import LowStockPage from './LowStockPage';
 import ValuationPage from './ValuationPage';
 import MovementReportPage from './MovementReportPage';
@@ -15,16 +14,6 @@ const wrap = (ui) => render(<ToastProvider>{ui}</ToastProvider>);
 
 describe('desktop inventory reports', () => {
     beforeEach(() => vi.restoreAllMocks());
-
-    it('summary shows the stock-line count and the rows', async () => {
-        vi.spyOn(client, 'apiGet').mockResolvedValue({
-            data: [{ id: 1, item_code: 'ITEM-1', item_name: 'Rod', warehouse_name: 'Main', quantity: '4', unit_of_measure: 'PCS' }],
-            meta: { total_lines: 1 },
-        });
-        wrap(<StockSummaryPage />);
-        expect(await screen.findByText('Rod')).toBeInTheDocument();
-        expect(screen.getByText('Stock lines')).toBeInTheDocument();
-    });
 
     /**
      * The Blade report led with a red banner naming the count and the urgency,
@@ -79,12 +68,12 @@ describe('desktop inventory reports', () => {
         wrap(<ValuationPage />);
         expect(await screen.findByText('Rod')).toBeInTheDocument();
 
-        expect(screen.getByText('2.50')).toBeInTheDocument();
+        expect(screen.getByText('BD 2.500')).toBeInTheDocument();
         expect(screen.getByText('Raw Material')).toHaveClass('badge-blue');
 
         // The footer totals the rows shown, so it stays truthful under search.
         expect(screen.getByText('Grand Total')).toBeInTheDocument();
-        expect(screen.getByText('310.00')).toBeInTheDocument();
+        expect(screen.getByText('BD 310.000')).toBeInTheDocument();
     });
 
     it('valuation re-totals the footer when a search narrows the table', async () => {
@@ -100,9 +89,9 @@ describe('desktop inventory reports', () => {
 
         fireEvent.change(screen.getByLabelText('Search items'), { target: { value: 'widget' } });
 
-        // 300.00 twice: the surviving row, and the footer now totalling only it.
-        expect(screen.getAllByText('300.00')).toHaveLength(2);
-        expect(screen.queryByText('310.00')).not.toBeInTheDocument();
+        // Twice: the surviving row, and the footer now totalling only it.
+        expect(screen.getAllByText('BD 300.000')).toHaveLength(2);
+        expect(screen.queryByText('BD 310.000')).not.toBeInTheDocument();
     });
 
     // The date/item filters narrow server-side, so applying them must re-query

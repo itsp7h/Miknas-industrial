@@ -24,11 +24,18 @@ export default function useLiveList({
     errorMessage = 'Failed to load data.',
 }) {
     const [items, setItems] = useState([]);
+    // Endpoints answer with `meta` alongside `data` — option lists, counts.
+    // It used to be dropped on the floor, so a caller that needed it had to
+    // fetch the same endpoint a second time.
+    const [meta, setMeta] = useState({});
     const { showToast } = useToast();
 
     function refetch() {
         return apiGet(endpoint)
-            .then((res) => setItems(res.data))
+            .then((res) => {
+                setItems(res.data);
+                setMeta(res.meta ?? {});
+            })
             .catch(() => showToast(errorMessage, 'error'));
     }
 
@@ -63,5 +70,5 @@ export default function useLiveList({
         setItems((prev) => prev.filter((item) => item[mergeKey] !== id));
     }
 
-    return { items, setItems, upsertItem, removeItem, refetch };
+    return { items, setItems, meta, upsertItem, removeItem, refetch };
 }

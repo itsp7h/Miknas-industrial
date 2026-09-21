@@ -74,7 +74,7 @@ describe('desktop PurchaseOrderListPage', () => {
     it('lists orders with money and status labels', async () => {
         renderPage();
         expect(await screen.findByText('PO-00001')).toBeInTheDocument();
-        expect(screen.getByText('250.50')).toBeInTheDocument();
+        expect(screen.getByText('BD 250.500')).toBeInTheDocument();
         expect(screen.getByText('Sent')).toBeInTheDocument();
     });
 
