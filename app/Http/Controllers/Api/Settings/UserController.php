@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Api\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AccessCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
-use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -18,12 +18,14 @@ class UserController extends Controller
         return response()->json([
             'data' => User::with(['roles', 'permissions'])->orderBy('name')->get()
                 ->map(fn (User $user) => $this->payload($user))->values(),
-            'roles' => Role::orderBy('name')->pluck('name'),
-            // Label and name both travel: the page shows the label and posts
-            // the name.
-            'permissions' => collect(config('purchase_access.permissions'))
-                ->map(fn ($label, $name) => ['name' => $name, 'label' => $label])
-                ->values(),
+            // The profiles, in the order config lists them — Admin first, then
+            // by how much of the system each one runs.
+            'profiles' => AccessCatalog::profiles(),
+            // Every tab against the actions it offers. The form draws this as a
+            // grid, so an Admin can grant any square to anyone regardless of
+            // which profile they hold.
+            'grid' => AccessCatalog::grid(),
+            'admin_only_tabs' => config('access.admin_only_tabs'),
         ]);
     }
 

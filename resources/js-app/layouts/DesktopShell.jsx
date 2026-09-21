@@ -2,7 +2,7 @@ import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 
-export default function DesktopShell({ children, currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken }) {
+export default function DesktopShell({ children, currentUserId, userName, userEmail, isAdmin, permissions = [], logoutUrl, csrfToken }) {
     const location = useLocation();
     // A detail route keeps its list link highlighted, matching the Blade
     // sidebar's request()->is('...*') prefix matching.
@@ -13,6 +13,7 @@ export default function DesktopShell({ children, currentUserId, userName, userEm
         <div data-testid="desktop-shell" style={{ display: 'flex', minHeight: '100vh' }}>
             <Sidebar
                 isAdmin={isAdmin}
+                can={(permission) => permissions.includes(permission)}
                 isActive={isActive}
                 userName={userName}
                 userEmail={userEmail}

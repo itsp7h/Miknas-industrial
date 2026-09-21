@@ -16,7 +16,7 @@ class PurchaseRequestCreatedBroadcastTest extends TestCase
     {
         Event::fake([PurchaseRequestCreated::class]);
         $user = User::factory()->create();
-        $user->givePermissionTo('purchase-requests.create');
+        $user->givePermissionTo('pipeline.create');
         $this->actingAs($user);
 
         // The create form is a React modal now, so the write is the API.

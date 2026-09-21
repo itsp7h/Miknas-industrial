@@ -41,7 +41,7 @@ describe('TopBar', () => {
 
     it('derives the title from the route', () => {
         renderBar({}, '/app/inventory/items');
-        expect(screen.getByText('Items')).toBeInTheDocument();
+        expect(screen.getByText('Raw Materials')).toBeInTheDocument();
     });
 
     // Blade detail pages reused their list page's @section('title').

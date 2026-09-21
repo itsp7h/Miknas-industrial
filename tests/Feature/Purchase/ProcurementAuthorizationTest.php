@@ -39,7 +39,9 @@ class ProcurementAuthorizationTest extends TestCase
     public function test_procurement_officer_can_select_suppliers_at_rfq_stage(): void
     {
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $atRfq = PurchaseRequest::factory()->create(['stage' => 'rfq']);
         $supplier = Supplier::factory()->create();
 
@@ -51,7 +53,9 @@ class ProcurementAuthorizationTest extends TestCase
     public function test_procurement_officer_cannot_select_suppliers_before_rfq_stage(): void
     {
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $atDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
         $supplier = Supplier::factory()->create();
 
@@ -103,7 +107,9 @@ class ProcurementAuthorizationTest extends TestCase
     public function test_procurement_officer_can_view_the_rfq_page_at_rfq_stage(): void
     {
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $pr = PurchaseRequest::factory()->create(['stage' => 'rfq']);
 
         $this->actingAs($procurement)->getJson("/api/v1/purchase/pipeline/{$pr->id}")->assertOk();
@@ -112,7 +118,9 @@ class ProcurementAuthorizationTest extends TestCase
     public function test_procurement_officer_can_select_suppliers_at_gm_approval_precondition_stage(): void
     {
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $atGmApproval = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
         $supplier = Supplier::factory()->create();
 
@@ -124,7 +132,9 @@ class ProcurementAuthorizationTest extends TestCase
     public function test_procurement_officer_can_reach_manage_quotes_actions_at_lpo_stage(): void
     {
         $procurement = User::factory()->create();
-        $procurement->assignRole('Procurement Officer');
+        $procurement->givePermissionTo(['pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
         $atLpo = PurchaseRequest::factory()->create(['stage' => 'lpo']);
 
         $this->assertTrue($procurement->can('manageQuotes', $atLpo));

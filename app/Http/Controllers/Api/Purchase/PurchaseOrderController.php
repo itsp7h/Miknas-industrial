@@ -158,7 +158,7 @@ class PurchaseOrderController extends Controller
             return;
         }
 
-        if (! auth()->user() || ! auth()->user()->can('purchase-requests.generate-lpo')) {
+        if (! auth()->user() || ! auth()->user()->can('pipeline.generate-lpo')) {
             abort(403);
         }
     }

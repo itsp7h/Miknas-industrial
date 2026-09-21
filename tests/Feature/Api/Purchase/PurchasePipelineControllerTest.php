@@ -21,7 +21,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_index_returns_requests_the_user_can_view(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('purchase-requests.view-all');
+        $user->givePermissionTo('pipeline.view-all');
         $this->actingAs($user);
         PurchaseRequest::factory()->count(3)->create();
 
@@ -34,7 +34,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_index_filters_to_own_requests_for_view_own_permission(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('purchase-requests.view-own');
+        $user->givePermissionTo('pipeline.view-own');
         $this->actingAs($user);
         PurchaseRequest::factory()->create(['requested_by' => $user->id]);
         PurchaseRequest::factory()->create(['requested_by' => User::factory()->create()->id]);
@@ -48,7 +48,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_index_filters_to_active_pipeline_stages_for_view_active_pipeline_permission(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('purchase-requests.view-active-pipeline');
+        $user->givePermissionTo('pipeline.view-active-pipeline');
         $this->actingAs($user);
         PurchaseRequest::factory()->create(['stage' => 'draft']);
         PurchaseRequest::factory()->create(['stage' => 'rfq']);
@@ -100,7 +100,7 @@ class PurchasePipelineControllerTest extends TestCase
     public function test_index_serializes_date_as_a_plain_y_m_d_string(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('purchase-requests.view-all');
+        $user->givePermissionTo('pipeline.view-all');
         $this->actingAs($user);
         PurchaseRequest::factory()->create(['date' => '2026-08-02']);
 

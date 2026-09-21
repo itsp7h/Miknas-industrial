@@ -39,7 +39,11 @@ class SupplierPaymentControllerTest extends TestCase
 
     private function user(): User
     {
-        return User::factory()->create();
+        // Admin: this file tests the module, not who may reach it.
+        $user = User::factory()->create();
+        $user->assignRole('Admin');
+
+        return $user;
     }
 
     private function payload(array $overrides = []): array

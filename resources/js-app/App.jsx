@@ -1,5 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './layouts/AppShell';
+import RequirePermission from './layouts/RequirePermission';
 import { RequestModalProvider } from './components/purchase/requests/RequestModalProvider';
 import useViewport from './hooks/useViewport';
 import DesktopDashboardPage from './pages/desktop/DashboardPage';
@@ -32,8 +33,6 @@ import DesktopWarehouseListPage from './pages/desktop/inventory/WarehouseListPag
 import MobileWarehouseListPage from './pages/mobile/inventory/WarehouseListPage';
 import DesktopStockMovementPage from './pages/desktop/inventory/StockMovementPage';
 import MobileStockMovementPage from './pages/mobile/inventory/StockMovementPage';
-import DesktopStockSummaryPage from './pages/desktop/inventory/reports/StockSummaryPage';
-import MobileStockSummaryPage from './pages/mobile/inventory/reports/StockSummaryPage';
 import DesktopMovementReportPage from './pages/desktop/inventory/reports/MovementReportPage';
 import MobileMovementReportPage from './pages/mobile/inventory/reports/MovementReportPage';
 import DesktopLowStockPage from './pages/desktop/inventory/reports/LowStockPage';
@@ -76,7 +75,7 @@ import DesktopProductionOutputListPage from './pages/desktop/production/Producti
 import MobileProductionOutputListPage from './pages/mobile/production/ProductionOutputListPage';
 
 export default function App({
-    currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken,
+    currentUserId, userName, userEmail, isAdmin, permissions = [], logoutUrl, csrfToken,
     canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
 }) {
     const viewport = useViewport();
@@ -95,7 +94,6 @@ export default function App({
     const ItemListPage = viewport === 'mobile' ? MobileItemListPage : DesktopItemListPage;
     const WarehouseListPage = viewport === 'mobile' ? MobileWarehouseListPage : DesktopWarehouseListPage;
     const StockMovementPage = viewport === 'mobile' ? MobileStockMovementPage : DesktopStockMovementPage;
-    const StockSummaryPage = viewport === 'mobile' ? MobileStockSummaryPage : DesktopStockSummaryPage;
     const MovementReportPage = viewport === 'mobile' ? MobileMovementReportPage : DesktopMovementReportPage;
     const LowStockPage = viewport === 'mobile' ? MobileLowStockPage : DesktopLowStockPage;
     const ValuationPage = viewport === 'mobile' ? MobileValuationPage : DesktopValuationPage;
@@ -123,6 +121,7 @@ export default function App({
             userName={userName}
             userEmail={userEmail}
             isAdmin={isAdmin}
+            permissions={permissions}
             logoutUrl={logoutUrl}
             csrfToken={csrfToken}
         >
@@ -130,6 +129,9 @@ export default function App({
                 board opens the new-request form, the detail page opens the edit
                 form, and neither owns it. */}
             <RequestModalProvider>
+                {/* Hiding a tab is not closing it: someone who knows the URL
+                    used to land on a page that then failed every fetch. */}
+                <RequirePermission isAdmin={isAdmin} permissions={permissions}>
                 <Routes>
                     <Route path="/app" element={<DashboardPage currentUserId={currentUserId} userName={userName} />} />
                     <Route path="/app/purchase/suppliers" element={<SupplierListPage />} />
@@ -153,7 +155,14 @@ export default function App({
                     <Route path="/app/inventory/items" element={<ItemListPage />} />
                     <Route path="/app/inventory/warehouses" element={<WarehouseListPage />} />
                     <Route path="/app/inventory/movements" element={<StockMovementPage />} />
-                    <Route path="/app/inventory/reports/summary" element={<StockSummaryPage />} />
+                    {/* The stock summary is gone: the Raw Materials page answers the same
+                        question, and its warehouse filter rescopes each row to one
+                        warehouse, which is the per-line view this report existed for.
+                        The URL was in the sidebar for long enough to be bookmarked. */}
+                    <Route
+                        path="/app/inventory/reports/summary"
+                        element={<Navigate to="/app/inventory/items" replace />}
+                    />
                     <Route path="/app/inventory/reports/movement" element={<MovementReportPage />} />
                     <Route path="/app/inventory/reports/low-stock" element={<LowStockPage />} />
                     <Route path="/app/inventory/reports/valuation" element={<ValuationPage />} />
@@ -176,6 +185,7 @@ export default function App({
                     <Route path="/app/profile" element={<ProfilePage />} />
                     <Route path="*" element={<div>Page not found.</div>} />
                 </Routes>
+                </RequirePermission>
             </RequestModalProvider>
         </AppShell>
     );

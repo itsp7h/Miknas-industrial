@@ -46,13 +46,13 @@ class AuthControllerTest extends TestCase
     public function test_me_returns_authenticated_user_and_roles(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('Accounts');
+        $user->assignRole('Finance');
 
         $response = $this->actingAs($user)->getJson('/api/v1/me');
 
         $response->assertOk()
             ->assertJsonPath('user.email', $user->email)
-            ->assertJsonPath('roles.0', 'Accounts');
+            ->assertJsonPath('roles.0', 'Finance');
     }
 
     public function test_logout_invalidates_session(): void

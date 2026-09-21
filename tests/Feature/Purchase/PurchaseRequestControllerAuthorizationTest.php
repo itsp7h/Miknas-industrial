@@ -38,7 +38,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_requester_can_store_a_request(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.view', 'pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
 
         $this->actingAs($requester)
             ->postJson('/api/v1/purchase/requests', $this->validPayload())
@@ -50,7 +50,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_requester_cannot_update_someone_elses_draft_request(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.view', 'pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
         $othersRequest = PurchaseRequest::factory()->create(['stage' => 'draft']);
 
         $this->actingAs($requester)
@@ -61,7 +61,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_requester_cannot_update_own_request_past_draft_stage(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.view', 'pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
         $ownRequest = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'rfq']);
 
         $this->actingAs($requester)
@@ -89,7 +89,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_purchase_manager_can_approve_at_gm_approval_stage(): void
     {
         $manager = User::factory()->create();
-        $manager->assignRole('Purchase Manager');
+        $manager->givePermissionTo(['pipeline.view', 'pipeline.approve', 'pipeline.view-all']);
         $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
 
         $this->actingAs($manager)
@@ -104,7 +104,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_purchase_manager_can_reject_at_gm_approval_stage(): void
     {
         $manager = User::factory()->create();
-        $manager->assignRole('Purchase Manager');
+        $manager->givePermissionTo(['pipeline.view', 'pipeline.approve', 'pipeline.view-all']);
         $atStage = PurchaseRequest::factory()->create(['stage' => 'gm_approval']);
 
         $this->actingAs($manager)
@@ -131,7 +131,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_requester_cannot_destroy_someone_elses_draft_request(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.view', 'pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
         $othersDraft = PurchaseRequest::factory()->create(['stage' => 'draft']);
 
         $this->actingAs($requester)
@@ -144,7 +144,10 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_requester_can_destroy_own_draft_request(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo([
+            'pipeline.view', 'pipeline.create', 'pipeline.edit',
+            'pipeline.delete', 'pipeline.view-own',
+        ]);
         $ownDraft = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
 
         $this->actingAs($requester)
@@ -171,7 +174,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_requester_can_view_show_edit_and_print_their_own_request(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.view', 'pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
         $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
 
         $this->actingAs($requester)->getJson("/api/v1/purchase/requests/{$pr->id}")->assertOk();
@@ -186,7 +189,7 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
     public function test_the_deleted_request_pages_redirect_into_the_react_shell(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.view', 'pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
         $pr = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
 
         $this->actingAs($requester)->get('/purchase/requests')->assertRedirect('/app/purchase/pipeline');
@@ -196,5 +199,22 @@ class PurchaseRequestControllerAuthorizationTest extends TestCase
             ->assertRedirect("/app/purchase/requests/{$pr->id}");
         $this->actingAs($requester)->get("/purchase/requests/{$pr->id}/edit")
             ->assertRedirect("/app/purchase/pipeline/{$pr->id}");
+    }
+
+    /**
+     * The granularity the profiles exist for: editing a request is not
+     * permission to remove it.
+     */
+    public function test_edit_alone_does_not_allow_deleting(): void
+    {
+        $requester = User::factory()->create();
+        $requester->givePermissionTo(['pipeline.view', 'pipeline.edit', 'pipeline.view-own']);
+        $ownDraft = PurchaseRequest::factory()->create(['requested_by' => $requester->id, 'stage' => 'draft']);
+
+        $this->actingAs($requester)
+            ->deleteJson("/api/v1/purchase/requests/{$ownDraft->id}")
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('purchase_requests', ['id' => $ownDraft->id]);
     }
 }

@@ -6,18 +6,16 @@ use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $roles = ['Admin', 'Accounts', 'Store Manager', 'Production Manager', 'Sales Manager'];
-        foreach ($roles as $role) {
-            Role::firstOrCreate(['name' => $role]);
-        }
-
-        $this->call(PurchaseAccessSeeder::class);
+        // The profiles in config/purchase_access.php are the roles. Admin,
+        // Accounts, Store Manager, Production Manager and Sales Manager used to
+        // be seeded here with no permissions at all and checked nowhere but
+        // Admin, so they were labels rather than access.
+        $this->call(AccessSeeder::class);
 
         $admin = User::firstOrCreate(
             ['email' => 'admin@erp.com'],

@@ -11,13 +11,34 @@ vi.mock('../../../echo', () => ({
 
 const PAYLOAD = {
     data: [
-        { id: 1, name: 'Alan Requester', email: 'alan@example.test', roles: ['Requester'], permissions: ['purchase-requests.view-all'] },
+        { id: 1, name: 'Alan Operations', email: 'alan@example.test', roles: ['Operation Manager'], permissions: ['pipeline.view'] },
         { id: 2, name: 'Zoe Nobody', email: 'zoe@example.test', roles: [], permissions: [] },
     ],
-    roles: ['Admin', 'Requester'],
-    permissions: [
-        { name: 'purchase-requests.create', label: 'Create purchase requests' },
-        { name: 'purchase-requests.view-all', label: 'View all purchase requests (monitoring)' },
+    profiles: [
+        { name: 'Admin', description: 'Everything, and the only profile that can manage users.', permissions: [] },
+        { name: 'Operation Manager', description: 'Raises purchase requests.', permissions: ['pipeline.view', 'pipeline.create'] },
+        { name: 'GM', description: 'Signs off purchase requests.', permissions: ['pipeline.view', 'pipeline.approve'] },
+        { name: 'Finance', description: 'Handles invoices and payments.', permissions: [] },
+    ],
+    grid: [
+        {
+            tab: 'pipeline', group: 'Purchase', label: 'Pipeline',
+            actions: [
+                { name: 'pipeline.view', action: 'view', label: 'View' },
+                { name: 'pipeline.create', action: 'create', label: 'Create' },
+                { name: 'pipeline.edit', action: 'edit', label: 'Edit' },
+                { name: 'pipeline.delete', action: 'delete', label: 'Delete' },
+            ],
+            extra: [{ name: 'pipeline.approve', action: 'approve', label: 'Approve / reject (GM signature)' }],
+        },
+        {
+            tab: 'stock-movements', group: 'Inventory', label: 'Stock Movements',
+            actions: [
+                { name: 'stock-movements.view', action: 'view', label: 'View' },
+                { name: 'stock-movements.create', action: 'create', label: 'Create' },
+            ],
+            extra: [],
+        },
     ],
 };
 
@@ -38,28 +59,28 @@ describe('settings UserListPage', () => {
         expect(screen.getByText('alan@example.test')).toBeInTheDocument();
     });
 
-    it('shows roles as pills and says so when a user has none', async () => {
+    it('shows profiles as pills and says so when a user has none', async () => {
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
-        expect(screen.getByText('Requester')).toBeInTheDocument();
+        await screen.findByText('Alan Operations');
+        expect(screen.getByText('Operation Manager')).toBeInTheDocument();
         expect(screen.getByText('No profile')).toBeInTheDocument();
     });
 
     it('filters client-side with a live count', async () => {
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
+        await screen.findByText('Alan Operations');
         expect(screen.getByText('2')).toBeInTheDocument();
         fireEvent.change(screen.getByLabelText('Search users'), { target: { value: 'zoe' } });
         expect(screen.getByText('1 of 2')).toBeInTheDocument();
-        expect(screen.queryByText('Alan Requester')).not.toBeInTheDocument();
+        expect(screen.queryByText('Alan Operations')).not.toBeInTheDocument();
     });
 
     it('says so when nothing matches the search', async () => {
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
+        await screen.findByText('Alan Operations');
         fireEvent.change(screen.getByLabelText('Search users'), { target: { value: 'zzz' } });
         expect(screen.getByText('No users match your search.')).toBeInTheDocument();
     });
@@ -67,31 +88,36 @@ describe('settings UserListPage', () => {
     it('opens the access modal with the user’s roles and permissions already set', async () => {
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
+        await screen.findByText('Alan Operations');
         fireEvent.click(screen.getAllByText('Edit Access')[0]);
 
-        expect(await screen.findByText('Edit Access — Alan Requester')).toBeInTheDocument();
-        expect(screen.getByRole('checkbox', { name: 'Requester' })).toBeChecked();
-        expect(screen.getByRole('checkbox', { name: 'Admin' })).not.toBeChecked();
-        // Toggles, not checkboxes-with-labels: the permission reads by its label.
-        expect(screen.getByLabelText('View all purchase requests (monitoring)')).toBeChecked();
-        expect(screen.getByLabelText('Create purchase requests')).not.toBeChecked();
+        expect(await screen.findByText('Edit Access — Alan Operations')).toBeInTheDocument();
+        // One profile, chosen — not a checkbox among eight.
+        expect(screen.getByRole('radio', { name: /Operation Manager/ })).toBeChecked();
+        expect(screen.getByRole('radio', { name: /Admin/ })).not.toBeChecked();
+        // The grid: one square per tab and action, ticked from what they hold.
+        expect(screen.getByLabelText('Pipeline View')).toBeChecked();
+        expect(screen.getByLabelText('Pipeline Delete')).not.toBeChecked();
+        // A tab only offers the columns it has — a ledger is never rewritten.
+        expect(screen.queryByLabelText('Stock Movements Delete')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Stock Movements Create')).toBeInTheDocument();
     });
 
     it('saves roles and permissions together', async () => {
         const put = vi.spyOn(client, 'apiPut').mockResolvedValue({
-            message: 'Access updated for Alan Requester.', data: PAYLOAD.data[0],
+            message: 'Access updated for Alan Operations.', data: PAYLOAD.data[0],
         });
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
+        await screen.findByText('Alan Operations');
         fireEvent.click(screen.getAllByText('Edit Access')[0]);
-        fireEvent.click(await screen.findByLabelText('Create purchase requests'));
+        fireEvent.click(await screen.findByLabelText('Pipeline Delete'));
         fireEvent.click(screen.getByText('Save'));
 
+        // The single square is granted on top of what they already held.
         await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/users/1', {
-            roles: ['Requester'],
-            permissions: ['purchase-requests.view-all', 'purchase-requests.create'],
+            roles: ['Operation Manager'],
+            permissions: ['pipeline.view', 'pipeline.delete'],
         }));
     });
 
@@ -100,12 +126,12 @@ describe('settings UserListPage', () => {
         vi.spyOn(client, 'apiPut').mockRejectedValue({ message: 'You cannot remove your own Admin role.' });
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
+        await screen.findByText('Alan Operations');
         fireEvent.click(screen.getAllByText('Edit Access')[0]);
         fireEvent.click(await screen.findByText('Save'));
 
         expect(await screen.findByText('You cannot remove your own Admin role.')).toBeInTheDocument();
-        expect(screen.getByText('Edit Access — Alan Requester')).toBeInTheDocument();
+        expect(screen.getByText('Edit Access — Alan Operations')).toBeInTheDocument();
     });
 
     // Blade's two password modes: the fields only exist in manual mode, and the
@@ -113,7 +139,7 @@ describe('settings UserListPage', () => {
     it('hides the password fields until "Set password now" is chosen', async () => {
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
+        await screen.findByText('Alan Operations');
         fireEvent.click(screen.getByText('+ New User'));
 
         expect(await screen.findByText(/receive an email with a link/)).toBeInTheDocument();
@@ -128,19 +154,19 @@ describe('settings UserListPage', () => {
     it('creates a user in email mode without sending a password', async () => {
         const post = vi.spyOn(client, 'apiPost').mockResolvedValue({
             message: 'New Person created. A password-setup email has been sent.',
-            data: { id: 3, name: 'New Person', email: 'new@example.test', roles: ['Requester'], permissions: [] },
+            data: { id: 3, name: 'New Person', email: 'new@example.test', roles: ['Operation Manager'], permissions: [] },
         });
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
+        await screen.findByText('Alan Operations');
         fireEvent.click(screen.getByText('+ New User'));
         fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'New Person' } });
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.test' } });
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Requester' }));
+        fireEvent.click(screen.getByRole('radio', { name: /Operation Manager/ }));
         fireEvent.click(screen.getByText('Create User'));
 
         await waitFor(() => expect(post).toHaveBeenCalledWith('/settings/users', {
-            name: 'New Person', email: 'new@example.test', roles: ['Requester'], mode: 'email',
+            name: 'New Person', email: 'new@example.test', roles: ['Operation Manager'], mode: 'email',
         }));
         // The server's own wording — it knows whether the email went out.
         expect(await screen.findByText('New Person created. A password-setup email has been sent.')).toBeInTheDocument();
@@ -153,7 +179,7 @@ describe('settings UserListPage', () => {
         });
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Alan Requester');
+        await screen.findByText('Alan Operations');
         fireEvent.click(screen.getByText('+ New User'));
         fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'taken@example.test' } });
         fireEvent.click(screen.getByText('Create User'));
@@ -166,8 +192,41 @@ describe('settings UserListPage', () => {
 
         const add = await screen.findByText('+ New User');
         expect(add).toHaveStyle({ width: '100%' });
-        expect(screen.getByText('Alan Requester')).toBeInTheDocument();
+        expect(screen.getByText('Alan Operations')).toBeInTheDocument();
         // The toggles live behind the modal, so the card reports the count.
         expect(screen.getByText('1 individual permission')).toBeInTheDocument();
     });
+    /**
+     * The point of the grid: whatever profile someone holds, any single square
+     * can be handed to them or taken away.
+     */
+    it('lets one tab be granted in full without touching the rest', async () => {
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({ message: 'Saved.', data: PAYLOAD.data[0] });
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Alan Operations');
+        fireEvent.click(screen.getAllByText('Edit Access')[0]);
+        fireEvent.click(await screen.findByLabelText('Pipeline all'));
+        fireEvent.click(screen.getByText('Save'));
+
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/users/1', {
+            roles: ['Operation Manager'],
+            permissions: ['pipeline.view', 'pipeline.create', 'pipeline.edit', 'pipeline.delete'],
+        }));
+    });
+
+    /** Choosing a profile lays its squares down, ready to be adjusted. */
+    it('fills the grid in from the chosen profile', async () => {
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Alan Operations');
+        fireEvent.click(screen.getAllByText('Edit Access')[0]);
+        await screen.findByLabelText('Pipeline View');
+
+        fireEvent.click(screen.getByRole('radio', { name: /GM/ }));
+
+        expect(screen.getByLabelText('Approve / reject (GM signature)')).toBeChecked();
+        expect(screen.getByLabelText('Pipeline Create')).not.toBeChecked();
+    });
+
 });

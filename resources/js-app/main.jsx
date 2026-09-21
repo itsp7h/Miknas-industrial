@@ -15,6 +15,16 @@ const canViewAllPurchaseRequests = container.dataset.canViewAllPurchaseRequests 
 const canViewActivePipeline = container.dataset.canViewActivePipeline === '1';
 const canViewOwnPurchaseRequests = container.dataset.canViewOwnPurchaseRequests === '1';
 
+
+let permissions = [];
+try {
+    permissions = JSON.parse(container.dataset.permissions || '[]');
+} catch {
+    // A malformed list must not take the whole shell down; an Admin still
+    // gets everything, and everyone else sees the Dashboard and no more.
+    permissions = [];
+}
+
 createRoot(container).render(
     <StrictMode>
         <BrowserRouter>
@@ -24,6 +34,7 @@ createRoot(container).render(
                     userName={userName}
                     userEmail={userEmail}
                     isAdmin={isAdmin}
+                    permissions={permissions}
                     logoutUrl={logoutUrl}
                     csrfToken={csrfToken}
                     canViewAllPurchaseRequests={canViewAllPurchaseRequests}

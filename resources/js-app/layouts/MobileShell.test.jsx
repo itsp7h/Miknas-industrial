@@ -46,7 +46,7 @@ describe('MobileShell', () => {
     it('closes the drawer once a router link is followed', () => {
         renderShell();
         fireEvent.click(screen.getByLabelText('Menu'));
-        fireEvent.click(drawer().getByText('Items'));
+        fireEvent.click(drawer().getByText('Raw Materials'));
 
         expect(screen.queryByTestId('mobile-drawer')).not.toBeInTheDocument();
     });

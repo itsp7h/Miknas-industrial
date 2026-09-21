@@ -101,7 +101,7 @@ class ProductionOrderController extends Controller
         event(new ProductionOrderSaved($productionOrder));
 
         Notification::send(
-            User::role('Production Manager')->whereNotNull('whatsapp_number')->get(),
+            User::withProfile(config('purchase_access.notifications.operations'))->whereNotNull('whatsapp_number')->get(),
             new ProductionOrderCompletedNotification($productionOrder)
         );
 

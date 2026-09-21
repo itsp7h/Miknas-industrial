@@ -29,21 +29,38 @@ class UserControllerTest extends TestCase
     {
         $admin = User::factory()->create(['name' => 'Zoe Admin']);
         $admin->assignRole('Admin');
-        $requester = User::factory()->create(['name' => 'Alan Requester']);
-        $requester->assignRole('Requester');
-        $requester->givePermissionTo('purchase-requests.view-all');
+        $operationManager = User::factory()->create(['name' => 'Alan Requester']);
+        $operationManager->assignRole('Operation Manager');
+        $operationManager->givePermissionTo('pipeline.view-all');
 
         $response = $this->actingAs($admin)->getJson('/api/v1/settings/users')->assertOk();
 
         // Alphabetical, as the page listed them.
         $this->assertSame(['Alan Requester', 'Zoe Admin'], array_column($response->json('data'), 'name'));
-        $this->assertSame(['Requester'], $response->json('data.0.roles'));
-        $this->assertSame(['purchase-requests.view-all'], $response->json('data.0.permissions'));
+        $this->assertSame(['Operation Manager'], $response->json('data.0.roles'));
+        $this->assertSame(['pipeline.view-all'], $response->json('data.0.permissions'));
 
         // The role checkboxes and the permission toggles are both driven by this.
-        $this->assertContains('Admin', $response->json('roles'));
-        $this->assertSame('purchase-requests.create', $response->json('permissions.0.name'));
-        $this->assertSame('Create purchase requests', $response->json('permissions.0.label'));
+        // The four profiles travel with their descriptions, in config order.
+        $profiles = $response->json('profiles');
+        $this->assertSame(
+            ['Admin', 'Operation Manager', 'GM', 'Finance'],
+            array_column($profiles, 'name')
+        );
+        $this->assertNotEmpty($profiles[1]['description']);
+        // Every tab against the actions it offers, so the form can draw a grid.
+        $grid = collect($response->json('grid'))->keyBy('tab');
+        $this->assertSame('Pipeline', $grid['pipeline']['label']);
+        $this->assertSame(
+            ['view', 'create', 'edit', 'delete'],
+            array_column($grid['pipeline']['actions'], 'action')
+        );
+        $this->assertSame('pipeline.delete', $grid['pipeline']['actions'][3]['name']);
+        // A ledger is posted, never rewritten.
+        $this->assertSame(['view', 'create'], array_column($grid['stock-movements']['actions'], 'action'));
+        // Users and Integrations have no square at all.
+        $this->assertArrayNotHasKey('users', $grid->all());
+        $this->assertSame(['users', 'integrations'], $response->json('admin_only_tabs'));
     }
 
     public function test_admin_can_assign_a_profile_to_a_user(): void
@@ -53,12 +70,12 @@ class UserControllerTest extends TestCase
         $target = User::factory()->create();
 
         $response = $this->actingAs($admin)->putJson("/api/v1/settings/users/{$target->id}", [
-            'roles' => ['Requester'],
+            'roles' => ['Operation Manager'],
             'permissions' => [],
         ]);
 
         $response->assertOk();
-        $this->assertTrue($target->fresh()->hasRole('Requester'));
+        $this->assertTrue($target->fresh()->hasRole('Operation Manager'));
     }
 
     public function test_admin_can_toggle_an_individual_permission(): void
@@ -69,10 +86,10 @@ class UserControllerTest extends TestCase
 
         $this->actingAs($admin)->putJson("/api/v1/settings/users/{$target->id}", [
             'roles' => [],
-            'permissions' => ['purchase-requests.view-all'],
+            'permissions' => ['pipeline.view-all'],
         ]);
 
-        $this->assertTrue($target->fresh()->hasPermissionTo('purchase-requests.view-all'));
+        $this->assertTrue($target->fresh()->hasPermissionTo('pipeline.view-all'));
     }
 
     public function test_changing_profile_does_not_clear_existing_custom_permission(): void
@@ -80,16 +97,16 @@ class UserControllerTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Admin');
         $target = User::factory()->create();
-        $target->givePermissionTo('purchase-requests.view-all');
+        $target->givePermissionTo('pipeline.view-all');
 
         $this->actingAs($admin)->putJson("/api/v1/settings/users/{$target->id}", [
-            'roles' => ['Requester'],
-            'permissions' => ['purchase-requests.view-all'],
+            'roles' => ['Operation Manager'],
+            'permissions' => ['pipeline.view-all'],
         ]);
 
         $fresh = $target->fresh();
-        $this->assertTrue($fresh->hasRole('Requester'));
-        $this->assertTrue($fresh->hasPermissionTo('purchase-requests.view-all'));
+        $this->assertTrue($fresh->hasRole('Operation Manager'));
+        $this->assertTrue($fresh->hasPermissionTo('pipeline.view-all'));
     }
 
     public function test_admin_cannot_remove_their_own_admin_role(): void
@@ -112,7 +129,7 @@ class UserControllerTest extends TestCase
         $target = User::factory()->create();
 
         $this->actingAs($user)->putJson("/api/v1/settings/users/{$target->id}", [
-            'roles' => ['Requester'],
+            'roles' => ['Operation Manager'],
             'permissions' => [],
         ])->assertForbidden();
     }
@@ -137,7 +154,7 @@ class UserControllerTest extends TestCase
         $response = $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'new@example.test',
-            'roles' => ['Requester'],
+            'roles' => ['Operation Manager'],
         ]);
 
         $response->assertCreated();
@@ -145,7 +162,7 @@ class UserControllerTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'new@example.test']);
 
         $newUser = User::where('email', 'new@example.test')->first();
-        $this->assertTrue($newUser->hasRole('Requester'));
+        $this->assertTrue($newUser->hasRole('Operation Manager'));
         $this->assertNull($newUser->email_verified_at);
 
         Notification::assertSentTo($newUser, ResetPassword::class);
@@ -161,7 +178,7 @@ class UserControllerTest extends TestCase
         $response = $this->actingAs($admin)->postJson('/api/v1/settings/users', [
             'name' => 'New Person',
             'email' => 'manual@example.test',
-            'roles' => ['Requester'],
+            'roles' => ['Operation Manager'],
             'mode' => 'password',
             'password' => 'CorrectHorseBattery9!',
             'password_confirmation' => 'CorrectHorseBattery9!',
@@ -174,7 +191,7 @@ class UserControllerTest extends TestCase
         $this->assertNotNull($newUser);
         $this->assertTrue(Hash::check('CorrectHorseBattery9!', $newUser->password));
         $this->assertNotNull($newUser->email_verified_at);
-        $this->assertTrue($newUser->hasRole('Requester'));
+        $this->assertTrue($newUser->hasRole('Operation Manager'));
 
         Notification::assertNothingSent();
     }

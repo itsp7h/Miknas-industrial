@@ -21,7 +21,7 @@ class PurchasePipelineShowTest extends TestCase
     private function viewer(): User
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('purchase-requests.view-all');
+        $user->givePermissionTo('pipeline.view-all');
 
         return $user;
     }
@@ -46,7 +46,7 @@ class PurchasePipelineShowTest extends TestCase
     public function test_view_own_permission_cannot_read_someone_elses_request(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('purchase-requests.view-own');
+        $user->givePermissionTo('pipeline.view-own');
         $theirs = PurchaseRequest::factory()->create(['requested_by' => User::factory()->create()->id]);
 
         $this->actingAs($user)

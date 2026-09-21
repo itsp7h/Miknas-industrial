@@ -106,7 +106,7 @@ class StockMovementController extends Controller
         }
 
         Notification::send(
-            User::role('Store Manager')->whereNotNull('whatsapp_number')->get(),
+            User::withProfile(config('purchase_access.notifications.operations'))->whereNotNull('whatsapp_number')->get(),
             new LowStockAlertNotification($item, $stockLevel)
         );
     }

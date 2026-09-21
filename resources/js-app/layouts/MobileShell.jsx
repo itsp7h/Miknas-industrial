@@ -4,7 +4,7 @@ import TopBar from './TopBar';
 import LogoutForm from '../components/LogoutForm';
 import { SidebarNav } from './Sidebar';
 import { LOGOUT, NavIcon } from './navIcons';
-import { DASHBOARD_ITEM, NAV_GROUPS } from './navItems';
+import { DASHBOARD_ITEM, visibleGroups } from './navItems';
 
 // Icon paths mirror the section icons used in resources/views/layouts/app.blade.php's
 // sidebar, so the bottom bar reads consistently across the legacy Blade pages and
@@ -17,17 +17,25 @@ const TAB_ICONS = {
     Sales: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
 };
 
-// One tab per top-level module, pointing at that module's first sidebar link —
-// derived from the shared NAV_GROUPS so the destinations never drift from the
-// drawer menu above.
-const BOTTOM_TABS = [
-    { ...DASHBOARD_ITEM, label: 'Dashboard', prefix: '/app' },
-    ...NAV_GROUPS.filter((group) => !group.adminOnly).map((group) => ({
-        ...group.items[0],
-        label: group.label,
-        prefix: group.items[0].type === 'link' ? group.items[0].to.replace(/\/[^/]+$/, '') : group.items[0].to,
-    })),
-];
+/**
+ * One tab per module this person can reach, pointing at the first link of it
+ * they may open — derived from the same filtered menu as the drawer, so a tab
+ * never leads somewhere the API will refuse.
+ */
+function bottomTabs({ isAdmin, can }) {
+    return [
+        { ...DASHBOARD_ITEM, label: 'Dashboard', prefix: '/app' },
+        ...visibleGroups({ isAdmin, can })
+            .filter((group) => group.label !== 'System')
+            .map((group) => ({
+                ...group.items[0],
+                label: group.label,
+                prefix: group.items[0].type === 'link'
+                    ? group.items[0].to.replace(/\/[^/]+$/, '')
+                    : group.items[0].to,
+            })),
+    ];
+}
 
 function BottomTabLink({ tab, active }) {
     const style = {
@@ -49,7 +57,10 @@ function BottomTabLink({ tab, active }) {
         : <a href={tab.to} style={style}>{content}</a>;
 }
 
-export default function MobileShell({ children, currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken }) {
+export default function MobileShell({ children, currentUserId, userName, userEmail, isAdmin, permissions = [], logoutUrl, csrfToken }) {
+    const can = (permission) => permissions.includes(permission);
+    const tabs = bottomTabs({ isAdmin, can });
+
     const [menuOpen, setMenuOpen] = useState(false);
     const location = useLocation();
     const isActive = (to) => location.pathname === to;
@@ -70,6 +81,7 @@ export default function MobileShell({ children, currentUserId, userName, userEma
                 <nav data-testid="mobile-drawer" style={{ background: '#0f172a', padding: 12, borderBottom: '1px solid #1e293b' }}>
                     <SidebarNav
                         isAdmin={isAdmin}
+                        can={can}
                         isActive={isActive}
                         onNavigate={() => setMenuOpen(false)}
                     />
@@ -114,7 +126,7 @@ export default function MobileShell({ children, currentUserId, userName, userEma
                     boxShadow: '0 -2px 8px rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)',
                 }}
             >
-                {BOTTOM_TABS.map((tab) => (
+                {tabs.map((tab) => (
                     <BottomTabLink key={tab.label} tab={tab} active={isTabActive(tab)} />
                 ))}
             </nav>

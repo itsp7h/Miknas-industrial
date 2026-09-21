@@ -3,7 +3,7 @@ import { PageTitleProvider } from './PageTitleContext';
 import DesktopShell from './DesktopShell';
 import MobileShell from './MobileShell';
 
-export default function AppShell({ children, currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken }) {
+export default function AppShell({ children, currentUserId, userName, userEmail, isAdmin, permissions = [], logoutUrl, csrfToken }) {
     const viewport = useViewport();
     const Shell = viewport === 'mobile' ? MobileShell : DesktopShell;
 
@@ -16,6 +16,7 @@ export default function AppShell({ children, currentUserId, userName, userEmail,
                 userName={userName}
                 userEmail={userEmail}
                 isAdmin={isAdmin}
+                permissions={permissions}
                 logoutUrl={logoutUrl}
                 csrfToken={csrfToken}
             >

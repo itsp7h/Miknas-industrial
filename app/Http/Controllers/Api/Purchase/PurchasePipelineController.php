@@ -24,10 +24,10 @@ class PurchasePipelineController extends Controller
         $query = PurchaseRequest::with('requestedBy');
         $user = auth()->user();
 
-        if (! $user->can('purchase-requests.view-all')) {
-            if ($user->can('purchase-requests.view-active-pipeline')) {
+        if (! $user->can('pipeline.view-all')) {
+            if ($user->can('pipeline.view-active-pipeline')) {
                 $query->whereIn('stage', PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES);
-            } elseif ($user->can('purchase-requests.view-own')) {
+            } elseif ($user->can('pipeline.view-own')) {
                 $query->where('requested_by', $user->id);
             } else {
                 $query->whereRaw('1 = 0');

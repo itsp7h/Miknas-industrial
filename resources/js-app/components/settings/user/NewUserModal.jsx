@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from '../../ui/Modal';
+import ProfilePicker from './ProfilePicker';
 
 const SECTION_LABEL = {
     fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase',
@@ -15,7 +16,7 @@ const PASSWORD_HELP = 'The password below will be set immediately — no email w
  * now" reveals the fields and skips the email. The server rejects a password
  * sent in email mode outright rather than ignoring it.
  */
-export default function NewUserModal({ open, roles, onClose, onSave }) {
+export default function NewUserModal({ open, profiles, onClose, onSave }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [selectedRoles, setSelectedRoles] = useState([]);
@@ -90,23 +91,8 @@ export default function NewUserModal({ open, roles, onClose, onSave }) {
                 {errors.email && <p style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>{errors.email}</p>}
             </div>
 
-            <div style={SECTION_LABEL}>Profiles</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-                {roles.map((role) => (
-                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
-                        <input
-                            type="checkbox" value={role}
-                            checked={selectedRoles.includes(role)}
-                            onChange={(e) => setSelectedRoles(
-                                e.target.checked
-                                    ? [...selectedRoles, role]
-                                    : selectedRoles.filter((item) => item !== role)
-                            )}
-                        />
-                        {role}
-                    </label>
-                ))}
-            </div>
+            <div style={SECTION_LABEL}>Profile</div>
+            <ProfilePicker profiles={profiles} value={selectedRoles[0] ?? ''} onChange={(name) => setSelectedRoles(name ? [name] : [])} />
 
             <div style={SECTION_LABEL}>Password</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151', marginBottom: 8 }}>

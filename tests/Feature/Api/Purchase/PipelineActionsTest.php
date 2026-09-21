@@ -39,7 +39,7 @@ class PipelineActionsTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('Purchase Manager');
-        $user->givePermissionTo('purchase-requests.approve');
+        $user->givePermissionTo('pipeline.approve');
 
         return $user;
     }
@@ -245,7 +245,7 @@ class PipelineActionsTest extends TestCase
     {
         $pr = $this->request('gm_approval');
         $approver = $this->approver();
-        $approver->givePermissionTo('purchase-requests.view-all');
+        $approver->givePermissionTo('pipeline.view-all');
 
         $this->actingAs($approver)
             ->getJson("/api/v1/purchase/requests/{$pr->id}")
@@ -316,7 +316,7 @@ class PipelineActionsTest extends TestCase
     {
         $pr = $this->request('gm_approval');
         $approver = $this->approver();
-        $approver->givePermissionTo('purchase-requests.view-all');
+        $approver->givePermissionTo('pipeline.view-all');
 
         $this->actingAs($approver)
             ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
@@ -380,7 +380,7 @@ class PipelineActionsTest extends TestCase
     {
         $pr = $this->request('gm_approval');
         $approver = $this->approver();
-        $approver->givePermissionTo('purchase-requests.view-all');
+        $approver->givePermissionTo('pipeline.view-all');
 
         $this->actingAs($approver)
             ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection('Over budget for this project.'))
@@ -401,7 +401,7 @@ class PipelineActionsTest extends TestCase
     {
         $pr = $this->request('gm_approval');
         $approver = $this->approver();
-        $approver->givePermissionTo('purchase-requests.view-all');
+        $approver->givePermissionTo('pipeline.view-all');
 
         $this->actingAs($approver)
             ->postJson("/api/v1/purchase/pipeline/{$pr->id}/reject", $this->rejection())->assertOk();

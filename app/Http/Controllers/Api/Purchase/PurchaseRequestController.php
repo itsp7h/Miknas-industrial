@@ -42,8 +42,8 @@ class PurchaseRequestController extends Controller
         // Either form needs this list, and the two are gated by different
         // permissions — creating a request and editing one are separate grants.
         abort_unless(
-            $request->user()->can('purchase-requests.create')
-                || $request->user()->can('purchase-requests.edit'),
+            $request->user()->can('pipeline.create')
+                || $request->user()->can('pipeline.edit'),
             403
         );
 

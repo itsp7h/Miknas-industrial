@@ -2,10 +2,11 @@
 
 namespace Tests;
 
-use Database\Seeders\PurchaseAccessSeeder;
+use App\Models\MailAccount;
+use Database\Seeders\AccessSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
-use Spatie\Permission\Models\Role;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -31,19 +32,39 @@ abstract class TestCase extends BaseTestCase
         $this->withHeader('Referer', config('app.url'));
     }
 
+    /**
+     * An enabled mail account plus a faked mailer, for tests that send.
+     *
+     * RfqInvitationService refuses to send when no account is configured — and
+     * now says so rather than swallowing it — so a test that wants a successful
+     * send has to set one up, the way a real installation does.
+     */
+    protected function workingMailAccount(): MailAccount
+    {
+        Mail::fake();
+
+        return MailAccount::create([
+            'name' => 'test-mailer',
+            'label' => 'Test mailer',
+            'type' => 'smtp',
+            'from_address' => 'erp@example.test',
+            'from_name' => 'SteelERP',
+            'config' => ['host' => '127.0.0.1', 'port' => 1025, 'encryption' => 'none'],
+            'enabled' => true,
+        ]);
+    }
+
     protected function seedRoles(): void
     {
         if (! Schema::hasTable('roles')) {
             return;
         }
 
-        $roles = ['Admin', 'Accounts', 'Store Manager', 'Production Manager', 'Sales Manager'];
-        foreach ($roles as $role) {
-            Role::firstOrCreate(['name' => $role]);
-        }
-
+        // The profiles in config/purchase_access.php are the roles — Admin,
+        // Operation Manager, GM, Finance. The five that used to be seeded here
+        // carried no permissions and were checked nowhere but Admin.
         if (Schema::hasTable('permissions')) {
-            (new PurchaseAccessSeeder)->run();
+            (new AccessSeeder)->run();
         }
     }
 }
