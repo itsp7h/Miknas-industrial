@@ -1,4 +1,4 @@
-import LpoNumberingCard from '../../../components/settings/lpoNumbering/LpoNumberingCard';
+import DocumentNumberingCard from '../../../components/settings/documentNumbering/DocumentNumberingCard';
 
 export default function GeneralSettingsPage() {
     return (
@@ -8,7 +8,7 @@ export default function GeneralSettingsPage() {
                 <p className="page-subtitle">Document numbering and system configuration.</p>
             </div>
 
-            <LpoNumberingCard maxWidth="100%" />
+            <DocumentNumberingCard maxWidth="100%" />
         </div>
     );
 }

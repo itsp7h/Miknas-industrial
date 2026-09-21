@@ -3,15 +3,16 @@
 namespace Tests\Feature\Api\Settings;
 
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseRequest;
 use App\Models\Settings\Company;
 use App\Models\Supplier;
 use App\Models\User;
-use App\Services\LpoNumberService;
+use App\Services\DocumentNumberService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
-class LpoNumberingTest extends TestCase
+class DocumentNumberingTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -23,9 +24,9 @@ class LpoNumberingTest extends TestCase
         return $user;
     }
 
-    private function numbers(): LpoNumberService
+    private function numbers(): DocumentNumberService
     {
-        return app(LpoNumberService::class);
+        return app(DocumentNumberService::class);
     }
 
     /** An order already in the series, so the next one has to follow it. */
@@ -95,13 +96,49 @@ class LpoNumberingTest extends TestCase
         $this->assertSame('ST-LPO-26-10000', $this->numbers()->next($company));
     }
 
+    /** One code, two series: an MPR and an LPO differ only in the middle. */
+    public function test_mpr_numbers_use_the_same_company_code(): void
+    {
+        $company = Company::create(['name' => 'Miknas Industrial', 'lpo_code' => 'MI', 'is_active' => true]);
+
+        Carbon::setTestNow('2026-05-04');
+        $this->assertSame('MI-MPR-26-0001', $this->numbers()->next($company, DocumentNumberService::MPR));
+        $this->assertSame('MI-LPO-26-0001', $this->numbers()->next($company, DocumentNumberService::LPO));
+    }
+
+    /** The two documents count separately: issuing an LPO does not move the MPRs on. */
+    public function test_each_document_keeps_its_own_sequence(): void
+    {
+        $company = Company::create(['name' => 'Miknas Industrial', 'lpo_code' => 'MI', 'is_active' => true]);
+        Carbon::setTestNow('2026-05-04');
+
+        $this->issued('MI-LPO-26-0001');
+        $this->issued('MI-LPO-26-0002');
+        PurchaseRequest::factory()->create(['request_number' => 'MI-MPR-26-0001', 'company_name' => 'Miknas Industrial']);
+
+        $this->assertSame('MI-LPO-26-0003', $this->numbers()->next($company, DocumentNumberService::LPO));
+        $this->assertSame('MI-MPR-26-0002', $this->numbers()->next($company, DocumentNumberService::MPR));
+    }
+
+    public function test_the_page_carries_the_next_number_for_both_documents(): void
+    {
+        Company::create(['name' => 'Steel Tech', 'lpo_code' => 'ST', 'is_active' => true]);
+        Carbon::setTestNow('2026-05-04');
+
+        $this->actingAs($this->admin())
+            ->getJson('/api/v1/settings/document-numbering')
+            ->assertOk()
+            ->assertJsonPath('data.0.next_number', 'ST-LPO-26-0001')
+            ->assertJsonPath('data.0.next_mpr_number', 'ST-MPR-26-0001');
+    }
+
     public function test_the_page_lists_each_company_with_its_next_number(): void
     {
         Company::create(['name' => 'Steel Tech', 'lpo_code' => 'ST', 'is_active' => true]);
         Carbon::setTestNow('2026-05-04');
 
         $response = $this->actingAs($this->admin())
-            ->getJson('/api/v1/settings/lpo-numbering')
+            ->getJson('/api/v1/settings/document-numbering')
             ->assertOk();
 
         $response->assertJsonPath('data.0.name', 'Steel Tech');
@@ -115,7 +152,7 @@ class LpoNumberingTest extends TestCase
         Carbon::setTestNow('2026-05-04');
 
         $this->actingAs($this->admin())
-            ->putJson('/api/v1/settings/lpo-numbering', [
+            ->putJson('/api/v1/settings/document-numbering', [
                 'codes' => [['id' => $company->id, 'lpo_code' => 'ms']],
             ])
             ->assertOk()
@@ -132,7 +169,7 @@ class LpoNumberingTest extends TestCase
         $two = Company::create(['name' => 'Miknas Industrial', 'lpo_code' => 'MI', 'is_active' => true]);
 
         $this->actingAs($this->admin())
-            ->putJson('/api/v1/settings/lpo-numbering', [
+            ->putJson('/api/v1/settings/document-numbering', [
                 'codes' => [
                     ['id' => $one->id, 'lpo_code' => 'ST'],
                     ['id' => $two->id, 'lpo_code' => 'st'],
@@ -150,7 +187,7 @@ class LpoNumberingTest extends TestCase
 
         // A dash would make the sequence unparseable and restart the count.
         $this->actingAs($this->admin())
-            ->putJson('/api/v1/settings/lpo-numbering', [
+            ->putJson('/api/v1/settings/document-numbering', [
                 'codes' => [['id' => $company->id, 'lpo_code' => 'ST-X']],
             ])
             ->assertStatus(422)
@@ -162,17 +199,17 @@ class LpoNumberingTest extends TestCase
         $company = Company::create(['name' => 'Steel Tech', 'lpo_code' => 'ST', 'is_active' => true]);
         $outsider = User::factory()->create();
 
-        $this->actingAs($outsider)->getJson('/api/v1/settings/lpo-numbering')->assertForbidden();
+        $this->actingAs($outsider)->getJson('/api/v1/settings/document-numbering')->assertForbidden();
         $this->actingAs($outsider)
-            ->putJson('/api/v1/settings/lpo-numbering', ['codes' => [['id' => $company->id, 'lpo_code' => 'XX']]])
+            ->putJson('/api/v1/settings/document-numbering', ['codes' => [['id' => $company->id, 'lpo_code' => 'XX']]])
             ->assertForbidden();
 
         // Viewing is not editing.
         $viewer = User::factory()->create();
         $viewer->givePermissionTo('settings.view');
-        $this->actingAs($viewer)->getJson('/api/v1/settings/lpo-numbering')->assertOk();
+        $this->actingAs($viewer)->getJson('/api/v1/settings/document-numbering')->assertOk();
         $this->actingAs($viewer)
-            ->putJson('/api/v1/settings/lpo-numbering', ['codes' => [['id' => $company->id, 'lpo_code' => 'XX']]])
+            ->putJson('/api/v1/settings/document-numbering', ['codes' => [['id' => $company->id, 'lpo_code' => 'XX']]])
             ->assertForbidden();
     }
 

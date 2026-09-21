@@ -4,19 +4,21 @@ namespace App\Http\Controllers\Api\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\Settings\Company;
-use App\Services\LpoNumberService;
+use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Each company's letters in its LPO numbers — the ST in ST-LPO-26-0001.
+ * Each company's letters in its document numbers — the ST in ST-LPO-26-0001
+ * and ST-MPR-26-0001.
  *
- * Only the code is editable. The rest of the shape is fixed: the document,
- * the two-digit year and a four-digit sequence that runs per company per year.
+ * One code per company, used by both documents: it identifies the company,
+ * not the paperwork. Only the code is editable; the rest of the shape is
+ * fixed, and each document keeps its own sequence per company per year.
  */
-class LpoNumberingController extends Controller
+class DocumentNumberingController extends Controller
 {
-    public function index(LpoNumberService $numbers)
+    public function index(DocumentNumberService $numbers)
     {
         return response()->json([
             'data' => Company::orderBy('name')->get(['id', 'name', 'lpo_code', 'is_active'])
@@ -25,14 +27,15 @@ class LpoNumberingController extends Controller
                     'name' => $company->name,
                     'is_active' => $company->is_active,
                     'lpo_code' => $company->lpo_code,
-                    // What the next one would actually read, rather than an
-                    // example: it is the same call the generator makes.
-                    'next_number' => $numbers->next($company),
+                    // What the next ones would actually read, rather than an
+                    // example: the same calls the generators make.
+                    'next_number' => $numbers->next($company, DocumentNumberService::LPO),
+                    'next_mpr_number' => $numbers->next($company, DocumentNumberService::MPR),
                 ])->values(),
         ]);
     }
 
-    public function update(Request $request, LpoNumberService $numbers)
+    public function update(Request $request, DocumentNumberService $numbers)
     {
         $validated = $request->validate([
             'codes' => ['required', 'array'],
@@ -60,14 +63,15 @@ class LpoNumberingController extends Controller
         }
 
         return response()->json([
-            'message' => 'LPO numbering saved.',
+            'message' => 'Document numbering saved.',
             'data' => Company::orderBy('name')->get(['id', 'name', 'lpo_code', 'is_active'])
                 ->map(fn (Company $company) => [
                     'id' => $company->id,
                     'name' => $company->name,
                     'is_active' => $company->is_active,
                     'lpo_code' => $company->lpo_code,
-                    'next_number' => $numbers->next($company),
+                    'next_number' => $numbers->next($company, DocumentNumberService::LPO),
+                    'next_mpr_number' => $numbers->next($company, DocumentNumberService::MPR),
                 ])->values(),
         ]);
     }

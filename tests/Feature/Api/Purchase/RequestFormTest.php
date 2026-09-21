@@ -11,6 +11,7 @@ use App\Models\Settings\Location;
 use App\Models\Settings\ProjectSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -257,16 +258,33 @@ class RequestFormTest extends TestCase
         $this->assertStringContainsString('submitted successfully', $response->json('message'));
     }
 
-    public function test_a_created_request_is_numbered_mp_r_year_sequence(): void
+    /** The requesting company's own series: MI-MPR-26-0001. */
+    public function test_a_created_request_is_numbered_in_its_companys_series(): void
     {
+        Company::create(['name' => 'Miknas Industrial', 'lpo_code' => 'MI', 'is_active' => true]);
+        Carbon::setTestNow('2026-09-01');
+
         $this->actingAs($this->requester())
-            ->postJson('/api/v1/purchase/requests', $this->payload())
+            ->postJson('/api/v1/purchase/requests', $this->payload(['company_name' => 'Miknas Industrial']))
             ->assertCreated();
 
-        $this->assertMatchesRegularExpression(
-            '/^MPR\d{2}-\d{4}$/',
-            PurchaseRequest::firstOrFail()->request_number
-        );
+        $this->assertSame('MI-MPR-26-0001', PurchaseRequest::firstOrFail()->request_number);
+
+        Carbon::setTestNow();
+    }
+
+    /** A company not on record has no code, so the request falls to the house series. */
+    public function test_a_request_naming_an_unknown_company_uses_the_house_series(): void
+    {
+        Carbon::setTestNow('2026-09-01');
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload(['company_name' => 'Someone Else Ltd']))
+            ->assertCreated();
+
+        $this->assertSame('MPR-26-0001', PurchaseRequest::firstOrFail()->request_number);
+
+        Carbon::setTestNow();
     }
 
     public function test_creating_a_request_broadcasts_it_to_the_boards(): void

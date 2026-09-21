@@ -15,6 +15,7 @@ use App\Models\Settings\Company;
 use App\Models\Settings\Department;
 use App\Models\Settings\ProjectSetting;
 use App\Models\User;
+use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -144,7 +145,7 @@ class PurchaseRequestController extends Controller
 
         $pr = DB::transaction(function () use ($data) {
             $pr = PurchaseRequest::create($this->fields($data) + [
-                'request_number' => $this->nextRequestNumber(),
+                'request_number' => $this->nextRequestNumber($data['company_name'] ?? null),
                 'status' => 'pending',
                 'requested_by' => auth()->id(),
             ]);
@@ -274,9 +275,17 @@ class PurchaseRequestController extends Controller
         }
     }
 
-    private function nextRequestNumber(): string
+    /**
+     * The requesting company's series — MI-MPR-26-0001 — from the company the
+     * form named. A request always names one, so there is normally no house
+     * series here; it exists for a request whose company is not on record.
+     */
+    private function nextRequestNumber(?string $companyName): string
     {
-        return 'MPR'.now()->format('y').'-'
-            .str_pad((string) (PurchaseRequest::max('id') + 1), 4, '0', STR_PAD_LEFT);
+        $company = $companyName
+            ? Company::where('name', $companyName)->first()
+            : null;
+
+        return app(DocumentNumberService::class)->next($company, DocumentNumberService::MPR);
     }
 }

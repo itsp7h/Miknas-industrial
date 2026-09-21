@@ -55,7 +55,7 @@ class LpoGenerationService
     private function createOrderForSupplier(PurchaseRequest $purchaseRequest, int $supplierId, Collection $items): PurchaseOrder
     {
         $order = PurchaseOrder::create([
-            'po_number' => app(LpoNumberService::class)->next($purchaseRequest->resolveCompany()),
+            'po_number' => app(DocumentNumberService::class)->next($purchaseRequest->resolveCompany()),
             'supplier_id' => $supplierId,
             'purchase_request_id' => $purchaseRequest->id,
             'po_date' => now()->toDateString(),

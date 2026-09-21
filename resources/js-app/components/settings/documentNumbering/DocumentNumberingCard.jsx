@@ -1,4 +1,4 @@
-import useLpoNumbering, { previewFor } from './useLpoNumbering';
+import useDocumentNumbering, { previewFor } from './useDocumentNumbering';
 
 const CARD = {
     background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
@@ -6,7 +6,7 @@ const CARD = {
 };
 
 const ROW = {
-    display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 7rem minmax(0,12rem)',
+    display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 6.5rem minmax(0,11rem) minmax(0,11rem)',
     gap: 12, alignItems: 'center', padding: '10px 0', borderTop: '1px solid #f1f5f9',
 };
 
@@ -23,14 +23,16 @@ const PREVIEW = {
 };
 
 /**
- * Each company's letters in its own LPO series — the ST in ST-LPO-26-0001.
+ * Each company's letters in its own document series — the ST in ST-LPO-26-0001
+ * and ST-MPR-26-0001.
  *
- * Only the letters are editable. The document, the two-digit year and the
- * four-digit sequence are the shape of the number, not a preference, and the
- * sequence runs per company per year.
+ * One code per company, since it names the company rather than the paperwork.
+ * Only the letters are editable: the document, the two-digit year and the
+ * four-digit sequence are the shape of the number, not a preference, and each
+ * document counts separately per company per year.
  */
-export default function LpoNumberingCard({ maxWidth }) {
-    const n = useLpoNumbering();
+export default function DocumentNumberingCard({ maxWidth }) {
+    const n = useDocumentNumbering();
 
     if (n.loading) {
         return <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>;
@@ -39,17 +41,18 @@ export default function LpoNumberingCard({ maxWidth }) {
     return (
         <div style={{ ...CARD, ...(maxWidth ? { maxWidth } : {}) }}>
             <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
-                LPO Numbering
+                Document Numbering
             </h2>
             <p style={{ fontSize: 12.5, color: '#64748b', margin: '0 0 14px' }}>
-                Each company numbers its own purchase orders. The sequence starts again
-                at 0001 each year.
+                Each company numbers its own purchase requests and purchase orders, from
+                one code. Both sequences start again at 0001 each year.
             </p>
 
             <div style={{ ...ROW, borderTop: 'none', paddingTop: 0 }}>
                 <span style={HEAD}>Company</span>
                 <span style={HEAD}>Code</span>
-                <span style={{ ...HEAD, textAlign: 'center' }}>Next number</span>
+                <span style={{ ...HEAD, textAlign: 'center' }}>Next MPR</span>
+                <span style={{ ...HEAD, textAlign: 'center' }}>Next LPO</span>
             </div>
 
             {n.companies.map((company) => (
@@ -62,12 +65,17 @@ export default function LpoNumberingCard({ maxWidth }) {
                     </span>
                     <input
                         type="text" className="form-input" maxLength={8}
-                        aria-label={`${company.name} LPO code`}
+                        aria-label={`${company.name} document code`}
                         value={n.codes[company.id] ?? ''}
                         onChange={(e) => n.setCode(company.id, e.target.value.toUpperCase())}
                         style={{ width: '100%', textTransform: 'uppercase', fontWeight: 700 }}
                     />
-                    <span style={PREVIEW}>{previewFor(n.codes[company.id], company.next_number)}</span>
+                    <span style={PREVIEW}>
+                        {previewFor(n.codes[company.id], company.next_mpr_number, 'MPR')}
+                    </span>
+                    <span style={PREVIEW}>
+                        {previewFor(n.codes[company.id], company.next_number, 'LPO')}
+                    </span>
                 </div>
             ))}
 

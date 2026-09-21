@@ -4,15 +4,15 @@ import DesktopGeneralSettingsPage from './GeneralSettingsPage';
 import MobileGeneralSettingsPage from '../../mobile/settings/GeneralSettingsPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { NAV_GROUPS, visibleGroups } from '../../../layouts/navItems';
-import { previewFor, shortYear } from '../../../components/settings/lpoNumbering/useLpoNumbering';
+import { previewFor, shortYear } from '../../../components/settings/documentNumbering/useDocumentNumbering';
 import * as client from '../../../api/client';
 
 const YY = shortYear();
 
 const PAYLOAD = {
     data: [
-        { id: 1, name: 'Miknas Industrial', is_active: true, lpo_code: 'MI', next_number: `MI-LPO-${YY}-0004` },
-        { id: 2, name: 'Steel Tech', is_active: true, lpo_code: 'ST', next_number: `ST-LPO-${YY}-0001` },
+        { id: 1, name: 'Miknas Industrial', is_active: true, lpo_code: 'MI', next_number: `MI-LPO-${YY}-0004`, next_mpr_number: `MI-MPR-${YY}-0007` },
+        { id: 2, name: 'Steel Tech', is_active: true, lpo_code: 'ST', next_number: `ST-LPO-${YY}-0001`, next_mpr_number: `ST-MPR-${YY}-0001` },
     ],
 };
 
@@ -28,48 +28,53 @@ describe('the Settings tab', () => {
     it('lists each company with its code and the number it will issue next', async () => {
         renderPage();
 
-        expect(await screen.findByText('LPO Numbering')).toBeInTheDocument();
-        expect(screen.getByLabelText('Miknas Industrial LPO code')).toHaveValue('MI');
-        expect(screen.getByLabelText('Steel Tech LPO code')).toHaveValue('ST');
-        // Not an example — the sequence each company has actually reached.
+        expect(await screen.findByText('Document Numbering')).toBeInTheDocument();
+        expect(screen.getByLabelText('Miknas Industrial document code')).toHaveValue('MI');
+        expect(screen.getByLabelText('Steel Tech document code')).toHaveValue('ST');
+        // Not an example — the sequence each company has actually reached,
+        // and the two documents count separately.
         expect(screen.getByText(`MI-LPO-${YY}-0004`)).toBeInTheDocument();
+        expect(screen.getByText(`MI-MPR-${YY}-0007`)).toBeInTheDocument();
         expect(screen.getByText(`ST-LPO-${YY}-0001`)).toBeInTheDocument();
+        expect(screen.getByText(`ST-MPR-${YY}-0001`)).toBeInTheDocument();
     });
 
     it('previews the new letters as you type, keeping the sequence', async () => {
         renderPage();
-        await screen.findByText('LPO Numbering');
+        await screen.findByText('Document Numbering');
 
-        fireEvent.change(screen.getByLabelText('Steel Tech LPO code'), { target: { value: 'stl' } });
+        fireEvent.change(screen.getByLabelText('Steel Tech document code'), { target: { value: 'stl' } });
 
         // Upper-cased as typed, and 0001 is not reset by renaming the series.
-        expect(screen.getByLabelText('Steel Tech LPO code')).toHaveValue('STL');
+        // One code, so both previews follow it.
+        expect(screen.getByLabelText('Steel Tech document code')).toHaveValue('STL');
         expect(screen.getByText(`STL-LPO-${YY}-0001`)).toBeInTheDocument();
+        expect(screen.getByText(`STL-MPR-${YY}-0001`)).toBeInTheDocument();
     });
 
     it('saves every code in one request', async () => {
         const put = vi.spyOn(client, 'apiPut').mockResolvedValue({
-            message: 'LPO numbering saved.',
+            message: 'Document numbering saved.',
             data: [{ ...PAYLOAD.data[0] }, { ...PAYLOAD.data[1], lpo_code: 'STL' }],
         });
         renderPage();
-        await screen.findByText('LPO Numbering');
+        await screen.findByText('Document Numbering');
 
-        fireEvent.change(screen.getByLabelText('Steel Tech LPO code'), { target: { value: 'STL' } });
+        fireEvent.change(screen.getByLabelText('Steel Tech document code'), { target: { value: 'STL' } });
         fireEvent.click(screen.getByText('Save'));
 
-        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/lpo-numbering', {
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/document-numbering', {
             codes: [{ id: 1, lpo_code: 'MI' }, { id: 2, lpo_code: 'STL' }],
         }));
-        expect(await screen.findByText('LPO numbering saved.')).toBeInTheDocument();
+        expect(await screen.findByText('Document numbering saved.')).toBeInTheDocument();
     });
 
     it('will not save until something has changed', async () => {
         renderPage();
-        await screen.findByText('LPO Numbering');
+        await screen.findByText('Document Numbering');
 
         expect(screen.getByText('Save')).toBeDisabled();
-        fireEvent.change(screen.getByLabelText('Steel Tech LPO code'), { target: { value: 'STL' } });
+        fireEvent.change(screen.getByLabelText('Steel Tech document code'), { target: { value: 'STL' } });
         expect(screen.getByText('Save')).not.toBeDisabled();
     });
 
@@ -78,9 +83,9 @@ describe('the Settings tab', () => {
             status: 422, message: 'Two companies cannot share the same code.',
         });
         renderPage();
-        await screen.findByText('LPO Numbering');
+        await screen.findByText('Document Numbering');
 
-        fireEvent.change(screen.getByLabelText('Steel Tech LPO code'), { target: { value: 'MI' } });
+        fireEvent.change(screen.getByLabelText('Steel Tech document code'), { target: { value: 'MI' } });
         fireEvent.click(screen.getByText('Save'));
 
         expect(await screen.findByRole('alert'))
@@ -92,13 +97,13 @@ describe('the Settings tab', () => {
         renderPage();
 
         expect(await screen.findByRole('alert'))
-            .toHaveTextContent('You do not have permission to view the LPO numbering.');
+            .toHaveTextContent('You do not have permission to view the document numbering.');
     });
 
     it('renders on mobile too, since every page is a pair', async () => {
         renderPage(MobileGeneralSettingsPage);
 
-        expect(await screen.findByText('LPO Numbering')).toBeInTheDocument();
+        expect(await screen.findByText('Document Numbering')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
     });
 });
@@ -108,8 +113,13 @@ describe('previewFor', () => {
         expect(previewFor('MS', `MSF-LPO-${YY}-0007`)).toBe(`MS-LPO-${YY}-0007`);
     });
 
+    it('names the document it is previewing', () => {
+        expect(previewFor('MI', `MI-MPR-${YY}-0007`, 'MPR')).toBe(`MI-MPR-${YY}-0007`);
+    });
+
     it('falls back to the house series when there is no code', () => {
         expect(previewFor('', `MI-LPO-${YY}-0004`)).toBe(`LPO-${YY}-0004`);
+        expect(previewFor('', `MI-MPR-${YY}-0004`, 'MPR')).toBe(`MPR-${YY}-0004`);
     });
 });
 

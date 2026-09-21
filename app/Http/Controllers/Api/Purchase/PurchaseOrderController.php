@@ -12,8 +12,8 @@ use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
 use App\Models\Supplier;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
+use App\Services\DocumentNumberService;
 use App\Services\LpoDeliveryService;
-use App\Services\LpoNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -227,6 +227,6 @@ class PurchaseOrderController extends Controller
             ? PurchaseRequest::find($purchaseRequestId)?->resolveCompany()
             : null;
 
-        return app(LpoNumberService::class)->next($company);
+        return app(DocumentNumberService::class)->next($company);
     }
 }
