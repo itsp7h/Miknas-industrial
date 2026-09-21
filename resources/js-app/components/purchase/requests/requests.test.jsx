@@ -3,24 +3,16 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ToastProvider } from '../../ui/Toast';
 import { RequestModalProvider, useRequestModal } from './RequestModalProvider';
 import ItemRows, { blankRow } from './ItemRows';
-import ProjectPicker from './ProjectPicker';
+import CompanyPicker from './CompanyPicker';
 import UrgencyPicker from './UrgencyPicker';
 import * as client from '../../../api/client';
 
 const OPTIONS = {
-    projects: [
-        {
-            id: 1, name: 'Plant Expansion', company_id: 3, company_name: 'Miknas Steel',
-            label: 'Miknas Steel — Plant Expansion', locations: ['Bay 4', 'Yard'],
-        },
-        {
-            id: 2, name: 'Harbour Works', company_id: 4, company_name: 'Gulf Marine',
-            label: 'Gulf Marine — Harbour Works', locations: [],
-        },
-        {
-            id: 3, name: 'Coastal Depot', company_id: 5, company_name: 'Desert Logistics',
-            label: 'Desert Logistics — Coastal Depot', locations: ['Main Store'],
-        },
+    // The MPR names a company; locations come from that company's projects.
+    companies: [
+        { id: 3, name: 'Miknas Steel', locations: ['Bay 4', 'Yard'] },
+        { id: 4, name: 'Gulf Marine', locations: [] },
+        { id: 5, name: 'Desert Logistics', locations: ['Main Store'] },
     ],
     departments: [
         { id: 10, name: 'Operations', company_id: 3 },
@@ -79,25 +71,26 @@ describe('UrgencyPicker', () => {
     });
 });
 
-describe('ProjectPicker', () => {
-    it('lists each project under its company and filters as you type', () => {
-        render(<ProjectPicker projects={OPTIONS.projects} value="" onChange={() => {}} />);
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
+describe('CompanyPicker', () => {
+    it('lists the companies and filters as you type', () => {
+        render(<CompanyPicker companies={OPTIONS.companies} value="" onChange={() => {}} />);
+        fireEvent.click(screen.getByLabelText(/Company/));
 
-        expect(screen.getByText('Plant Expansion')).toBeInTheDocument();
         expect(screen.getByText('Miknas Steel')).toBeInTheDocument();
+        expect(screen.getByText('Gulf Marine')).toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Search projects'), { target: { value: 'gulf' } });
-        expect(screen.getByText('Harbour Works')).toBeInTheDocument();
-        expect(screen.queryByText('Plant Expansion')).not.toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search companies'), { target: { value: 'gulf' } });
+        expect(screen.getByText('Gulf Marine')).toBeInTheDocument();
+        expect(screen.queryByText('Miknas Steel')).not.toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Search projects'), { target: { value: 'nothing' } });
-        expect(screen.getByText('No projects found.')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search companies'), { target: { value: 'nothing' } });
+        expect(screen.getByText('No companies found.')).toBeInTheDocument();
     });
 
-    it('keeps showing a saved project that is no longer in the active list', () => {
-        render(<ProjectPicker projects={OPTIONS.projects} value="Closed Site" onChange={() => {}} />);
-        expect(screen.getByLabelText(/Project \/ Site Name/)).toHaveTextContent('Closed Site');
+    /** Requests raised before this field named a company still carry a project. */
+    it('keeps showing a saved value that is no longer in the list', () => {
+        render(<CompanyPicker companies={OPTIONS.companies} value="Forkoll" onChange={() => {}} />);
+        expect(screen.getByLabelText(/Company/)).toHaveTextContent('Forkoll');
     });
 });
 
@@ -163,7 +156,7 @@ describe('the new-request modal', () => {
         expect(screen.getByLabelText('Item 1 description')).toHaveValue('');
     });
 
-    it('narrows locations and departments to the chosen project', async () => {
+    it('narrows locations and departments to the chosen company', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open new'));
         await screen.findByText('New Purchase Request');
@@ -173,8 +166,8 @@ describe('the new-request modal', () => {
         expect(screen.getByText('Marine Ops')).toBeInTheDocument();
         expect(screen.getByLabelText('Location / Site')).toBeDisabled();
 
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
-        fireEvent.click(screen.getByText('Plant Expansion'));
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
 
         expect(screen.getByLabelText('Location / Site')).not.toBeDisabled();
         expect(screen.getByRole('option', { name: 'Bay 4' })).toBeInTheDocument();
@@ -182,21 +175,21 @@ describe('the new-request modal', () => {
         expect(screen.queryByText('Marine Ops')).not.toBeInTheDocument();
     });
 
-    it('fills the location in when the project offers only one', async () => {
+    it('fills the location in when the company offers only one', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open new'));
         await screen.findByText('New Purchase Request');
 
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
-        fireEvent.click(screen.getByText('Coastal Depot'));
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
 
         // One location is no choice at all, so the form makes it.
         expect(screen.getByLabelText('Location / Site')).toHaveValue('Main Store');
 
-        // Plant Expansion offers two, so it stays for the user to pick and
+        // Miknas Steel offers two, so it stays for the user to pick and
         // the filled-in site does not carry over from the project before it.
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
-        fireEvent.click(screen.getByText('Plant Expansion'));
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
         expect(screen.getByLabelText('Location / Site')).toHaveValue('');
     });
     // Requested By was a free-text box, so one person arrived spelled three ways.
@@ -219,8 +212,8 @@ describe('the new-request modal', () => {
         fireEvent.click(screen.getByText('open new'));
         await waitFor(() => expect(screen.getByLabelText(/^Date/)).toHaveValue('2026-09-01'));
 
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
-        fireEvent.click(screen.getByText('Plant Expansion'));
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
         fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'Ali' } });
         fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Steel Plate 10mm' } });
         fireEvent.change(screen.getByLabelText('Item 1 quantity'), { target: { value: '500' } });
@@ -231,7 +224,7 @@ describe('the new-request modal', () => {
         await waitFor(() => expect(post).toHaveBeenCalled());
         const [path, payload] = post.mock.calls[0];
         expect(path).toBe('/purchase/requests');
-        expect(payload.project_name).toBe('Plant Expansion');
+        expect(payload.project_name).toBe('Miknas Steel');
         expect(payload.requested_by_name).toBe('Ali');
         expect(payload.items).toHaveLength(1);
         expect(payload.items[0].description).toBe('Steel Plate 10mm');
@@ -258,7 +251,7 @@ describe('the new-request modal', () => {
 describe('the edit-request modal', () => {
     const RECORD = {
         id: 7, request_number: 'MPR26-0007', date: '2026-08-20',
-        project_name: 'Plant Expansion', requested_by_name: 'Omar Said',
+        project_name: 'Miknas Steel', requested_by_name: 'Omar Said',
         required_date_text: '2 Weeks', location: 'Bay 4', department: 'Operations',
         remarks: 'Shutdown work.',
         items: [{ description: 'Steel Plate 10mm', unit: 'KG', quantity_required: '500.00', purpose_use: 'Frame', required_date: '2026-09-10' }],
@@ -302,15 +295,15 @@ describe('the edit-request modal', () => {
         await waitFor(() => expect(screen.getByText('MPR26-0007 updated successfully.')).toBeInTheDocument());
     });
 
-    it('clears the location when the project changes under it', async () => {
+    it('clears the location when the company changes under it', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open edit'));
         await waitFor(() => expect(screen.getByLabelText('Location / Site')).toHaveValue('Bay 4'));
 
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
-        fireEvent.click(screen.getByText('Harbour Works'));
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Gulf Marine'));
 
-        // Harbour Works has no locations of its own, so nothing stale survives.
+        // Gulf Marine has no locations of its own, so nothing stale survives.
         expect(screen.getByLabelText('Location / Site')).toHaveValue('');
     });
 });

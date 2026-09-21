@@ -11,6 +11,7 @@ use App\Http\Resources\PurchaseRequestDetailResource;
 use App\Http\Resources\PurchaseRequestSheetResource;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
+use App\Models\Settings\Company;
 use App\Models\Settings\Department;
 use App\Models\Settings\ProjectSetting;
 use App\Models\User;
@@ -56,7 +57,20 @@ class PurchaseRequestController extends Controller
             ->orderBy('name')
             ->get();
 
+        // The MPR names a company, not a project. Locations still belong to
+        // projects, so a company offers every location under its own projects
+        // — otherwise choosing one would empty the Location list.
+        $companies = Company::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
         return response()->json([
+            'companies' => $companies->map(fn ($company) => [
+                'id' => $company->id,
+                'name' => $company->name,
+                'locations' => $projects
+                    ->where('company_id', $company->id)
+                    ->flatMap(fn ($project) => $project->locations->pluck('name'))
+                    ->unique()->sort()->values(),
+            ])->values(),
             'projects' => $projects->map(fn ($project) => [
                 'id' => $project->id,
                 'name' => $project->name,

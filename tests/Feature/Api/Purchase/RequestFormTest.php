@@ -92,14 +92,50 @@ class RequestFormTest extends TestCase
             ->getJson('/api/v1/purchase/requests/form-options')
             ->assertOk();
 
+        // The form names a company, and each one carries the locations that
+        // sit under its own projects.
+        $response->assertJsonPath('companies.0.name', 'Miknas Steel');
+        // Only active locations are offered.
+        $this->assertSame(['Bay 4'], $response->json('companies.0.locations'));
+
         $response->assertJsonPath('projects.0.name', 'Plant Expansion');
         $response->assertJsonPath('projects.0.company_name', 'Miknas Steel');
         // The option label Blade rendered: "Company — Project".
         $response->assertJsonPath('projects.0.label', 'Miknas Steel — Plant Expansion');
-        // Only active locations are offered.
         $this->assertSame(['Bay 4'], $response->json('projects.0.locations'));
         $response->assertJsonPath('departments.0.name', 'Operations');
         $this->assertContains('KG', $response->json('units'));
+    }
+
+    /** An inactive company is not offered, the way an inactive project is not. */
+    public function test_only_active_companies_are_offered(): void
+    {
+        Company::create(['name' => 'Miknas Steel', 'is_active' => true]);
+        Company::create(['name' => 'Wound Up Ltd', 'is_active' => false]);
+
+        $response = $this->actingAs($this->requester())
+            ->getJson('/api/v1/purchase/requests/form-options')
+            ->assertOk();
+
+        $this->assertSame(['Miknas Steel'], array_column($response->json('companies'), 'name'));
+    }
+
+    /** A company gathers the locations of every project beneath it, once each. */
+    public function test_a_companys_locations_come_from_all_of_its_projects(): void
+    {
+        $company = Company::create(['name' => 'Miknas Steel', 'is_active' => true]);
+        $one = ProjectSetting::create(['name' => 'Plant', 'company_id' => $company->id, 'is_active' => true]);
+        $two = ProjectSetting::create(['name' => 'Depot', 'company_id' => $company->id, 'is_active' => true]);
+        Location::create(['name' => 'Yard', 'project_id' => $one->id, 'is_active' => true]);
+        Location::create(['name' => 'Bay 4', 'project_id' => $two->id, 'is_active' => true]);
+        // The same site named under two projects is one option, not two.
+        Location::create(['name' => 'Yard', 'project_id' => $two->id, 'is_active' => true]);
+
+        $response = $this->actingAs($this->requester())
+            ->getJson('/api/v1/purchase/requests/form-options')
+            ->assertOk();
+
+        $this->assertSame(['Bay 4', 'Yard'], $response->json('companies.0.locations'));
     }
 
     public function test_a_project_without_a_company_is_still_offered(): void

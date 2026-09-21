@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import useViewport from '../../../hooks/useViewport';
 import FormModal, { FormSection } from '../../ui/FormModal';
 import ItemRows, { blankRow } from './ItemRows';
-import ProjectPicker from './ProjectPicker';
+import CompanyPicker from './CompanyPicker';
 import UrgencyPicker from './UrgencyPicker';
 
 /** Flattens a Laravel 422 body into the bullet list Blade rendered from $errors->all(). */
@@ -39,20 +39,25 @@ export default function RequestModal({
     // every page uses.
     const compact = useViewport() === 'mobile';
 
-    const projects = options?.projects ?? [];
+    const companies = options?.companies ?? [];
     const units = options?.units ?? [];
     const requesters = options?.requesters ?? [];
     const today = options?.today ?? '';
 
-    const project = projects.find((p) => p.name === values.project_name);
-    const locations = project?.locations ?? [];
-    // Departments belong to a company, so choosing a project narrows them. With
-    // no project — or a project with no company — the whole list stays offered.
+    // The field names the company now, though the column it writes is still
+    // `project_name` — renaming that reaches the sheet, the print and the board,
+    // and is worth its own change.
+    const company = companies.find((c) => c.name === values.project_name);
+    // Locations still belong to projects, so a company offers every location
+    // under its own projects.
+    const locations = company?.locations ?? [];
+    // Departments belong to a company, so choosing one narrows them directly.
+    // With no company chosen, the whole list stays offered.
     const departments = useMemo(() => {
         const all = options?.departments ?? [];
 
-        return project?.company_id ? all.filter((d) => d.company_id === project.company_id) : all;
-    }, [options, project]);
+        return company?.id ? all.filter((d) => d.company_id === company.id) : all;
+    }, [options, company]);
 
     function set(field, value) {
         setValues((current) => ({ ...current, [field]: value }));
@@ -99,16 +104,16 @@ export default function RequestModal({
                             />
                         </div>
 
-                        <ProjectPicker
-                            projects={projects}
+                        <CompanyPicker
+                            companies={companies}
                             value={values.project_name}
                             onChange={(name) => setValues((current) => {
-                                // A location belongs to one project, so it cannot survive
-                                // the project changing under it. Where the new project
-                                // offers exactly one there is no choice to make, so make
-                                // it; with several, choosing for the user would put a site
-                                // nobody picked on the request.
-                                const offered = projects.find((p) => p.name === name)?.locations ?? [];
+                                // A location belongs to one company's projects, so it
+                                // cannot survive the company changing under it. Where the
+                                // new one offers exactly one there is no choice to make,
+                                // so make it; with several, choosing for the user would
+                                // put a site nobody picked on the request.
+                                const offered = companies.find((c) => c.name === name)?.locations ?? [];
 
                                 return {
                                     ...current,

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 /**
- * Blade's searchable project dropdown: a button showing the chosen project, a
- * panel with a search box, and one row per project with its company above the
- * name. The edit modal used a plain <select> instead, which meant no search
- * over the same list — both use this now.
+ * The searchable dropdown the MPR names its company with: a button showing the
+ * chosen one, a panel with a search box, and a row per company. Blade's version
+ * listed projects with their company above the name; the form asks for the
+ * company itself now, so a row is just the name.
  *
- * A saved project that is no longer in the active list is still shown as the
- * current value, so opening the form on an old request cannot silently blank it.
+ * A value no longer in the active list — a company since deactivated, or the
+ * project name requests carried before this — is still shown as the current
+ * value, so opening the form on an old request cannot silently blank it.
  */
-export default function ProjectPicker({ projects, value, onChange }) {
+export default function CompanyPicker({ companies, value, onChange }) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const wrapper = useRef(null);
@@ -30,20 +31,19 @@ export default function ProjectPicker({ projects, value, onChange }) {
     }, [open]);
 
     const term = query.trim().toLowerCase();
-    const matches = useMemo(() => projects.filter((project) => (
-        !term || `${project.company_name ?? ''} ${project.name}`.toLowerCase().includes(term)
-    )), [projects, term]);
+    const matches = useMemo(() => companies.filter((company) => (
+        !term || company.name.toLowerCase().includes(term)
+    )), [companies, term]);
 
-    const chosen = projects.find((project) => project.name === value);
-    const label = chosen ? chosen.label : value;
+    const label = companies.find((company) => company.name === value)?.name ?? value;
 
     return (
         <div style={{ position: 'relative' }} ref={wrapper}>
-            <label className="form-label" htmlFor="mpr-project">
-                Project / Site Name <span className="text-red-500">*</span>
+            <label className="form-label" htmlFor="mpr-company">
+                Company <span className="text-red-500">*</span>
             </label>
             <button
-                type="button" id="mpr-project" onClick={() => { setOpen((o) => !o); setQuery(''); }}
+                type="button" id="mpr-company" onClick={() => { setOpen((o) => !o); setQuery(''); }}
                 aria-haspopup="listbox" aria-expanded={open}
                 style={{
                     width: '100%', textAlign: 'left', background: '#fff', border: '1px solid #d1d5db',
@@ -51,7 +51,7 @@ export default function ProjectPicker({ projects, value, onChange }) {
                     color: '#111827', cursor: 'pointer', position: 'relative', lineHeight: 1.5, minHeight: '2.25rem',
                 }}
             >
-                <span style={{ color: value ? '#111827' : '#9ca3af' }}>{label || '— Select Project —'}</span>
+                <span style={{ color: value ? '#111827' : '#9ca3af' }}>{label || '— Select Company —'}</span>
                 <span style={{
                     position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)',
                     pointerEvents: 'none', color: '#6b7280',
@@ -66,9 +66,9 @@ export default function ProjectPicker({ projects, value, onChange }) {
                 }}>
                     <div style={{ padding: '0.5rem' }}>
                         <input
-                            ref={searchBox} type="text" value={query} aria-label="Search projects"
+                            ref={searchBox} type="text" value={query} aria-label="Search companies"
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search project or company…"
+                            placeholder="Search company…"
                             style={{
                                 width: '100%', border: '1px solid #e2e8f0', borderRadius: '0.375rem',
                                 padding: '0.375rem 0.625rem', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box',
@@ -76,25 +76,22 @@ export default function ProjectPicker({ projects, value, onChange }) {
                         />
                     </div>
                     <ul role="listbox" style={{ maxHeight: '13rem', overflowY: 'auto', margin: 0, padding: '0 0 0.25rem 0', listStyle: 'none' }}>
-                        {matches.map((project) => (
+                        {matches.map((company) => (
                             <li
-                                key={project.id} role="option" aria-selected={project.name === value}
+                                key={company.id} role="option" aria-selected={company.name === value}
                                 className="mpr-proj-opt"
-                                onClick={() => { onChange(project.name); setOpen(false); }}
+                                onClick={() => { onChange(company.name); setOpen(false); }}
                                 style={{
                                     padding: '0.45rem 0.875rem', cursor: 'pointer', fontSize: '0.8rem',
                                     color: '#111827', lineHeight: 1.4, borderLeft: '3px solid transparent',
                                 }}
                             >
-                                <span style={{ fontSize: '0.68rem', color: '#6b7280', display: 'block', lineHeight: 1.2 }}>
-                                    {project.company_name ?? ''}
-                                </span>
-                                {project.name}
+                                {company.name}
                             </li>
                         ))}
                         {matches.length === 0 && (
                             <li style={{ padding: '0.625rem 0.875rem', fontSize: '0.8rem', color: '#9ca3af' }}>
-                                No projects found.
+                                No companies found.
                             </li>
                         )}
                     </ul>
