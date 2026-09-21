@@ -203,8 +203,18 @@
                 <div class="info-value">{{ $purchaseRequest->requested_by_name ?? $purchaseRequest->requestedBy?->name ?? '—' }}</div>
             </div>
             <div>
-                <div class="info-label">Required Urgency</div>
-                <div class="info-value">{{ $purchaseRequest->required_date_text ?? '—' }}</div>
+                {{-- One column, two answers: the urgency picker writes a preset
+                     name or a specific date, so the label follows the value. --}}
+                @php
+                    $requiredWhen = $purchaseRequest->required_date_text;
+                    $isSpecificDate = $requiredWhen && preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($requiredWhen));
+                @endphp
+                <div class="info-label">{{ $isSpecificDate ? 'Required Date' : 'Required Urgency' }}</div>
+                <div class="info-value">
+                    {{ $isSpecificDate
+                        ? \Carbon\Carbon::parse(trim($requiredWhen))->format('d M Y')
+                        : ($requiredWhen ?? '—') }}
+                </div>
             </div>
             <div>
                 <div class="info-label">Location / Site</div>

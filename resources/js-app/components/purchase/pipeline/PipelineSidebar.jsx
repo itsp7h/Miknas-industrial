@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { CARD, CARD_TITLE, INVITATION_STATUS, PILL, PO_STATUS, bd } from './pipelineStyles';
+import { requiredWhen } from '../requests/requiredWhen';
 
 const ROW = {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -57,11 +58,16 @@ export default function PipelineSidebar({ request }) {
                         the board and the printed MPR all carried it. */}
                     {r.requested_by_name && <DetailRow label="Requested By" value={r.requested_by_name} />}
                     {r.location && <DetailRow label="Location" value={r.location} />}
-                    {/* "Required Urgency": the urgency picker fills it, and it
-                        usually holds a word like "Urgent" rather than a date. Not
-                        to be confused with each item's own Required Date, which is
-                        a real date on the rows below. */}
-                    {r.required_date_text && <DetailRow label="Required Urgency" value={r.required_date_text} />}
+                    {/* The urgency picker writes either a preset or a specific
+                        date into the one column, so the row labels itself from the
+                        value. Not to be confused with each item's own Required
+                        Date, which is a real date on the rows below. */}
+                    {requiredWhen(r.required_date_text) && (
+                        <DetailRow
+                            label={requiredWhen(r.required_date_text).label}
+                            value={requiredWhen(r.required_date_text).value}
+                        />
+                    )}
                     {r.verified_by_name && <DetailRow label="Verified By" value={r.verified_by_name} />}
                     <DetailRow label="Status" value={<StatusPill status={r.status} />} />
                 </dl>

@@ -288,6 +288,17 @@ describe('PipelineSidebar', () => {
         expect(screen.queryByText('Required By')).not.toBeInTheDocument();
     });
 
+    it('calls it a Required Date, formatted, when a specific date was picked', () => {
+        renderIn(<PipelineSidebar request={base({ required_date_text: '2026-10-02' })} />);
+
+        // The same column holds both answers, so the row follows the value
+        // rather than carrying one fixed label that is wrong half the time.
+        expect(screen.getByText('Required Date')).toBeInTheDocument();
+        expect(screen.getByText('02 Oct 2026')).toBeInTheDocument();
+        expect(screen.queryByText('Required Urgency')).not.toBeInTheDocument();
+        expect(screen.queryByText('2026-10-02')).not.toBeInTheDocument();
+    });
+
     it('shows supplier status pills and the channel for non-email invitations', () => {
         renderIn(<PipelineSidebar request={rich} />);
         expect(screen.getByText('Suppliers (2)')).toBeInTheDocument();
