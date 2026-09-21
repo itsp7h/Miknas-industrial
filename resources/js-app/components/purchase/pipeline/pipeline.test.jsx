@@ -288,15 +288,29 @@ describe('PipelineSidebar', () => {
         expect(screen.queryByText('Required By')).not.toBeInTheDocument();
     });
 
-    it('calls it a Required Date, formatted, when a specific date was picked', () => {
-        renderIn(<PipelineSidebar request={base({ required_date_text: '2026-10-02' })} />);
+    it('shows the Required Date on its own line, under the urgency', () => {
+        renderIn(<PipelineSidebar request={base({
+            required_date_text: 'Urgent',
+            required_date: '2026-09-21',
+        })} />);
 
-        // The same column holds both answers, so the row follows the value
-        // rather than carrying one fixed label that is wrong half the time.
+        // Two different facts: the picker's word, and the date the earliest
+        // item is actually needed by.
+        expect(screen.getByText('Required Urgency')).toBeInTheDocument();
+        expect(screen.getByText('Urgent')).toBeInTheDocument();
         expect(screen.getByText('Required Date')).toBeInTheDocument();
+        // ICU abbreviates September as "Sept" in en-GB; match either so the
+        // spec does not turn red on a Node upgrade.
+        expect(screen.getByText(/21 Sept? 2026/)).toBeInTheDocument();
+    });
+
+    it('formats a picked date as the urgency, and drops the date row when there is none', () => {
+        renderIn(<PipelineSidebar request={base({ required_date_text: '2026-10-02', required_date: null })} />);
+
+        expect(screen.getByText('Required Urgency')).toBeInTheDocument();
         expect(screen.getByText('02 Oct 2026')).toBeInTheDocument();
-        expect(screen.queryByText('Required Urgency')).not.toBeInTheDocument();
         expect(screen.queryByText('2026-10-02')).not.toBeInTheDocument();
+        expect(screen.queryByText('Required Date')).not.toBeInTheDocument();
     });
 
     it('shows supplier status pills and the channel for non-email invitations', () => {

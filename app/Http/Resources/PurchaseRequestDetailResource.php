@@ -45,6 +45,14 @@ class PurchaseRequestDetailResource extends JsonResource
             'created_at' => $this->created_at?->toDateString(),
             'location' => $this->location,
             'required_date_text' => $this->required_date_text,
+            // The request has no date of its own — only the urgency picker's
+            // word. The real date lives on the items, so the panel shows the
+            // earliest of them: the day the first thing on this request is
+            // needed, which is the date the request as a whole answers to.
+            'required_date' => $this->whenLoaded('items', fn () => $this->items
+                ->filter(fn ($item) => $item->required_date)
+                ->sortBy('required_date')
+                ->first()?->required_date?->toDateString()),
             'verified_by_name' => $this->verified_by_name,
 
             // Keyed off the status, not the columns: a request approved after a

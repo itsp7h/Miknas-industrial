@@ -1,4 +1,4 @@
-import { requiredWhen } from './requiredWhen';
+import { formatRequiredWhen } from './requiredWhen';
 
 const STATUS_BADGE = {
     pending: 'badge-yellow',
@@ -67,12 +67,7 @@ export default function RequestSheet({ request, compact = false }) {
                     <Field label="Date" value={ddmmyyyy(request.date)} />
                     <Field label="Project / Site Name" value={request.project_name} />
                     <Field label="Requested By" value={request.requested_by_name} />
-                    {requiredWhen(request.required_date_text) && (
-                        <Field
-                            label={requiredWhen(request.required_date_text).label}
-                            value={requiredWhen(request.required_date_text).value}
-                        />
-                    )}
+                    <Field label="Required Urgency" value={formatRequiredWhen(request.required_date_text)} />
                     <Field label="Location / Site" value={request.location} />
                     {request.department && <Field label="Department" value={request.department} />}
                     {request.remarks && <Field label="Remarks" value={request.remarks} span={columns} />}
