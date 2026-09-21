@@ -282,8 +282,8 @@ describe('PipelineSidebar', () => {
         expect(screen.getByText('Operation manager')).toBeInTheDocument();
 
         // The urgency picker fills this, so "Required By: Urgent" read as a
-        // name. The sheet and the printed MPR both call it Required Date.
-        expect(screen.getByText('Required Date')).toBeInTheDocument();
+        // name. It holds an urgency, and says so.
+        expect(screen.getByText('Required Urgency')).toBeInTheDocument();
         expect(screen.getByText('Urgent')).toBeInTheDocument();
         expect(screen.queryByText('Required By')).not.toBeInTheDocument();
     });

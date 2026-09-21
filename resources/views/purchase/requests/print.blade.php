@@ -203,7 +203,7 @@
                 <div class="info-value">{{ $purchaseRequest->requested_by_name ?? $purchaseRequest->requestedBy?->name ?? '—' }}</div>
             </div>
             <div>
-                <div class="info-label">Required Date</div>
+                <div class="info-label">Required Urgency</div>
                 <div class="info-value">{{ $purchaseRequest->required_date_text ?? '—' }}</div>
             </div>
             <div>

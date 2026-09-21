@@ -57,11 +57,11 @@ export default function PipelineSidebar({ request }) {
                         the board and the printed MPR all carried it. */}
                     {r.requested_by_name && <DetailRow label="Requested By" value={r.requested_by_name} />}
                     {r.location && <DetailRow label="Location" value={r.location} />}
-                    {/* "Required Date", as the MPR sheet and the printed document
-                        both call it. Labelled "Required By" this read as a second
-                        person's name, and it is filled by the urgency picker — so
-                        the box sat under a name-shaped label saying "Urgent". */}
-                    {r.required_date_text && <DetailRow label="Required Date" value={r.required_date_text} />}
+                    {/* "Required Urgency": the urgency picker fills it, and it
+                        usually holds a word like "Urgent" rather than a date. Not
+                        to be confused with each item's own Required Date, which is
+                        a real date on the rows below. */}
+                    {r.required_date_text && <DetailRow label="Required Urgency" value={r.required_date_text} />}
                     {r.verified_by_name && <DetailRow label="Verified By" value={r.verified_by_name} />}
                     <DetailRow label="Status" value={<StatusPill status={r.status} />} />
                 </dl>

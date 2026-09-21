@@ -65,7 +65,7 @@ export default function RequestSheet({ request, compact = false }) {
                     <Field label="Date" value={ddmmyyyy(request.date)} />
                     <Field label="Project / Site Name" value={request.project_name} />
                     <Field label="Requested By" value={request.requested_by_name} />
-                    <Field label="Required Date" value={request.required_date_text} />
+                    <Field label="Required Urgency" value={request.required_date_text} />
                     <Field label="Location / Site" value={request.location} />
                     {request.department && <Field label="Department" value={request.department} />}
                     {request.remarks && <Field label="Remarks" value={request.remarks} span={columns} />}
