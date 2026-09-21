@@ -13,6 +13,7 @@ use App\Models\PurchaseRequest;
 use App\Models\Supplier;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
 use App\Services\LpoDeliveryService;
+use App\Services\LpoNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -64,7 +65,7 @@ class PurchaseOrderController extends Controller
 
         $order = DB::transaction(function () use ($data) {
             $order = PurchaseOrder::create([
-                'po_number' => $this->nextPoNumber(),
+                'po_number' => $this->nextPoNumber($data['purchase_request_id'] ?? null),
                 'supplier_id' => $data['supplier_id'],
                 'purchase_request_id' => $data['purchase_request_id'] ?? null,
                 'po_date' => $data['po_date'],
@@ -215,8 +216,17 @@ class PurchaseOrderController extends Controller
         return collect($items)->sum(fn ($line) => $line['quantity'] * $line['rate']);
     }
 
-    private function nextPoNumber(): string
+    /**
+     * The issuing company's series — ST-LPO-26-0001 — taken from the request
+     * this order is for. An order raised without a request has no company
+     * behind it, so it falls to the house series, LPO-26-0001.
+     */
+    private function nextPoNumber(?int $purchaseRequestId): string
     {
-        return 'PO-'.str_pad((string) (PurchaseOrder::max('id') + 1), 5, '0', STR_PAD_LEFT);
+        $company = $purchaseRequestId
+            ? PurchaseRequest::find($purchaseRequestId)?->resolveCompany()
+            : null;
+
+        return app(LpoNumberService::class)->next($company);
     }
 }

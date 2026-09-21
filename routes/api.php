@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\Settings\CompanyController;
 use App\Http\Controllers\Api\Settings\FinanceController;
 use App\Http\Controllers\Api\Settings\IntegrationController;
 use App\Http\Controllers\Api\Settings\ItemCategoryController;
+use App\Http\Controllers\Api\Settings\LpoNumberingController;
 use App\Http\Controllers\Api\Settings\MailAccountController;
 use App\Http\Controllers\Api\Settings\ProjectController;
 use App\Http\Controllers\Api\Settings\UserController;
@@ -200,6 +201,10 @@ Route::prefix('v1')->group(function () {
             Route::patch('mail-accounts/{mailAccount}/toggle', [MailAccountController::class, 'toggleEnabled']);
             Route::post('mail-accounts/{mailAccount}/test', [MailAccountController::class, 'testConnection'])->middleware('role:Admin');
             Route::post('mail-accounts/{mailAccount}/send-test', [MailAccountController::class, 'sendTestEmail'])->middleware('role:Admin');
+
+            // How each company's LPOs are numbered.
+            Route::get('lpo-numbering', [LpoNumberingController::class, 'index'])->middleware('permission:settings.view');
+            Route::put('lpo-numbering', [LpoNumberingController::class, 'update'])->middleware('permission:settings.edit');
 
             // VAT and the display currency — one subject, one page.
             Route::get('finance', [FinanceController::class, 'show'])->middleware('permission:finance.view');
