@@ -25,7 +25,7 @@ function openPayload(overrides = {}) {
             supplier_name: 'Gulf Steel Co.',
             expires_at_text: '18 Sep 2026',
             submitted_at_text: null,
-            request: { request_number: 'MPR-0042', project_name: 'Sitra Yard' },
+            request: { request_number: 'MPR-0042', company_name: 'Sitra Yard' },
             items: [
                 { id: 7, description: 'Steel rod 12mm', unit: 'kg', quantity_required: 10 },
                 { id: 9, description: 'Angle bar', unit: 'pcs', quantity_required: 4 },

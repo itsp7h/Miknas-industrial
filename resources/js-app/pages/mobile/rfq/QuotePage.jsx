@@ -48,9 +48,9 @@ export default function QuotePage({ token, load, send }) {
                 <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
                     {invitation.request.request_number}
                 </div>
-                {invitation.request.project_name && (
+                {invitation.request.company_name && (
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,.8)', marginTop: 2 }}>
-                        {invitation.request.project_name}
+                        {invitation.request.company_name}
                     </div>
                 )}
             </div>

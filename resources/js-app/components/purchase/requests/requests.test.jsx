@@ -164,12 +164,12 @@ describe('the new-request modal', () => {
         // With no project chosen, every department is on offer.
         expect(screen.getByText('Operations')).toBeInTheDocument();
         expect(screen.getByText('Marine Ops')).toBeInTheDocument();
-        expect(screen.getByLabelText('Location / Site')).toBeDisabled();
+        expect(screen.getByLabelText('Location / Project')).toBeDisabled();
 
         fireEvent.click(screen.getByLabelText(/Company/));
         fireEvent.click(screen.getByText('Miknas Steel'));
 
-        expect(screen.getByLabelText('Location / Site')).not.toBeDisabled();
+        expect(screen.getByLabelText('Location / Project')).not.toBeDisabled();
         expect(screen.getByRole('option', { name: 'Bay 4' })).toBeInTheDocument();
         // Marine Ops belongs to the other company, so it drops out.
         expect(screen.queryByText('Marine Ops')).not.toBeInTheDocument();
@@ -184,13 +184,13 @@ describe('the new-request modal', () => {
         fireEvent.click(screen.getByText('Desert Logistics'));
 
         // One location is no choice at all, so the form makes it.
-        expect(screen.getByLabelText('Location / Site')).toHaveValue('Main Store');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('Main Store');
 
         // Miknas Steel offers two, so it stays for the user to pick and
         // the filled-in site does not carry over from the project before it.
         fireEvent.click(screen.getByLabelText(/Company/));
         fireEvent.click(screen.getByText('Miknas Steel'));
-        expect(screen.getByLabelText('Location / Site')).toHaveValue('');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('');
     });
     // Requested By was a free-text box, so one person arrived spelled three ways.
     it('picks the requester from the system users', async () => {
@@ -224,7 +224,7 @@ describe('the new-request modal', () => {
         await waitFor(() => expect(post).toHaveBeenCalled());
         const [path, payload] = post.mock.calls[0];
         expect(path).toBe('/purchase/requests');
-        expect(payload.project_name).toBe('Miknas Steel');
+        expect(payload.company_name).toBe('Miknas Steel');
         expect(payload.requested_by_name).toBe('Ali');
         expect(payload.items).toHaveLength(1);
         expect(payload.items[0].description).toBe('Steel Plate 10mm');
@@ -235,7 +235,7 @@ describe('the new-request modal', () => {
 
     it('lists server validation errors and stays open', async () => {
         vi.spyOn(client, 'apiPost').mockRejectedValue({
-            message: 'Invalid.', errors: { project_name: ['The project name field is required.'] },
+            message: 'Invalid.', errors: { company_name: ['The project name field is required.'] },
         });
         renderProvider();
         fireEvent.click(screen.getByText('open new'));
@@ -251,7 +251,7 @@ describe('the new-request modal', () => {
 describe('the edit-request modal', () => {
     const RECORD = {
         id: 7, request_number: 'MPR26-0007', date: '2026-08-20',
-        project_name: 'Miknas Steel', requested_by_name: 'Omar Said',
+        company_name: 'Miknas Steel', requested_by_name: 'Omar Said',
         required_date_text: '2 Weeks', location: 'Bay 4', department: 'Operations',
         remarks: 'Shutdown work.',
         items: [{ description: 'Steel Plate 10mm', unit: 'KG', quantity_required: '500.00', purpose_use: 'Frame', required_date: '2026-09-10' }],
@@ -298,12 +298,12 @@ describe('the edit-request modal', () => {
     it('clears the location when the company changes under it', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open edit'));
-        await waitFor(() => expect(screen.getByLabelText('Location / Site')).toHaveValue('Bay 4'));
+        await waitFor(() => expect(screen.getByLabelText('Location / Project')).toHaveValue('Bay 4'));
 
         fireEvent.click(screen.getByLabelText(/Company/));
         fireEvent.click(screen.getByText('Gulf Marine'));
 
         // Gulf Marine has no locations of its own, so nothing stale survives.
-        expect(screen.getByLabelText('Location / Site')).toHaveValue('');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('');
     });
 });

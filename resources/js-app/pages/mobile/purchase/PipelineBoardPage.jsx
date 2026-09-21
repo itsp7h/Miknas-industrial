@@ -79,7 +79,7 @@ export default function PipelineBoardPage({
     }, [setItems]);
 
     // .purchase-request.stage-changed carries only {id, request_number, stage} — merge
-    // it shallowly onto the matching row so project_name/department/etc. survive.
+    // it shallowly onto the matching row so company_name/department/etc. survive.
     useEffect(() => {
         const ch = echo.private('purchase');
         const handleStageChanged = (payload) => {
@@ -102,7 +102,7 @@ export default function PipelineBoardPage({
         const q = query.trim().toLowerCase();
         if (!q) return rows;
         return rows.filter((row) => (
-            [row.request_number, row.project_name, row.department, row.requested_by_name]
+            [row.request_number, row.company_name, row.department, row.requested_by_name]
                 .filter(Boolean)
                 .some((field) => field.toLowerCase().includes(q))
         ));
@@ -217,7 +217,7 @@ export default function PipelineBoardPage({
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                                 <div style={{ minWidth: 0 }}>
                                     <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{row.request_number}</div>
-                                    <div style={{ fontSize: 13, color: '#334155', marginTop: 2 }}>{row.project_name || '—'}</div>
+                                    <div style={{ fontSize: 13, color: '#334155', marginTop: 2 }}>{row.company_name || '—'}</div>
                                 </div>
                                 <span style={{
                                     flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,

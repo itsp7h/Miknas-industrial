@@ -196,7 +196,7 @@
             </div>
             <div>
                 <div class="info-label">Project / Site Name</div>
-                <div class="info-value">{{ $purchaseRequest->project_name ?? '—' }}</div>
+                <div class="info-value">{{ $purchaseRequest->company_name ?? '—' }}</div>
             </div>
             <div>
                 <div class="info-label">Requested By</div>
@@ -217,7 +217,7 @@
                 </div>
             </div>
             <div>
-                <div class="info-label">Location / Site</div>
+                <div class="info-label">Location / Project</div>
                 <div class="info-value">{{ $purchaseRequest->location ?? '—' }}</div>
             </div>
             @if($purchaseRequest->department)

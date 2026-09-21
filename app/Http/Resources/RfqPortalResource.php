@@ -33,7 +33,7 @@ class RfqPortalResource extends JsonResource
 
             'request' => [
                 'request_number' => $purchaseRequest->request_number,
-                'project_name' => $purchaseRequest->project_name,
+                'company_name' => $purchaseRequest->company_name,
             ],
 
             // Keyed by id rather than positional, because the submit side pairs

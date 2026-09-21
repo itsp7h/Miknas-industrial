@@ -22,7 +22,7 @@ class PurchaseRequestCreatedBroadcastTest extends TestCase
         // The create form is a React modal now, so the write is the API.
         $this->postJson('/api/v1/purchase/requests', [
             'date' => now()->toDateString(),
-            'project_name' => 'Test Project',
+            'company_name' => 'Test Project',
             'requested_by_name' => $user->name,
             'items' => [
                 ['description' => 'Steel bars', 'quantity_required' => 10],
@@ -52,7 +52,7 @@ class PurchaseRequestCreatedBroadcastTest extends TestCase
             'id' => 1,
             'request_number' => 'MPR26-0001',
             'date' => '2026-08-02',
-            'project_name' => 'Test Project',
+            'company_name' => 'Test Project',
             'requested_by_name' => 'Jane',
             'department' => 'Ops',
             'stage' => 'draft',

@@ -23,7 +23,7 @@ class PurchaseRequestSheetResource extends JsonResource
             'status' => $this->status,
             'stage' => $this->stage,
             'date' => $this->date?->toDateString(),
-            'project_name' => $this->project_name,
+            'company_name' => $this->company_name,
             'requested_by_name' => $this->requested_by_name ?: $this->requestedBy?->name,
             'required_date_text' => $this->required_date_text,
             'location' => $this->location,

@@ -34,7 +34,7 @@ class RequestFormTest extends TestCase
     {
         return array_merge([
             'date' => '2026-09-01',
-            'project_name' => 'Plant Expansion',
+            'company_name' => 'Plant Expansion',
             'requested_by_name' => 'Aisha Rahman',
             'department' => 'Operations',
             'required_date_text' => '1 Week',
@@ -108,6 +108,36 @@ class RequestFormTest extends TestCase
     }
 
     /** An inactive company is not offered, the way an inactive project is not. */
+    /** The MPR names a company, and the company record is found by that name. */
+    public function test_a_request_resolves_its_company_by_name(): void
+    {
+        $company = Company::create(['name' => 'Miknas Steel', 'is_active' => true]);
+        $pr = PurchaseRequest::factory()->create(['company_name' => 'Miknas Steel']);
+
+        $this->assertSame($company->id, $pr->resolveCompany()?->id);
+    }
+
+    /**
+     * Requests raised before the form named companies hold a project name.
+     * Their LPO letterhead must not go blank because the field changed.
+     */
+    public function test_a_request_naming_an_old_project_still_finds_its_company(): void
+    {
+        $company = Company::create(['name' => 'Miknas Industrial', 'is_active' => true]);
+        ProjectSetting::create(['name' => 'Forkoll', 'company_id' => $company->id, 'is_active' => true]);
+        $pr = PurchaseRequest::factory()->create(['company_name' => 'Forkoll']);
+
+        $this->assertSame('Miknas Industrial', $pr->resolveCompany()?->name);
+    }
+
+    /** A name matching neither is simply no company, not an error. */
+    public function test_a_request_naming_nothing_known_resolves_to_no_company(): void
+    {
+        $pr = PurchaseRequest::factory()->create(['company_name' => 'Gone Ltd']);
+
+        $this->assertNull($pr->resolveCompany());
+    }
+
     public function test_only_active_companies_are_offered(): void
     {
         Company::create(['name' => 'Miknas Steel', 'is_active' => true]);
@@ -181,7 +211,7 @@ class RequestFormTest extends TestCase
             ->assertCreated();
 
         $pr = PurchaseRequest::firstOrFail();
-        $this->assertSame('Plant Expansion', $pr->project_name);
+        $this->assertSame('Plant Expansion', $pr->company_name);
         $this->assertSame('pending', $pr->status);
         $this->assertSame($requester->id, $pr->requested_by);
         $this->assertSame('1 Week', $pr->required_date_text);
@@ -191,7 +221,7 @@ class RequestFormTest extends TestCase
 
         // The board opens this form, so it answers with a board row.
         $response->assertJsonPath('data.request_number', $pr->request_number);
-        $response->assertJsonPath('data.project_name', 'Plant Expansion');
+        $response->assertJsonPath('data.company_name', 'Plant Expansion');
         $this->assertStringContainsString('submitted successfully', $response->json('message'));
     }
 
@@ -223,8 +253,8 @@ class RequestFormTest extends TestCase
         $requester = $this->requester();
 
         $this->actingAs($requester)
-            ->postJson('/api/v1/purchase/requests', $this->payload(['project_name' => '']))
-            ->assertJsonValidationErrors('project_name');
+            ->postJson('/api/v1/purchase/requests', $this->payload(['company_name' => '']))
+            ->assertJsonValidationErrors('company_name');
 
         $this->actingAs($requester)
             ->postJson('/api/v1/purchase/requests', $this->payload(['requested_by_name' => '']))
@@ -271,7 +301,7 @@ class RequestFormTest extends TestCase
         $requester = $this->requester();
         $pr = PurchaseRequest::factory()->create([
             'requested_by' => $requester->id, 'stage' => 'draft',
-            'project_name' => 'Plant Expansion', 'location' => 'Bay 4',
+            'company_name' => 'Plant Expansion', 'location' => 'Bay 4',
             'department' => 'Operations', 'required_date_text' => 'Urgent',
             'remarks' => 'Before the shutdown.',
         ]);
@@ -284,7 +314,7 @@ class RequestFormTest extends TestCase
             ->getJson("/api/v1/purchase/requests/{$pr->id}/edit")
             ->assertOk();
 
-        $response->assertJsonPath('data.project_name', 'Plant Expansion');
+        $response->assertJsonPath('data.company_name', 'Plant Expansion');
         $response->assertJsonPath('data.location', 'Bay 4');
         $response->assertJsonPath('data.required_date_text', 'Urgent');
         $response->assertJsonPath('data.remarks', 'Before the shutdown.');
@@ -326,7 +356,7 @@ class RequestFormTest extends TestCase
             ->assertOk();
 
         $pr->refresh();
-        $this->assertSame('Plant Expansion', $pr->project_name);
+        $this->assertSame('Plant Expansion', $pr->company_name);
         $this->assertSame('Aisha Rahman', $pr->requested_by_name);
         // Rows are replaced wholesale, as the Blade form did.
         $this->assertDatabaseMissing('purchase_request_items', ['id' => $stale->id]);
@@ -352,7 +382,7 @@ class RequestFormTest extends TestCase
 
         Event::assertDispatched(function (PurchaseRequestUpdated $event) use ($pr) {
             return $event->purchaseRequestId === $pr->id
-                && $event->broadcastWith()['project_name'] === 'Plant Expansion';
+                && $event->broadcastWith()['company_name'] === 'Plant Expansion';
         });
     }
 }

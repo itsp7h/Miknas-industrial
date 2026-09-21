@@ -119,7 +119,7 @@ class PurchaseRequestController extends Controller
             'id' => $purchaseRequest->id,
             'request_number' => $purchaseRequest->request_number,
             'date' => $purchaseRequest->date?->toDateString(),
-            'project_name' => $purchaseRequest->project_name,
+            'company_name' => $purchaseRequest->company_name,
             'requested_by_name' => $purchaseRequest->requested_by_name,
             'required_date_text' => $purchaseRequest->required_date_text,
             'location' => $purchaseRequest->location,
@@ -154,7 +154,7 @@ class PurchaseRequestController extends Controller
         });
 
         event(new PurchaseRequestCreated(
-            $pr->id, $pr->request_number, $pr->date->toDateString(), $pr->project_name,
+            $pr->id, $pr->request_number, $pr->date->toDateString(), $pr->company_name,
             $pr->requested_by_name, $pr->department, $pr->stage, $pr->requested_by
         ));
 
@@ -185,7 +185,7 @@ class PurchaseRequestController extends Controller
 
         event(new PurchaseRequestUpdated(
             $purchaseRequest->id, $purchaseRequest->request_number,
-            $purchaseRequest->date?->toDateString(), $purchaseRequest->project_name,
+            $purchaseRequest->date?->toDateString(), $purchaseRequest->company_name,
             $purchaseRequest->requested_by_name, $purchaseRequest->department,
             $purchaseRequest->stage, $purchaseRequest->requested_by
         ));
@@ -221,7 +221,7 @@ class PurchaseRequestController extends Controller
     {
         return $request->validate([
             'date' => 'required|date',
-            'project_name' => 'required|string|max:255',
+            'company_name' => 'required|string|max:255',
             'department' => 'nullable|string|max:255',
             'requested_by_name' => 'required|string|max:255',
             'required_date_text' => 'nullable|string|max:100',
@@ -240,7 +240,7 @@ class PurchaseRequestController extends Controller
     {
         return [
             'date' => $data['date'],
-            'project_name' => $data['project_name'],
+            'company_name' => $data['company_name'],
             'department' => $data['department'] ?? null,
             'requested_by_name' => $data['requested_by_name'],
             'required_date_text' => $data['required_date_text'] ?? null,

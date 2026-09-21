@@ -22,7 +22,7 @@ const base = (overrides = {}) => ({
     stages: STAGES,
     stage_labels: LABELS,
     status: 'approved',
-    project_name: 'Plant Expansion',
+    company_name: 'Plant Expansion',
     department: 'Operations',
     requested_by_name: 'Admin User',
     date: '2026-09-01',

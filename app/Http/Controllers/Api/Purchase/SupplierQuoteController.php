@@ -34,7 +34,7 @@ class SupplierQuoteController extends Controller
         return [
             'id' => $purchaseRequest->id,
             'request_number' => $purchaseRequest->request_number,
-            'project_name' => $purchaseRequest->project_name,
+            'company_name' => $purchaseRequest->company_name,
             'stage' => $purchaseRequest->stage,
             'quote_count' => $quotes->count(),
             'items' => $purchaseRequest->items->map(fn ($item) => $this->itemPayload($quotes, $item))->values(),

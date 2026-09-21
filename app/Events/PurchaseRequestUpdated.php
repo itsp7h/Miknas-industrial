@@ -45,7 +45,7 @@ class PurchaseRequestUpdated implements ShouldBroadcastNow
             'id' => $this->purchaseRequestId,
             'request_number' => $this->requestNumber,
             'date' => $this->date,
-            'project_name' => $this->projectName,
+            'company_name' => $this->projectName,
             'requested_by_name' => $this->requestedByName,
             'department' => $this->department,
             'stage' => $this->stage,

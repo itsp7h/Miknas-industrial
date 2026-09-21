@@ -18,7 +18,7 @@ const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receivin
 
 const COLUMNS = [
     { key: 'request_number', label: 'Request #' },
-    { key: 'project_name', label: 'Project' },
+    { key: 'company_name', label: 'Project' },
     { key: 'department', label: 'Department' },
     { key: 'requested_by_name', label: 'Requested By' },
     {
@@ -110,7 +110,7 @@ export default function PipelineBoardPage({
 
     // .purchase-request.stage-changed carries only {id, request_number, stage} — a
     // wholesale upsert (as useLiveList's default `event` handler does) would blank
-    // out project_name/department/etc. on the existing row, so this is subscribed
+    // out company_name/department/etc. on the existing row, so this is subscribed
     // separately here and merged shallowly onto the matching row instead.
     useEffect(() => {
         const ch = echo.private('purchase');

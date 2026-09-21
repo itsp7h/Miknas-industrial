@@ -45,9 +45,9 @@ export default function RequestModal({
     const today = options?.today ?? '';
 
     // The field names the company now, though the column it writes is still
-    // `project_name` — renaming that reaches the sheet, the print and the board,
+    // `company_name` — renaming that reaches the sheet, the print and the board,
     // and is worth its own change.
-    const company = companies.find((c) => c.name === values.project_name);
+    const company = companies.find((c) => c.name === values.company_name);
     // Locations still belong to projects, so a company offers every location
     // under its own projects.
     const locations = company?.locations ?? [];
@@ -106,7 +106,7 @@ export default function RequestModal({
 
                         <CompanyPicker
                             companies={companies}
-                            value={values.project_name}
+                            value={values.company_name}
                             onChange={(name) => setValues((current) => {
                                 // A location belongs to one company's projects, so it
                                 // cannot survive the company changing under it. Where the
@@ -117,7 +117,7 @@ export default function RequestModal({
 
                                 return {
                                     ...current,
-                                    project_name: name,
+                                    company_name: name,
                                     location: offered.length === 1 ? offered[0] : '',
                                 };
                             })}
@@ -149,7 +149,7 @@ export default function RequestModal({
                         />
 
                         <div>
-                            <label className="form-label" htmlFor="mpr-location">Location / Site</label>
+                            <label className="form-label" htmlFor="mpr-location">Location / Project</label>
                             <select
                                 id="mpr-location" className="form-input"
                                 disabled={locations.length === 0}

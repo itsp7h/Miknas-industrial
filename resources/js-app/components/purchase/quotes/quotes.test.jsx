@@ -21,7 +21,7 @@ const row = (supplier, price, overrides = {}) => ({
 });
 
 const workspace = (overrides = {}) => ({
-    id: 7, request_number: 'MPR-0007', project_name: 'Plant Expansion', stage: 'comparison',
+    id: 7, request_number: 'MPR-0007', company_name: 'Plant Expansion', stage: 'comparison',
     quote_count: 2,
     items: [{
         id: 11, description: 'Steel plate', quantity: 2, unit: 'PCS',

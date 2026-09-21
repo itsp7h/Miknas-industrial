@@ -19,7 +19,7 @@ const LABELS = {
 const base = (overrides = {}) => ({
     id: 3, request_number: 'MPR-0003', stage: 'gm_approval', stage_index: 1, progress_pct: 12,
     is_done: false, stages: STAGES, stage_labels: LABELS, status: 'pending',
-    project_name: null, department: null, requested_by_name: 'Admin User', date: null,
+    company_name: null, department: null, requested_by_name: 'Admin User', date: null,
     created_at: '2026-09-01', location: null, required_date_text: null, verified_by_name: null,
     signature: null, rejection: null, rfq_invitations: [], pending_invitation_count: 0, sent_invitation_count: 0,
     items: [], supplier_quotes: [], awarded_supplier_names: [], purchase_orders: [],

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Settings\Company;
+use App\Models\Settings\ProjectSetting;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,7 +12,7 @@ class PurchaseRequest extends Model
     use HasFactory;
 
     protected $fillable = [
-        'request_number', 'date', 'project_name', 'department',
+        'request_number', 'date', 'company_name', 'department',
         'requested_by_name', 'required_date_text', 'location',
         'remarks', 'status', 'stage', 'verified_by_name',
         'requested_by', 'approved_by', 'approved_at',
@@ -22,6 +24,24 @@ class PurchaseRequest extends Model
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
     ];
+
+    /**
+     * The company this request belongs to, as a record.
+     *
+     * `company_name` holds whatever the MPR form named. Requests raised before
+     * that field listed companies hold a *project* name, so a project of that
+     * name is tried next and its company taken — otherwise every historical
+     * LPO would lose the company from its letterhead the day the form changed.
+     */
+    public function resolveCompany(): ?Company
+    {
+        if (! $this->company_name) {
+            return null;
+        }
+
+        return Company::where('name', $this->company_name)->first()
+            ?? ProjectSetting::where('name', $this->company_name)->with('company')->first()?->company;
+    }
 
     public function items()
     {
