@@ -31,9 +31,10 @@ describe('PipelineBoardPage (desktop)', () => {
         // A request belongs to both, and one column standing in for the other
         // is what the single field got wrong.
         expect(await screen.findByText('MPR26-0001')).toBeInTheDocument();
-        const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
-        expect(headers).toContain('Company');
-        expect(headers).toContain('Project');
+        // Order matters: Project reads as a detail of the department's work,
+        // so it sits after it rather than between Company and Department.
+        expect(screen.getAllByRole('columnheader').map((th) => th.textContent))
+            .toEqual(['Request #', 'Company', 'Department', 'Project', 'Requested By', 'Stage', 'Date', '']);
         expect(screen.getByText('Miknas Industrial')).toBeInTheDocument();
         expect(screen.getByText('Forkoll')).toBeInTheDocument();
     });

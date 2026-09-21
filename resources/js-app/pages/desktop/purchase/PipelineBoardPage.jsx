@@ -19,8 +19,8 @@ const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receivin
 const COLUMNS = [
     { key: 'request_number', label: 'Request #' },
     { key: 'company_name', label: 'Company' },
-    { key: 'project_name', label: 'Project' },
     { key: 'department', label: 'Department' },
+    { key: 'project_name', label: 'Project' },
     { key: 'requested_by_name', label: 'Requested By' },
     {
         key: 'stage',
