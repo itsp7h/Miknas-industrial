@@ -74,6 +74,8 @@ import DesktopProfilePage from './pages/desktop/profile/ProfilePage';
 import MobileProfilePage from './pages/mobile/profile/ProfilePage';
 import DesktopFinancePage from './pages/desktop/settings/FinancePage';
 import MobileFinancePage from './pages/mobile/settings/FinancePage';
+import DesktopGeneralSettingsPage from './pages/desktop/settings/GeneralSettingsPage';
+import MobileGeneralSettingsPage from './pages/mobile/settings/GeneralSettingsPage';
 import DesktopItemCategoryPage from './pages/desktop/settings/ItemCategoryPage';
 import MobileItemCategoryPage from './pages/mobile/settings/ItemCategoryPage';
 import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
@@ -120,6 +122,7 @@ export default function App({
     const IntegrationsPage = viewport === 'mobile' ? MobileIntegrationsPage : DesktopIntegrationsPage;
     const FinancePage = viewport === 'mobile' ? MobileFinancePage : DesktopFinancePage;
     const ItemCategoryPage = viewport === 'mobile' ? MobileItemCategoryPage : DesktopItemCategoryPage;
+    const GeneralSettingsPage = viewport === 'mobile' ? MobileGeneralSettingsPage : DesktopGeneralSettingsPage;
     const ProfilePage = viewport === 'mobile' ? MobileProfilePage : DesktopProfilePage;
 
     return (
@@ -213,6 +216,7 @@ export default function App({
                         element={<Navigate to="/app/settings/finance" replace />}
                     />
                     <Route path="/app/settings/item-categories" element={<ItemCategoryPage />} />
+                    <Route path="/app/settings/general" element={<GeneralSettingsPage />} />
                     <Route path="/app/profile" element={<ProfilePage />} />
                     <Route path="*" element={<div>Page not found.</div>} />
                 </Routes>

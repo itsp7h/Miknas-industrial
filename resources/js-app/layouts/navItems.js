@@ -93,6 +93,7 @@ export const NAV_GROUPS = [
             { type: 'link', to: '/app/settings/integrations', label: 'Integrations', icon: COG, adminOnly: true },
             { type: 'link', to: '/app/settings/finance', label: 'Finance', icon: RECEIPT, permission: 'finance.view' },
             { type: 'link', to: '/app/settings/item-categories', label: 'Item Categories', icon: BOX, permission: 'item-categories.view' },
+            { type: 'link', to: '/app/settings/general', label: 'Settings', icon: COG, permission: 'settings.view' },
         ],
     },
 ];

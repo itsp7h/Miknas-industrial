@@ -125,6 +125,14 @@ return [
             'label' => 'Finance',
             'actions' => ['view', 'edit'],
         ],
+        // Empty for now — the page is a placeholder until we know what belongs
+        // on it. It is a tab from the start so access to it is grantable the
+        // day it has something on it, rather than being bolted on after.
+        'settings' => [
+            'group' => 'System',
+            'label' => 'Settings',
+            'actions' => ['view', 'edit'],
+        ],
     ],
 
     /*
