@@ -187,6 +187,46 @@ describe('settings UserListPage', () => {
         expect(await screen.findByText('The email has already been taken.')).toBeInTheDocument();
     });
 
+    it('puts the profile\u2019s squares back with Reset to default', async () => {
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Alan Operations');
+        fireEvent.click(screen.getAllByText('Edit Access')[0]);
+        await screen.findByText('Edit Access — Alan Operations');
+
+        // Alan holds pipeline.view only; take it away and add one he has not got.
+        fireEvent.click(screen.getByLabelText('Pipeline View'));
+        fireEvent.click(screen.getByLabelText('Pipeline Delete'));
+        expect(screen.getByLabelText('Pipeline View')).not.toBeChecked();
+        expect(screen.getByLabelText('Pipeline Delete')).toBeChecked();
+
+        fireEvent.click(screen.getByText('Reset to default'));
+
+        // Back to what the Operation Manager profile grants, no more.
+        expect(screen.getByLabelText('Pipeline View')).toBeChecked();
+        expect(screen.getByLabelText('Pipeline Create')).toBeChecked();
+        expect(screen.getByLabelText('Pipeline Delete')).not.toBeChecked();
+    });
+
+    it('saves exactly the squares that are ticked, nothing inherited', async () => {
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({
+            message: 'Access updated for Alan Operations.', data: PAYLOAD.data[0],
+        });
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Alan Operations');
+        fireEvent.click(screen.getAllByText('Edit Access')[0]);
+        await screen.findByText('Edit Access — Alan Operations');
+
+        fireEvent.click(screen.getByLabelText('Pipeline View'));
+        fireEvent.click(screen.getByText('Save'));
+
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/users/1', {
+            roles: ['Operation Manager'],
+            permissions: [],
+        }));
+    });
+
     it('opens the reset-password modal for the chosen user, email mode first', async () => {
         wrap(DesktopUserListPage);
 

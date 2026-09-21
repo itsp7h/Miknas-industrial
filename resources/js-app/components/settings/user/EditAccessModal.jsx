@@ -11,8 +11,10 @@ const SECTION_LABEL = {
 /**
  * Pick the person's profile, then adjust any square of the grid.
  *
- * The profile is a starting point, not a cage: whatever someone holds, an Admin
- * can grant or remove any single tab-and-action from them here.
+ * What is ticked here is exactly what the person gets — no more, no less. The
+ * profile is a template: choosing one lays its squares down, and "Reset to
+ * default" puts them back after they have been fiddled with. Roles grant
+ * nothing of their own, so unticking a square really does take it away.
  */
 export default function EditAccessModal({ user, profiles, grid, onClose, onSave }) {
     const [profile, setProfile] = useState('');
@@ -30,11 +32,27 @@ export default function EditAccessModal({ user, profiles, grid, onClose, onSave 
         setError('');
     }, [user]);
 
+    /** What the chosen profile starts a person off with. */
+    function defaultsFor(name) {
+        const chosen = profiles.find((option) => option.name === name);
+
+        return chosen ? [...chosen.permissions] : [];
+    }
+
     /** Picking a profile lays its squares down; from there they are editable. */
     function chooseProfile(name) {
         setProfile(name);
-        const chosen = profiles.find((option) => option.name === name);
-        setSelectedPermissions(chosen ? [...chosen.permissions] : []);
+        setSelectedPermissions(defaultsFor(name));
+    }
+
+    /**
+     * Back to the profile's own set, discarding every adjustment made since.
+     * It only fills the form in — nothing is written until Save, so a misclick
+     * costs a Cancel rather than somebody's access.
+     */
+    function resetToDefault() {
+        setSelectedPermissions(defaultsFor(profile));
+        setAdvancedOpen(true);
     }
 
     async function save() {
@@ -76,8 +94,9 @@ export default function EditAccessModal({ user, profiles, grid, onClose, onSave 
                 {advancedOpen && (
                     <>
                         <p style={{ fontSize: 12, color: '#94a3b8', margin: '8px 0 12px' }}>
-                            What this person can reach, and what they can do there. The profile
-                            above fills this in; every square is yours to change.
+                            What this person can reach, and what they can do there — exactly
+                            this, nothing else. The profile above fills it in; every square is
+                            yours to change.
                         </p>
                         <AccessGrid grid={grid} value={selectedPermissions} onChange={setSelectedPermissions} />
                     </>
@@ -86,11 +105,21 @@ export default function EditAccessModal({ user, profiles, grid, onClose, onSave 
 
             {error && <p style={{ color: '#dc2626', fontSize: 12, marginTop: 14 }}>{error}</p>}
 
-            <div className="mt-6 flex items-center justify-end gap-3">
-                <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-                <button type="button" onClick={save} className="btn-primary" disabled={saving}>
-                    {saving ? 'Saving…' : 'Save'}
+            <div className="mt-6 flex items-center justify-between gap-3">
+                <button
+                    type="button" onClick={resetToDefault} className="btn-secondary"
+                    disabled={saving} title={profile
+                        ? `Put back everything the ${profile} profile grants`
+                        : 'No profile chosen — this clears every square'}
+                >
+                    Reset to default
                 </button>
+                <div className="flex items-center gap-3">
+                    <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+                    <button type="button" onClick={save} className="btn-primary" disabled={saving}>
+                        {saving ? 'Saving…' : 'Save'}
+                    </button>
+                </div>
             </div>
         </Modal>
     );

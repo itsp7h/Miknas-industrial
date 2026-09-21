@@ -60,6 +60,10 @@ class UserController extends Controller
         }
 
         $user->syncRoles($validated['roles'] ?? []);
+        // The role grants nothing by itself, so the profile's squares are
+        // written onto the person here. Without this a new user would hold a
+        // profile and no access at all.
+        $user->syncPermissions(AccessCatalog::defaultPermissionsFor($validated['roles'][0] ?? null));
 
         $message = $user->name.' created.';
 

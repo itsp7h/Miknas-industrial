@@ -55,27 +55,45 @@ class AccessSeederTest extends TestCase
             Role::pluck('name')->all()
         );
 
-        // Admin is granted nothing: Gate::before passes it through every
-        // ability, and listing them here would invite one being removed.
-        $this->assertCount(0, Role::where('name', 'Admin')->first()->permissions);
+        // No role grants anything. A profile is a template applied to a person
+        // when it is chosen for them; a role holding permissions of its own
+        // would keep handing back access the Users page had taken away.
+        foreach (Role::with('permissions')->get() as $role) {
+            $this->assertCount(0, $role->permissions, "{$role->name} should grant nothing itself");
+        }
+    }
 
+    /**
+     * The templates themselves still describe each profile, since that is what
+     * the Users page lays down and what "Reset to default" puts back.
+     */
+    public function test_each_profile_template_describes_what_it_grants(): void
+    {
         // Operation Manager raises purchase requests, and that is all for now.
         $this->assertEqualsCanonicalizing(
             ['pipeline.view', 'pipeline.create', 'pipeline.view-own'],
-            Role::where('name', 'Operation Manager')->first()->permissions->pluck('name')->all()
+            AccessCatalog::defaultPermissionsFor('Operation Manager')
         );
 
         // The GM signs off; it does not raise or award what it approves.
-        $gm = Role::where('name', 'GM')->first();
-        $this->assertTrue($gm->hasPermissionTo('pipeline.approve'));
-        $this->assertFalse($gm->hasPermissionTo('pipeline.create'));
-        $this->assertFalse($gm->hasPermissionTo('raw-materials.edit'));
+        $gm = AccessCatalog::defaultPermissionsFor('GM');
+        $this->assertContains('pipeline.approve', $gm);
+        $this->assertNotContains('pipeline.create', $gm);
+        $this->assertNotContains('raw-materials.edit', $gm);
 
         // Finance owns both sides of the money and nothing else.
-        $finance = Role::where('name', 'Finance')->first();
-        $this->assertTrue($finance->hasPermissionTo('supplier-payments.create'));
-        $this->assertTrue($finance->hasPermissionTo('supplier-invoices.delete'));
-        $this->assertFalse($finance->hasPermissionTo('raw-materials.edit'));
+        $finance = AccessCatalog::defaultPermissionsFor('Finance');
+        $this->assertContains('supplier-payments.create', $finance);
+        $this->assertContains('supplier-invoices.delete', $finance);
+        $this->assertNotContains('raw-materials.edit', $finance);
+
+        // Admin is granted nothing: Gate::before passes it through every
+        // ability, and listing them here would invite one being removed.
+        $this->assertSame([], AccessCatalog::defaultPermissionsFor('Admin'));
+
+        // An unknown or absent profile is simply no squares.
+        $this->assertSame([], AccessCatalog::defaultPermissionsFor(null));
+        $this->assertSame([], AccessCatalog::defaultPermissionsFor('Nobody'));
     }
 
     /**
