@@ -47,6 +47,7 @@ describe('desktop SalesOrderDetailPage', () => {
     it('lists line items with delivered quantities', async () => {
         renderAt(1);
         expect(await screen.findByText('Widget')).toBeInTheDocument();
+        // A delivered count, not an amount: no symbol.
         expect(screen.getByText(/1.00 delivered/)).toBeInTheDocument();
     });
 
@@ -65,7 +66,7 @@ describe('desktop SalesOrderDetailPage', () => {
         await screen.findByText('Widget');
         const footer = container.querySelector('tfoot');
         expect(footer).toHaveTextContent('Total');
-        expect(footer).toHaveTextContent('100.00');
+        expect(footer).toHaveTextContent('BD 100.000');
     });
 
     // The page had no actions at all: no way to confirm, edit, or raise a

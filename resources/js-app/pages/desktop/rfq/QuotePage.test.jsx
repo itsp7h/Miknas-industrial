@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { StrictMode } from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import DesktopQuotePage from './QuotePage';
 import MobileQuotePage from '../../mobile/rfq/QuotePage';
@@ -293,5 +294,39 @@ describe('RFQ QuotePage (desktop specifics)', () => {
         expect(within(table).getByText('Unit Price (BD)')).toBeInTheDocument();
         expect(within(table).getByText('Grand Total:')).toBeInTheDocument();
         expect(within(table).getAllByRole('row')).toHaveLength(2 + 1 + 3);
+    });
+});
+
+/**
+ * rfq.jsx mounts the portal inside <StrictMode>, which double-invokes effects
+ * in development. The loader guarded itself with a ref *and* a cleanup flag,
+ * and the two cancelled out: the first mount's cleanup cleared the flag, the
+ * second mount's ref check skipped the refetch, and the single response was
+ * discarded — leaving the supplier on "Loading your quote request…" for ever.
+ *
+ * Every other test here renders the page bare, so none of them saw it. This
+ * one mounts it the way the entry point does.
+ */
+describe.each([
+    ['desktop', DesktopQuotePage],
+    ['mobile', MobileQuotePage],
+])('RFQ QuotePage (%s) under StrictMode', (_name, Page) => {
+    it('leaves the loading state, fetching exactly once', async () => {
+        const load = vi.fn().mockResolvedValue(openPayload());
+        const send = vi.fn();
+
+        render(
+            <StrictMode>
+                <Page token={TOKEN} load={load} send={send} />
+            </StrictMode>
+        );
+
+        // The quote form appears — the payload was applied, not dropped.
+        expect(await screen.findByText('Steel rod 12mm')).toBeInTheDocument();
+        expect(screen.queryByText(/Loading your quote request/i)).not.toBeInTheDocument();
+
+        // GET /rfq/{token} marks the invitation opened and issues the session's
+        // confirmation code, so the double mount must not double-request it.
+        expect(load).toHaveBeenCalledTimes(1);
     });
 });

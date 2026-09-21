@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import WarehouseListPage from './WarehouseListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import * as client from '../../../api/client';
@@ -13,11 +14,15 @@ vi.mock('../../../echo', () => ({
 }));
 
 const WAREHOUSES = [
-    { id: 1, code: 'WH-MAIN', name: 'Main Store', location: 'Sitra', is_active: true },
-    { id: 2, code: 'WH-YARD', name: 'Yard', location: null, is_active: false },
+    { id: 1, code: 'WH-MAIN', name: 'Main Store', location: 'Sitra', latitude: 26.1421, longitude: 50.5832, is_active: true },
+    // No pin: recorded before the map picker, or cleared since.
+    { id: 2, code: 'WH-YARD', name: 'Yard', location: null, latitude: null, longitude: null, is_active: false },
 ];
 
-const renderPage = () => render(<ToastProvider><WarehouseListPage /></ToastProvider>);
+// Each row links at the warehouse's own page now, so the tree needs a router.
+const renderPage = () => render(
+    <ToastProvider><MemoryRouter><WarehouseListPage /></MemoryRouter></ToastProvider>
+);
 
 describe('desktop WarehouseListPage', () => {
     beforeEach(() => {
@@ -42,6 +47,24 @@ describe('desktop WarehouseListPage', () => {
         // Button label now matches the Blade header: "+ Add Warehouse".
         fireEvent.click(screen.getByText('+ Add Warehouse'));
         expect(await screen.findByLabelText('Code')).toBeInTheDocument();
+    });
+
+    it('opens the create form on a map, not a bare Location box', async () => {
+        renderPage();
+        await screen.findByText('Main Store');
+        fireEvent.click(screen.getByText('+ Add Warehouse'));
+        expect(await screen.findByTestId('warehouse-map')).toBeInTheDocument();
+    });
+
+    // A stored pin is worth nothing if no one can open it.
+    it('links a pinned row at the map and leaves an unpinned one alone', async () => {
+        renderPage();
+        await screen.findByText('Main Store');
+
+        const links = screen.getAllByText('📍 View on map');
+        expect(links).toHaveLength(1);
+        expect(links[0]).toHaveAttribute('href', expect.stringContaining('mlat=26.1421'));
+        expect(links[0]).toHaveAttribute('target', '_blank');
     });
 
     /**
@@ -88,4 +111,11 @@ describe('desktop WarehouseListPage', () => {
             expect(screen.getByText(/deactivated rather than deleted/)).toBeInTheDocument();
         });
     });
+    /** Clicking a warehouse is how you see what is in it. */
+    it('links each warehouse name at its own page', async () => {
+        renderPage();
+        const link = (await screen.findByText('Main Store')).closest('a');
+        expect(link).toHaveAttribute('href', '/app/inventory/warehouses/1');
+    });
+
 });

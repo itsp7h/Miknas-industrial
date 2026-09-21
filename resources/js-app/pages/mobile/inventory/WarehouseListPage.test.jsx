@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import WarehouseListPage from './WarehouseListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import * as client from '../../../api/client';
@@ -17,7 +18,10 @@ const WAREHOUSES = [
     { id: 2, code: 'WH-YARD', name: 'Yard', location: 'Askar', is_active: false },
 ];
 
-const renderPage = () => render(<ToastProvider><WarehouseListPage /></ToastProvider>);
+// Each row links at the warehouse's own page now, so the tree needs a router.
+const renderPage = () => render(
+    <ToastProvider><MemoryRouter><WarehouseListPage /></MemoryRouter></ToastProvider>
+);
 
 describe('mobile WarehouseListPage', () => {
     beforeEach(() => {

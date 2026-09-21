@@ -1,5 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './layouts/AppShell';
+import RequirePermission from './layouts/RequirePermission';
 import { RequestModalProvider } from './components/purchase/requests/RequestModalProvider';
 import useViewport from './hooks/useViewport';
 import DesktopDashboardPage from './pages/desktop/DashboardPage';
@@ -30,10 +31,10 @@ import DesktopItemListPage from './pages/desktop/inventory/ItemListPage';
 import MobileItemListPage from './pages/mobile/inventory/ItemListPage';
 import DesktopWarehouseListPage from './pages/desktop/inventory/WarehouseListPage';
 import MobileWarehouseListPage from './pages/mobile/inventory/WarehouseListPage';
+import DesktopWarehouseDetailPage from './pages/desktop/inventory/WarehouseDetailPage';
+import MobileWarehouseDetailPage from './pages/mobile/inventory/WarehouseDetailPage';
 import DesktopStockMovementPage from './pages/desktop/inventory/StockMovementPage';
 import MobileStockMovementPage from './pages/mobile/inventory/StockMovementPage';
-import DesktopStockSummaryPage from './pages/desktop/inventory/reports/StockSummaryPage';
-import MobileStockSummaryPage from './pages/mobile/inventory/reports/StockSummaryPage';
 import DesktopMovementReportPage from './pages/desktop/inventory/reports/MovementReportPage';
 import MobileMovementReportPage from './pages/mobile/inventory/reports/MovementReportPage';
 import DesktopLowStockPage from './pages/desktop/inventory/reports/LowStockPage';
@@ -70,13 +71,15 @@ import DesktopIntegrationsPage from './pages/desktop/settings/IntegrationsPage';
 import MobileIntegrationsPage from './pages/mobile/settings/IntegrationsPage';
 import DesktopProfilePage from './pages/desktop/profile/ProfilePage';
 import MobileProfilePage from './pages/mobile/profile/ProfilePage';
-import DesktopVatPage from './pages/desktop/settings/VatPage';
-import MobileVatPage from './pages/mobile/settings/VatPage';
+import DesktopFinancePage from './pages/desktop/settings/FinancePage';
+import MobileFinancePage from './pages/mobile/settings/FinancePage';
+import DesktopItemCategoryPage from './pages/desktop/settings/ItemCategoryPage';
+import MobileItemCategoryPage from './pages/mobile/settings/ItemCategoryPage';
 import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
 import MobileProductionOutputListPage from './pages/mobile/production/ProductionOutputListPage';
 
 export default function App({
-    currentUserId, userName, userEmail, isAdmin, logoutUrl, csrfToken,
+    currentUserId, userName, userEmail, isAdmin, permissions = [], logoutUrl, csrfToken,
     canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
 }) {
     const viewport = useViewport();
@@ -94,8 +97,8 @@ export default function App({
     const PurchaseOrderDetailPage = viewport === 'mobile' ? MobilePurchaseOrderDetailPage : DesktopPurchaseOrderDetailPage;
     const ItemListPage = viewport === 'mobile' ? MobileItemListPage : DesktopItemListPage;
     const WarehouseListPage = viewport === 'mobile' ? MobileWarehouseListPage : DesktopWarehouseListPage;
+    const WarehouseDetailPage = viewport === 'mobile' ? MobileWarehouseDetailPage : DesktopWarehouseDetailPage;
     const StockMovementPage = viewport === 'mobile' ? MobileStockMovementPage : DesktopStockMovementPage;
-    const StockSummaryPage = viewport === 'mobile' ? MobileStockSummaryPage : DesktopStockSummaryPage;
     const MovementReportPage = viewport === 'mobile' ? MobileMovementReportPage : DesktopMovementReportPage;
     const LowStockPage = viewport === 'mobile' ? MobileLowStockPage : DesktopLowStockPage;
     const ValuationPage = viewport === 'mobile' ? MobileValuationPage : DesktopValuationPage;
@@ -114,7 +117,8 @@ export default function App({
     const ProjectSettingsPage = viewport === 'mobile' ? MobileProjectSettingsPage : DesktopProjectSettingsPage;
     const UserListPage = viewport === 'mobile' ? MobileUserListPage : DesktopUserListPage;
     const IntegrationsPage = viewport === 'mobile' ? MobileIntegrationsPage : DesktopIntegrationsPage;
-    const VatPage = viewport === 'mobile' ? MobileVatPage : DesktopVatPage;
+    const FinancePage = viewport === 'mobile' ? MobileFinancePage : DesktopFinancePage;
+    const ItemCategoryPage = viewport === 'mobile' ? MobileItemCategoryPage : DesktopItemCategoryPage;
     const ProfilePage = viewport === 'mobile' ? MobileProfilePage : DesktopProfilePage;
 
     return (
@@ -123,6 +127,7 @@ export default function App({
             userName={userName}
             userEmail={userEmail}
             isAdmin={isAdmin}
+            permissions={permissions}
             logoutUrl={logoutUrl}
             csrfToken={csrfToken}
         >
@@ -130,6 +135,9 @@ export default function App({
                 board opens the new-request form, the detail page opens the edit
                 form, and neither owns it. */}
             <RequestModalProvider>
+                {/* Hiding a tab is not closing it: someone who knows the URL
+                    used to land on a page that then failed every fetch. */}
+                <RequirePermission isAdmin={isAdmin} permissions={permissions}>
                 <Routes>
                     <Route path="/app" element={<DashboardPage currentUserId={currentUserId} userName={userName} />} />
                     <Route path="/app/purchase/suppliers" element={<SupplierListPage />} />
@@ -151,9 +159,30 @@ export default function App({
                     <Route path="/app/purchase/invoices" element={<SupplierInvoiceListPage />} />
                     <Route path="/app/purchase/payments" element={<SupplierPaymentListPage />} />
                     <Route path="/app/inventory/items" element={<ItemListPage />} />
+                    {/* Same page over the other slice of items.category. Your own
+                        product is made and sold, not bought and consumed, so it
+                        does not belong on a page called Raw Materials. */}
+                    <Route
+                        path="/app/inventory/finished-goods"
+                        element={(
+                            <ItemListPage
+                                category="finished_good"
+                                title="Finished Goods"
+                                subtitle="Product made in-house and sold"
+                            />
+                        )}
+                    />
                     <Route path="/app/inventory/warehouses" element={<WarehouseListPage />} />
+                    <Route path="/app/inventory/warehouses/:id" element={<WarehouseDetailPage />} />
                     <Route path="/app/inventory/movements" element={<StockMovementPage />} />
-                    <Route path="/app/inventory/reports/summary" element={<StockSummaryPage />} />
+                    {/* The stock summary is gone: the Raw Materials page answers the same
+                        question, and its warehouse filter rescopes each row to one
+                        warehouse, which is the per-line view this report existed for.
+                        The URL was in the sidebar for long enough to be bookmarked. */}
+                    <Route
+                        path="/app/inventory/reports/summary"
+                        element={<Navigate to="/app/inventory/items" replace />}
+                    />
                     <Route path="/app/inventory/reports/movement" element={<MovementReportPage />} />
                     <Route path="/app/inventory/reports/low-stock" element={<LowStockPage />} />
                     <Route path="/app/inventory/reports/valuation" element={<ValuationPage />} />
@@ -172,10 +201,18 @@ export default function App({
                     <Route path="/app/settings/projects" element={<ProjectSettingsPage />} />
                     <Route path="/app/settings/users" element={<UserListPage />} />
                     <Route path="/app/settings/integrations" element={<IntegrationsPage />} />
-                    <Route path="/app/settings/vat" element={<VatPage />} />
+                    <Route path="/app/settings/finance" element={<FinancePage />} />
+                    {/* VAT had its own page and its own menu entry; both are now
+                        Finance. The URL was linked long enough to be bookmarked. */}
+                    <Route
+                        path="/app/settings/vat"
+                        element={<Navigate to="/app/settings/finance" replace />}
+                    />
+                    <Route path="/app/settings/item-categories" element={<ItemCategoryPage />} />
                     <Route path="/app/profile" element={<ProfilePage />} />
                     <Route path="*" element={<div>Page not found.</div>} />
                 </Routes>
+                </RequirePermission>
             </RequestModalProvider>
         </AppShell>
     );

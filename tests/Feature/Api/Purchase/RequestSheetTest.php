@@ -20,7 +20,10 @@ class RequestSheetTest extends TestCase
     private function requester(): User
     {
         $user = User::factory()->create();
-        $user->assignRole('Requester');
+        $user->givePermissionTo([
+            'pipeline.view', 'pipeline.create', 'pipeline.edit',
+            'pipeline.delete', 'pipeline.view-own',
+        ]);
 
         return $user;
     }

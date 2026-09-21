@@ -13,6 +13,7 @@ use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\Settings\Department;
 use App\Models\Settings\ProjectSetting;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -42,8 +43,8 @@ class PurchaseRequestController extends Controller
         // Either form needs this list, and the two are gated by different
         // permissions — creating a request and editing one are separate grants.
         abort_unless(
-            $request->user()->can('purchase-requests.create')
-                || $request->user()->can('purchase-requests.edit'),
+            $request->user()->can('pipeline.create')
+                || $request->user()->can('pipeline.edit'),
             403
         );
 
@@ -67,6 +68,10 @@ class PurchaseRequestController extends Controller
             ])->values(),
             'departments' => Department::where('is_active', true)->orderBy('name')
                 ->get(['id', 'name', 'company_id']),
+            // Requested By names a person, and a free-text box spelled the same
+            // one three ways. The form picks from these; only the name is
+            // stored, since requested_by stays whoever created the request.
+            'requesters' => User::orderBy('name')->pluck('name')->values(),
             'units' => self::UNITS,
             'today' => now()->toDateString(),
         ]);

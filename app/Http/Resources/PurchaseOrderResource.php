@@ -23,6 +23,10 @@ class PurchaseOrderResource extends JsonResource
             'expected_delivery_date' => $this->expected_delivery_date?->toDateString(),
             'total_amount' => $this->total_amount,
             'status' => $this->status ?? 'draft',
+            // Kept apart from `status`, which says 'sent' from the moment an
+            // LPO is generated. These two say whether an email actually left.
+            'sent_at' => $this->sent_at?->toIso8601String(),
+            'sent_to' => $this->sent_to,
             'notes' => $this->notes,
             'created_by_name' => $this->whenLoaded('createdBy', fn () => $this->createdBy?->name),
             'items' => PurchaseOrderItemResource::collection($this->whenLoaded('items')),

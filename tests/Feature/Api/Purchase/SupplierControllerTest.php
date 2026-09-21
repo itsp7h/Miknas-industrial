@@ -17,9 +17,11 @@ class SupplierControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Admin: these tests are about suppliers, not about who may reach them. */
     private function actingUser(): User
     {
         $user = User::factory()->create();
+        $user->assignRole('Admin');
         $this->actingAs($user);
 
         return $user;

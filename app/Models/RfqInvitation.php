@@ -10,6 +10,9 @@ class RfqInvitation extends Model
 {
     use HasFactory;
 
+    /** How long an invitation stays open. Quoted by the email and the WhatsApp text. */
+    public const EXPIRY_DAYS = 14;
+
     protected $fillable = [
         'purchase_request_id', 'supplier_id', 'token', 'channel',
         'sent_at', 'opened_at', 'expires_at', 'status', 'item_ids',
@@ -21,6 +24,16 @@ class RfqInvitation extends Model
         'expires_at' => 'datetime',
         'item_ids' => 'array',
     ];
+
+    /**
+     * The invitation's own lifetime in whole days, for the messages that state
+     * it in prose. Taken from the record rather than repeated as a literal, so
+     * a changed expiry cannot leave the wording behind.
+     */
+    public function expiresInDays(): int
+    {
+        return (int) round($this->created_at->diffInDays($this->expires_at));
+    }
 
     public function purchaseRequest()
     {

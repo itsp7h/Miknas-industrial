@@ -1,10 +1,13 @@
+import { money as formatMoney } from '../../currency';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiGet, apiPost } from '../../api/client';
 
 /** Three decimals everywhere, because BD prices are quoted in fils. */
 export const round3 = (value) => Math.round((Number(value) || 0) * 1000) / 1000;
 
-export const money = (value) => `BD ${round3(value).toFixed(3)}`;
+// The portal is public and has no shell to read the configured currency from,
+// so it takes the default rather than guessing.
+export const money = (value) => formatMoney(round3(value));
 
 /** 10.500 → "10.5", 10.000 → "10" — quantities read better without the padding. */
 export function qty(value) {
@@ -41,20 +44,25 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
     const [formError, setFormError] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    // StrictMode mounts effects twice in development. The read is harmless to
-    // repeat — the confirmation code is stable per session — but painting the
-    // second response over the first is not, so the later one is ignored.
+    // StrictMode mounts effects twice in development, and GET /rfq/{token} is not
+    // a plain read — it flips the invitation to 'opened' and issues the session's
+    // confirmation code — so the fetch is made once and once only.
+    //
+    // This ref is the whole guard. It used to be paired with a `live` flag
+    // cleared on cleanup, which cancelled the one request the ref allowed: the
+    // cleanup from the first mount set live=false, the second mount returned
+    // early rather than refetching, and the response that did arrive was
+    // dropped on the floor. The portal then sat on "Loading your quote
+    // request…" for ever — in development only, which is why it was invisible
+    // on staging and production, where StrictMode does not double-invoke.
     const loaded = useRef(false);
 
     useEffect(() => {
         if (loaded.current) return;
         loaded.current = true;
 
-        let live = true;
-
         load(`/rfq/${token}`)
             .then((response) => {
-                if (!live) return;
                 setPayload(response);
                 setRows(
                     Object.fromEntries(
@@ -63,13 +71,8 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
                 );
             })
             .catch((err) => {
-                if (!live) return;
                 setLoadError(err?.message || 'This quote request could not be loaded.');
             });
-
-        return () => {
-            live = false;
-        };
     }, [token, load]);
 
     const invitation = payload?.data ?? null;

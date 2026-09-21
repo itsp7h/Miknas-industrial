@@ -1,7 +1,9 @@
+import { Link } from 'react-router-dom';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import WarehouseForm from '../../../components/inventory/warehouse/WarehouseForm';
 import useWarehouseList from '../../../components/inventory/warehouse/useWarehouseList';
+import mapLink from '../../../components/map/mapLink';
 
 export default function WarehouseListPage() {
     const w = useWarehouseList();
@@ -47,7 +49,12 @@ export default function WarehouseListPage() {
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                         <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14 }}>{warehouse.name}</div>
+                            <Link
+                                to={`/app/inventory/warehouses/${warehouse.id}`}
+                                style={{ fontWeight: 600, color: '#2563eb', fontSize: 14 }}
+                            >
+                                {warehouse.name}
+                            </Link>
                             <div className="font-mono" style={{ fontSize: 11, color: '#94a3b8' }}>{warehouse.code}</div>
                         </div>
                         <span className={warehouse.is_active ? 'badge-green' : 'badge-gray'} style={{ flexShrink: 0 }}>
@@ -57,6 +64,18 @@ export default function WarehouseListPage() {
 
                     {warehouse.location && (
                         <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{warehouse.location}</div>
+                    )}
+
+                    {mapLink(warehouse.latitude, warehouse.longitude) && (
+                        <a
+                            href={mapLink(warehouse.latitude, warehouse.longitude)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600"
+                            style={{ fontSize: 12, marginTop: 2, display: 'inline-block' }}
+                        >
+                            📍 View on map
+                        </a>
                     )}
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
@@ -70,6 +89,7 @@ export default function WarehouseListPage() {
                 open={w.modalOpen}
                 title={w.editing ? `Edit ${w.editing.name}` : 'New Warehouse'}
                 onClose={() => w.setModalOpen(false)}
+                maxWidth="40rem"
             >
                 <WarehouseForm warehouse={w.editing} onSaved={w.handleSaved} onCancel={() => w.setModalOpen(false)} />
             </Modal>

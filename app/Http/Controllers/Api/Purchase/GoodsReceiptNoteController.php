@@ -14,6 +14,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\Purchase\GoodsReceiptConfirmedNotification;
+use App\Services\PurchaseStageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -128,7 +129,7 @@ class GoodsReceiptNoteController extends Controller
      * Same logic as the Blade controller — which no page ever linked to, so
      * confirming was unreachable and stock never actually moved.
      */
-    public function confirm(GoodsReceiptNote $grn)
+    public function confirm(GoodsReceiptNote $grn, PurchaseStageService $stages)
     {
         abort_if($grn->status === 'confirmed', 422, 'This GRN is already confirmed.');
 
@@ -167,8 +168,10 @@ class GoodsReceiptNoteController extends Controller
             }
         });
 
-        $storeManagers = User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
-        Notification::send($storeManagers, new GoodsReceiptConfirmedNotification($grn));
+        $this->advanceRequestIfFullyReceived($grn, $stages);
+
+        $operations = User::withProfile(config('purchase_access.notifications.operations'))->whereNotNull('whatsapp_number')->get();
+        Notification::send($operations, new GoodsReceiptConfirmedNotification($grn));
 
         event(new GrnSaved($grn));
 
@@ -191,6 +194,34 @@ class GoodsReceiptNoteController extends Controller
         event(new GrnDeleted($id));
 
         return response()->json(['deleted' => true]);
+    }
+
+    /**
+     * Move the originating request on to Payment once every LPO on it has been
+     * received in full.
+     *
+     * Nothing did this before, so a request sat at 'receiving' for ever: the
+     * pipeline kept offering "Record GRN" with no sign that anything had been
+     * recorded, and the only way to tell was to go and look at the GRN list.
+     *
+     * Keyed on confirmed receipts, not recorded ones — a draft GRN has moved no
+     * stock, so it has received nothing. Cancelled LPOs are skipped for the
+     * same reason they are skipped everywhere else: a superseded order will
+     * never be received, and waiting on it would strand the request here.
+     */
+    private function advanceRequestIfFullyReceived(GoodsReceiptNote $grn, PurchaseStageService $stages): void
+    {
+        $purchaseRequest = $grn->purchaseOrder?->purchaseRequest;
+
+        if (! $purchaseRequest) {
+            return;
+        }
+
+        $live = $purchaseRequest->purchaseOrders()->where('status', '!=', 'cancelled')->get();
+
+        if ($live->isNotEmpty() && $live->every(fn ($po) => $po->status === 'received')) {
+            $stages->setStageIfNotPast($purchaseRequest, 'payment');
+        }
     }
 
     private function nextGrnNumber(): string

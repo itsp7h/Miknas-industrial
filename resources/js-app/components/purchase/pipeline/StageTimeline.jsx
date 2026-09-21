@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { formatDate } from './pipelineStyles';
+import { liveOrders, orderLabel } from './purchaseOrders';
+import { goodsReceipts, receiptCaption } from './goodsReceipts';
 
 const ACTION = {
     display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
@@ -85,6 +87,11 @@ function caption(stage, r, current) {
             return r.awarded_supplier_names.length
                 ? `Awarded to ${r.awarded_supplier_names.join(', ')}`
                 : '';
+        case 'receiving': {
+            const summary = receiptCaption(r);
+            if (summary) return summary;
+            return current ? 'Nothing received yet' : '';
+        }
         default:
             return '';
     }
@@ -101,29 +108,29 @@ function CurrentActions({ stage, r, on }) {
     );
 
     switch (stage) {
-        case 'draft':
-            return sign || null;
+        // 'draft' is never the current step: a created request is past it.
+        // Only Sign: selecting suppliers is the next step's action and lives on
+        // that row. This case is reached only by a request sitting at
+        // 'gm_approval' with no signature recorded.
         case 'gm_approval':
-            return (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {sign}
-                    {p.manageRfq && (
-                        <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
-                            🏭 Select Suppliers
-                        </ActionButton>
-                    )}
-                </div>
-            );
+            return sign || null;
         case 'rfq':
             if (!p.manageRfq) return null;
             return (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
-                        + Add Suppliers
+                        {r.rfq_invitations.length ? '+ Add Suppliers' : '🏭 Select Suppliers'}
                     </ActionButton>
                     {r.pending_invitation_count > 0 && (
                         <ActionButton onClick={() => on('send')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
                             📨 Send ({r.pending_invitation_count})
+                        </ActionButton>
+                    )}
+                    {/* Who is already on the request, without leaving the page.
+                        Only once there is someone to look at. */}
+                    {r.rfq_invitations.length > 0 && (
+                        <ActionButton onClick={() => on('view-suppliers')} style={VIEW}>
+                            <EyeIcon /> View Suppliers ({r.rfq_invitations.length})
                         </ActionButton>
                     )}
                 </div>
@@ -143,7 +150,7 @@ function CurrentActions({ stage, r, on }) {
                 </Link>
             ) : null;
         case 'lpo':
-            if (r.purchase_orders.length) {
+            if (liveOrders(r).length) {
                 return <span style={{ ...ACTION, background: '#dcfce7', color: '#15803d' }}>✓ LPO(s) Issued</span>;
             }
             return p.generateLpo ? (
@@ -151,12 +158,30 @@ function CurrentActions({ stage, r, on }) {
                     Issue LPO →
                 </ActionButton>
             ) : null;
-        case 'receiving':
+        case 'receiving': {
+            // A draft GRN is the trap this step kept setting: the goods look
+            // recorded, no stock has moved, and confirming it is what finishes
+            // the step. So it is offered here rather than left to be found on
+            // the GRN list.
+            const { drafts } = goodsReceipts(r);
+
             return (
-                <ActionButton onClick={() => on('grn')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
-                    Record GRN →
-                </ActionButton>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <ActionButton onClick={() => on('grn')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
+                        Record GRN →
+                    </ActionButton>
+                    {drafts.map((grn) => (
+                        <Link
+                            key={grn.id}
+                            to={`/app/purchase/grns/${grn.id}`}
+                            style={{ ...ACTION, background: '#fffbeb', color: '#b45309', border: '1.5px solid #fde68a' }}
+                        >
+                            ⚠ Confirm {grn.grn_number}
+                        </Link>
+                    ))}
+                </div>
             );
+        }
         case 'payment':
             return (
                 <Link to="/app/purchase/payments" style={{ ...ACTION, background: '#0f172a', color: '#fff' }}>
@@ -189,21 +214,28 @@ function DoneActions({ stage, r, on }) {
                 ? <Link to={`/app/purchase/requests/${r.id}/quotes`} style={VIEW}><EyeIcon /> View Comparison</Link>
                 : null;
         case 'lpo': {
-            if (!r.purchase_orders.length) return null;
-            const single = r.purchase_orders.length === 1;
+            // Cancelled orders are history, not something to download: a
+            // re-issue leaves the superseded LPO on the request, and listing it
+            // here put two identical buttons side by side.
+            const orders = liveOrders(r);
+            if (!orders.length) return null;
+            const single = orders.length === 1;
 
             return (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {single ? (
                         <>
-                            <Link to={`/app/purchase/orders/${r.purchase_orders[0].id}`} style={VIEW}>
+                            <Link to={`/app/purchase/orders/${orders[0].id}`} style={VIEW}>
                                 <EyeIcon /> View LPO
                             </Link>
-                            <a href={`/purchase/orders/${r.purchase_orders[0].id}/pdf`} style={VIEW}>⬇ Download PDF</a>
+                            <a href={`/purchase/orders/${orders[0].id}/pdf`} style={VIEW}>⬇ Download PDF</a>
                         </>
-                    ) : r.purchase_orders.map((po) => (
+                    ) : orders.map((po) => (
+                        // Named by supplier *and* number — a request split
+                        // across suppliers is why this branch exists, but the
+                        // name alone does not say which order it is.
                         <a key={po.id} href={`/purchase/orders/${po.id}/pdf`} style={VIEW}>
-                            ⬇ {po.supplier_name ?? 'PDF'}
+                            ⬇ {orderLabel(po)}
                         </a>
                     ))}
                     {/* Awards can change after issuance, so re-issuing stays available. */}
@@ -215,8 +247,20 @@ function DoneActions({ stage, r, on }) {
                 </div>
             );
         }
-        case 'receiving':
-            return <Link to="/app/purchase/grns" style={VIEW}><EyeIcon /> View GRNs</Link>;
+        case 'receiving': {
+            const { all } = goodsReceipts(r);
+
+            return (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {all.map((grn) => (
+                        <Link key={grn.id} to={`/app/purchase/grns/${grn.id}`} style={VIEW}>
+                            <EyeIcon /> {grn.grn_number}
+                        </Link>
+                    ))}
+                    {!all.length && <Link to="/app/purchase/grns" style={VIEW}><EyeIcon /> View GRNs</Link>}
+                </div>
+            );
+        }
         case 'payment':
             return <Link to="/app/purchase/payments" style={VIEW}><EyeIcon /> View Payments</Link>;
         default:
@@ -229,6 +273,23 @@ export default function StageTimeline({ request, compact = false, onAction = () 
     const stages = request.stages;
     const index = request.stage_index;
 
+    // `stage` says where the request is; each stage's action is what moves it
+    // on. Signing happens *at* 'draft' and advances to 'gm_approval'; selecting
+    // suppliers happens at 'gm_approval' and advances to 'rfq'. Marking the
+    // stage column's value as the step in progress therefore hangs every button
+    // off the step before the one it belongs to — Sign under "Purchase
+    // Request", Select Suppliers under "GM Signature".
+    //
+    // So the cursor passes a step once that step's work is done rather than
+    // once the request has moved off it: the request exists, so Purchase
+    // Request is done; the signature exists, so GM Signature is done.
+    let cursor = index;
+    if (request.stage === 'draft') {
+        cursor = index + 1;
+    } else if (request.stage === 'gm_approval' && request.signature) {
+        cursor = index + 1;
+    }
+
     return (
         <div style={{
             background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.06)',
@@ -239,8 +300,8 @@ export default function StageTimeline({ request, compact = false, onAction = () 
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {stages.map((stage, i) => {
-                    const done = i < index;
-                    const current = i === index;
+                    const done = i < cursor;
+                    const current = i === cursor;
                     const isLast = i === stages.length - 1;
                     const text = done || current ? caption(stage, request, current) : '';
 

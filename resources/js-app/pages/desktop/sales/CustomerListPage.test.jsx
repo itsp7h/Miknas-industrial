@@ -21,7 +21,7 @@ describe('desktop CustomerListPage', () => {
     it('lists customers with money formatted to two decimals', async () => {
         renderPage();
         expect(await screen.findByText('Gulf Steel')).toBeInTheDocument();
-        expect(screen.getByText('5,000.00')).toBeInTheDocument();
+        expect(screen.getByText('BD 5,000.000')).toBeInTheDocument();
     });
 
     it('opens the create form', async () => {
@@ -52,7 +52,7 @@ describe('desktop CustomerListPage', () => {
     it('flags a non-zero outstanding balance in red and semibold', async () => {
         renderPage();
         await screen.findByText('Gulf Steel');
-        expect(screen.getByText('250.00')).toHaveClass('text-red-600', 'font-semibold');
+        expect(screen.getByText('BD 250.000')).toHaveClass('text-red-600', 'font-semibold');
         // Zenith's credit limit is also 0.00, so pick the balance cell by position.
         const zenithCells = screen.getByText('Zenith Trading').closest('tr').querySelectorAll('td');
         expect(zenithCells[4]).toHaveClass('text-gray-500');

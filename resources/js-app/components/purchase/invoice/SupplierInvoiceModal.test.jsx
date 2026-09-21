@@ -71,7 +71,7 @@ describe('SupplierInvoiceModal', () => {
         fireEvent.change(screen.getByLabelText(/Subtotal/), { target: { value: '100' } });
         fireEvent.change(screen.getByLabelText(/VAT Amount/), { target: { value: '10.5' } });
 
-        expect(screen.getByText('110.50')).toBeInTheDocument();
+        expect(screen.getByText('BD 110.500')).toBeInTheDocument();
         expect(screen.queryByLabelText(/Total Amount/)).not.toBeInTheDocument();
     });
 

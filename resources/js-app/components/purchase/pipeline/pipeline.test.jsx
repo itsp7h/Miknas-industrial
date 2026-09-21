@@ -38,6 +38,7 @@ const base = (overrides = {}) => ({
     supplier_quotes: [],
     awarded_supplier_names: [],
     purchase_orders: [],
+    goods_receipt_notes: [],
     permissions: {
         update: false, approve: false, manageRfq: false,
         manageQuotes: false, award: false, generateLpo: false,
@@ -153,6 +154,92 @@ describe('StageTimeline', () => {
             purchase_orders: [{ id: 9, po_number: 'PO-00009', supplier_name: 'A', total_amount: '5.000', status: 'sent' }],
         })} />);
         expect(screen.getByText('View LPO').closest('a')).toHaveAttribute('href', '/app/purchase/orders/9');
+    });
+
+    /**
+     * Re-issuing cancels the stale LPO and creates a new one, so the request
+     * carries both. The timeline rendered a download button per order, which on
+     * a re-issued request meant two buttons reading the same supplier name —
+     * one of them for an LPO that no longer stands.
+     */
+    it('offers only the LPO that still stands after a re-issue', () => {
+        renderIn(<StageTimeline request={base({
+            stage: 'receiving', stage_index: 6,
+            purchase_orders: [
+                { id: 29, po_number: 'PO-00029', supplier_name: 'Yousif Dhneem', total_amount: '5.000', status: 'cancelled' },
+                { id: 30, po_number: 'PO-00030', supplier_name: 'Yousif Dhneem', total_amount: '5.000', status: 'sent' },
+            ],
+        })} />);
+
+        // One live order, so the single-order branch: View LPO + one PDF link.
+        expect(screen.getByText('View LPO').closest('a')).toHaveAttribute('href', '/app/purchase/orders/30');
+        expect(screen.getAllByText('⬇ Download PDF')).toHaveLength(1);
+        expect(screen.queryByText(/PO-00029/)).not.toBeInTheDocument();
+    });
+
+    // A request genuinely split across two suppliers still lists both, and now
+    // names each by its order number as well.
+    it('names each LPO by supplier and number when a request is split', () => {
+        renderIn(<StageTimeline request={base({
+            stage: 'receiving', stage_index: 6,
+            purchase_orders: [
+                { id: 26, po_number: 'PO-00026', supplier_name: 'Ali Hussain', total_amount: '5.000', status: 'sent' },
+                { id: 27, po_number: 'PO-00027', supplier_name: 'Nelson Desuza', total_amount: '5.000', status: 'sent' },
+            ],
+        })} />);
+
+        expect(screen.getByText('⬇ Ali Hussain (PO-00026)')).toBeInTheDocument();
+        expect(screen.getByText('⬇ Nelson Desuza (PO-00027)')).toBeInTheDocument();
+    });
+
+    /**
+     * The Receiving step used to show a bare "Record GRN" button and nothing
+     * else, so a recorded GRN left the screen identical — and a draft GRN has
+     * raised no stock, which the step never said.
+     */
+    it('reports what has been received and offers to confirm a draft GRN', () => {
+        renderIn(<StageTimeline request={base({
+            stage: 'receiving', stage_index: 6,
+            goods_receipt_notes: [
+                { id: 1, grn_number: 'GRN-00001', po_number: 'PO-00030', status: 'draft' },
+            ],
+        })} />);
+
+        expect(screen.getByText('1 recorded, not yet confirmed')).toBeInTheDocument();
+        expect(screen.getByText('⚠ Confirm GRN-00001').closest('a'))
+            .toHaveAttribute('href', '/app/purchase/grns/1');
+        // Still recordable — a partial delivery takes more than one GRN.
+        expect(screen.getByText('Record GRN →')).toBeInTheDocument();
+    });
+
+    it('says so plainly while nothing has been received', () => {
+        renderIn(<StageTimeline request={base({ stage: 'receiving', stage_index: 6 })} />);
+
+        expect(screen.getByText('Nothing received yet')).toBeInTheDocument();
+        expect(screen.queryByText(/Confirm GRN/)).not.toBeInTheDocument();
+    });
+
+    it('links each GRN once the step is behind the request', () => {
+        renderIn(<StageTimeline request={base({
+            stage: 'payment', stage_index: 7,
+            goods_receipt_notes: [
+                { id: 1, grn_number: 'GRN-00001', po_number: 'PO-00030', status: 'confirmed' },
+            ],
+        })} />);
+
+        expect(screen.getByText('GRN-00001').closest('a'))
+            .toHaveAttribute('href', '/app/purchase/grns/1');
+        expect(screen.getByText('1 GRN(s) received into stock')).toBeInTheDocument();
+    });
+
+    it('shows no issued badge when every LPO on the request was cancelled', () => {
+        renderIn(<StageTimeline request={base({
+            permissions: { ...base().permissions, generateLpo: true },
+            purchase_orders: [{ id: 29, po_number: 'PO-00029', supplier_name: 'A', total_amount: '5.000', status: 'cancelled' }],
+        })} />);
+
+        expect(screen.queryByText('✓ LPO(s) Issued')).not.toBeInTheDocument();
+        expect(screen.getByText('Issue LPO →')).toBeInTheDocument();
     });
 });
 

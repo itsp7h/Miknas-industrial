@@ -32,21 +32,30 @@ describe('mobile DashboardPage', () => {
 
     it('shows the same five figures as desktop', async () => {
         renderPage();
-        expect(await screen.findByText('25,651')).toBeInTheDocument();
-        expect(screen.getByText('3,580')).toBeInTheDocument();
-        expect(screen.getByText('10,151')).toBeInTheDocument();
+        expect(await screen.findByText('BD 25,651')).toBeInTheDocument();
+        expect(screen.getByText('BD 3,580')).toBeInTheDocument();
+        expect(screen.getByText('BD 10,151')).toBeInTheDocument();
     });
 
     it('keeps receivables red, matching desktop and the Blade page', async () => {
         renderPage();
-        expect(await screen.findByText('10,151')).toHaveClass('text-red-600');
+        expect(await screen.findByText('BD 10,151')).toHaveClass('text-red-600');
     });
 
-    it('still renders the quick actions and module cards', async () => {
+    it('still renders the quick actions and the visible module cards', async () => {
         renderPage();
-        await screen.findByText('25,651');
+        await screen.findByText('BD 25,651');
         expect(screen.getByText('New Purchase Request')).toBeInTheDocument();
-        ['Purchase', 'Inventory', 'Production', 'Sales']
+        ['Purchase', 'Inventory']
             .forEach((title) => expect(screen.getByRole('heading', { name: title })).toBeInTheDocument());
+    });
+
+    // Hiding is in the shared data module, so both chromes drop them together.
+    it('drops the hidden modules here too', async () => {
+        renderPage();
+        await screen.findByText('BD 25,651');
+        expect(screen.queryByRole('heading', { name: 'Production' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Sales' })).not.toBeInTheDocument();
+        expect(screen.queryByText('New Sales Order')).not.toBeInTheDocument();
     });
 });

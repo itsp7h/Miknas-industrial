@@ -1,6 +1,6 @@
 import SmartLink from '../../components/dashboard/SmartLink';
 import { ChevronIcon } from '../../components/dashboard/icons';
-import { KPIS, QUICK_ACTIONS, MODULES, formatKpi } from '../../components/dashboard/data';
+import { KPIS, KPI_COLUMNS, QUICK_ACTIONS, QUICK_ACTION_COLUMNS, MODULES, MODULE_COLUMNS, formatKpi } from '../../components/dashboard/data';
 import useDashboardSummary from '../../components/dashboard/useDashboardSummary';
 
 const CARD = 'bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex items-start gap-4';
@@ -16,7 +16,7 @@ function KpiBody({ kpi, summary }) {
             <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{kpi.label}</p>
                 <p className={`text-2xl font-bold ${kpi.valueColor ?? 'text-slate-800'} mt-1 truncate`}>
-                    {summary ? formatKpi(summary[kpi.key]) : '—'}
+                    {summary ? formatKpi(summary[kpi.key], kpi.money) : '—'}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">{kpi.caption}</p>
             </div>
@@ -36,7 +36,7 @@ export default function DashboardPage({ currentUserId, userName }) {
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 ${KPI_COLUMNS} gap-4 mb-8`}>
                 {KPIS.map((kpi) => (kpi.to ? (
                     <SmartLink key={kpi.key} to={kpi.to} className={`${CARD} ${kpi.hover}`}>
                         <KpiBody kpi={kpi} summary={summary} />
@@ -50,7 +50,7 @@ export default function DashboardPage({ currentUserId, userName }) {
 
             <div className="mb-6">
                 <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Quick Actions</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 ${QUICK_ACTION_COLUMNS} gap-3`}>
                     {QUICK_ACTIONS.map((action) => (
                         <SmartLink
                             key={action.label}
@@ -69,7 +69,7 @@ export default function DashboardPage({ currentUserId, userName }) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${MODULE_COLUMNS} gap-4`}>
                 {MODULES.map((module) => (
                     <div key={module.title} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <div className={`${module.header} px-5 py-4`}>

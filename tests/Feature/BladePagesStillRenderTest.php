@@ -32,7 +32,7 @@ class BladePagesStillRenderTest extends TestCase
     private function user(): User
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('purchase-requests.view-all');
+        $user->givePermissionTo('pipeline.view-all');
 
         return $user;
     }
@@ -219,7 +219,7 @@ class BladePagesStillRenderTest extends TestCase
         $this->actingAs($admin)->get('/settings/projects-overview')->assertRedirect('/app/settings/projects');
         $this->actingAs($admin)->get('/settings/users')->assertRedirect('/app/settings/users');
         $this->actingAs($admin)->get('/settings/integrations')->assertRedirect('/app/settings/integrations');
-        $this->actingAs($admin)->get('/settings/vat')->assertRedirect('/app/settings/vat');
+        $this->actingAs($admin)->get('/settings/vat')->assertRedirect('/app/settings/finance');
     }
 
     /**

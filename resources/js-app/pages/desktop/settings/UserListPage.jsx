@@ -1,5 +1,6 @@
 import EditAccessModal from '../../../components/settings/user/EditAccessModal';
 import NewUserModal from '../../../components/settings/user/NewUserModal';
+import ResetPasswordModal from '../../../components/settings/user/ResetPasswordModal';
 import UserTable from '../../../components/settings/user/UserTable';
 import useUserList from '../../../components/settings/user/useUserList';
 
@@ -35,15 +36,21 @@ export default function UserListPage() {
 
             {u.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
 
-            {!u.loading && <UserTable users={u.filtered} onEditAccess={u.setEditing} />}
+            {!u.loading && (
+                <UserTable users={u.filtered} onEditAccess={u.setEditing} onResetPassword={u.setResetting} />
+            )}
 
             <NewUserModal
-                open={u.newUserOpen} roles={u.roles}
+                open={u.newUserOpen} profiles={u.profiles}
                 onClose={() => u.setNewUserOpen(false)} onSave={u.createUser}
             />
             <EditAccessModal
-                user={u.editing} roles={u.roles} permissions={u.permissions}
+                user={u.editing} profiles={u.profiles} grid={u.grid}
                 onClose={() => u.setEditing(null)} onSave={u.saveAccess}
+            />
+            <ResetPasswordModal
+                key={u.resetting?.id ?? 'none'} user={u.resetting}
+                onClose={() => u.setResetting(null)} onSave={u.resetPassword}
             />
         </div>
     );

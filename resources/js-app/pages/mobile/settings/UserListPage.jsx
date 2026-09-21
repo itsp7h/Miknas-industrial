@@ -1,5 +1,6 @@
 import EditAccessModal from '../../../components/settings/user/EditAccessModal';
 import NewUserModal from '../../../components/settings/user/NewUserModal';
+import ResetPasswordModal from '../../../components/settings/user/ResetPasswordModal';
 import useUserList from '../../../components/settings/user/useUserList';
 
 const ROLE_PILL = {
@@ -66,19 +67,24 @@ export default function UserListPage() {
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                        <button type="button" onClick={() => u.setResetting(user)} className="btn-secondary btn-sm">Reset Password</button>
                         <button type="button" onClick={() => u.setEditing(user)} className="btn-secondary btn-sm">Edit Access</button>
                     </div>
                 </div>
             ))}
 
             <NewUserModal
-                open={u.newUserOpen} roles={u.roles}
+                open={u.newUserOpen} profiles={u.profiles}
                 onClose={() => u.setNewUserOpen(false)} onSave={u.createUser}
             />
             <EditAccessModal
-                user={u.editing} roles={u.roles} permissions={u.permissions}
+                user={u.editing} profiles={u.profiles} grid={u.grid}
                 onClose={() => u.setEditing(null)} onSave={u.saveAccess}
+            />
+            <ResetPasswordModal
+                key={u.resetting?.id ?? 'none'} user={u.resetting}
+                onClose={() => u.setResetting(null)} onSave={u.resetPassword}
             />
         </div>
     );
