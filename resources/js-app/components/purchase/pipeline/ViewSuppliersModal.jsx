@@ -69,6 +69,18 @@ export default function ViewSuppliersModal({ open, request, onClose, onSend }) {
                             </span>
                         </div>
 
+                        {/* Who decided, the way an awarded line names who awarded it.
+                            An invitation from before this was recorded says
+                            nothing rather than inventing a name. */}
+                        {(invitation.selected_by || invitation.sent_by) && (
+                            <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 6 }}>
+                                {[
+                                    invitation.selected_by && `Selected by ${invitation.selected_by}`,
+                                    invitation.sent_by && `Sent by ${invitation.sent_by}${invitation.sent_at ? ` · ${invitation.sent_at}` : ''}`,
+                                ].filter(Boolean).join(' · ')}
+                            </div>
+                        )}
+
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                             <button type="button" onClick={() => copy(invitation.portal_url, invitation.id)} className="btn-secondary btn-sm">
                                 {copied === invitation.id ? '✓ Link copied' : 'Copy quote link'}

@@ -70,6 +70,11 @@ class PurchaseRequestDetailResource extends JsonResource
                 'supplier_name' => $inv->supplier?->name,
                 'channel' => $inv->channel,
                 'status' => $inv->status,
+                // Who chose this supplier, and who sent them the request —
+                // the same accounting the award lines carry.
+                'selected_by' => $inv->selectedBy?->name,
+                'sent_by' => $inv->sentBy?->name,
+                'sent_at' => $inv->sent_at?->format('d M Y, H:i'),
                 // The supplier's own portal link, which the view-suppliers modal
                 // offers for copying when an invitation cannot be auto-sent.
                 'portal_url' => route('rfq.show', $inv->token),

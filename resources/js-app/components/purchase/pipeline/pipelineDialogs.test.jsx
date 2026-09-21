@@ -279,6 +279,31 @@ describe('ViewSuppliersModal', () => {
         expect(screen.getByText('Open in WhatsApp')).toHaveAttribute('href', 'https://wa.me/97333?text=x');
     });
 
+    it('names who selected each supplier, and who sent it', () => {
+        const attributed = base({
+            stage: 'rfq',
+            rfq_invitations: [
+                {
+                    id: 9, supplier_id: 1, supplier_name: 'Gulf Steel', channel: 'email',
+                    status: 'sent', portal_url: 'http://erp.test/rfq/tok', whatsapp_link: null,
+                    selected_by: 'Ali Hassan', sent_by: 'Sara Ali', sent_at: '21 Sep 2026, 09:30',
+                },
+            ],
+        });
+        wrap(<ViewSuppliersModal open request={attributed} onClose={() => {}} onSend={() => {}} />);
+
+        expect(screen.getByText(/Selected by Ali Hassan/)).toBeInTheDocument();
+        expect(screen.getByText(/Sent by Sara Ali · 21 Sep 2026, 09:30/)).toBeInTheDocument();
+    });
+
+    it('says nothing about who, for an invitation recorded before it was tracked', () => {
+        wrap(<ViewSuppliersModal open request={request} onClose={() => {}} onSend={() => {}} />);
+
+        // Inventing a name would be worse than admitting there is none.
+        expect(screen.queryByText(/Selected by/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Sent by/)).not.toBeInTheDocument();
+    });
+
     it('offers to send the unsent ones', async () => {
         const onSend = vi.fn().mockResolvedValue({});
         wrap(<ViewSuppliersModal open request={request} onClose={() => {}} onSend={onSend} />);

@@ -198,6 +198,93 @@ class PipelineActionsTest extends TestCase
         $this->assertSame(2, $response->json('data.sent_invitation_count'));
     }
 
+    /**
+     * Choosing who gets asked is a decision, and it carries a name.
+     *
+     * Every other step on a request records who took it — who raised it, who
+     * signed it, who refused it, who awarded the line. Supplier selection was
+     * the one that did not, though it decides who gets the chance to win the
+     * business.
+     */
+    public function test_selecting_suppliers_records_who_selected_them(): void
+    {
+        $pr = $this->request();
+        $officer = $this->officer();
+        $one = $this->supplier(['name' => 'One']);
+        $two = $this->supplier(['name' => 'Two']);
+
+        $response = $this->actingAs($officer)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/suppliers", [
+                'mode' => 'global',
+                'supplier_ids' => [$one->id, $two->id],
+            ])->assertOk();
+
+        $this->assertDatabaseHas('rfq_invitations', [
+            'supplier_id' => $one->id, 'selected_by' => $officer->id,
+        ]);
+        $this->assertDatabaseHas('rfq_invitations', [
+            'supplier_id' => $two->id, 'selected_by' => $officer->id,
+        ]);
+
+        // And the modal is told, so it can say so.
+        $this->assertSame(
+            [$officer->name, $officer->name],
+            array_column($response->json('data.rfq_invitations'), 'selected_by')
+        );
+        // Nothing has been sent, so there is no sender yet.
+        $this->assertSame([null, null], array_column($response->json('data.rfq_invitations'), 'sent_by'));
+    }
+
+    /** Selecting by item names the person too — same decision, different form. */
+    public function test_selecting_by_item_records_who_selected_them(): void
+    {
+        $pr = $this->request();
+        $officer = $this->officer();
+        $item = PurchaseRequestItem::create([
+            'purchase_request_id' => $pr->id, 'description' => 'Plate', 'quantity_required' => 1,
+        ]);
+        $supplier = $this->supplier();
+
+        $this->actingAs($officer)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/suppliers", [
+                'mode' => 'by_item',
+                'item_suppliers' => [$item->id => [$supplier->id]],
+            ])->assertOk();
+
+        $this->assertDatabaseHas('rfq_invitations', [
+            'supplier_id' => $supplier->id, 'selected_by' => $officer->id,
+        ]);
+    }
+
+    /** Sending is its own act, by whoever pressed Send — not always the selector. */
+    public function test_sending_records_who_sent_each_invitation(): void
+    {
+        Notification::fake();
+        $this->workingMailAccount();
+        $pr = $this->request('rfq');
+        $selector = $this->officer();
+        $sender = $this->officer();
+
+        RfqInvitation::factory()->create([
+            'purchase_request_id' => $pr->id,
+            'supplier_id' => $this->supplier()->id,
+            'status' => 'pending',
+            'selected_by' => $selector->id,
+        ]);
+
+        $response = $this->actingAs($sender)
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/send-invitations")->assertOk();
+
+        $invitation = $response->json('data.rfq_invitations.0');
+        $this->assertSame($selector->name, $invitation['selected_by']);
+        $this->assertSame($sender->name, $invitation['sent_by']);
+        $this->assertNotNull($invitation['sent_at']);
+
+        $this->assertDatabaseHas('rfq_invitations', [
+            'selected_by' => $selector->id, 'sent_by' => $sender->id, 'status' => 'sent',
+        ]);
+    }
+
     public function test_sending_with_nothing_pending_is_refused(): void
     {
         $pr = $this->request('rfq');

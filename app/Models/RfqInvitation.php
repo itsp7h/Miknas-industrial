@@ -16,6 +16,7 @@ class RfqInvitation extends Model
     protected $fillable = [
         'purchase_request_id', 'supplier_id', 'token', 'channel',
         'sent_at', 'opened_at', 'expires_at', 'status', 'item_ids',
+        'selected_by', 'sent_by',
     ];
 
     protected $casts = [
@@ -38,6 +39,18 @@ class RfqInvitation extends Model
     public function purchaseRequest()
     {
         return $this->belongsTo(PurchaseRequest::class);
+    }
+
+    /** Who chose this supplier for the request. */
+    public function selectedBy()
+    {
+        return $this->belongsTo(User::class, 'selected_by');
+    }
+
+    /** Who sent them the quote request. Not always the same person. */
+    public function sentBy()
+    {
+        return $this->belongsTo(User::class, 'sent_by');
     }
 
     public function supplier()

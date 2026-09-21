@@ -22,6 +22,9 @@ class RfqInvitationService
             'expires_at' => now()->addDays(RfqInvitation::EXPIRY_DAYS),
             'status' => 'pending',
             'item_ids' => empty($itemIds) ? null : $itemIds,
+            // Choosing who gets asked is a decision, so it carries a name the
+            // way approving and awarding do.
+            'selected_by' => auth()->id(),
         ]);
     }
 
@@ -76,7 +79,7 @@ class RfqInvitationService
             }
         }
 
-        $invitation->update(['status' => 'sent', 'sent_at' => now()]);
+        $invitation->update(['status' => 'sent', 'sent_at' => now(), 'sent_by' => auth()->id()]);
     }
 
     public function invite(PurchaseRequest $purchaseRequest, Supplier $supplier, string $channel): RfqInvitation
