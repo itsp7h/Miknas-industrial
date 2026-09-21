@@ -102,6 +102,53 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Reset an existing user's password.
+     *
+     * The two modes are `store()`'s, for the same reasons: "email" sends the
+     * very link Breeze's forgot-password flow sends, so the password is only
+     * ever known to its owner, and "password" sets one immediately for someone
+     * who cannot receive mail. A password sent in email mode is `prohibited`
+     * rather than ignored — an admin who typed one would otherwise leave
+     * believing they had set it.
+     *
+     * Either way the remember-me token is rotated: a reset that left an old
+     * "remember me" cookie working would not be a reset at all.
+     */
+    public function resetPassword(Request $request, User $user)
+    {
+        $mode = $request->input('mode') ?: 'email';
+
+        $validated = $request->validate([
+            'mode' => ['nullable', Rule::in(['email', 'password'])],
+            'password' => $mode === 'password'
+                ? ['required', 'confirmed', Rules\Password::defaults()]
+                : ['prohibited'],
+        ]);
+
+        if ($mode === 'password') {
+            // `password` is a hashed cast, so the plain value is hashed on the
+            // way in — the same path store() takes.
+            $user->forceFill([
+                'password' => $validated['password'],
+                'remember_token' => Str::random(60),
+            ])->save();
+
+            $message = 'Password updated for '.$user->name.'.';
+        } else {
+            $user->forceFill(['remember_token' => Str::random(60)])->save();
+
+            Password::sendResetLink(['email' => $user->email]);
+
+            $message = 'A password-reset email has been sent to '.$user->email.'.';
+        }
+
+        return response()->json([
+            'message' => $message,
+            'data' => $this->payload($user->load(['roles', 'permissions'])),
+        ]);
+    }
+
     private function payload(User $user): array
     {
         return [
