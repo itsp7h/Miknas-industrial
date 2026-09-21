@@ -43,6 +43,7 @@ export default function RequestModal({
     const companies = options?.companies ?? [];
     const allProjects = options?.projects ?? [];
     const units = options?.units ?? [];
+    const catalogue = options?.items ?? [];
     const requesters = options?.requesters ?? [];
     const today = options?.today ?? '';
 
@@ -223,7 +224,8 @@ export default function RequestModal({
                 </FormSection>
 
                 <ItemRows
-                    items={values.items} units={units} accent={accent} today={today} compact={compact}
+                    items={values.items} units={units} catalogue={catalogue}
+                    accent={accent} today={today} compact={compact}
                     onChange={(items) => set('items', items)}
                 />
 

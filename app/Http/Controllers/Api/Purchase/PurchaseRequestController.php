@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PurchaseRequestBoardResource;
 use App\Http\Resources\PurchaseRequestDetailResource;
 use App\Http\Resources\PurchaseRequestSheetResource;
+use App\Models\Item;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\Settings\Company;
@@ -16,6 +17,7 @@ use App\Models\Settings\Department;
 use App\Models\Settings\ProjectSetting;
 use App\Models\User;
 use App\Services\DocumentNumberService;
+use App\Services\ItemCatalogue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -87,6 +89,17 @@ class PurchaseRequestController extends Controller
             // one three ways. The form picks from these; only the name is
             // stored, since requested_by stays whoever created the request.
             'requesters' => User::orderBy('name')->pluck('name')->values(),
+            // What the description field completes from, and where it takes
+            // each material's unit. Name and unit only: the form needs nothing
+            // else, and the list is sent whole on every open.
+            'items' => Item::where('is_active', true)
+                ->orderBy('item_name')
+                ->get(['id', 'item_name', 'unit_of_measure'])
+                ->map(fn (Item $item) => [
+                    'id' => $item->id,
+                    'name' => $item->item_name,
+                    'unit' => $item->unit_of_measure,
+                ])->values(),
             'units' => self::UNITS,
             'today' => now()->toDateString(),
         ]);
@@ -264,10 +277,19 @@ class PurchaseRequestController extends Controller
                 continue;
             }
 
+            // A material someone has actually requested belongs in the item
+            // master. Typed descriptions that match nothing are added there,
+            // so the next request completes them instead of spelling them
+            // afresh — which is how "Steel Plate" became three items.
+            $catalogued = app(ItemCatalogue::class)
+                ->findOrCreateByName($item['description'], $item['unit'] ?? null);
+
             PurchaseRequestItem::create([
                 'purchase_request_id' => $pr->id,
                 'description' => $item['description'],
-                'unit' => $item['unit'] ?? null,
+                // The catalogue decides the unit where it knows one: an item's
+                // unit is a property of the item, not of the request.
+                'unit' => $catalogued?->unit_of_measure ?: ($item['unit'] ?? null),
                 'quantity_required' => $item['quantity_required'],
                 'purpose_use' => $item['purpose_use'] ?? null,
                 'required_date' => $item['required_date'] ?? null,

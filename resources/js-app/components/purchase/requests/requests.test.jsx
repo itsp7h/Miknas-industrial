@@ -23,6 +23,11 @@ const OPTIONS = {
         { id: 10, name: 'Operations', company_id: 3 },
         { id: 11, name: 'Marine Ops', company_id: 4 },
     ],
+    items: [
+        { id: 1, name: 'Steel Plate 10mm', unit: 'KG' },
+        { id: 2, name: 'Steel Rod 12mm', unit: 'PCS' },
+        { id: 3, name: 'Welding Rod', unit: null },
+    ],
     units: ['PCS', 'KG'],
     requesters: ['Admin User', 'Ali', 'nelson'],
     today: '2026-09-01',
@@ -316,6 +321,72 @@ describe('the edit-request modal', () => {
 
         // Gulf Marine has no locations of its own, so nothing stale survives.
         expect(screen.getByLabelText('Location / Project')).toHaveValue('');
+    });
+});
+
+describe('the description field completing from the item master', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+    });
+
+    it('offers every catalogued material to complete from', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        // A datalist, so the browser filters it as you type: "ste" offers both
+        // Steel entries without a dropdown of our own to position.
+        const list = document.getElementById('mpr-item-names');
+        expect(list).not.toBeNull();
+        expect([...list.querySelectorAll('option')].map((o) => o.value))
+            .toEqual(['Steel Plate 10mm', 'Steel Rod 12mm', 'Welding Rod']);
+    });
+
+    it('takes the unit from the item once the description names one', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('');
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Steel Plate 10mm' } });
+
+        // The unit belongs to the item, so it arrives with it.
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('KG');
+    });
+
+    it('matches regardless of case and stray spaces', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: '  steel rod 12mm ' } });
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('PCS');
+    });
+
+    it('leaves a hand-picked unit alone while the description matches nothing', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.change(screen.getByLabelText('Item 1 unit'), { target: { value: 'PCS' } });
+        // Half a word, and a material the catalogue has never heard of.
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'ste' } });
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('PCS');
+
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Brass Fitting' } });
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('PCS');
+    });
+
+    it('does not blank the unit for an item that has none of its own', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.change(screen.getByLabelText('Item 1 unit'), { target: { value: 'KG' } });
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Welding Rod' } });
+
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('KG');
     });
 });
 

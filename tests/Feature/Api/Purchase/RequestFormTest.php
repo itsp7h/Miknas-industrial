@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Purchase;
 
 use App\Events\PurchaseRequestCreated;
 use App\Events\PurchaseRequestUpdated;
+use App\Models\Item;
 use App\Models\PurchaseRequest;
 use App\Models\Settings\Company;
 use App\Models\Settings\Department;
@@ -256,6 +257,101 @@ class RequestFormTest extends TestCase
         $response->assertJsonPath('data.request_number', $pr->request_number);
         $response->assertJsonPath('data.company_name', 'Plant Expansion');
         $this->assertStringContainsString('submitted successfully', $response->json('message'));
+    }
+
+    /** The description field completes from the item master. */
+    public function test_form_options_carry_the_item_catalogue(): void
+    {
+        Item::create([
+            'item_code' => 'ITEM-00001', 'item_name' => 'Steel Plate 10mm',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG', 'is_active' => true,
+        ]);
+        Item::create([
+            'item_code' => 'ITEM-00002', 'item_name' => 'Retired Bracket',
+            'category' => 'raw_material', 'unit_of_measure' => 'PCS', 'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->requester())
+            ->getJson('/api/v1/purchase/requests/form-options')
+            ->assertOk();
+
+        // Only what can still be ordered.
+        $this->assertSame(['Steel Plate 10mm'], array_column($response->json('items'), 'name'));
+        $response->assertJsonPath('items.0.unit', 'KG');
+    }
+
+    /**
+     * A material nobody has catalogued is added to the item master, so the
+     * next request completes it instead of spelling it afresh.
+     */
+    public function test_a_material_not_in_the_catalogue_is_added_to_it(): void
+    {
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'items' => [
+                    ['description' => 'Brass Fitting 20mm', 'unit' => 'PCS', 'quantity_required' => 4],
+                ],
+            ]))
+            ->assertCreated();
+
+        $item = Item::where('item_name', 'Brass Fitting 20mm')->first();
+        $this->assertNotNull($item);
+        $this->assertSame('PCS', $item->unit_of_measure);
+        // An MPR asks for what goes into the work, never for finished product.
+        $this->assertSame('raw_material', $item->category);
+        $this->assertTrue($item->is_active);
+        $this->assertNotEmpty($item->item_code);
+    }
+
+    /** Items must have a unit; a row without one still becomes an item. */
+    public function test_a_material_with_no_unit_is_catalogued_with_the_neutral_one(): void
+    {
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'items' => [['description' => 'Unspecified Widget', 'quantity_required' => 2]],
+            ]))
+            ->assertCreated();
+
+        $this->assertSame('PCS', Item::where('item_name', 'Unspecified Widget')->first()->unit_of_measure);
+    }
+
+    /** One catalogue entry, however it was typed. */
+    public function test_an_existing_material_is_not_duplicated(): void
+    {
+        Item::create([
+            'item_code' => 'ITEM-00001', 'item_name' => 'Steel Plate 10mm',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG', 'is_active' => true,
+        ]);
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'items' => [
+                    ['description' => '  steel plate 10mm ', 'unit' => 'PCS', 'quantity_required' => 4],
+                ],
+            ]))
+            ->assertCreated();
+
+        $this->assertSame(1, Item::where('item_name', 'Steel Plate 10mm')->count());
+        $this->assertSame(1, Item::count());
+    }
+
+    /** The unit is the item's, not the request's, where the catalogue knows one. */
+    public function test_the_catalogue_decides_the_unit_of_a_known_material(): void
+    {
+        Item::create([
+            'item_code' => 'ITEM-00001', 'item_name' => 'Steel Plate 10mm',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG', 'is_active' => true,
+        ]);
+
+        $this->actingAs($this->requester())
+            ->postJson('/api/v1/purchase/requests', $this->payload([
+                'items' => [
+                    ['description' => 'Steel Plate 10mm', 'unit' => 'PCS', 'quantity_required' => 4],
+                ],
+            ]))
+            ->assertCreated();
+
+        $this->assertSame('KG', PurchaseRequest::firstOrFail()->items->first()->unit);
     }
 
     /** The requesting company's own series: MI-MPR-26-0001. */
