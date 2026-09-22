@@ -1,3 +1,4 @@
+import CompanyWarehouseCard from '../../../components/settings/companyWarehouse/CompanyWarehouseCard';
 import DocumentNumberingCard from '../../../components/settings/documentNumbering/DocumentNumberingCard';
 
 export default function GeneralSettingsPage() {
@@ -9,6 +10,10 @@ export default function GeneralSettingsPage() {
             </div>
 
             <DocumentNumberingCard maxWidth="100%" />
+
+            <div style={{ marginTop: 14 }}>
+                <CompanyWarehouseCard maxWidth="100%" />
+            </div>
         </div>
     );
 }

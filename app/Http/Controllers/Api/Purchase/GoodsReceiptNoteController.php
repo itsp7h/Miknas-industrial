@@ -23,6 +23,40 @@ class GoodsReceiptNoteController extends Controller
 {
     public const TYPES = ['inventory', 'consumable'];
 
+    /**
+     * Company name -> warehouse id, for the life of one request.
+     *
+     * Open purchase orders are many and the companies behind them are three,
+     * so resolving each order separately would ask the same question dozens of
+     * times.
+     *
+     * @var array<string, int|null>
+     */
+    private array $warehouseByCompany = [];
+
+    /**
+     * The warehouse this order's goods belong in, from its company's link.
+     *
+     * Null when the order has no request behind it, when its company is not on
+     * file, or when that company has no warehouse set. In each case the receipt
+     * falls back to offering every warehouse, exactly as it did before — an
+     * unlinked company is a valid state, not a fault.
+     */
+    private function impliedWarehouseId(PurchaseOrder $po): ?int
+    {
+        $name = $po->purchaseRequest?->company_name;
+
+        if (! $name) {
+            return null;
+        }
+
+        if (! array_key_exists($name, $this->warehouseByCompany)) {
+            $this->warehouseByCompany[$name] = $po->purchaseRequest->resolveCompany()?->warehouse_id;
+        }
+
+        return $this->warehouseByCompany[$name];
+    }
+
     public function index()
     {
         return GrnResource::collection(
@@ -45,7 +79,7 @@ class GoodsReceiptNoteController extends Controller
     public function formOptions()
     {
         $orders = PurchaseOrder::whereIn('status', ['sent', 'partial'])
-            ->with(['supplier', 'items.item'])
+            ->with(['supplier', 'items.item', 'purchaseRequest'])
             ->orderByDesc('id')
             ->get();
 
@@ -54,6 +88,11 @@ class GoodsReceiptNoteController extends Controller
                 'id' => $po->id,
                 'po_number' => $po->po_number ?? 'PO-'.str_pad((string) $po->id, 5, '0', STR_PAD_LEFT),
                 'supplier_name' => $po->supplier?->name,
+                // Where this order's goods land, decided by its company rather
+                // than by whoever is filling the form in. Null leaves the
+                // choice open.
+                'warehouse_id' => $this->impliedWarehouseId($po),
+                'company_name' => $po->purchaseRequest?->company_name,
                 'items' => $po->items->map(fn ($line) => [
                     'purchase_order_item_id' => $line->id,
                     'item_id' => $line->item_id,
@@ -84,7 +123,20 @@ class GoodsReceiptNoteController extends Controller
             'items.*.type' => 'nullable|in:'.implode(',', self::TYPES),
         ]);
 
-        $po = PurchaseOrder::with('items')->findOrFail($data['purchase_order_id']);
+        $po = PurchaseOrder::with(['items', 'purchaseRequest'])->findOrFail($data['purchase_order_id']);
+
+        // The company's link decides the yard. The form does not offer the
+        // choice, so a receipt naming a different warehouse did not come from
+        // it — coercing it silently would hide that, and honouring it would
+        // put the stock where the link says it must not go.
+        $implied = $this->impliedWarehouseId($po);
+
+        if ($implied !== null && (int) $data['warehouse_id'] !== $implied) {
+            return response()->json([
+                'message' => "This order is received into its company's warehouse. Change the link in Settings to receive it elsewhere.",
+                'errors' => ['warehouse_id' => ['This order belongs to a different warehouse.']],
+            ], 422);
+        }
 
         $grn = DB::transaction(function () use ($data, $po) {
             $grn = GoodsReceiptNote::create([

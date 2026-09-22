@@ -1,3 +1,4 @@
+import CompanyWarehouseCard from '../../../components/settings/companyWarehouse/CompanyWarehouseCard';
 import DocumentNumberingCard from '../../../components/settings/documentNumbering/DocumentNumberingCard';
 
 export default function GeneralSettingsPage() {
@@ -9,6 +10,10 @@ export default function GeneralSettingsPage() {
             </div>
 
             <DocumentNumberingCard />
+
+            <div style={{ marginTop: 20 }}>
+                <CompanyWarehouseCard />
+            </div>
         </div>
     );
 }

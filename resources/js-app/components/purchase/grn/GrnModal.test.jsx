@@ -152,3 +152,77 @@ describe('GrnModal', () => {
             .toHaveTextContent('You do not have permission to create goods receipts.');
     });
 });
+
+/**
+ * A request names its company, so its goods have a yard already implied. The
+ * form stops asking, and says whose decision it is.
+ */
+describe('GrnModal and the company warehouse', () => {
+    const LINKED = {
+        warehouses: [{ id: 2, name: 'Sitra Store' }, { id: 3, name: 'Askar' }],
+        types: ['inventory', 'consumable'],
+        purchase_orders: [
+            {
+                id: 5, po_number: 'PO-00005', supplier_name: 'Gulf Metals',
+                warehouse_id: 3, company_name: 'Miknas Industrial',
+                items: [{ purchase_order_item_id: 11, item_id: 7, item_name: 'Steel rod 12mm', quantity: 10, quantity_received: 4, rate: 2 }],
+            },
+            {
+                id: 6, po_number: 'PO-00006', supplier_name: 'Bahrain Steel',
+                warehouse_id: null, company_name: 'Matana',
+                items: [{ purchase_order_item_id: 12, item_id: 9, item_name: 'Angle bar', quantity: 6, quantity_received: 0, rate: 5 }],
+            },
+        ],
+    };
+
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(LINKED);
+    });
+
+    const open = async () => {
+        render(<GrnModal onSaved={() => {}} onCancel={() => {}} />);
+        await screen.findByText('New Goods Receipt Note');
+    };
+
+    it('fills the warehouse in from the order’s company and locks it', async () => {
+        await open();
+
+        fireEvent.change(screen.getByLabelText(/Purchase Order/), { target: { value: '5' } });
+
+        await waitFor(() => expect(screen.getByLabelText(/Warehouse/)).toHaveValue('3'));
+        // Changed in Settings, not on the day — so the field says whose
+        // decision it is rather than just refusing to move.
+        expect(screen.getByLabelText(/Warehouse/)).toBeDisabled();
+        expect(screen.getByText(/Set by Miknas Industrial in Settings/)).toBeInTheDocument();
+    });
+
+    it('leaves the choice open for a company with no warehouse set', async () => {
+        await open();
+
+        fireEvent.change(screen.getByLabelText(/Purchase Order/), { target: { value: '6' } });
+
+        await waitFor(() => expect(screen.getByLabelText(/Purchase Order/)).toHaveValue('6'));
+        expect(screen.getByLabelText(/Warehouse/)).not.toBeDisabled();
+        expect(screen.getByText('Where the inventory lines will be raised.')).toBeInTheDocument();
+    });
+
+    it('sends the company’s warehouse, not whatever was there before', async () => {
+        const post = vi.spyOn(client, 'apiPost').mockResolvedValue({ data: { id: 1 } });
+        await open();
+
+        // Picked by hand first, then overruled by the order's company.
+        fireEvent.change(screen.getByLabelText(/Purchase Order/), { target: { value: '6' } });
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
+        fireEvent.change(screen.getByLabelText(/Purchase Order/), { target: { value: '5' } });
+
+        await waitFor(() => expect(screen.getByLabelText(/Warehouse/)).toHaveValue('3'));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Save GRN' }));
+
+        await waitFor(() => expect(post).toHaveBeenCalledWith(
+            '/purchase/grns',
+            expect.objectContaining({ warehouse_id: '3' })
+        ));
+    });
+});

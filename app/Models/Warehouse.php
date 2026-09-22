@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Settings\Company;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,6 +19,18 @@ class Warehouse extends Model
         'latitude' => 'float',
         'longitude' => 'float',
     ];
+
+    /**
+     * The companies that receive their purchases here.
+     *
+     * `on delete set null`, unlike the six below — a company is not part of the
+     * ledger, so deleting the warehouse unlinks it rather than being refused.
+     * It stays out of dependentCounts() for exactly that reason.
+     */
+    public function companies()
+    {
+        return $this->hasMany(Company::class);
+    }
 
     public function stockLevels()
     {

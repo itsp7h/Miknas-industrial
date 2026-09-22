@@ -48,12 +48,21 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
         [options.purchase_orders, values.purchase_order_id]
     );
 
+    // Where this order's goods land, when its company says so in Settings.
+    const impliedWarehouseId = selectedOrder?.warehouse_id ?? null;
+
     // Load the chosen order's lines, defaulting each to what is still outstanding.
     useEffect(() => {
         if (!selectedOrder) {
             setLines([]);
 
             return;
+        }
+        // The company's link decides the warehouse, so picking the order fills
+        // it in. An order whose company has no link leaves whatever is there:
+        // it is then an ordinary choice again, not a stale one.
+        if (impliedWarehouseId) {
+            setValues((prev) => ({ ...prev, warehouse_id: String(impliedWarehouseId) }));
         }
         setLines(selectedOrder.items.map((line) => {
             const outstanding = Math.max(Number(line.quantity ?? 0) - Number(line.quantity_received ?? 0), 0);
@@ -68,7 +77,7 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                 type: 'inventory',
             };
         }));
-    }, [selectedOrder]);
+    }, [selectedOrder, impliedWarehouseId]);
 
     function setField(name, value) {
         setValues((prev) => ({ ...prev, [name]: value }));
@@ -143,13 +152,20 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
 
                         {field({
                             label: 'Warehouse', name: 'warehouse_id', required: true,
-                            hint: 'Where the inventory lines will be raised.',
+                            hint: impliedWarehouseId
+                                ? `Set by ${selectedOrder?.company_name ?? 'this order\u2019s company'} in Settings \u2192 Company Warehouses.`
+                                : 'Where the inventory lines will be raised.',
                             children: (
                                 <select
                                     id="grn-warehouse_id" name="warehouse_id" required
                                     className={`form-select${errors.warehouse_id ? ' form-input-error' : ''}`}
                                     value={values.warehouse_id}
                                     onChange={(e) => setField('warehouse_id', e.target.value)}
+                                    // The company's warehouse is not a preference to
+                                    // override on the day — it is changed in Settings,
+                                    // where the decision belongs.
+                                    disabled={!!impliedWarehouseId}
+                                    style={impliedWarehouseId ? { background: '#f8fafc', color: '#0f172a' } : undefined}
                                 >
                                     <option value="">— Select Warehouse —</option>
                                     {options.warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}

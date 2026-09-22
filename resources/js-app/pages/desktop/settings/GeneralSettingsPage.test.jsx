@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import DesktopGeneralSettingsPage from './GeneralSettingsPage';
 import MobileGeneralSettingsPage from '../../mobile/settings/GeneralSettingsPage';
 import { ToastProvider } from '../../../components/ui/Toast';
@@ -16,13 +16,36 @@ const PAYLOAD = {
     ],
 };
 
+const WAREHOUSE_PAYLOAD = {
+    data: [
+        { id: 1, name: 'Miknas Industrial', is_active: true, warehouse_id: 1, warehouse_name: 'Askar' },
+        { id: 2, name: 'Steel Tech', is_active: true, warehouse_id: null, warehouse_name: null },
+    ],
+    warehouses: [
+        { id: 1, code: 'WH-ASKAR', name: 'Askar', is_active: true },
+        { id: 2, code: 'WH-HIDD', name: 'Hidd', is_active: true },
+    ],
+};
+
+/** The page holds two cards, so the mock answers by endpoint, not by turn. */
+const getFor = (overrides = {}) => (url) => {
+    if (url === '/settings/company-warehouses') {
+        return Promise.resolve(overrides.warehouses ?? WAREHOUSE_PAYLOAD);
+    }
+
+    return Promise.resolve(overrides.numbering ?? PAYLOAD);
+};
+
+/** The Document Numbering card, since the page now holds two of them. */
+const numberingCard = () => screen.getByText('Document Numbering').closest('div');
+
 const renderPage = (Page = DesktopGeneralSettingsPage) =>
     render(<ToastProvider><Page /></ToastProvider>);
 
 describe('the Settings tab', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
-        vi.spyOn(client, 'apiGet').mockResolvedValue(PAYLOAD);
+        vi.spyOn(client, 'apiGet').mockImplementation(getFor());
     });
 
     it('lists each company with its code and the number it will issue next', async () => {
@@ -61,7 +84,7 @@ describe('the Settings tab', () => {
         await screen.findByText('Document Numbering');
 
         fireEvent.change(screen.getByLabelText('Steel Tech document code'), { target: { value: 'STL' } });
-        fireEvent.click(screen.getByText('Save'));
+        fireEvent.click(within(numberingCard()).getByText('Save'));
 
         await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/document-numbering', {
             codes: [{ id: 1, lpo_code: 'MI' }, { id: 2, lpo_code: 'STL' }],
@@ -73,9 +96,9 @@ describe('the Settings tab', () => {
         renderPage();
         await screen.findByText('Document Numbering');
 
-        expect(screen.getByText('Save')).toBeDisabled();
+        expect(within(numberingCard()).getByText('Save')).toBeDisabled();
         fireEvent.change(screen.getByLabelText('Steel Tech document code'), { target: { value: 'STL' } });
-        expect(screen.getByText('Save')).not.toBeDisabled();
+        expect(within(numberingCard()).getByText('Save')).not.toBeDisabled();
     });
 
     it('shows the server’s refusal rather than a generic failure', async () => {
@@ -86,7 +109,7 @@ describe('the Settings tab', () => {
         await screen.findByText('Document Numbering');
 
         fireEvent.change(screen.getByLabelText('Steel Tech document code'), { target: { value: 'MI' } });
-        fireEvent.click(screen.getByText('Save'));
+        fireEvent.click(within(numberingCard()).getByText('Save'));
 
         expect(await screen.findByRole('alert'))
             .toHaveTextContent('Two companies cannot share the same code.');
@@ -96,8 +119,13 @@ describe('the Settings tab', () => {
         vi.spyOn(client, 'apiGet').mockRejectedValue({ status: 403, message: 'Forbidden' });
         renderPage();
 
-        expect(await screen.findByRole('alert'))
-            .toHaveTextContent('You do not have permission to view the document numbering.');
+        // Both cards sit behind settings.view, so both say so rather than
+        // reporting a fault that is not there.
+        const alerts = await screen.findAllByRole('alert');
+        expect(alerts.map((node) => node.textContent)).toEqual([
+            'You do not have permission to view the document numbering.',
+            'You do not have permission to view the company warehouses.',
+        ]);
     });
 
     it('renders on mobile too, since every page is a pair', async () => {
@@ -105,6 +133,80 @@ describe('the Settings tab', () => {
 
         expect(await screen.findByText('Document Numbering')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+    });
+});
+
+describe('the Company Warehouses card', () => {
+    const warehouseCard = () => screen.getByText('Company Warehouses').closest('div');
+
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockImplementation(getFor());
+    });
+
+    it('shows each company’s receiving warehouse, and the ones with none', async () => {
+        renderPage();
+        await screen.findByText('Company Warehouses');
+
+        expect(screen.getByLabelText('Miknas Industrial receiving warehouse')).toHaveValue('1');
+        // An unlinked company is a valid state, not a blank waiting to be filled.
+        expect(screen.getByLabelText('Steel Tech receiving warehouse')).toHaveValue('');
+    });
+
+    it('saves every link in one request, sending null for the unlinked', async () => {
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({
+            message: 'Company warehouses saved.',
+            data: [
+                { ...WAREHOUSE_PAYLOAD.data[0] },
+                { ...WAREHOUSE_PAYLOAD.data[1], warehouse_id: 2, warehouse_name: 'Hidd' },
+            ],
+            warehouses: WAREHOUSE_PAYLOAD.warehouses,
+        });
+        renderPage();
+        await screen.findByText('Company Warehouses');
+
+        fireEvent.change(screen.getByLabelText('Steel Tech receiving warehouse'), { target: { value: '2' } });
+        fireEvent.click(within(warehouseCard()).getByText('Save'));
+
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/company-warehouses', {
+            links: [{ id: 1, warehouse_id: 1 }, { id: 2, warehouse_id: 2 }],
+        }));
+        expect(await screen.findByText('Company warehouses saved.')).toBeInTheDocument();
+    });
+
+    it('sends null when a company is unlinked', async () => {
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({
+            message: 'Company warehouses saved.',
+            data: [
+                { ...WAREHOUSE_PAYLOAD.data[0], warehouse_id: null, warehouse_name: null },
+                { ...WAREHOUSE_PAYLOAD.data[1] },
+            ],
+            warehouses: WAREHOUSE_PAYLOAD.warehouses,
+        });
+        renderPage();
+        await screen.findByText('Company Warehouses');
+
+        fireEvent.change(screen.getByLabelText('Miknas Industrial receiving warehouse'), { target: { value: '' } });
+        fireEvent.click(within(warehouseCard()).getByText('Save'));
+
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/company-warehouses', {
+            links: [{ id: 1, warehouse_id: null }, { id: 2, warehouse_id: null }],
+        }));
+    });
+
+    it('will not save until something has changed', async () => {
+        renderPage();
+        await screen.findByText('Company Warehouses');
+
+        expect(within(warehouseCard()).getByText('Save')).toBeDisabled();
+        fireEvent.change(screen.getByLabelText('Steel Tech receiving warehouse'), { target: { value: '2' } });
+        expect(within(warehouseCard()).getByText('Save')).not.toBeDisabled();
+    });
+
+    it('renders on mobile too, since every page is a pair', async () => {
+        renderPage(MobileGeneralSettingsPage);
+
+        expect(await screen.findByText('Company Warehouses')).toBeInTheDocument();
     });
 });
 
