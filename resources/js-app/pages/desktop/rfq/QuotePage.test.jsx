@@ -258,6 +258,12 @@ describe.each([
         expect(await screen.findByText('Quote Received')).toBeInTheDocument();
         expect(screen.getByText(/Gulf Steel Co\./)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Submit/ })).not.toBeInTheDocument();
+
+        // company_name is the company, not the project — the one screen the
+        // rename missed, because nothing asserted its label.
+        expect(screen.getByText('Company')).toBeInTheDocument();
+        expect(screen.getByText('Sitra Yard')).toBeInTheDocument();
+        expect(screen.queryByText('Project')).not.toBeInTheDocument();
     });
 
     it('reports a failed read rather than an empty page', async () => {

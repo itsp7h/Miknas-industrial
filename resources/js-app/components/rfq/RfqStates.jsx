@@ -216,7 +216,7 @@ export function SubmittedScreen({ compact = false, invitation }) {
                         <DetailRow label="Submitted" value={invitation.submitted_at_text} divided />
                     )}
                     {invitation?.request?.company_name && (
-                        <DetailRow label="Project" value={invitation.request.company_name} divided />
+                        <DetailRow label="Company" value={invitation.request.company_name} divided />
                     )}
                 </div>
 
