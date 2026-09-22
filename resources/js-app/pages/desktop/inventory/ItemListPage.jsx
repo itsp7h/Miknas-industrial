@@ -63,6 +63,19 @@ export default function ItemListPage({
                         ))}
                     </select>
 
+                    {/* Client-side like the search beside it, so changing the
+                        order is instant and costs no round trip. */}
+                    <select
+                        aria-label="Sort items by"
+                        value={it.sort}
+                        onChange={(e) => it.setSort(e.target.value)}
+                        style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13.5, outline: 'none', background: '#fff' }}
+                    >
+                        {it.sortOptions.map((option) => (
+                            <option key={option.value} value={option.value}>Sort: {option.label}</option>
+                        ))}
+                    </select>
+
                     {/* With six sections averaging eight items each, this is how
                         the page is navigated — group headings would be overkill. */}
                     {it.sections.length > 0 && (

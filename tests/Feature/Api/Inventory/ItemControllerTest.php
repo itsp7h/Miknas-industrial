@@ -476,4 +476,54 @@ class ItemControllerTest extends TestCase
             'quantity' => 2, 'rate' => 10, 'total_amount' => 20,
         ]);
     }
+
+    /**
+     * "Recently purchased" is the sort's only server-side ingredient — the
+     * ordering itself is client-side, but the date it orders by is not.
+     */
+    public function test_the_list_carries_when_each_item_was_last_purchased(): void
+    {
+        $supplier = Supplier::factory()->create();
+        $bought = Item::create([
+            'item_code' => 'RM-1', 'item_name' => 'Bought Steel',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG', 'cost_price' => 10,
+        ]);
+        Item::create([
+            'item_code' => 'RM-2', 'item_name' => 'Untouched Sand',
+            'category' => 'raw_material', 'unit_of_measure' => 'KG', 'cost_price' => 2,
+        ]);
+
+        $order = fn (string $date, string $status) => tap(PurchaseOrder::create([
+            'po_number' => 'PO-'.$date, 'supplier_id' => $supplier->id, 'po_date' => $date,
+            'total_amount' => 100, 'status' => $status,
+        ]), fn ($po) => PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id, 'item_id' => $bought->id,
+            'quantity' => 1, 'rate' => 10, 'total_amount' => 10, 'quantity_received' => 0,
+        ]));
+
+        $order('2026-09-01', 'received');
+        $order('2026-09-10', 'sent');
+        // Neither of these is a purchase: one was never issued, the other was
+        // called off. The latest date must not come from them.
+        $order('2026-09-30', 'draft');
+        $order('2026-09-29', 'cancelled');
+
+        $response = $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/inventory/items')->assertOk();
+
+        $rows = collect($response->json('data'))->keyBy('item_code');
+        $this->assertSame('2026-09-10', $rows['RM-1']['last_purchased_at']);
+        $this->assertNull($rows['RM-2']['last_purchased_at']);
+    }
+
+    /** A saved item is echoed back to the list, so it carries the field too. */
+    public function test_a_saved_item_carries_the_field_as_well(): void
+    {
+        $response = $this->actingAs($this->actingUser())
+            ->postJson('/api/v1/inventory/items', $this->payload())
+            ->assertCreated();
+
+        $this->assertArrayHasKey('last_purchased_at', $response->json('data'));
+        $this->assertNull($response->json('data.last_purchased_at'));
+    }
 }

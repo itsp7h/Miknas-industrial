@@ -59,6 +59,17 @@ export default function ItemListPage({
                         <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
                     ))}
                 </select>
+                <select
+                    aria-label="Sort items by"
+                    value={it.sort}
+                    onChange={(e) => it.setSort(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
+                    style={{ marginTop: 8, background: '#fff' }}
+                >
+                    {it.sortOptions.map((option) => (
+                        <option key={option.value} value={option.value}>Sort: {option.label}</option>
+                    ))}
+                </select>
                 {it.sections.length > 0 && (
                     <select
                         aria-label="Filter by section"

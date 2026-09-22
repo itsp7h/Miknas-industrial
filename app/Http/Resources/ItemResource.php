@@ -29,6 +29,9 @@ class ItemResource extends JsonResource
                 ? $this->stockByWarehouse()[0]['id']
                 : null,
             'cost_price' => $this->cost_price,
+            // When this item was last bought, for the "Recently purchased"
+            // sort. Null for an item nobody has ordered yet.
+            'last_purchased_at' => $this->lastPurchasedAt(),
             'description' => $this->description,
             'is_active' => (bool) $this->is_active,
         ];

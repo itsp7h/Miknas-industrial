@@ -3,7 +3,8 @@ import useLiveList from '../../../hooks/useLiveList';
 import { apiDelete, apiPostForm } from '../../../api/client';
 import { useToast } from '../../ui/Toast';
 import {
-    categorySearchText, scopeToWarehouse, sectionOptions, warehouseNames, warehouseOptions,
+    categorySearchText, scopeToWarehouse, sectionOptions, sortItems, SORT_OPTIONS,
+    warehouseNames, warehouseOptions,
 } from './itemStyles';
 
 /** List, import and delete behaviour shared by both viewports. */
@@ -24,6 +25,7 @@ export default function useItemList(onlyCategory = null) {
     const [query, setQuery] = useState('');
     const [warehouseId, setWarehouseId] = useState('');
     const [sectionId, setSectionId] = useState('');
+    const [sort, setSort] = useState('name');
     const [modalOpen, setModalOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -97,13 +99,17 @@ export default function useItemList(onlyCategory = null) {
     const inScope = scopeToWarehouse(items, activeWarehouseId)
         .filter((item) => !activeSectionId || String(item.item_category_id) === activeSectionId);
 
-    const filtered = inScope.filter((item) => {
+    const matched = inScope.filter((item) => {
         const q = query.trim().toLowerCase();
         if (!q) return true;
 
         return [item.item_code, item.item_name, categorySearchText(item), item.unit_of_measure, warehouseNames(item)]
             .some((field) => String(field ?? '').toLowerCase().includes(q));
     });
+
+    // Ordered last, so the sort applies to what survived the filters rather
+    // than to the whole list — the rows on screen are the ones being ordered.
+    const filtered = sortItems(matched, sort);
 
     return {
         items, filtered, inScope,
@@ -112,6 +118,7 @@ export default function useItemList(onlyCategory = null) {
         query, setQuery,
         warehouses, warehouseId: activeWarehouseId, setWarehouseId,
         sections, sectionId: activeSectionId, setSectionId,
+        sort, setSort, sortOptions: SORT_OPTIONS,
         modalOpen, setModalOpen,
         importOpen, setImportOpen, handleImport,
         editing, openCreate, openEdit, handleSaved,

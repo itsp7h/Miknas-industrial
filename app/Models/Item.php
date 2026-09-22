@@ -89,6 +89,36 @@ class Item extends Model
         return $this->hasMany(StockMovement::class);
     }
 
+    /** Purchase orders that are a purchase: issued, and not called off. */
+    public const PURCHASED_STATUSES = ['sent', 'partial', 'received'];
+
+    /**
+     * When this item was last bought, as Y-m-d, or null if it never was.
+     *
+     * A draft order is not yet a purchase and a cancelled one never became
+     * one, so only issued orders count — the date is the LPO's, which is when
+     * the company committed to buying, rather than when the goods turned up.
+     *
+     * The list pre-fills this for every row in one query (see
+     * ItemController::index) because asking per item would be one query per
+     * row; the fallback here is what answers for a single item, such as the
+     * one echoed back after a save.
+     */
+    public function lastPurchasedAt(): ?string
+    {
+        if (array_key_exists('last_purchased_at', $this->attributes)) {
+            return $this->attributes['last_purchased_at'];
+        }
+
+        $date = DB::table('purchase_order_items')
+            ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
+            ->where('purchase_order_items.item_id', $this->id)
+            ->whereIn('purchase_orders.status', self::PURCHASED_STATUSES)
+            ->max('purchase_orders.po_date');
+
+        return $date ? substr((string) $date, 0, 10) : null;
+    }
+
     public function billOfMaterials()
     {
         return $this->hasMany(BillOfMaterial::class, 'product_id');

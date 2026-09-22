@@ -126,3 +126,55 @@ describe('mobile ItemListPage', () => {
     });
 
 });
+
+/** The sort control is a pair, like every page (CLAUDE.md gotcha #12). */
+describe('mobile ItemListPage sorting', () => {
+    const SORTABLE = [
+        {
+            id: 11, item_code: 'ITEM-00100', item_name: 'Zinc Oxide', category: 'raw_material',
+            unit_of_measure: 'KG', minimum_stock_level: '0', cost_price: '1', is_active: true,
+            quantity: 1, warehouses: [{ id: 1, name: 'Main', quantity: 1 }],
+            item_category_id: null, item_category_name: null, category_path: 'Raw Materials',
+            last_purchased_at: '2026-09-01',
+        },
+        {
+            id: 12, item_code: 'ITEM-00300', item_name: 'Alpha Cement', category: 'raw_material',
+            unit_of_measure: 'KG', minimum_stock_level: '0', cost_price: '1', is_active: true,
+            quantity: 1, warehouses: [{ id: 1, name: 'Main', quantity: 1 }],
+            item_category_id: null, item_category_name: null, category_path: 'Raw Materials',
+            last_purchased_at: '2026-09-20',
+        },
+        {
+            id: 13, item_code: 'ITEM-00200', item_name: 'Mid Sand', category: 'raw_material',
+            unit_of_measure: 'KG', minimum_stock_level: '0', cost_price: '1', is_active: true,
+            quantity: 1, warehouses: [{ id: 1, name: 'Main', quantity: 1 }],
+            item_category_id: null, item_category_name: null, category_path: 'Raw Materials',
+            last_purchased_at: null,
+        },
+    ];
+
+    beforeEach(() => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: SORTABLE, meta: { category_options: CATEGORY_OPTIONS },
+        });
+    });
+
+    /** The card titles in the order the list currently has them. */
+    const namesOnScreen = () => SORTABLE
+        .map((item) => ({ name: item.item_name, node: screen.getByText(item.item_name) }))
+        .sort((a, b) => (a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+        .map((entry) => entry.name);
+
+    it('offers the same three orders as the desktop page', async () => {
+        renderPage();
+        await screen.findByText('Alpha Cement');
+
+        expect(namesOnScreen()).toEqual(['Alpha Cement', 'Mid Sand', 'Zinc Oxide']);
+
+        fireEvent.change(screen.getByLabelText('Sort items by'), { target: { value: 'code' } });
+        expect(namesOnScreen()).toEqual(['Zinc Oxide', 'Mid Sand', 'Alpha Cement']);
+
+        fireEvent.change(screen.getByLabelText('Sort items by'), { target: { value: 'recent' } });
+        expect(namesOnScreen()).toEqual(['Alpha Cement', 'Zinc Oxide', 'Mid Sand']);
+    });
+});

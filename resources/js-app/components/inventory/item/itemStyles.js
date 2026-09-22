@@ -107,3 +107,46 @@ export const sectionOptions = (items) => {
 // "pigments" each find the same row.
 export const categorySearchText = (item) => item?.category_path ?? categoryLabel(item?.category);
 
+
+// The orders the list can be put in. `name` is the default because it is the
+// order the server already returns and the one the page has always had.
+export const SORT_OPTIONS = [
+    { value: 'name', label: 'Name (A–Z)' },
+    { value: 'code', label: 'Item code' },
+    { value: 'recent', label: 'Recently purchased' },
+];
+
+/**
+ * A copy of `items` in the chosen order.
+ *
+ * Client-side, over every loaded row, for the same reason the search is
+ * (CLAUDE.md gotcha #6) — changing the order must not cost a round trip.
+ *
+ * `numeric` matters for the codes: ITEM-00009 sorts before ITEM-00010 either
+ * way, but a hand-typed code like RM-9 would otherwise land after RM-10.
+ * Items nobody has bought yet sort last under `recent` rather than first,
+ * because a missing date is not the oldest date; they keep their name order
+ * among themselves so the tail is still navigable.
+ */
+export const sortItems = (items, sort) => {
+    const byName = (a, b) => String(a.item_name ?? '').localeCompare(String(b.item_name ?? ''), undefined, { numeric: true });
+
+    if (sort === 'code') {
+        return [...items].sort((a, b) =>
+            String(a.item_code ?? '').localeCompare(String(b.item_code ?? ''), undefined, { numeric: true }));
+    }
+
+    if (sort === 'recent') {
+        return [...items].sort((a, b) => {
+            const left = a.last_purchased_at ?? '';
+            const right = b.last_purchased_at ?? '';
+            if (left === right) return byName(a, b);
+            if (!left) return 1;
+            if (!right) return -1;
+
+            return right.localeCompare(left);
+        });
+    }
+
+    return [...items].sort(byName);
+};

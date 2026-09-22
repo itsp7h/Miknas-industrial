@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import ItemListPage from './ItemListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import * as client from '../../../api/client';
@@ -13,6 +13,16 @@ vi.mock('../../../echo', () => ({
 }));
 
 const WAREHOUSES = [{ id: 1, name: 'Main' }, { id: 2, name: 'Yard' }];
+
+/**
+ * The Edit or Delete button in the row for `name`.
+ *
+ * By row rather than by position: the list is sorted by name, so an index says
+ * nothing about which item is being acted on — and the fixture below is
+ * deliberately not in name order.
+ */
+const rowAction = (name, action) =>
+    within(screen.getByText(name).closest('tr')).getByText(action);
 
 const CATEGORY_OPTIONS = [
     { value: 'raw_material:', label: 'Raw Materials', category: 'raw_material', item_category_id: null },
@@ -87,7 +97,7 @@ describe('desktop ItemListPage', () => {
     it('asks for confirmation before deleting', async () => {
         renderPage();
         await screen.findByText('Silica Sand');
-        fireEvent.click(screen.getAllByText('Delete')[0]);
+        fireEvent.click(rowAction('Silica Sand', 'Delete'));
         expect(await screen.findByText(/"Silica Sand" will be permanently removed/)).toBeInTheDocument();
     });
 
@@ -98,7 +108,7 @@ describe('desktop ItemListPage', () => {
         });
         renderPage();
         await screen.findByText('Silica Sand');
-        fireEvent.click(screen.getAllByText('Delete')[0]);
+        fireEvent.click(rowAction('Silica Sand', 'Delete'));
         fireEvent.click(await screen.findByText('Confirm'));
         await waitFor(() => {
             expect(screen.getByText(/deactivated rather than deleted/)).toBeInTheDocument();
@@ -217,10 +227,92 @@ describe('desktop ItemListPage', () => {
     it('preselects the warehouse when editing and offers no opening stock', async () => {
         renderPage();
         await screen.findByText('Silica Sand');
-        fireEvent.click(screen.getAllByText('Edit')[1]);
+        // Pentaproof is the one fixture row that sits in a single warehouse,
+        // which is what gives the form a warehouse to preselect.
+        fireEvent.click(rowAction('Pentaproof 20 P', 'Edit'));
 
         expect(await screen.findByLabelText('Warehouse')).toHaveValue('1');
         expect(screen.queryByLabelText('Opening Stock')).not.toBeInTheDocument();
     });
 
+});
+
+/**
+ * The sort control. Client-side over every loaded row, like the search beside
+ * it, so changing the order costs no round trip.
+ */
+describe('desktop ItemListPage sorting', () => {
+    const SORTABLE = [
+        {
+            id: 11, item_code: 'ITEM-00100', item_name: 'Zinc Oxide', category: 'raw_material',
+            unit_of_measure: 'KG', minimum_stock_level: '0', cost_price: '1', is_active: true,
+            quantity: 1, warehouses: [{ id: 1, name: 'Main', quantity: 1 }],
+            item_category_id: null, item_category_name: null, category_path: 'Raw Materials',
+            last_purchased_at: '2026-09-01',
+        },
+        {
+            id: 12, item_code: 'ITEM-00300', item_name: 'Alpha Cement', category: 'raw_material',
+            unit_of_measure: 'KG', minimum_stock_level: '0', cost_price: '1', is_active: true,
+            quantity: 1, warehouses: [{ id: 1, name: 'Main', quantity: 1 }],
+            item_category_id: null, item_category_name: null, category_path: 'Raw Materials',
+            last_purchased_at: '2026-09-20',
+        },
+        {
+            id: 13, item_code: 'ITEM-00200', item_name: 'Mid Sand', category: 'raw_material',
+            unit_of_measure: 'KG', minimum_stock_level: '0', cost_price: '1', is_active: true,
+            quantity: 1, warehouses: [{ id: 1, name: 'Main', quantity: 1 }],
+            item_category_id: null, item_category_name: null, category_path: 'Raw Materials',
+            last_purchased_at: null,
+        },
+    ];
+
+    /** The item names as the table currently has them, top to bottom. */
+    const namesOnScreen = () => screen.getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelectorAll('td')[1]?.textContent);
+
+    beforeEach(() => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({
+            data: SORTABLE,
+            meta: { category_options: CATEGORY_OPTIONS, warehouses: WAREHOUSES },
+        });
+    });
+
+    it('orders by name to begin with', async () => {
+        renderPage();
+        await screen.findByText('Alpha Cement');
+
+        expect(namesOnScreen()).toEqual(['Alpha Cement', 'Mid Sand', 'Zinc Oxide']);
+    });
+
+    it('orders by item code', async () => {
+        renderPage();
+        await screen.findByText('Alpha Cement');
+
+        fireEvent.change(screen.getByLabelText('Sort items by'), { target: { value: 'code' } });
+
+        // ITEM-00100, ITEM-00200, ITEM-00300 — nothing to do with the names.
+        expect(namesOnScreen()).toEqual(['Zinc Oxide', 'Mid Sand', 'Alpha Cement']);
+    });
+
+    it('orders by most recently purchased, leaving the never-purchased last', async () => {
+        renderPage();
+        await screen.findByText('Alpha Cement');
+
+        fireEvent.change(screen.getByLabelText('Sort items by'), { target: { value: 'recent' } });
+
+        // A missing date is not the oldest date, so Mid Sand sorts to the end
+        // rather than to the front.
+        expect(namesOnScreen()).toEqual(['Alpha Cement', 'Zinc Oxide', 'Mid Sand']);
+    });
+
+    it('sorts what the search left, not the whole list', async () => {
+        renderPage();
+        await screen.findByText('Alpha Cement');
+
+        fireEvent.change(screen.getByLabelText('Sort items by'), { target: { value: 'recent' } });
+        fireEvent.change(screen.getByLabelText('Search items'), { target: { value: 'ITEM-002' } });
+
+        expect(namesOnScreen()).toEqual(['Mid Sand']);
+    });
 });

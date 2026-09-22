@@ -30,9 +30,24 @@ class ItemController extends Controller
      */
     public function index()
     {
-        return ItemResource::collection(
-            Item::with(['stockLevels.warehouse', 'itemCategory'])->orderBy('item_name')->get()
-        )
+        $items = Item::with(['stockLevels.warehouse', 'itemCategory'])->orderBy('item_name')->get();
+
+        // One query for the whole list rather than one per row: the sort by
+        // "recently purchased" needs this on every item, and Item::lastPurchasedAt()
+        // reads what is set here instead of asking again.
+        $lastPurchased = DB::table('purchase_order_items')
+            ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
+            ->whereIn('purchase_orders.status', Item::PURCHASED_STATUSES)
+            ->groupBy('purchase_order_items.item_id')
+            ->selectRaw('purchase_order_items.item_id as item_id, max(purchase_orders.po_date) as last_purchased_at')
+            ->pluck('last_purchased_at', 'item_id');
+
+        foreach ($items as $item) {
+            $date = $lastPurchased[$item->id] ?? null;
+            $item->setAttribute('last_purchased_at', $date ? substr((string) $date, 0, 10) : null);
+        }
+
+        return ItemResource::collection($items)
             ->additional(['meta' => [
                 'categories' => self::CATEGORIES,
                 'category_options' => self::categoryOptions(),
