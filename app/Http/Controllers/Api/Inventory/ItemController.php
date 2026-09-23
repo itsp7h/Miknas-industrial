@@ -30,7 +30,9 @@ class ItemController extends Controller
      */
     public function index()
     {
-        $items = Item::with(['stockLevels.warehouse', 'itemCategory'])->orderBy('item_name')->get();
+        $items = Item::with(['stockLevels.warehouse', 'itemCategory'])
+            ->whereIn('category', $this->permittedCategories('view'))
+            ->orderBy('item_name')->get();
 
         // One query for the whole list rather than one per row: the sort by
         // "recently purchased" needs this on every item, and Item::lastPurchasedAt()
@@ -64,9 +66,34 @@ class ItemController extends Controller
      */
     private function authorizeTab(string $category, string $action): void
     {
-        $tab = $category === 'finished_good' ? 'finished-goods' : 'raw-materials';
+        abort_unless(auth()->user()?->can(self::tabFor($category).".{$action}"), 403);
+    }
 
-        abort_unless(auth()->user()?->can("{$tab}.{$action}"), 403);
+    /** Which sidebar tab owns a category. WIP sits with the raw materials. */
+    private static function tabFor(string $category): string
+    {
+        return $category === 'finished_good' ? 'finished-goods' : 'raw-materials';
+    }
+
+    /**
+     * The categories this user may $action.
+     *
+     * Raw Materials and Finished Goods are two tabs with two permissions, but
+     * one set of endpoints — so the route middleware can only ask for *either*
+     * square. Without this the separation the sidebar promises is not kept:
+     * someone granted Raw Materials alone could list, export and import
+     * finished goods.
+     *
+     * @return list<string>
+     */
+    private function permittedCategories(string $action): array
+    {
+        $user = auth()->user();
+
+        return array_values(array_filter(
+            self::CATEGORIES,
+            fn (string $category) => (bool) $user?->can(self::tabFor($category).".{$action}")
+        ));
     }
 
     public function store(Request $request)
@@ -146,7 +173,17 @@ class ItemController extends Controller
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,xls']);
 
-        $result = $service->import($request->file('file')->getRealPath());
+        $result = $service->import(
+            $request->file('file')->getRealPath(),
+            $this->permittedCategories('import')
+        );
+
+        // A row outside their squares is refused rather than silently dropped,
+        // so an import that only half-landed says why.
+        if (($result['refused'] ?? 0) > 0) {
+            $result['message'] = $result['imported'].' imported. '.$result['refused']
+                .' row(s) were for a section you may not import, and were left out.';
+        }
 
         return response()->json($result);
     }
@@ -161,7 +198,10 @@ class ItemController extends Controller
 
     public function exportPdf()
     {
-        $items = Item::orderBy('item_name')->get();
+        // Not every item — the ones this user's squares cover. The route can
+        // only ask for either square; which rows they get is decided here.
+        $items = Item::whereIn('category', $this->permittedCategories('export'))
+            ->orderBy('item_name')->get();
 
         return Pdf::loadView('inventory.items.pdf', compact('items'))->download('items.pdf');
     }
