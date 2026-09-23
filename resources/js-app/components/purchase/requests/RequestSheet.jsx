@@ -1,3 +1,5 @@
+import { formatRequiredWhen } from './requiredWhen';
+
 const STATUS_BADGE = {
     pending: 'badge-yellow',
     approved: 'badge-green',
@@ -59,14 +61,15 @@ export default function RequestSheet({ request, compact = false }) {
             </div>
 
             <div className="card card-body" style={{ marginBottom: 24 }}>
-                <SectionHeading>Project / Department Details</SectionHeading>
+                <SectionHeading>Company / Department Details</SectionHeading>
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns},minmax(0,1fr))`, gap: 16 }}>
                     <Field label="MPR Number" value={request.request_number} />
                     <Field label="Date" value={ddmmyyyy(request.date)} />
-                    <Field label="Project / Site Name" value={request.project_name} />
+                    <Field label="Company" value={request.company_name} />
+                    <Field label="Project" value={request.project_name} />
                     <Field label="Requested By" value={request.requested_by_name} />
-                    <Field label="Required Date" value={request.required_date_text} />
-                    <Field label="Location / Site" value={request.location} />
+                    <Field label="Required Urgency" value={formatRequiredWhen(request.required_date_text)} />
+                    <Field label="Location / Project" value={request.location} />
                     {request.department && <Field label="Department" value={request.department} />}
                     {request.remarks && <Field label="Remarks" value={request.remarks} span={columns} />}
                 </div>

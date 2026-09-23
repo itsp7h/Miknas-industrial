@@ -92,6 +92,14 @@ npm run build
 log "Running migrations"
 php artisan migrate --force
 
+# Permissions are declared in config/access.php and only exist in the database
+# once this has run. Without it every `permission:` route refuses everyone and
+# the app is a locked door with a working login. AccessSeeder only ever adds —
+# it creates missing permissions and leaves every grant alone — so it is safe
+# on each deploy, and a new tab is reachable the moment its code lands.
+log "Seeding access permissions"
+php artisan db:seed --class=AccessSeeder --force
+
 log "Clearing caches"
 php artisan optimize:clear
 php artisan storage:link || true

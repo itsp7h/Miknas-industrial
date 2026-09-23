@@ -1,3 +1,4 @@
+import { qty } from '../../../currency';
 import { Link } from 'react-router-dom';
 import { STATUS_BACKGROUNDS, STATUS_COLOURS, STATUS_LABELS, formatDate, money } from './statuses';
 
@@ -52,7 +53,7 @@ export default function PurchaseOrderDetail({ order, compact = false }) {
                             {order.company_name ?? 'SteelERP'}
                         </div>
                         <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
-                            {request?.project_name ?? 'Manufacturing & Trading'}
+                            {request?.company_name ?? 'Manufacturing & Trading'}
                         </div>
                     </div>
                     <div style={{ textAlign: compact ? 'left' : 'right' }}>
@@ -112,10 +113,10 @@ export default function PurchaseOrderDetail({ order, compact = false }) {
                                 <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 12.5 }}>
                                     {index + 1}. {line.item_name ?? '—'}
                                 </span>
-                                <span style={{ fontWeight: 700, fontSize: 12.5 }}>BD {money(line.total_amount)}</span>
+                                <span style={{ fontWeight: 700, fontSize: 12.5 }}>{money(line.total_amount)}</span>
                             </div>
                             <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                                {money(line.quantity)} {line.unit_of_measure ?? ''} × BD {money(line.rate)}
+                                {qty(line.quantity)} {line.unit_of_measure ?? ''} × {money(line.rate)}
                             </div>
                         </div>
                     ))}
@@ -152,13 +153,13 @@ export default function PurchaseOrderDetail({ order, compact = false }) {
                                                 {line.item_name ?? '—'}
                                             </td>
                                             <td style={{ padding: '7px 10px', textAlign: 'right', color: '#334155', borderBottom: '1px solid #e2e8f0' }}>
-                                                {money(line.quantity)} {line.unit_of_measure ?? ''}
+                                                {qty(line.quantity)} {line.unit_of_measure ?? ''}
                                             </td>
                                             <td style={{ padding: '7px 10px', textAlign: 'right', color: '#334155', borderBottom: '1px solid #e2e8f0' }}>
-                                                BD {money(line.rate)}
+                                                {money(line.rate)}
                                             </td>
                                             <td style={{ padding: '7px 10px', textAlign: 'right', color: '#334155', borderBottom: '1px solid #e2e8f0' }}>
-                                                BD {money(line.total_amount)}
+                                                {money(line.total_amount)}
                                             </td>
                                         </tr>
                                     ))}
@@ -166,7 +167,7 @@ export default function PurchaseOrderDetail({ order, compact = false }) {
                                 <tfoot>
                                     <tr>
                                         <td colSpan={4} style={{ padding: 10, fontWeight: 700, textAlign: 'right' }}>Total Amount</td>
-                                        <td style={{ padding: 10, fontWeight: 700, textAlign: 'right' }}>BD {money(order.total_amount)}</td>
+                                        <td style={{ padding: 10, fontWeight: 700, textAlign: 'right' }}>{money(order.total_amount)}</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -176,7 +177,7 @@ export default function PurchaseOrderDetail({ order, compact = false }) {
                     {compact && items.length > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10, fontWeight: 700 }}>
                             <span>Total Amount</span>
-                            <span>BD {money(order.total_amount)}</span>
+                            <span>{money(order.total_amount)}</span>
                         </div>
                     )}
                 </div>

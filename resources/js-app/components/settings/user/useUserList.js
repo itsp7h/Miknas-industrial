@@ -5,19 +5,20 @@ import { useToast } from '../../ui/Toast';
 /** Users, the role list and the per-permission toggles. */
 export default function useUserList() {
     const [users, setUsers] = useState([]);
-    const [roles, setRoles] = useState([]);
-    const [permissions, setPermissions] = useState([]);
+    const [profiles, setProfiles] = useState([]);
+    const [grid, setGrid] = useState([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState('');
     const [newUserOpen, setNewUserOpen] = useState(false);
     const [editing, setEditing] = useState(null);
+    const [resetting, setResetting] = useState(null);
     const { showToast } = useToast();
 
     const load = useCallback(() => apiGet('/settings/users')
         .then((response) => {
             setUsers(response.data);
-            setRoles(response.roles ?? []);
-            setPermissions(response.permissions ?? []);
+            setProfiles(response.profiles ?? []);
+            setGrid(response.grid ?? []);
         })
         .catch(() => showToast('Failed to load users.', 'error'))
         .finally(() => setLoading(false)),
@@ -45,6 +46,13 @@ export default function useUserList() {
         showToast(response.message, 'success');
     }
 
+    async function resetPassword(user, payload) {
+        const response = await apiPost(`/settings/users/${user.id}/reset-password`, payload);
+        // Nothing on the row changes, but the server's own wording says which
+        // of the two things happened, so it is what gets shown.
+        showToast(response.message, 'success');
+    }
+
     const q = query.trim().toLowerCase();
     const filtered = q
         ? users.filter((user) => [user.name, user.email, ...(user.roles ?? [])]
@@ -52,9 +60,10 @@ export default function useUserList() {
         : users;
 
     return {
-        users, filtered, roles, permissions, loading,
+        users, filtered, profiles, grid, loading,
         query, setQuery,
         newUserOpen, setNewUserOpen, createUser,
         editing, setEditing, saveAccess,
+        resetting, setResetting, resetPassword,
     };
 }

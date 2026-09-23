@@ -89,13 +89,17 @@ is Breeze's auth flow and the not-yet-migrated RFQ workflow.
 Controller.php
 
 Api/                              ← the React SPA's JSON API
-  AuthController.php              DashboardController.php
+  AuthController.php              login/logout/me, plus the JSON half of the
+                                  password flow (forgot, reset, confirm)
+  DashboardController.php
   NotificationController.php      ProfileController.php
   Purchase/  SupplierController, PurchaseOrderController,
              GoodsReceiptNoteController, SupplierInvoiceController,
              SupplierPaymentController, PurchasePipelineController,
              SupplierQuoteController (quotes workspace, award/unaward),
-             PurchaseRequestController (the MPR form, sheet and delete)
+             PurchaseRequestController (the MPR form, sheet and delete),
+             RfqPortalController (public, token-based, no auth — the
+                                  supplier quote portal's read and submit)
   Inventory/ ItemController (import, template, exportPdf), WarehouseController,
              StockMovementController, StockReportController
              (summary, movement, lowStock, valuation)
@@ -113,12 +117,17 @@ Api/                              ← the React SPA's JSON API
              MailAccountController  mail accounts
              VatController          the global VAT rate
 
-Auth/                             (Breeze defaults, session-establishing)
+Auth/                             Breeze's, session-establishing. Their GET
+                                  actions now render `auth.shell` — the React
+                                  mount point — rather than a Blade form; the
+                                  POST actions are untouched and still
+                                  Breeze's own (see gotcha #12).
 
 Purchase/                         ← what has to stay server-rendered
   PurchaseRequestController.php   ← print only (the MPR document)
   PurchaseOrderController.php     ← print/pdf only (LPO documents)
-  RfqPortalController.php         ← public, token-based, no auth
+  RfqPortalController.php         ← the portal's React host page only; the
+                                    invitation and the quote are the API's
 ```
 
 ## Models — `app/Models/`
@@ -210,36 +219,31 @@ GET  purchase/pipeline/{purchaseRequest}          request detail
 GET  purchase/requests/{purchaseRequest}/quotes   → redirect to /app/…/quotes
 GET  purchase/requests/{purchaseRequest}/compare  → redirect to the same page
 GET  purchase/orders/{order}/print|pdf            LPO documents (DomPDF)
-GET/POST rfq/{token}                              public portal, no auth
+GET  rfq/{token}                                  public portal host page,
+                                                  no auth (React mount point;
+                                                  the quote posts to the API)
 ```
 
 Route parameter names must never be `{request}` — see gotcha #8.
 
 ## Views — `resources/views/`
 
-38 files, and every one of them is deliberate: what is left is either the SPA's
-host page, a session-establishing auth page, a DomPDF/print document, the public
-RFQ portal, an email, or the not-yet-migrated RFQ workflow.
+10 files. There is no Blade *UI* left at all: three of them mount React, and
+the other seven are documents DomPDF renders or emails a mail client renders.
+There is no Blade chrome to extend — `layouts/` is gone entirely.
 
 ```
-app-shell.blade.php        ← the React SPA's host page
-
-layouts/
-  guest.blade.php          chrome for the auth pages (the only Blade chrome
-                           left — layouts/app went with the last page on it)
-
-auth/                      login, forgot-password, reset-password,
-                           verify-email, confirm-password
-components/                the 6 Breeze partials the auth pages still use:
-                           application-logo, auth-session-status, input-error,
-                           input-label, primary-button, text-input
+── React host pages (Blade only because they mount React) ──────────────────
+app-shell.blade.php        the SPA, behind auth+verified          (main.jsx)
+auth/shell.blade.php       all five auth screens, keyed by
+                           `data-page`                            (auth.jsx)
+rfq/portal.blade.php       the public supplier quote portal,
+                           token-based, no auth                   (rfq.jsx)
 
 ── Blade permanently ───────────────────────────────────────────────────────
 purchase/orders/print, purchase/orders/pdf      LPO documents (DomPDF)
 purchase/requests/print                         MPR document
 inventory/items/pdf, purchase/suppliers/pdf     list exports
-rfq/show, rfq/show-mobile, rfq/submitted,       public token portal,
-rfq/expired                                     no auth, outside the shell
 mail/lpo-issued, mail/rfq-invitation            emails
 ```
 
@@ -463,7 +467,14 @@ page is finished. Every module has now been through this — Purchase, Inventory
 Production and Sales — so a React page here should be treated as ported, not
 merely present.
 
-**Where the migration stands.** React (desktop + mobile pair each): Dashboard (`/app`, and `/dashboard` redirects to it), Purchase Pipeline board **and detail**, the **supplier quotes workspace** (`/app/purchase/requests/{id}/quotes`, which the old `/quotes` and `/compare` Blade URLs both redirect to), the **MPR create and edit forms** (a modal any page opens through `useRequestModal()` — see gotcha #10 — which also took the last Alpine.js out of `app-shell.blade.php`), the **MPR sheet** (`/app/purchase/requests/{id}`, the pipeline header's "View Full Request"), Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). **Every page in the app is React** — every one of the 29 sidebar entries is a React route, and no `type: 'href'` entry remains in `navItems.js`. Still Blade: only the Breeze auth pages. The public token RFQ portal (`/rfq/{token}`) and every `print`/`pdf` view stay Blade permanently — they render outside the SPA shell or are DomPDF documents.
+**Where the migration stands.** React (desktop + mobile pair each): Dashboard (`/app`, and `/dashboard` redirects to it), Purchase Pipeline board **and detail**, the **supplier quotes workspace** (`/app/purchase/requests/{id}/quotes`, which the old `/quotes` and `/compare` Blade URLs both redirect to), the **MPR create and edit forms** (a modal any page opens through `useRequestModal()` — see gotcha #10 — which also took the last Alpine.js out of `app-shell.blade.php`), the **MPR sheet** (`/app/purchase/requests/{id}`, the pipeline header's "View Full Request"), Suppliers, **Purchase Orders**, **Goods Receipt Notes**, **Supplier Invoices**, **Supplier Payments**, all of Inventory, all of Production, all of Sales, and **Settings → Companies & Departments** (`/app/settings/companies`) plus **Settings → Projects** (`/app/settings/projects`), **Settings → Users** (`/app/settings/users`), **Settings → Integrations** (`/app/settings/integrations`) and **Settings → VAT** (`/app/settings/vat`) — i.e. **all of Settings** — and **Profile** (`/app/profile`, reached from the user card in either chrome). **Every page in the app is React** — every one of the 29 sidebar entries is a React route, and no `type: 'href'` entry remains in `navItems.js`.
+
+**Outside the `/app` shell, on their own Vite entries** — these are reached without a session, without verification, or without a confirmed password, so none of them can be a route inside a shell behind `auth`+`verified`:
+
+- `auth.jsx` — all five **Breeze auth screens** (login, forgot-password, reset-password, verify-email, confirm-password), on one host page (`auth/shell.blade.php`) keyed by `data-page`. Their JSON endpoints are `POST /api/v1/{login,forgot-password,reset-password,confirm-password}` and, for the resend, the existing `profile/verification-notification`. **Breeze's own POST routes survive** — they are the framework's contract and `tests/Feature/Auth` covers them — but nothing in the UI posts to them any more.
+- `rfq.jsx` — the **public supplier quote portal** (`/rfq/{token}`), whose host page resolves the token so an unknown link 404s at the door and whose markup carries nothing but that token.
+
+**The migration is complete.** Nothing is left to convert. Every `print`/`pdf` view and the two mail views stay Blade permanently — DomPDF and a mail client render Blade, and React cannot run in either.
 
 **The cutover checklist.** Every module is through it, so this is now the recipe
 for adding a *new* page rather than for converting one — each step is still a
@@ -486,10 +497,11 @@ What that means for new work:
 
 - **There is no shared Blade chrome.** A new Blade page has nothing to extend.
   New pages are React (gotcha #12), full stop.
-- The only Blade left is the SPA host page (`app-shell`), the Breeze auth pages
-  on `layouts/guest`, the DomPDF/print documents, the public token RFQ portal,
-  and the two mail views. Each is Blade for a reason it cannot stop being:
-  it establishes the session, it is a PDF, it renders outside the shell, or it
-  is an email.
+- The only Blade left is the three React host pages (`app-shell`,
+  `auth/shell`, `rfq/portal`), the DomPDF/print documents, and the two mail
+  views. Each is Blade for a reason it cannot stop being: it mounts React
+  outside the shell, it is a PDF, or it is an email. `layouts/` and
+  `components/` no longer exist — `layouts/guest` and the six Breeze partials
+  went with the auth screens.
 - The design spec `docs/superpowers/specs/2026-08-03-blade-mobile-desktop-split-design.md`
   is history now, not a plan.

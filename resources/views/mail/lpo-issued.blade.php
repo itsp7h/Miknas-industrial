@@ -14,8 +14,8 @@
         Purchase Order
       </div>
       <div style="font-size:24px;font-weight:700;color:#fff;line-height:1.2;">{{ $order->po_number }}</div>
-      @if($order->purchaseRequest?->project_name)
-      <div style="font-size:13px;color:rgba(255,255,255,.85);margin-top:6px;">{{ $order->purchaseRequest->project_name }}</div>
+      @if($order->purchaseRequest?->company_name)
+      <div style="font-size:13px;color:rgba(255,255,255,.85);margin-top:6px;">{{ $order->purchaseRequest->company_name }}</div>
       @endif
     </div>
 

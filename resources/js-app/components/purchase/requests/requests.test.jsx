@@ -1,28 +1,38 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { ToastProvider } from '../../ui/Toast';
 import { RequestModalProvider, useRequestModal } from './RequestModalProvider';
 import ItemRows, { blankRow } from './ItemRows';
-import ProjectPicker from './ProjectPicker';
+import CompanyPicker from './CompanyPicker';
 import UrgencyPicker from './UrgencyPicker';
 import * as client from '../../../api/client';
 
 const OPTIONS = {
+    // A request names a company and, within it, a project.
+    companies: [
+        { id: 3, name: 'Miknas Steel', locations: ['Bay 4', 'Yard'] },
+        { id: 4, name: 'Gulf Marine', locations: [] },
+        { id: 5, name: 'Desert Logistics', locations: ['Main Store'] },
+    ],
     projects: [
-        {
-            id: 1, name: 'Plant Expansion', company_id: 3, company_name: 'Miknas Steel',
-            label: 'Miknas Steel — Plant Expansion', locations: ['Bay 4', 'Yard'],
-        },
-        {
-            id: 2, name: 'Harbour Works', company_id: 4, company_name: 'Gulf Marine',
-            label: 'Gulf Marine — Harbour Works', locations: [],
-        },
+        { id: 1, name: 'Plant Expansion', company_id: 3, locations: ['Bay 4'] },
+        { id: 2, name: 'Yard Works', company_id: 3, locations: ['Yard'] },
+        { id: 3, name: 'Harbour Works', company_id: 4, locations: [] },
+        // Desert Logistics has exactly one of everything.
+        { id: 4, name: 'Coastal Depot', company_id: 5, locations: ['Main Store'] },
     ],
     departments: [
         { id: 10, name: 'Operations', company_id: 3 },
         { id: 11, name: 'Marine Ops', company_id: 4 },
+        { id: 12, name: 'Logistics', company_id: 5 },
+    ],
+    items: [
+        { id: 1, name: 'Steel Plate 10mm', unit: 'KG' },
+        { id: 2, name: 'Steel Rod 12mm', unit: 'PCS' },
+        { id: 3, name: 'Welding Rod', unit: null },
     ],
     units: ['PCS', 'KG'],
+    requesters: ['Admin User', 'Ali', 'nelson'],
     today: '2026-09-01',
 };
 
@@ -74,25 +84,26 @@ describe('UrgencyPicker', () => {
     });
 });
 
-describe('ProjectPicker', () => {
-    it('lists each project under its company and filters as you type', () => {
-        render(<ProjectPicker projects={OPTIONS.projects} value="" onChange={() => {}} />);
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
+describe('CompanyPicker', () => {
+    it('lists the companies and filters as you type', () => {
+        render(<CompanyPicker companies={OPTIONS.companies} value="" onChange={() => {}} />);
+        fireEvent.click(screen.getByLabelText(/Company/));
 
-        expect(screen.getByText('Plant Expansion')).toBeInTheDocument();
         expect(screen.getByText('Miknas Steel')).toBeInTheDocument();
+        expect(screen.getByText('Gulf Marine')).toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Search projects'), { target: { value: 'gulf' } });
-        expect(screen.getByText('Harbour Works')).toBeInTheDocument();
-        expect(screen.queryByText('Plant Expansion')).not.toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search companies'), { target: { value: 'gulf' } });
+        expect(screen.getByText('Gulf Marine')).toBeInTheDocument();
+        expect(screen.queryByText('Miknas Steel')).not.toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Search projects'), { target: { value: 'nothing' } });
-        expect(screen.getByText('No projects found.')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search companies'), { target: { value: 'nothing' } });
+        expect(screen.getByText('No companies found.')).toBeInTheDocument();
     });
 
-    it('keeps showing a saved project that is no longer in the active list', () => {
-        render(<ProjectPicker projects={OPTIONS.projects} value="Closed Site" onChange={() => {}} />);
-        expect(screen.getByLabelText(/Project \/ Site Name/)).toHaveTextContent('Closed Site');
+    /** Requests raised before this field named a company still carry a project. */
+    it('keeps showing a saved value that is no longer in the list', () => {
+        render(<CompanyPicker companies={OPTIONS.companies} value="Forkoll" onChange={() => {}} />);
+        expect(screen.getByLabelText(/Company/)).toHaveTextContent('Forkoll');
     });
 });
 
@@ -158,23 +169,58 @@ describe('the new-request modal', () => {
         expect(screen.getByLabelText('Item 1 description')).toHaveValue('');
     });
 
-    it('narrows locations and departments to the chosen project', async () => {
+    it('narrows locations and departments to the chosen company', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open new'));
         await screen.findByText('New Purchase Request');
 
-        // With no project chosen, every department is on offer.
-        expect(screen.getByText('Operations')).toBeInTheDocument();
-        expect(screen.getByText('Marine Ops')).toBeInTheDocument();
-        expect(screen.getByLabelText('Location / Site')).toBeDisabled();
-
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
-        fireEvent.click(screen.getByText('Plant Expansion'));
-
-        expect(screen.getByLabelText('Location / Site')).not.toBeDisabled();
-        expect(screen.getByRole('option', { name: 'Bay 4' })).toBeInTheDocument();
-        // Marine Ops belongs to the other company, so it drops out.
+        // A department belongs to one company, so with none chosen there is
+        // nothing sensible to offer — not every company's departments at once.
+        expect(screen.getByLabelText('Department')).toBeDisabled();
+        expect(screen.getByLabelText('Department')).toHaveTextContent('Choose a company first');
+        expect(screen.queryByText('Operations')).not.toBeInTheDocument();
         expect(screen.queryByText('Marine Ops')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Location / Project')).toBeDisabled();
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+
+        expect(screen.getByLabelText('Location / Project')).not.toBeDisabled();
+        expect(screen.getByRole('option', { name: 'Bay 4' })).toBeInTheDocument();
+        // Its own department is offered now...
+        expect(screen.getByLabelText('Department')).not.toBeDisabled();
+        expect(screen.getByRole('option', { name: 'Operations' })).toBeInTheDocument();
+        // ...and Marine Ops, belonging to the other company, is not.
+        expect(screen.queryByText('Marine Ops')).not.toBeInTheDocument();
+    });
+
+    it('fills the location in when the company offers only one', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
+
+        // One location is no choice at all, so the form makes it.
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('Main Store');
+
+        // Miknas Steel offers two, so it stays for the user to pick and
+        // the filled-in site does not carry over from the project before it.
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('');
+    });
+    // Requested By was a free-text box, so one person arrived spelled three ways.
+    it('picks the requester from the system users', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText(/Requested By/);
+        expect(field.tagName).toBe('SELECT');
+        expect(within(field).getByRole('option', { name: 'Ali' })).toBeInTheDocument();
+        expect(within(field).getByRole('option', { name: 'nelson' })).toBeInTheDocument();
     });
 
     it('posts the form and drops rows left blank', async () => {
@@ -185,9 +231,9 @@ describe('the new-request modal', () => {
         fireEvent.click(screen.getByText('open new'));
         await waitFor(() => expect(screen.getByLabelText(/^Date/)).toHaveValue('2026-09-01'));
 
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
-        fireEvent.click(screen.getByText('Plant Expansion'));
-        fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'Aisha Rahman' } });
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+        fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'Ali' } });
         fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Steel Plate 10mm' } });
         fireEvent.change(screen.getByLabelText('Item 1 quantity'), { target: { value: '500' } });
         // A second row the user added and left empty must not be submitted.
@@ -197,8 +243,8 @@ describe('the new-request modal', () => {
         await waitFor(() => expect(post).toHaveBeenCalled());
         const [path, payload] = post.mock.calls[0];
         expect(path).toBe('/purchase/requests');
-        expect(payload.project_name).toBe('Plant Expansion');
-        expect(payload.requested_by_name).toBe('Aisha Rahman');
+        expect(payload.company_name).toBe('Miknas Steel');
+        expect(payload.requested_by_name).toBe('Ali');
         expect(payload.items).toHaveLength(1);
         expect(payload.items[0].description).toBe('Steel Plate 10mm');
 
@@ -208,7 +254,7 @@ describe('the new-request modal', () => {
 
     it('lists server validation errors and stays open', async () => {
         vi.spyOn(client, 'apiPost').mockRejectedValue({
-            message: 'Invalid.', errors: { project_name: ['The project name field is required.'] },
+            message: 'Invalid.', errors: { company_name: ['The project name field is required.'] },
         });
         renderProvider();
         fireEvent.click(screen.getByText('open new'));
@@ -224,7 +270,7 @@ describe('the new-request modal', () => {
 describe('the edit-request modal', () => {
     const RECORD = {
         id: 7, request_number: 'MPR26-0007', date: '2026-08-20',
-        project_name: 'Plant Expansion', requested_by_name: 'Omar Said',
+        company_name: 'Miknas Steel', requested_by_name: 'Omar Said',
         required_date_text: '2 Weeks', location: 'Bay 4', department: 'Operations',
         remarks: 'Shutdown work.',
         items: [{ description: 'Steel Plate 10mm', unit: 'KG', quantity_required: '500.00', purpose_use: 'Frame', required_date: '2026-09-10' }],
@@ -259,24 +305,250 @@ describe('the edit-request modal', () => {
         fireEvent.click(screen.getByText('open edit'));
         await waitFor(() => expect(screen.getByLabelText(/^Requested By/)).toHaveValue('Omar Said'));
 
-        fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'Layla Hassan' } });
+        fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'nelson' } });
         fireEvent.submit(screen.getByLabelText('Item 1 description').closest('form'));
 
         await waitFor(() => expect(put).toHaveBeenCalled());
         expect(put.mock.calls[0][0]).toBe('/purchase/requests/7');
-        expect(put.mock.calls[0][1].requested_by_name).toBe('Layla Hassan');
+        expect(put.mock.calls[0][1].requested_by_name).toBe('nelson');
         await waitFor(() => expect(screen.getByText('MPR26-0007 updated successfully.')).toBeInTheDocument());
     });
 
-    it('clears the location when the project changes under it', async () => {
+    it('clears the location when the company changes under it', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open edit'));
-        await waitFor(() => expect(screen.getByLabelText('Location / Site')).toHaveValue('Bay 4'));
+        await waitFor(() => expect(screen.getByLabelText('Location / Project')).toHaveValue('Bay 4'));
 
-        fireEvent.click(screen.getByLabelText(/Project \/ Site Name/));
-        fireEvent.click(screen.getByText('Harbour Works'));
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Gulf Marine'));
 
-        // Harbour Works has no locations of its own, so nothing stale survives.
-        expect(screen.getByLabelText('Location / Site')).toHaveValue('');
+        // Gulf Marine has no locations of its own, so nothing stale survives.
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('');
+    });
+});
+
+describe('a company with only one of something', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+    });
+
+    it('fills the project, the location and the department when each is the only one', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
+
+        // One of each, so there is no choice to make and nothing to click.
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Coastal Depot');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('Main Store');
+        expect(screen.getByLabelText('Department')).toHaveValue('Logistics');
+    });
+
+    it('picks nothing where there is more than one on offer', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+
+        // Two projects and two locations beneath them: choosing for someone
+        // would put a site on the request that nobody picked.
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Select Project');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('');
+        // Its one department is still settled.
+        expect(screen.getByLabelText('Department')).toHaveValue('Operations');
+    });
+
+    it('clears what the old company settled when the company changes', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
+        expect(screen.getByLabelText('Department')).toHaveValue('Logistics');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Gulf Marine'));
+
+        // Gulf Marine has one project with no locations, and one department.
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Harbour Works');
+        expect(screen.getByLabelText('Location / Project')).toHaveValue('');
+        expect(screen.getByLabelText('Department')).toHaveValue('Marine Ops');
+    });
+});
+
+describe('the description field completing from the item master', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+    });
+
+    it('offers every catalogued material to complete from', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        // A datalist, so the browser filters it as you type: "ste" offers both
+        // Steel entries without a dropdown of our own to position.
+        const list = document.getElementById('mpr-item-names');
+        expect(list).not.toBeNull();
+        expect([...list.querySelectorAll('option')].map((o) => o.value))
+            .toEqual(['Steel Plate 10mm', 'Steel Rod 12mm', 'Welding Rod']);
+    });
+
+    it('takes the unit from the item once the description names one', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('');
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Steel Plate 10mm' } });
+
+        // The unit belongs to the item, so it arrives with it.
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('KG');
+    });
+
+    it('matches regardless of case and stray spaces', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: '  steel rod 12mm ' } });
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('PCS');
+    });
+
+    it('completes the description on Tab, and takes the unit with it', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText('Item 1 description');
+        fireEvent.change(field, { target: { value: 'ste' } });
+        fireEvent.keyDown(field, { key: 'Tab' });
+
+        expect(field).toHaveValue('Steel Plate 10mm');
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('KG');
+    });
+
+    it('completes on Tab whatever the case', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText('Item 1 description');
+        fireEvent.change(field, { target: { value: 'WELD' } });
+        fireEvent.keyDown(field, { key: 'Tab' });
+
+        expect(field).toHaveValue('Welding Rod');
+    });
+
+    /** Tab must not be swallowed when there is nothing to complete. */
+    it('lets Tab through when nothing matches, and when the name is already whole', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText('Item 1 description');
+
+        fireEvent.change(field, { target: { value: 'Brass Fitting' } });
+        const unmatched = fireEvent.keyDown(field, { key: 'Tab' });
+        expect(field).toHaveValue('Brass Fitting');
+        // Not prevented, so focus moves on as Tab always does.
+        expect(unmatched).toBe(true);
+
+        fireEvent.change(field, { target: { value: 'Steel Plate 10mm' } });
+        expect(fireEvent.keyDown(field, { key: 'Tab' })).toBe(true);
+    });
+
+    it('does not complete on Shift+Tab, which is going backwards', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        const field = screen.getByLabelText('Item 1 description');
+        fireEvent.change(field, { target: { value: 'ste' } });
+        fireEvent.keyDown(field, { key: 'Tab', shiftKey: true });
+
+        expect(field).toHaveValue('ste');
+    });
+
+    it('leaves a hand-picked unit alone while the description matches nothing', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.change(screen.getByLabelText('Item 1 unit'), { target: { value: 'PCS' } });
+        // Half a word, and a material the catalogue has never heard of.
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'ste' } });
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('PCS');
+
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Brass Fitting' } });
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('PCS');
+    });
+
+    it('does not blank the unit for an item that has none of its own', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.change(screen.getByLabelText('Item 1 unit'), { target: { value: 'KG' } });
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Welding Rod' } });
+
+        expect(screen.getByLabelText('Item 1 unit')).toHaveValue('KG');
+    });
+});
+
+describe('the project field beside the company', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+    });
+
+    it('offers nothing until a company is chosen', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        // Listing every project would let someone file against another
+        // company's site.
+        expect(screen.getByLabelText('Project')).toBeDisabled();
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Choose a company first');
+    });
+
+    it('offers only the chosen company\u2019s projects', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+
+        fireEvent.click(screen.getByLabelText('Project'));
+        expect(screen.getByText('Plant Expansion')).toBeInTheDocument();
+        expect(screen.getByText('Yard Works')).toBeInTheDocument();
+        expect(screen.queryByText('Harbour Works')).not.toBeInTheDocument();
+    });
+
+    it('drops the project when the company changes under it', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        // Desert Logistics has one project, so choosing it settles Coastal Depot.
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Coastal Depot');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+
+        // The project belonged to the old company, and Miknas Steel has two,
+        // so there is nothing to settle in its place.
+        expect(screen.getByLabelText('Project')).toHaveTextContent('Select Project');
     });
 });

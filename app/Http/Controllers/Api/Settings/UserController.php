@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Api\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AccessCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
-use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -18,12 +18,14 @@ class UserController extends Controller
         return response()->json([
             'data' => User::with(['roles', 'permissions'])->orderBy('name')->get()
                 ->map(fn (User $user) => $this->payload($user))->values(),
-            'roles' => Role::orderBy('name')->pluck('name'),
-            // Label and name both travel: the page shows the label and posts
-            // the name.
-            'permissions' => collect(config('purchase_access.permissions'))
-                ->map(fn ($label, $name) => ['name' => $name, 'label' => $label])
-                ->values(),
+            // The profiles, in the order config lists them — Admin first, then
+            // by how much of the system each one runs.
+            'profiles' => AccessCatalog::profiles(),
+            // Every tab against the actions it offers. The form draws this as a
+            // grid, so an Admin can grant any square to anyone regardless of
+            // which profile they hold.
+            'grid' => AccessCatalog::grid(),
+            'admin_only_tabs' => config('access.admin_only_tabs'),
         ]);
     }
 
@@ -58,6 +60,10 @@ class UserController extends Controller
         }
 
         $user->syncRoles($validated['roles'] ?? []);
+        // The role grants nothing by itself, so the profile's squares are
+        // written onto the person here. Without this a new user would hold a
+        // profile and no access at all.
+        $user->syncPermissions(AccessCatalog::defaultPermissionsFor($validated['roles'][0] ?? null));
 
         $message = $user->name.' created.';
 
@@ -96,6 +102,53 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Access updated for '.$user->name.'.',
+            'data' => $this->payload($user->load(['roles', 'permissions'])),
+        ]);
+    }
+
+    /**
+     * Reset an existing user's password.
+     *
+     * The two modes are `store()`'s, for the same reasons: "email" sends the
+     * very link Breeze's forgot-password flow sends, so the password is only
+     * ever known to its owner, and "password" sets one immediately for someone
+     * who cannot receive mail. A password sent in email mode is `prohibited`
+     * rather than ignored — an admin who typed one would otherwise leave
+     * believing they had set it.
+     *
+     * Either way the remember-me token is rotated: a reset that left an old
+     * "remember me" cookie working would not be a reset at all.
+     */
+    public function resetPassword(Request $request, User $user)
+    {
+        $mode = $request->input('mode') ?: 'email';
+
+        $validated = $request->validate([
+            'mode' => ['nullable', Rule::in(['email', 'password'])],
+            'password' => $mode === 'password'
+                ? ['required', 'confirmed', Rules\Password::defaults()]
+                : ['prohibited'],
+        ]);
+
+        if ($mode === 'password') {
+            // `password` is a hashed cast, so the plain value is hashed on the
+            // way in — the same path store() takes.
+            $user->forceFill([
+                'password' => $validated['password'],
+                'remember_token' => Str::random(60),
+            ])->save();
+
+            $message = 'Password updated for '.$user->name.'.';
+        } else {
+            $user->forceFill(['remember_token' => Str::random(60)])->save();
+
+            Password::sendResetLink(['email' => $user->email]);
+
+            $message = 'A password-reset email has been sent to '.$user->email.'.';
+        }
+
+        return response()->json([
+            'message' => $message,
             'data' => $this->payload($user->load(['roles', 'permissions'])),
         ]);
     }

@@ -25,8 +25,8 @@ describe('SupplierListPage', () => {
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
         fireEvent.click(screen.getByText('Add Supplier'));
-        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'New Supplier' } });
-        fireEvent.click(screen.getByText('Save'));
+        fireEvent.change(screen.getByLabelText(/Supplier Name/), { target: { value: 'New Supplier' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save Supplier' }));
 
         await waitFor(() => expect(screen.getByRole('cell', { name: 'New Supplier' })).toBeInTheDocument());
     });

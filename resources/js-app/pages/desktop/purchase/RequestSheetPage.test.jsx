@@ -18,7 +18,7 @@ const SHEET = {
     status: 'pending',
     stage: 'draft',
     date: '2026-08-20',
-    project_name: 'Plant Expansion',
+    company_name: 'Plant Expansion',
     requested_by_name: 'Aisha Rahman',
     required_date_text: '1 Week',
     location: 'Bay 4',

@@ -14,6 +14,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\Purchase\GoodsReceiptConfirmedNotification;
+use App\Services\PurchaseStageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -21,6 +22,40 @@ use Illuminate\Support\Facades\Notification;
 class GoodsReceiptNoteController extends Controller
 {
     public const TYPES = ['inventory', 'consumable'];
+
+    /**
+     * Company name -> warehouse id, for the life of one request.
+     *
+     * Open purchase orders are many and the companies behind them are three,
+     * so resolving each order separately would ask the same question dozens of
+     * times.
+     *
+     * @var array<string, int|null>
+     */
+    private array $warehouseByCompany = [];
+
+    /**
+     * The warehouse this order's goods belong in, from its company's link.
+     *
+     * Null when the order has no request behind it, when its company is not on
+     * file, or when that company has no warehouse set. In each case the receipt
+     * falls back to offering every warehouse, exactly as it did before — an
+     * unlinked company is a valid state, not a fault.
+     */
+    private function impliedWarehouseId(PurchaseOrder $po): ?int
+    {
+        $name = $po->purchaseRequest?->company_name;
+
+        if (! $name) {
+            return null;
+        }
+
+        if (! array_key_exists($name, $this->warehouseByCompany)) {
+            $this->warehouseByCompany[$name] = $po->purchaseRequest->resolveCompany()?->warehouse_id;
+        }
+
+        return $this->warehouseByCompany[$name];
+    }
 
     public function index()
     {
@@ -44,7 +79,7 @@ class GoodsReceiptNoteController extends Controller
     public function formOptions()
     {
         $orders = PurchaseOrder::whereIn('status', ['sent', 'partial'])
-            ->with(['supplier', 'items.item'])
+            ->with(['supplier', 'items.item', 'purchaseRequest'])
             ->orderByDesc('id')
             ->get();
 
@@ -53,6 +88,11 @@ class GoodsReceiptNoteController extends Controller
                 'id' => $po->id,
                 'po_number' => $po->po_number ?? 'PO-'.str_pad((string) $po->id, 5, '0', STR_PAD_LEFT),
                 'supplier_name' => $po->supplier?->name,
+                // Where this order's goods land, decided by its company rather
+                // than by whoever is filling the form in. Null leaves the
+                // choice open.
+                'warehouse_id' => $this->impliedWarehouseId($po),
+                'company_name' => $po->purchaseRequest?->company_name,
                 'items' => $po->items->map(fn ($line) => [
                     'purchase_order_item_id' => $line->id,
                     'item_id' => $line->item_id,
@@ -83,7 +123,20 @@ class GoodsReceiptNoteController extends Controller
             'items.*.type' => 'nullable|in:'.implode(',', self::TYPES),
         ]);
 
-        $po = PurchaseOrder::with('items')->findOrFail($data['purchase_order_id']);
+        $po = PurchaseOrder::with(['items', 'purchaseRequest'])->findOrFail($data['purchase_order_id']);
+
+        // The company's link decides the yard. The form does not offer the
+        // choice, so a receipt naming a different warehouse did not come from
+        // it — coercing it silently would hide that, and honouring it would
+        // put the stock where the link says it must not go.
+        $implied = $this->impliedWarehouseId($po);
+
+        if ($implied !== null && (int) $data['warehouse_id'] !== $implied) {
+            return response()->json([
+                'message' => "This order is received into its company's warehouse. Change the link in Settings to receive it elsewhere.",
+                'errors' => ['warehouse_id' => ['This order belongs to a different warehouse.']],
+            ], 422);
+        }
 
         $grn = DB::transaction(function () use ($data, $po) {
             $grn = GoodsReceiptNote::create([
@@ -128,7 +181,7 @@ class GoodsReceiptNoteController extends Controller
      * Same logic as the Blade controller — which no page ever linked to, so
      * confirming was unreachable and stock never actually moved.
      */
-    public function confirm(GoodsReceiptNote $grn)
+    public function confirm(GoodsReceiptNote $grn, PurchaseStageService $stages)
     {
         abort_if($grn->status === 'confirmed', 422, 'This GRN is already confirmed.');
 
@@ -167,8 +220,10 @@ class GoodsReceiptNoteController extends Controller
             }
         });
 
-        $storeManagers = User::role('Store Manager')->whereNotNull('whatsapp_number')->get();
-        Notification::send($storeManagers, new GoodsReceiptConfirmedNotification($grn));
+        $this->advanceRequestIfFullyReceived($grn, $stages);
+
+        $operations = User::withProfile(config('purchase_access.notifications.operations'))->whereNotNull('whatsapp_number')->get();
+        Notification::send($operations, new GoodsReceiptConfirmedNotification($grn));
 
         event(new GrnSaved($grn));
 
@@ -191,6 +246,38 @@ class GoodsReceiptNoteController extends Controller
         event(new GrnDeleted($id));
 
         return response()->json(['deleted' => true]);
+    }
+
+    /**
+     * Move the originating request on to Payment once every LPO on it has been
+     * received in full.
+     *
+     * Nothing did this before, so a request sat at 'receiving' for ever: the
+     * pipeline kept offering "Record GRN" with no sign that anything had been
+     * recorded, and the only way to tell was to go and look at the GRN list.
+     *
+     * Keyed on confirmed receipts, not recorded ones — a draft GRN has moved no
+     * stock, so it has received nothing. Cancelled LPOs are skipped for the
+     * same reason they are skipped everywhere else: a superseded order will
+     * never be received, and waiting on it would strand the request here.
+     */
+    private function advanceRequestIfFullyReceived(GoodsReceiptNote $grn, PurchaseStageService $stages): void
+    {
+        $purchaseRequest = $grn->purchaseOrder?->purchaseRequest;
+
+        if (! $purchaseRequest) {
+            return;
+        }
+
+        $live = $purchaseRequest->purchaseOrders()->where('status', '!=', 'cancelled')->get();
+
+        if ($live->isNotEmpty() && $live->every(fn ($po) => $po->status === 'received')) {
+            // Receiving everything ends the request. Payment used to be a
+            // stage after this one and is no longer tracked on the pipeline,
+            // which also means a finished request finally reaches 'complete' —
+            // nothing ever set it before.
+            $stages->setStageIfNotPast($purchaseRequest, 'complete');
+        }
     }
 
     private function nextGrnNumber(): string

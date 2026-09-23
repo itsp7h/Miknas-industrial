@@ -8,6 +8,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class StockReportControllerTest extends TestCase
@@ -38,44 +39,44 @@ class StockReportControllerTest extends TestCase
         StockLevel::create(['item_id' => $this->widget->id, 'warehouse_id' => $this->warehouse->id, 'quantity' => 3]);
     }
 
+    /**
+     * Someone who may use the module under test.
+     *
+     * Admin, because these tests are about behaviour, not about who is allowed
+     * to reach it — that is what the authorization tests are for, and they
+     * grant single permissions explicitly.
+     */
     private function actingUser(): User
     {
-        return User::factory()->create();
+        $user = User::factory()->create();
+        $user->assignRole('Admin');
+
+        return $user;
+    }
+
+    /**
+     * The stock summary report is gone — the Raw Materials page answers the
+     * same question, and its warehouse filter rescopes each row to one
+     * warehouse, which was this report's per-line view. Its endpoint went with
+     * it, and nothing should bring it back without bringing the page back too.
+     */
+    public function test_the_summary_endpoint_is_gone(): void
+    {
+        $this->assertFalse(
+            collect(Route::getRoutes())->contains(fn ($route) => $route->uri() === 'api/v1/inventory/reports/summary'),
+            'The stock summary endpoint was deleted with its page.'
+        );
+
+        $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/inventory/reports/summary')
+            ->assertNotFound();
     }
 
     public function test_all_report_endpoints_require_authentication(): void
     {
-        foreach (['summary', 'movement', 'low-stock', 'valuation'] as $report) {
+        foreach (['movement', 'low-stock', 'valuation'] as $report) {
             $this->getJson("/api/v1/inventory/reports/{$report}")->assertUnauthorized();
         }
-    }
-
-    public function test_summary_lists_every_stock_line_with_item_and_warehouse_names(): void
-    {
-        $response = $this->actingAs($this->actingUser())
-            ->getJson('/api/v1/inventory/reports/summary')->assertOk();
-
-        $this->assertSame(2, $response->json('meta.total_lines'));
-        $this->assertEqualsCanonicalizing(['Rod', 'Widget'], array_column($response->json('data'), 'item_name'));
-        $this->assertSame('Main', $response->json('data.0.warehouse_name'));
-    }
-
-    /**
-     * The Blade summary report painted a below-minimum line red with a LOW
-     * badge. The endpoint sent neither the minimum nor a flag, so the React
-     * page could not reproduce either.
-     */
-    public function test_summary_reports_the_minimum_and_flags_lines_below_it(): void
-    {
-        $response = $this->actingAs($this->actingUser())
-            ->getJson('/api/v1/inventory/reports/summary')->assertOk();
-
-        $rows = collect($response->json('data'))->keyBy('item_name');
-
-        $this->assertNotNull($rows['Rod']['minimum_stock_level']);
-        $this->assertTrue($rows['Rod']['is_low']);
-        $this->assertFalse($rows['Widget']['is_low']);
-        $this->assertSame(1, $response->json('meta.below_minimum'));
     }
 
     public function test_low_stock_returns_only_lines_below_the_items_minimum(): void

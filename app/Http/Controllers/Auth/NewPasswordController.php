@@ -21,7 +21,15 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request): View
     {
-        return view('auth.reset-password', ['request' => $request]);
+        // The token is in the path and the address in the query string, both
+        // put there by the reset email — the page cannot ask for either.
+        return view('auth.shell', [
+            'page' => 'reset-password',
+            'props' => [
+                'token' => $request->route('token'),
+                'email' => $request->string('email')->toString(),
+            ],
+        ]);
     }
 
     /**

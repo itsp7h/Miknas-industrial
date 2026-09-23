@@ -50,7 +50,7 @@ describe('mobile sales flow pages', () => {
 
         await screen.findByText('INV-00001');
         expect(container.querySelector('table')).toBeNull();
-        expect(screen.getByText('70.00')).toHaveClass('text-red-600', 'font-semibold');
+        expect(screen.getByText('BD 70.000')).toHaveClass('text-red-600', 'font-semibold');
         expect(screen.getByText('Part Paid')).toHaveClass('badge-yellow');
         expect(screen.getByText('06 Aug 2026')).toBeInTheDocument();
         // Blade's Receive link, carrying the invoice into the payment form.
@@ -74,7 +74,7 @@ describe('mobile sales flow pages', () => {
 
         await screen.findByText('Gulf Steel');
         expect(container.querySelector('table')).toBeNull();
-        expect(screen.getByText('40.00')).toHaveStyle({ color: '#16a34a' });
+        expect(screen.getByText('BD 40.000')).toHaveStyle({ color: '#16a34a' });
         expect(screen.getByText('Bank Transfer')).toBeInTheDocument();
         expect(screen.getByText('07 Aug 2026')).toBeInTheDocument();
         expect(screen.getByText('Ref TT-9')).toBeInTheDocument();

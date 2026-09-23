@@ -8,20 +8,20 @@ use App\Models\User;
 class PurchaseRequestPolicy
 {
     public const ACTIVE_PIPELINE_STAGES = [
-        'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete',
+        'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete',
     ];
 
     public function view(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        if ($user->can('purchase-requests.view-all')) {
+        if ($user->can('pipeline.view-all')) {
             return true;
         }
 
-        if ($user->can('purchase-requests.view-active-pipeline')) {
+        if ($user->can('pipeline.view-active-pipeline')) {
             return in_array($purchaseRequest->stage, self::ACTIVE_PIPELINE_STAGES, true);
         }
 
-        if ($user->can('purchase-requests.view-own')) {
+        if ($user->can('pipeline.view-own')) {
             return $purchaseRequest->requested_by === $user->id;
         }
 
@@ -30,19 +30,20 @@ class PurchaseRequestPolicy
 
     public function create(User $user): bool
     {
-        return $user->can('purchase-requests.create');
+        return $user->can('pipeline.create');
     }
 
     public function update(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->can('purchase-requests.edit')
+        return $user->can('pipeline.edit')
             && $purchaseRequest->requested_by === $user->id
             && $purchaseRequest->stage === 'draft';
     }
 
+    /** Deleting is its own square: editing a request is not permission to remove it. */
     public function delete(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->can('purchase-requests.edit')
+        return $user->can('pipeline.delete')
             && $purchaseRequest->requested_by === $user->id
             && $purchaseRequest->stage === 'draft';
     }
@@ -54,7 +55,7 @@ class PurchaseRequestPolicy
         // while the request is still at draft and only advances it to
         // gm_approval afterwards. 'gm_approval' is accepted too so re-checks
         // against an already-advanced request still pass.
-        return $user->can('purchase-requests.approve')
+        return $user->can('pipeline.approve')
             && in_array($purchaseRequest->stage, ['draft', 'gm_approval'], true);
     }
 
@@ -64,24 +65,24 @@ class PurchaseRequestPolicy
         // Api\Purchase\PurchasePipelineController::selectSuppliers is invoked
         // right after the GM signature advances the request to gm_approval, and
         // it is itself the action that sets stage to 'rfq'.
-        return $user->can('purchase-requests.manage-rfq')
+        return $user->can('pipeline.manage-rfq')
             && in_array($purchaseRequest->stage, ['gm_approval', 'rfq'], true);
     }
 
     public function manageQuotes(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->can('purchase-requests.manage-quotes')
+        return $user->can('pipeline.manage-quotes')
             && in_array($purchaseRequest->stage, ['quoting', 'comparison', 'lpo'], true);
     }
 
     public function award(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->can('purchase-requests.award')
+        return $user->can('pipeline.award')
             && in_array($purchaseRequest->stage, ['comparison', 'lpo'], true);
     }
 
     public function generateLpo(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->can('purchase-requests.generate-lpo') && $purchaseRequest->stage === 'lpo';
+        return $user->can('pipeline.generate-lpo') && $purchaseRequest->stage === 'lpo';
     }
 }

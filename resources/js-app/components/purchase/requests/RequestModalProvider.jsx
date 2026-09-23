@@ -45,7 +45,15 @@ export function RequestModalProvider({ children }) {
     // that load the record.
     const onSaved = useRef(null);
 
-    const openNew = useCallback(() => { onSaved.current = null; setTarget({ kind: 'create' }); }, []);
+    // Takes the same callback openEdit does: submitCreate already hands the
+    // saved row back through it, and the board needs that row to appear without
+    // waiting for a broadcast it may never hear.
+    const openNew = useCallback((callback) => {
+        // openNew takes no required argument, so a caller can wire it straight to
+        // onClick and hand us a click event. Only a function is a callback.
+        onSaved.current = typeof callback === 'function' ? callback : null;
+        setTarget({ kind: 'create' });
+    }, []);
     const openEdit = useCallback((id, callback) => {
         onSaved.current = callback ?? null;
         setEditing(null);
@@ -68,6 +76,7 @@ export function RequestModalProvider({ children }) {
 
     const createInitial = useMemo(() => ({
         date: options?.today ?? '',
+        company_name: '',
         project_name: '',
         requested_by_name: '',
         required_date_text: '',
@@ -79,6 +88,7 @@ export function RequestModalProvider({ children }) {
 
     const editInitial = useMemo(() => (editing ? {
         date: editing.date ?? '',
+        company_name: editing.company_name ?? '',
         project_name: editing.project_name ?? '',
         requested_by_name: editing.requested_by_name ?? '',
         required_date_text: editing.required_date_text ?? '',

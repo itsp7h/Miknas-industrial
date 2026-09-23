@@ -12,8 +12,8 @@
     <div style="background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:28px 32px;">
       <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Quote Request</div>
       <div style="font-size:22px;font-weight:700;color:#fff;">{{ $invitation->purchaseRequest->request_number }}</div>
-      @if($invitation->purchaseRequest->project_name)
-      <div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:4px;">{{ $invitation->purchaseRequest->project_name }}</div>
+      @if($invitation->purchaseRequest->company_name)
+      <div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:4px;">{{ $invitation->purchaseRequest->company_name }}</div>
       @endif
     </div>
 
@@ -21,7 +21,7 @@
     <div style="padding:32px;">
       <p style="font-size:15px;color:#334155;margin:0 0 12px;">Dear <strong>{{ $invitation->supplier->name }}</strong>,</p>
       <p style="font-size:14px;color:#475569;line-height:1.65;margin:0 0 28px;">
-        You have been invited to submit a price quotation. Please click the button below to view the required items and submit your quote. The link is private to your company and expires in 7 days.
+        You have been invited to submit a price quotation. Please click the button below to view the required items and submit your quote. The link is private to your company and expires in {{ $invitation->expiresInDays() }} days.
       </p>
 
       <a href="{{ route('rfq.show', $invitation->token) }}"

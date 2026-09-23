@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import GrnForm from '../../../components/purchase/grn/GrnForm';
+import GrnModal from '../../../components/purchase/grn/GrnModal';
 import GrnTable from '../../../components/purchase/grn/GrnTable';
 import useGrnList from '../../../components/purchase/grn/useGrnList';
+import { useAccess } from '../../../layouts/AccessContext';
 
 export default function GrnListPage() {
+    const { can } = useAccess();
     const g = useGrnList();
     const [params, setParams] = useSearchParams();
     const presetOrderId = params.get('purchase_order_id');
@@ -34,7 +35,9 @@ export default function GrnListPage() {
                     <h1 className="page-title">Goods Receipt Notes</h1>
                     <p className="page-subtitle">Record goods received from suppliers</p>
                 </div>
-                <button type="button" onClick={() => g.setModalOpen(true)} className="btn-primary">+ New GRN</button>
+                {can('goods-receipts.create') && (
+                    <button type="button" onClick={() => g.setModalOpen(true)} className="btn-primary">+ New GRN</button>
+                )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
@@ -62,9 +65,9 @@ export default function GrnListPage() {
 
             <GrnTable grns={g.filtered} onConfirm={g.setConfirming} onDelete={g.setDeleting} />
 
-            <Modal open={g.modalOpen} title="New Goods Receipt Note" onClose={closeModal}>
-                <GrnForm presetOrderId={presetOrderId} onSaved={g.handleSaved} onCancel={closeModal} />
-            </Modal>
+            {g.modalOpen && (
+                <GrnModal presetOrderId={presetOrderId} onSaved={g.handleSaved} onCancel={closeModal} />
+            )}
             <ConfirmModal
                 open={!!g.confirming}
                 title="Confirm this GRN?"

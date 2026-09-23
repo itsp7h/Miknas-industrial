@@ -45,7 +45,9 @@ class QuoteWorkspaceTest extends TestCase
     private function officer(): User
     {
         $user = User::factory()->create();
-        $user->assignRole('Procurement Officer');
+        $user->givePermissionTo(['pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
 
         return $user;
     }

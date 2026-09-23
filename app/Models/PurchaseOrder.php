@@ -9,12 +9,13 @@ class PurchaseOrder extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['po_number', 'supplier_id', 'purchase_request_id', 'po_date', 'expected_delivery_date', 'total_amount', 'status', 'notes', 'created_by'];
+    protected $fillable = ['po_number', 'supplier_id', 'purchase_request_id', 'po_date', 'expected_delivery_date', 'total_amount', 'status', 'sent_at', 'sent_to', 'notes', 'created_by'];
 
     protected $casts = [
         'po_date' => 'date',
         'expected_delivery_date' => 'date',
         'total_amount' => 'decimal:2',
+        'sent_at' => 'datetime',
     ];
 
     public function supplier()

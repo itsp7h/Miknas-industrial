@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LogoutForm from '../components/LogoutForm';
 import { BUILDING, LOGOUT, NavIcon } from './navIcons';
-import { DASHBOARD_ITEM, NAV_GROUPS } from './navItems';
+import { DASHBOARD_ITEM, visibleGroups } from './navItems';
 
 /**
  * The Blade sidebar's link, including its two hover behaviours:
@@ -91,7 +91,10 @@ function SectionHeading({ group }) {
  * The nav list itself — shared so the desktop sidebar and the mobile drawer
  * cannot drift apart on links, ordering or section colours.
  */
-export function SidebarNav({ isAdmin, isActive, onNavigate }) {
+export function SidebarNav({ isAdmin, can = () => false, isActive, onNavigate }) {
+    // Built from what this person may open, not from the full menu.
+    const groups = visibleGroups({ isAdmin, can });
+
     return (
         <>
             <SidebarLink
@@ -100,7 +103,7 @@ export function SidebarNav({ isAdmin, isActive, onNavigate }) {
                 onNavigate={onNavigate}
             />
 
-            {NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin).map((group) => (
+            {groups.map((group) => (
                 <div key={group.label}>
                     <SectionHeading group={group} />
                     {group.items.map((item) => (
@@ -190,7 +193,7 @@ export function SidebarFooter({ userName, userEmail, logoutUrl, csrfToken }) {
     );
 }
 
-export default function Sidebar({ isAdmin, isActive, userName, userEmail, logoutUrl, csrfToken }) {
+export default function Sidebar({ isAdmin, can, isActive, userName, userEmail, logoutUrl, csrfToken }) {
     return (
         <aside style={{
             width: 260, minWidth: 260, background: '#0f172a',
@@ -198,7 +201,7 @@ export default function Sidebar({ isAdmin, isActive, userName, userEmail, logout
         }}>
             <Brand />
             <nav style={{ padding: 12, flex: 1 }}>
-                <SidebarNav isAdmin={isAdmin} isActive={isActive} />
+                <SidebarNav isAdmin={isAdmin} can={can} isActive={isActive} />
             </nav>
             <SidebarFooter
                 userName={userName}

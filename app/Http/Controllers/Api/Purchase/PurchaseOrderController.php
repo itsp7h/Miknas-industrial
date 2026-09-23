@@ -12,8 +12,11 @@ use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
 use App\Models\Supplier;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
+use App\Services\DocumentNumberService;
+use App\Services\LpoDeliveryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class PurchaseOrderController extends Controller
 {
@@ -62,7 +65,7 @@ class PurchaseOrderController extends Controller
 
         $order = DB::transaction(function () use ($data) {
             $order = PurchaseOrder::create([
-                'po_number' => $this->nextPoNumber(),
+                'po_number' => $this->nextPoNumber($data['purchase_request_id'] ?? null),
                 'supplier_id' => $data['supplier_id'],
                 'purchase_request_id' => $data['purchase_request_id'] ?? null,
                 'po_date' => $data['po_date'],
@@ -141,6 +144,35 @@ class PurchaseOrderController extends Controller
     }
 
     /**
+     * Email the LPO to its supplier again.
+     *
+     * The pipeline sends on issue, but a send can fail — no mail account
+     * configured, a bad address, an SMTP outage — and the LPO is still validly
+     * issued. Without this the only recovery was re-generating the order, which
+     * the generator refuses once goods or an invoice are recorded against it.
+     */
+    public function send(PurchaseOrder $purchaseOrder, LpoDeliveryService $delivery)
+    {
+        // The bare permission, not authorizeOrderAccess: that one gates on the
+        // request still sitting at the 'lpo' stage, which issuing moves it off.
+        // Re-sending an order that already exists generates nothing, so the
+        // stage has no say in it — gating it there would mean a send could
+        // never be retried after the very action that sent it.
+        abort_unless(auth()->user()?->can('pipeline.generate-lpo'), 403);
+
+        try {
+            $delivery->deliver($purchaseOrder);
+        } catch (RuntimeException $e) {
+            abort(422, $e->getMessage());
+        }
+
+        event(new PurchaseOrderSaved($purchaseOrder));
+
+        return (new PurchaseOrderResource($purchaseOrder->load(['supplier', 'items.item'])))
+            ->additional(['message' => 'LPO emailed to '.$purchaseOrder->sent_to.'.']);
+    }
+
+    /**
      * Mirrors the Blade controller's guard exactly. `generateLpo` is
      * instance-scoped to a PurchaseRequest (it checks that request's stage), so
      * it cannot be used as a class-level check. When the order is linked to a
@@ -158,7 +190,7 @@ class PurchaseOrderController extends Controller
             return;
         }
 
-        if (! auth()->user() || ! auth()->user()->can('purchase-requests.generate-lpo')) {
+        if (! auth()->user() || ! auth()->user()->can('pipeline.generate-lpo')) {
             abort(403);
         }
     }
@@ -184,8 +216,17 @@ class PurchaseOrderController extends Controller
         return collect($items)->sum(fn ($line) => $line['quantity'] * $line['rate']);
     }
 
-    private function nextPoNumber(): string
+    /**
+     * The issuing company's series — ST-LPO-26-0001 — taken from the request
+     * this order is for. An order raised without a request has no company
+     * behind it, so it falls to the house series, LPO-26-0001.
+     */
+    private function nextPoNumber(?int $purchaseRequestId): string
     {
-        return 'PO-'.str_pad((string) (PurchaseOrder::max('id') + 1), 5, '0', STR_PAD_LEFT);
+        $company = $purchaseRequestId
+            ? PurchaseRequest::find($purchaseRequestId)?->resolveCompany()
+            : null;
+
+        return app(DocumentNumberService::class)->next($company);
     }
 }

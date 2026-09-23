@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor , within} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PipelineDialogs from './PipelineDialogs';
 import SignatureModal from './SignatureModal';
@@ -9,7 +9,7 @@ import ViewSuppliersModal from './ViewSuppliersModal';
 import { ToastProvider } from '../../ui/Toast';
 import * as client from '../../../api/client';
 
-const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+const STAGES = ['draft', 'gm_approval', 'rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'];
 const LABELS = {
     draft: 'Purchase Request', gm_approval: 'GM Signature', rfq: 'Select Suppliers',
     quoting: 'Awaiting Quotes', comparison: 'Quote Comparison', lpo: 'LPO Issued',
@@ -19,7 +19,7 @@ const LABELS = {
 const base = (overrides = {}) => ({
     id: 3, request_number: 'MPR-0003', stage: 'gm_approval', stage_index: 1, progress_pct: 12,
     is_done: false, stages: STAGES, stage_labels: LABELS, status: 'pending',
-    project_name: null, department: null, requested_by_name: 'Admin User', date: null,
+    company_name: null, department: null, requested_by_name: 'Admin User', date: null,
     created_at: '2026-09-01', location: null, required_date_text: null, verified_by_name: null,
     signature: null, rejection: null, rfq_invitations: [], pending_invitation_count: 0, sent_invitation_count: 0,
     items: [], supplier_quotes: [], awarded_supplier_names: [], purchase_orders: [],
@@ -31,6 +31,8 @@ const base = (overrides = {}) => ({
 });
 
 const wrap = (ui) => render(<MemoryRouter><ToastProvider>{ui}</ToastProvider></MemoryRouter>);
+
+const SIGNED = { signed_by_name: 'Zoe Admin', signed_at: '2026-09-01', image: 'data:image/png;base64,AAA' };
 
 const OPTIONS = {
     suppliers: [
@@ -50,15 +52,118 @@ describe('pipeline stage actions', () => {
         const onAction = vi.fn();
         wrap(<StageTimeline request={base()} onAction={onAction} />);
 
-        // The draft row and the GM row both carry a Sign button; either proves
-        // the point, and neither is an anchor any more.
-        const signButtons = screen.getAllByRole('button', { name: /Sign/ });
-        expect(signButtons.length).toBeGreaterThan(0);
-        fireEvent.click(signButtons[0]);
+        // Sign is a button raising an intent, not an anchor out of the SPA.
+        fireEvent.click(screen.getByRole('button', { name: /Sign/ }));
         expect(onAction).toHaveBeenCalledWith('signature');
+    });
+
+    it('raises the suppliers intent from the step that selects them', () => {
+        const onAction = vi.fn();
+        // Signed, so GM Signature is behind it and Select Suppliers is current.
+        wrap(<StageTimeline request={base({ signature: SIGNED })} onAction={onAction} />);
 
         fireEvent.click(screen.getByText('🏭 Select Suppliers'));
         expect(onAction).toHaveBeenCalledWith('suppliers');
+    });
+
+    /**
+     * Same mismatch as Sign: selecting suppliers is what moves a request off
+     * 'gm_approval', so the button appeared against "GM Signature" — the step
+     * before the one named for it.
+     */
+    it('hangs Select Suppliers off its own step, not off GM Signature', () => {
+        wrap(<StageTimeline request={base({ signature: SIGNED })} onAction={vi.fn()} />);
+
+        const button = screen.getByText('🏭 Select Suppliers');
+        const rfqRow = screen.getByText('Select Suppliers').parentElement.parentElement;
+        const gmRow = screen.getByText('GM Signature').parentElement.parentElement;
+
+        expect(rfqRow).toContainElement(button);
+        expect(gmRow).not.toContainElement(button);
+        // The signed step reads as done, offering the signature to view.
+        expect(within(gmRow).getByText(/View Signature/)).toBeInTheDocument();
+    });
+
+    it('offers the selected suppliers for viewing beside the button that picks them', () => {
+        const onAction = vi.fn();
+        const request = base({
+            stage: 'rfq', stage_index: 2, signature: SIGNED,
+            rfq_invitations: [
+                { id: 1, supplier_name: 'Gulf Steel', status: 'sent' },
+                { id: 2, supplier_name: 'Bahrain Metals', status: 'pending' },
+            ],
+            pending_invitation_count: 1,
+        });
+        wrap(<StageTimeline request={request} onAction={onAction} />);
+
+        // Counted, the way View Quotes is.
+        fireEvent.click(screen.getByText(/View Suppliers \(2\)/));
+        expect(onAction).toHaveBeenCalledWith('view-suppliers');
+
+        // Beside the one that selects them, on the same step, and last in the
+        // row — the two that act on the request come first.
+        const rfqRow = screen.getByText('Select Suppliers').parentElement.parentElement;
+        const labels = within(rfqRow).getAllByRole('button')
+            .map((b) => b.textContent.replace(/\s+/g, ' ').trim());
+
+        expect(labels[0]).toContain('Add Suppliers');
+        expect(labels[1]).toContain('Send');
+        expect(labels[2]).toContain('View Suppliers');
+    });
+
+    /** Nothing selected yet means nothing to look at. */
+    it('hides View Suppliers until some are selected', () => {
+        wrap(<StageTimeline request={base({ signature: SIGNED })} onAction={vi.fn()} />);
+
+        expect(screen.getByText('🏭 Select Suppliers')).toBeInTheDocument();
+        expect(screen.queryByText(/View Suppliers/)).not.toBeInTheDocument();
+    });
+
+    /** Once suppliers are on the request, the same button adds more. */
+    it('reads as Add Suppliers once some are selected', () => {
+        const request = base({
+            stage: 'rfq', stage_index: 2, signature: SIGNED,
+            rfq_invitations: [{ id: 1, supplier_name: 'Gulf Steel', status: 'sent' }],
+        });
+        wrap(<StageTimeline request={request} onAction={vi.fn()} />);
+
+        expect(screen.getByText('+ Add Suppliers')).toBeInTheDocument();
+        expect(screen.queryByText('🏭 Select Suppliers')).not.toBeInTheDocument();
+    });
+
+    /**
+     * A request awaiting signature sits at stage 'draft', so the timeline used
+     * to mark "Purchase Request" as the step in progress and hang Sign off it —
+     * reading as though signing were part of raising the request. Creating the
+     * request *is* the draft step and it is done; what the pipeline waits for is
+     * the GM's signature.
+     */
+    it('hangs Sign off GM Signature, not off Purchase Request', () => {
+        const onAction = vi.fn();
+        const request = base({ stage: 'draft', stage_index: 0, permissions: { ...base().permissions, manageRfq: false } });
+        wrap(<StageTimeline request={request} onAction={onAction} />);
+
+        const signButton = screen.getByRole('button', { name: /Sign/ });
+        // label div → label+caption wrapper → the row header that also holds the actions.
+        const gmRow = screen.getByText('GM Signature').parentElement.parentElement;
+        const draftRow = screen.getByText('Purchase Request').parentElement.parentElement;
+
+        expect(gmRow).toContainElement(signButton);
+        expect(draftRow).not.toContainElement(signButton);
+
+        // The draft step reads as complete, offering its record rather than an action.
+        expect(within(draftRow).getByText(/View Request/)).toBeInTheDocument();
+
+        // And GM Signature is the step in progress.
+        expect(screen.getByText('Awaiting GM signature')).toBeInTheDocument();
+    });
+
+    /** Selecting suppliers stays gated on the signature having happened. */
+    it('does not offer Select Suppliers before the request is signed', () => {
+        const request = base({ stage: 'draft', stage_index: 0, permissions: { ...base().permissions, manageRfq: false } });
+        wrap(<StageTimeline request={request} onAction={vi.fn()} />);
+
+        expect(screen.queryByText('🏭 Select Suppliers')).not.toBeInTheDocument();
     });
 
     it('offers Send only while invitations are unsent', () => {
@@ -172,6 +277,35 @@ describe('ViewSuppliersModal', () => {
         expect(screen.getByText('Unsent')).toBeInTheDocument();
         expect(screen.getByText('Quoted')).toBeInTheDocument();
         expect(screen.getByText('Open in WhatsApp')).toHaveAttribute('href', 'https://wa.me/97333?text=x');
+    });
+
+    it('names who selected each supplier, and who sent it', () => {
+        const attributed = base({
+            stage: 'rfq',
+            rfq_invitations: [
+                {
+                    id: 9, supplier_id: 1, supplier_name: 'Gulf Steel', channel: 'email',
+                    status: 'sent', portal_url: 'http://erp.test/rfq/tok', whatsapp_link: null,
+                    selected_by: 'Ali Hassan', sent_by: 'Sara Ali', sent_at: '21 Sep 2026, 09:30',
+                },
+            ],
+        });
+        wrap(<ViewSuppliersModal open request={attributed} onClose={() => {}} onSend={() => {}} />);
+
+        // Label and name are separate elements so the name can carry the weight.
+        expect(screen.getByText('Selected by')).toBeInTheDocument();
+        expect(screen.getByText('Ali Hassan')).toBeInTheDocument();
+        expect(screen.getByText('Sent by')).toBeInTheDocument();
+        expect(screen.getByText('Sara Ali')).toBeInTheDocument();
+        expect(screen.getByText('· 21 Sep 2026, 09:30')).toBeInTheDocument();
+    });
+
+    it('says nothing about who, for an invitation recorded before it was tracked', () => {
+        wrap(<ViewSuppliersModal open request={request} onClose={() => {}} onSend={() => {}} />);
+
+        // Inventing a name would be worse than admitting there is none.
+        expect(screen.queryByText('Selected by')).not.toBeInTheDocument();
+        expect(screen.queryByText('Sent by')).not.toBeInTheDocument();
     });
 
     it('offers to send the unsent ones', async () => {
@@ -350,5 +484,25 @@ describe('PipelineDialogs', () => {
             .toHaveAttribute('href', '/app/purchase/grns?purchase_order_id=5');
         // A fully received order has nothing left to receive.
         expect(screen.queryByText('Done Co')).not.toBeInTheDocument();
+    });
+
+    /**
+     * A re-issue cancels the old LPO and creates a new one. The cancelled one
+     * was still offered here, so goods could be booked in against an order that
+     * had been superseded.
+     */
+    it('does not offer a cancelled LPO to receive against', () => {
+        const request = base({
+            stage: 'receiving',
+            purchase_orders: [
+                { id: 29, po_number: 'PO-00029', supplier_name: 'Yousif Dhneem', total_amount: '5.000', status: 'cancelled' },
+                { id: 30, po_number: 'PO-00030', supplier_name: 'Yousif Dhneem', total_amount: '5.000', status: 'sent' },
+            ],
+        });
+        wrap(<PipelineDialogs open="grn" onClose={() => {}} request={request} actions={{}} />);
+
+        expect(screen.getAllByText('Yousif Dhneem')).toHaveLength(1);
+        expect(screen.getByText('Yousif Dhneem').closest('a'))
+            .toHaveAttribute('href', '/app/purchase/grns?purchase_order_id=30');
     });
 });

@@ -1,3 +1,4 @@
+import { qty } from '../../../currency';
 import { badgeClassFor, formatDate, money, statusLabel } from './statuses';
 
 function Field({ label, children }) {
@@ -97,12 +98,12 @@ export default function OrderDetail({ order, compact = false }) {
                             <tr key={line.id}>
                                 <td className="text-gray-800">{line.item_name ?? ''}</td>
                                 <td className="text-right text-gray-600">
-                                    {money(line.quantity)}
+                                    {qty(line.quantity)}
                                     {/* Not in Blade, but it is the only place the
                                         shipped-so-far figure appears. */}
                                     {Number(line.quantity_delivered ?? 0) > 0 && (
                                         <span className="text-gray-400" style={{ fontSize: 12 }}>
-                                            {' '}({money(line.quantity_delivered)} delivered)
+                                            {' '}({qty(line.quantity_delivered)} delivered)
                                         </span>
                                     )}
                                 </td>

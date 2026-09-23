@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
@@ -11,7 +11,7 @@ const STAGE_LABELS = {
 
 // Mirrors App\Policies\PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES exactly — kept
 // in sync by hand since the frontend can't import PHP constants.
-const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'payment', 'complete'];
+const ACTIVE_PIPELINE_STAGES = ['rfq', 'quoting', 'comparison', 'lpo', 'receiving', 'complete'];
 
 export default function PipelineBoardPage({
     currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
@@ -30,28 +30,32 @@ export default function PipelineBoardPage({
     // the broadcast doesn't). Mirror the API's own filter here so a view-own user
     // doesn't see other users' new requests, and a view-active-pipeline user doesn't
     // see newly-created draft-stage requests.
+    const acceptRow = useCallback((payload) => {
+        const allowed = canViewAllPurchaseRequests
+            || (canViewActivePipeline && ACTIVE_PIPELINE_STAGES.includes(payload.stage))
+            || (canViewOwnPurchaseRequests && payload.requested_by_id === currentUserId);
+        if (!allowed) return;
+        // The endpoint sorts newest-first (`latest()`), so a row the board has
+        // not seen goes on top, not on the end. An upsert of a row already
+        // there keeps its place.
+        setItems((prev) => (
+            prev.some((item) => item.id === payload.id)
+                ? prev.map((item) => (item.id === payload.id ? payload : item))
+                : [payload, ...prev]
+        ));
+    }, [currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests, setItems]);
+
+    // An edit rewrites these very columns, and PurchaseRequestUpdated
+    // broadcasts the same payload shape, so one handler upserts both.
     useEffect(() => {
         const ch = echo.private('purchase');
-        const handleCreated = (payload) => {
-            const allowed = canViewAllPurchaseRequests
-                || (canViewActivePipeline && ACTIVE_PIPELINE_STAGES.includes(payload.stage))
-                || (canViewOwnPurchaseRequests && payload.requested_by_id === currentUserId);
-            if (!allowed) return;
-            setItems((prev) => (
-                prev.some((item) => item.id === payload.id)
-                    ? prev.map((item) => (item.id === payload.id ? payload : item))
-                    : [...prev, payload]
-            ));
-        };
-        // An edit rewrites these very columns, and PurchaseRequestUpdated
-        // broadcasts the same payload shape, so one handler upserts both.
-        ch.listen('.purchase-request.created', handleCreated);
-        ch.listen('.purchase-request.updated', handleCreated);
+        ch.listen('.purchase-request.created', acceptRow);
+        ch.listen('.purchase-request.updated', acceptRow);
         return () => {
             ch.stopListening('.purchase-request.created');
             ch.stopListening('.purchase-request.updated');
         };
-    }, [currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests, setItems]);
+    }, [acceptRow]);
 
     // ?new=1 opens the MPR form straight away: it is where the dashboard's
     // "New Purchase Request" action and the old /purchase/requests/create URL
@@ -59,10 +63,10 @@ export default function PipelineBoardPage({
     // param is stripped so a reload or a back-navigation does not reopen it.
     useEffect(() => {
         if (params.get('new') !== '1') return;
-        openNew();
+        openNew(acceptRow);
         params.delete('new');
         setParams(params, { replace: true });
-    }, [params, setParams, openNew]);
+    }, [params, setParams, openNew, acceptRow]);
 
     // A deleted request has to leave every board showing it.
     useEffect(() => {
@@ -75,7 +79,7 @@ export default function PipelineBoardPage({
     }, [setItems]);
 
     // .purchase-request.stage-changed carries only {id, request_number, stage} — merge
-    // it shallowly onto the matching row so project_name/department/etc. survive.
+    // it shallowly onto the matching row so company_name/department/etc. survive.
     useEffect(() => {
         const ch = echo.private('purchase');
         const handleStageChanged = (payload) => {
@@ -98,7 +102,7 @@ export default function PipelineBoardPage({
         const q = query.trim().toLowerCase();
         if (!q) return rows;
         return rows.filter((row) => (
-            [row.request_number, row.project_name, row.department, row.requested_by_name]
+            [row.request_number, row.company_name, row.department, row.requested_by_name]
                 .filter(Boolean)
                 .some((field) => field.toLowerCase().includes(q))
         ));
@@ -127,7 +131,7 @@ export default function PipelineBoardPage({
                         </p>
                     </div>
                     <button
-                        onClick={openNew}
+                        onClick={() => openNew(acceptRow)}
                         style={{
                             flexShrink: 0, background: '#fff', color: '#2563eb', border: 0, borderRadius: 12,
                             padding: '10px 14px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
@@ -213,7 +217,7 @@ export default function PipelineBoardPage({
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                                 <div style={{ minWidth: 0 }}>
                                     <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{row.request_number}</div>
-                                    <div style={{ fontSize: 13, color: '#334155', marginTop: 2 }}>{row.project_name || '—'}</div>
+                                    <div style={{ fontSize: 13, color: '#334155', marginTop: 2 }}>{row.company_name || '—'}</div>
                                 </div>
                                 <span style={{
                                     flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,

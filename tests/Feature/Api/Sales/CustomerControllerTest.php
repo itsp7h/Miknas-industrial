@@ -15,9 +15,19 @@ class CustomerControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Someone who may use the module under test.
+     *
+     * Admin, because these tests are about behaviour, not about who is allowed
+     * to reach it — that is what the authorization tests are for, and they
+     * grant single permissions explicitly.
+     */
     private function actingUser(): User
     {
-        return User::factory()->create();
+        $user = User::factory()->create();
+        $user->assignRole('Admin');
+
+        return $user;
     }
 
     private function payload(array $overrides = []): array

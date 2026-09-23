@@ -1,6 +1,5 @@
-import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import PurchaseOrderForm from '../../../components/purchase/order/PurchaseOrderForm';
+import PurchaseOrderModal from '../../../components/purchase/order/PurchaseOrderModal';
 import PurchaseOrderTable from '../../../components/purchase/order/PurchaseOrderTable';
 import usePurchaseOrderList from '../../../components/purchase/order/usePurchaseOrderList';
 
@@ -51,13 +50,15 @@ export default function PurchaseOrderListPage() {
 
             <PurchaseOrderTable orders={o.filtered} onEdit={o.openEdit} onDelete={o.setDeleting} />
 
-            <Modal
-                open={o.modalOpen}
-                title={o.editing ? `Edit ${o.editing.po_number}` : 'New Purchase Order'}
-                onClose={() => o.setModalOpen(false)}
-            >
-                <PurchaseOrderForm order={o.editing} onSaved={o.handleSaved} onCancel={() => o.setModalOpen(false)} />
-            </Modal>
+            {/* Its own dialog on the shared shell, as the MPR and supplier
+                forms use — not the small generic ui/Modal. */}
+            {o.modalOpen && (
+                <PurchaseOrderModal
+                    order={o.editing}
+                    onSaved={o.handleSaved}
+                    onCancel={() => o.setModalOpen(false)}
+                />
+            )}
             <ConfirmModal
                 open={!!o.deleting}
                 title="Delete this purchase order?"

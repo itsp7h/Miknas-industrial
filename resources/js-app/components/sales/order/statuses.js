@@ -1,3 +1,4 @@
+import { money } from '../../../currency';
 export const STATUS_LABELS = {
     draft: 'Draft',
     confirmed: 'Confirmed',
@@ -14,8 +15,9 @@ export const STATUS_COLOURS = {
     cancelled: '#dc2626',
 };
 
-export const money = (value) =>
-    Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Money goes through the shared helper so the symbol and the currency's own
+// precision come from one place — see resources/js-app/currency.js.
+export { money };
 
 /**
  * Blade badged the status; the port had rendered it as coloured text instead.

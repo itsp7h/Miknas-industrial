@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Sidebar, { SidebarLink } from './Sidebar';
+import { MENU_GROUPS, NAV_GROUPS, visibleGroups } from './navItems';
 
 const renderSidebar = (props = {}) =>
     render(
@@ -32,13 +33,11 @@ describe('Sidebar', () => {
         expect(screen.getByText('Manufacturing & Trading')).toBeInTheDocument();
     });
 
-    it('renders every section heading in its Blade colour', () => {
+    it('renders every visible section heading in its Blade colour', () => {
         renderSidebar();
         const colours = {
             Purchase: 'rgb(245, 158, 11)',
             Inventory: 'rgb(16, 185, 129)',
-            Production: 'rgb(249, 115, 22)',
-            Sales: 'rgb(167, 139, 250)',
             System: 'rgb(100, 116, 139)',
         };
         Object.entries(colours).forEach(([label, colour]) => {
@@ -46,10 +45,55 @@ describe('Sidebar', () => {
         });
     });
 
-    it('hides the admin-only System group from a non-admin', () => {
-        renderSidebar({ isAdmin: false });
-        expect(screen.queryByText('System')).not.toBeInTheDocument();
-        expect(screen.getByText('Sales')).toBeInTheDocument();
+    // Production and Sales carry `hidden: true` in navItems — the modules are
+    // built and still routable, they are just not in use yet.
+    it('leaves a hidden group and all of its links out of the menu', () => {
+        renderSidebar();
+        expect(screen.queryByText('Production')).not.toBeInTheDocument();
+        expect(screen.queryByText('Sales')).not.toBeInTheDocument();
+        expect(screen.queryByText('Bill of Materials')).not.toBeInTheDocument();
+        expect(screen.queryByText('Customers')).not.toBeInTheDocument();
+    });
+
+    /**
+     * The menu is what this person can open, not the whole app with a couple of
+     * entries removed. Someone granted one tab sees one tab.
+     */
+    it('shows only the tabs the user may open', () => {
+        renderSidebar({
+            isAdmin: false,
+            can: (permission) => permission === 'pipeline.view',
+        });
+
+        expect(screen.getByText('Pipeline')).toBeInTheDocument();
+        expect(screen.getByText('Purchase')).toBeInTheDocument();
+        // Granted nothing in Inventory, so the heading goes with its links —
+        // an empty group says there is something there when there is not.
+        expect(screen.queryByText('Inventory')).not.toBeInTheDocument();
+        expect(screen.queryByText('Suppliers')).not.toBeInTheDocument();
+    });
+
+    it('hides Users and Integrations from everyone but an Admin', () => {
+        renderSidebar({
+            isAdmin: false,
+            // Every grantable square in the System group.
+            can: (permission) => ['companies.view', 'projects.view', 'finance.view', 'item-categories.view']
+                .includes(permission),
+        });
+
+        expect(screen.getByText('Companies')).toBeInTheDocument();
+        expect(screen.getByText('Finance')).toBeInTheDocument();
+        // These carry no permission name at all, so nothing can grant them.
+        expect(screen.queryByText('Users')).not.toBeInTheDocument();
+        expect(screen.queryByText('Integrations')).not.toBeInTheDocument();
+    });
+
+    it('gives an Admin the whole menu without granting anything', () => {
+        renderSidebar({ isAdmin: true, can: () => false });
+
+        expect(screen.getByText('System')).toBeInTheDocument();
+        expect(screen.getByText('Users')).toBeInTheDocument();
+        expect(screen.getByText('Inventory')).toBeInTheDocument();
     });
 
     it('shows the user footer with the avatar initial and a sign-out control', () => {
@@ -66,7 +110,7 @@ describe('Sidebar', () => {
                 <Sidebar isAdmin isActive={(to) => to === '/app/inventory/items'} userName="A" />
             </MemoryRouter>
         );
-        expect(screen.getByText('Items')).toHaveStyle({ background: 'rgb(30, 41, 59)' });
+        expect(screen.getByText('Raw Materials')).toHaveStyle({ background: 'rgb(30, 41, 59)' });
         expect(screen.getByText('Warehouses')).not.toHaveStyle({ background: 'rgb(30, 41, 59)' });
     });
 });
@@ -74,7 +118,7 @@ describe('Sidebar', () => {
 describe('SidebarLink', () => {
     const dashboard = { type: 'link', to: '/app', label: 'Dashboard', root: true };
     const pipeline = { type: 'link', to: '/app/purchase/pipeline', label: 'Pipeline', highlight: true };
-    const plain = { type: 'link', to: '/app/inventory/items', label: 'Items' };
+    const plain = { type: 'link', to: '/app/inventory/items', label: 'Raw Materials' };
 
     it('gives the Dashboard row its own padding and the blue active fill', () => {
         renderLink(dashboard, true);
@@ -115,7 +159,7 @@ describe('SidebarLink', () => {
 
     it('lightens the text on hover for a module link', () => {
         renderLink(plain);
-        const link = screen.getByText('Items');
+        const link = screen.getByText('Raw Materials');
         expect(link).toHaveStyle({ color: 'rgb(148, 163, 184)' });
         fireEvent.mouseEnter(link);
         expect(link).toHaveStyle({ color: 'rgb(226, 232, 240)' });
@@ -123,7 +167,7 @@ describe('SidebarLink', () => {
 
     it('suppresses the hover once the link is active', () => {
         renderLink(plain, true);
-        const link = screen.getByText('Items');
+        const link = screen.getByText('Raw Materials');
         fireEvent.mouseEnter(link);
         expect(link).toHaveStyle({ background: 'rgb(30, 41, 59)', color: 'rgb(255, 255, 255)' });
     });
@@ -140,5 +184,23 @@ describe('SidebarLink', () => {
         renderSidebar();
 
         expect(screen.getByTitle('Your profile')).toHaveAttribute('href', '/app/profile');
+    });
+});
+
+describe('a parked entry', () => {
+    it('keeps Payments out of the menu while its route still works', () => {
+        const payments = NAV_GROUPS
+            .flatMap((group) => group.items)
+            .find((item) => item.to === '/app/purchase/payments');
+
+        // Still declared, so usePageTitle titles the page and the URL works.
+        expect(payments).toBeDefined();
+        expect(payments.hidden).toBe(true);
+
+        // But absent from what either shell renders.
+        expect(MENU_GROUPS.flatMap((group) => group.items).map((item) => item.to))
+            .not.toContain('/app/purchase/payments');
+        expect(visibleGroups({ isAdmin: true }).flatMap((group) => group.items).map((item) => item.to))
+            .not.toContain('/app/purchase/payments');
     });
 });

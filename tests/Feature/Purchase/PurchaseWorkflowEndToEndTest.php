@@ -23,13 +23,15 @@ class PurchaseWorkflowEndToEndTest extends TestCase
     public function test_request_moves_through_the_full_pipeline_without_403s(): void
     {
         $requester = User::factory()->create();
-        $requester->assignRole('Requester');
+        $requester->givePermissionTo(['pipeline.create', 'pipeline.edit', 'pipeline.view-own']);
 
         $purchaseManager = User::factory()->create();
-        $purchaseManager->assignRole('Purchase Manager');
+        $purchaseManager->givePermissionTo(['pipeline.approve', 'pipeline.view-all']);
 
         $procurementOfficer = User::factory()->create();
-        $procurementOfficer->assignRole('Procurement Officer');
+        $procurementOfficer->givePermissionTo(['pipeline.manage-rfq', 'pipeline.manage-quotes',
+            'pipeline.award', 'pipeline.generate-lpo',
+            'pipeline.view-active-pipeline']);
 
         $supplier = Supplier::factory()->create();
 
@@ -37,7 +39,7 @@ class PurchaseWorkflowEndToEndTest extends TestCase
         // The create form is a React modal, so this step is the API call it makes.
         $storeResponse = $this->actingAs($requester)->postJson('/api/v1/purchase/requests', [
             'date' => now()->format('Y-m-d'),
-            'project_name' => 'Test Project',
+            'company_name' => 'Test Project',
             'requested_by_name' => 'Test Person',
             'items' => [
                 ['description' => 'Widget', 'quantity_required' => 5],
@@ -73,6 +75,10 @@ class PurchaseWorkflowEndToEndTest extends TestCase
 
         $purchaseRequest->refresh();
         $this->assertSame('rfq', $purchaseRequest->stage);
+
+        // The send is a real one now: without an account configured the service
+        // reports the failure rather than recording a delivery that never happened.
+        $this->workingMailAccount();
 
         // 4) Procurement Officer sends the RFQ to the selected supplier(s) —
         // manageRfq() must still allow this now that the stage is 'rfq'.

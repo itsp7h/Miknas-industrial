@@ -12,11 +12,25 @@ use Illuminate\View\View;
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Display the login view.
+     * Display the login view — a React mount point on the shared auth shell.
+     *
+     * The redirect target is decided here rather than in the page, because
+     * only the server knows where the visitor was heading. `url.intended` is
+     * read, not pulled: Breeze's own POST /login still consumes it.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.login');
+        $intended = $request->session()->get('url.intended', '');
+
+        return view('auth.shell', [
+            'page' => 'login',
+            'props' => [
+                'redirectTo' => url()->previous() !== url()->current() && str_starts_with($intended, url('/'))
+                    ? $intended
+                    : url('/app'),
+                'showDevLogin' => app()->environment('local'),
+            ],
+        ]);
     }
 
     /**

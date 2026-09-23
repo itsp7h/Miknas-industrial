@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import StockSummaryPage from './StockSummaryPage';
 import LowStockPage from './LowStockPage';
 import ValuationPage from './ValuationPage';
 import { ToastProvider } from '../../../../components/ui/Toast';
@@ -12,39 +11,42 @@ vi.mock('../../../../echo', () => ({
 
 const wrap = (ui) => render(<ToastProvider>{ui}</ToastProvider>);
 
-const SUMMARY_ROWS = [
-    { id: 1, item_code: 'ITEM-1', item_name: 'Rod', warehouse_name: 'Main', quantity: '4', unit_of_measure: 'PCS' },
-    { id: 2, item_code: 'ITEM-2', item_name: 'Widget', warehouse_name: 'Yard', quantity: '9', unit_of_measure: 'BOX' },
+// These three cover MobileReport itself — cards rather than a table, a live
+// count, a no-results message. The stock summary used to be the stand-in; it is
+// gone, so the valuation report stands in.
+const VALUATION_ROWS = [
+    { id: 1, item_code: 'ITEM-1', item_name: 'Rod', category: 'raw_material', total_qty: '4', cost_price: '2', total_value: '8' },
+    { id: 2, item_code: 'ITEM-2', item_name: 'Widget', category: 'finished_good', total_qty: '9', cost_price: '3', total_value: '27' },
 ];
 
 describe('mobile inventory reports', () => {
     beforeEach(() => vi.restoreAllMocks());
 
     it('renders report rows as cards, never a table', async () => {
-        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: SUMMARY_ROWS, meta: { total_lines: 2 } });
-        const { container } = wrap(<StockSummaryPage />);
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: VALUATION_ROWS, meta: { total_valuation: 35 } });
+        const { container } = wrap(<ValuationPage />);
         expect(await screen.findByText('Rod')).toBeInTheDocument();
         expect(container.querySelector('table')).toBeNull();
     });
 
     it('filters client-side with a live line count', async () => {
-        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: SUMMARY_ROWS, meta: { total_lines: 2 } });
-        wrap(<StockSummaryPage />);
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: VALUATION_ROWS, meta: { total_valuation: 35 } });
+        wrap(<ValuationPage />);
         await screen.findByText('Rod');
         expect(screen.getByText('2 lines')).toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Search inventory summary'), { target: { value: 'widget' } });
+        fireEvent.change(screen.getByLabelText('Search inventory valuation'), { target: { value: 'widget' } });
 
         expect(screen.getByText('1 of 2 lines')).toBeInTheDocument();
         expect(screen.queryByText('Rod')).not.toBeInTheDocument();
     });
 
     it('shows a no-results message rather than an empty screen', async () => {
-        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: SUMMARY_ROWS, meta: { total_lines: 2 } });
-        wrap(<StockSummaryPage />);
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: VALUATION_ROWS, meta: { total_valuation: 35 } });
+        wrap(<ValuationPage />);
         await screen.findByText('Rod');
-        fireEvent.change(screen.getByLabelText('Search inventory summary'), { target: { value: 'zzz' } });
-        expect(screen.getByText('No inventory summary match that search.')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search inventory valuation'), { target: { value: 'zzz' } });
+        expect(screen.getByText('No inventory valuation match that search.')).toBeInTheDocument();
     });
 
     it('low stock shows current, minimum and shortage on each card', async () => {

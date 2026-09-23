@@ -38,6 +38,7 @@ class PurchaseRequestDetailResource extends JsonResource
             'stage_labels' => collect($all)->mapWithKeys(fn ($s) => [$s => $stages->stageLabel($s)]),
 
             'status' => $this->status,
+            'company_name' => $this->company_name,
             'project_name' => $this->project_name,
             'department' => $this->department,
             'requested_by_name' => $this->requested_by_name ?: $this->requestedBy?->name,
@@ -45,6 +46,14 @@ class PurchaseRequestDetailResource extends JsonResource
             'created_at' => $this->created_at?->toDateString(),
             'location' => $this->location,
             'required_date_text' => $this->required_date_text,
+            // The request has no date of its own — only the urgency picker's
+            // word. The real date lives on the items, so the panel shows the
+            // earliest of them: the day the first thing on this request is
+            // needed, which is the date the request as a whole answers to.
+            'required_date' => $this->whenLoaded('items', fn () => $this->items
+                ->filter(fn ($item) => $item->required_date)
+                ->sortBy('required_date')
+                ->first()?->required_date?->toDateString()),
             'verified_by_name' => $this->verified_by_name,
 
             // Keyed off the status, not the columns: a request approved after a
@@ -70,6 +79,11 @@ class PurchaseRequestDetailResource extends JsonResource
                 'supplier_name' => $inv->supplier?->name,
                 'channel' => $inv->channel,
                 'status' => $inv->status,
+                // Who chose this supplier, and who sent them the request —
+                // the same accounting the award lines carry.
+                'selected_by' => $inv->selectedBy?->name,
+                'sent_by' => $inv->sentBy?->name,
+                'sent_at' => $inv->sent_at?->format('d M Y, H:i'),
                 // The supplier's own portal link, which the view-suppliers modal
                 // offers for copying when an invitation cannot be auto-sent.
                 'portal_url' => route('rfq.show', $inv->token),
@@ -123,6 +137,28 @@ class PurchaseRequestDetailResource extends JsonResource
                 'total_amount' => $po->total_amount,
                 'status' => $po->status ?? 'draft',
             ])->values()),
+
+            // What has actually been received against those LPOs. Without this
+            // the pipeline's Receiving step had nothing to show: a recorded GRN
+            // left the screen looking exactly as it did before, so there was no
+            // way to tell whether anything had happened.
+            'goods_receipt_notes' => $this->whenLoaded(
+                'purchaseOrders',
+                fn () => $this->purchaseOrders
+                    ->flatMap(fn ($po) => $po->relationLoaded('goodsReceiptNotes')
+                        ? $po->goodsReceiptNotes->map(fn ($grn) => [
+                            'id' => $grn->id,
+                            'grn_number' => $grn->grn_number ?? 'GRN-'.str_pad((string) $grn->id, 5, '0', STR_PAD_LEFT),
+                            'po_number' => $po->po_number,
+                            'warehouse_name' => $grn->warehouse?->name,
+                            'received_date' => $grn->received_date?->toDateString(),
+                            // 'draft' means the goods are recorded but no stock
+                            // has moved — confirming is what does that.
+                            'status' => $grn->status ?? 'draft',
+                        ])
+                        : collect())
+                    ->values()
+            ),
 
             'permissions' => [
                 'update' => (bool) $user?->can('update', $this->resource),

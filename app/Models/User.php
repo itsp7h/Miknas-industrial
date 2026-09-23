@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -56,5 +57,22 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Users holding a profile, as a query.
+     *
+     * `User::role()` throws when the role does not exist, so renaming a profile
+     * took goods receipt, low-stock alerts and production down with a 500
+     * rather than simply notifying nobody. A missing profile now means an empty
+     * audience, which is what it actually is.
+     */
+    public static function withProfile(?string $profile)
+    {
+        if (! $profile || ! Role::where('name', $profile)->exists()) {
+            return static::query()->whereRaw('1 = 0');
+        }
+
+        return static::role($profile);
     }
 }

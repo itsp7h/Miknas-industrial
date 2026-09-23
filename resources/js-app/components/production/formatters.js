@@ -1,6 +1,9 @@
-/** Shared by the production pages so their tables read the same as Blade's did. */
-export const num = (value) =>
-    Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+import { qty } from '../../currency';
+/**
+ * Shared by the production pages so their tables read the same as Blade's did.
+ * Every figure on them is a quantity produced or issued, never an amount.
+ */
+export { qty as num };
 
 export const formatDate = (value) => {
     if (!value) return '';
