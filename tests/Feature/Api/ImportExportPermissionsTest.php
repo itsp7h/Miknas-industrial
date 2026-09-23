@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Item;
 use App\Models\User;
 use App\Support\AccessCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,18 @@ class ImportExportPermissionsTest extends TestCase
         $user->givePermissionTo($permissions);
 
         return $user;
+    }
+
+    private function item(string $name, string $category): Item
+    {
+        return Item::create([
+            'item_code' => 'ITEM-'.str_pad((string) (Item::max('id') + 1), 4, '0', STR_PAD_LEFT),
+            'item_name' => $name,
+            'category' => $category,
+            'unit_of_measure' => 'PCS',
+            'minimum_stock_level' => 0,
+            'cost_price' => 1,
+        ]);
     }
 
     public static function importRoutes(): array
@@ -71,6 +84,53 @@ class ImportExportPermissionsTest extends TestCase
         $this->actingAs($this->userWith(['raw-materials.view', 'finished-goods.view']))
             ->get('/api/v1/inventory/items/export-pdf')
             ->assertForbidden();
+    }
+
+    /**
+     * Raw Materials and Finished Goods are two tabs with two squares but one
+     * set of endpoints, so the route middleware can only ask for *either*. The
+     * controller decides which rows, and this is what keeps the separation the
+     * sidebar promises.
+     */
+    public function test_a_raw_materials_grant_does_not_reach_finished_goods(): void
+    {
+        $this->item('Steel Plate', 'raw_material');
+        $this->item('Painted Frame', 'finished_good');
+
+        $rawOnly = $this->userWith(['raw-materials.view']);
+
+        $names = collect($this->actingAs($rawOnly)->getJson('/api/v1/inventory/items')->assertOk()->json('data'))
+            ->pluck('item_name');
+
+        $this->assertContains('Steel Plate', $names);
+        $this->assertNotContains('Painted Frame', $names);
+    }
+
+    public function test_both_grants_see_both(): void
+    {
+        $this->item('Steel Plate', 'raw_material');
+        $this->item('Painted Frame', 'finished_good');
+
+        $names = collect(
+            $this->actingAs($this->userWith(['raw-materials.view', 'finished-goods.view']))
+                ->getJson('/api/v1/inventory/items')->assertOk()->json('data')
+        )->pluck('item_name');
+
+        $this->assertContains('Steel Plate', $names);
+        $this->assertContains('Painted Frame', $names);
+    }
+
+    /** WIP is not its own tab — it belongs with the raw materials. */
+    public function test_work_in_progress_travels_with_raw_materials(): void
+    {
+        $this->item('Half-built Frame', 'wip');
+
+        $names = collect(
+            $this->actingAs($this->userWith(['raw-materials.view']))
+                ->getJson('/api/v1/inventory/items')->assertOk()->json('data')
+        )->pluck('item_name');
+
+        $this->assertContains('Half-built Frame', $names);
     }
 
     /** The whole point: an Admin can find them on the access form. */

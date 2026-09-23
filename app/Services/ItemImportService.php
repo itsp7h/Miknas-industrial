@@ -24,7 +24,14 @@ class ItemImportService
     /** Col-B values that indicate a header row, not data */
     private array $headerWords = ['description', 'item name', 'item_name', 'material'];
 
-    public function import(string $filePath): array
+    /**
+     * @param  list<string>|null  $allowedCategories  Categories the caller may
+     *                                                create. Null means no restriction, which is what the console commands
+     *                                                and the tests want; the API passes what the user's squares allow, so a
+     *                                                file of finished goods cannot be imported by someone who may only
+     *                                                import raw materials.
+     */
+    public function import(string $filePath, ?array $allowedCategories = null): array
     {
         $spreadsheet = IOFactory::load($filePath);
         $format = $this->detectFormat($spreadsheet);
@@ -35,11 +42,24 @@ class ItemImportService
 
         $imported = 0;
         $skipped = 0;
+        $refused = 0;
         $codeSeq = (Item::max('id') ?? 0) + 1;
 
         foreach ($rows as $data) {
             $name = trim($data['item_name'] ?? '');
             if (empty($name)) {
+                continue;
+            }
+
+            // A row the caller may not create is left where it is, and counted
+            // separately from a duplicate: one is a permission answer and the
+            // other is housekeeping, and the difference matters to whoever
+            // reads the result.
+            $category = $data['category'] ?? 'finished_good';
+
+            if ($allowedCategories !== null && ! in_array($category, $allowedCategories, true)) {
+                $refused++;
+
                 continue;
             }
 
@@ -58,7 +78,7 @@ class ItemImportService
             Item::create([
                 'item_code' => $itemCode,
                 'item_name' => $name,
-                'category' => $data['category'] ?? 'finished_good',
+                'category' => $category,
                 'unit_of_measure' => $data['unit_of_measure'] ?? 'EA',
                 'cost_price' => $data['cost_price'] ?? 0,
                 'minimum_stock_level' => $data['minimum_stock_level'] ?? 0,
@@ -69,7 +89,7 @@ class ItemImportService
             $imported++;
         }
 
-        return ['imported' => $imported, 'skipped' => $skipped, 'format' => $format];
+        return ['imported' => $imported, 'skipped' => $skipped, 'refused' => $refused, 'format' => $format];
     }
 
     private function detectFormat(Spreadsheet $spreadsheet): string
