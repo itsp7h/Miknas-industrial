@@ -249,6 +249,9 @@ Route::prefix('v1')->group(function () {
             Route::post('suppliers/import', [SupplierController::class, 'import'])->middleware('permission:suppliers.import');
             Route::get('suppliers/template', [SupplierController::class, 'downloadTemplate'])->middleware('permission:suppliers.import');
             Route::get('suppliers/export-pdf', [SupplierController::class, 'exportPdf'])->middleware('permission:suppliers.export');
+            // The collection itself, so there is no `suppliers/all` to be
+            // swallowed by the `{supplier}` wildcard below (gotcha #3).
+            Route::delete('suppliers', [SupplierController::class, 'destroyAll'])->middleware('permission:suppliers.delete-all');
             Route::put('suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit');
             Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete');
 
