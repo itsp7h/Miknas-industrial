@@ -28,6 +28,7 @@ export default function ProfilePage({ compact = false }) {
                         maxWidth={maxWidth}
                     >
                         <ProfileDetailsForm
+                            key={p.user.id}
                             user={p.user}
                             onSave={p.saveDetails}
                             onResendVerification={p.resendVerification}
