@@ -43,6 +43,13 @@ return [
             'group' => 'Purchase',
             'label' => 'Suppliers',
             'actions' => ['view', 'create', 'edit', 'delete'],
+            // Moving a spreadsheet in or a list out is not the same capability
+            // as adding one supplier by hand, so it is its own square rather
+            // than something `create` and `view` quietly carry.
+            'extra' => [
+                'import' => 'Import from Excel, and download the template',
+                'export' => 'Export the list as PDF',
+            ],
         ],
         'purchase-orders' => [
             'group' => 'Purchase',
@@ -70,11 +77,19 @@ return [
             'group' => 'Inventory',
             'label' => 'Raw Materials',
             'actions' => ['view', 'create', 'edit', 'delete'],
+            'extra' => [
+                'import' => 'Import from Excel, and download the template',
+                'export' => 'Export the list as PDF',
+            ],
         ],
         'finished-goods' => [
             'group' => 'Inventory',
             'label' => 'Finished Goods',
             'actions' => ['view', 'create', 'edit', 'delete'],
+            'extra' => [
+                'import' => 'Import from Excel, and download the template',
+                'export' => 'Export the list as PDF',
+            ],
         ],
         'warehouses' => [
             'group' => 'Inventory',
@@ -114,6 +129,11 @@ return [
             'group' => 'System',
             'label' => 'Projects',
             'actions' => ['view', 'create', 'edit', 'delete'],
+            // No export square: projects have an import and a template, but
+            // nothing that writes a PDF.
+            'extra' => [
+                'import' => 'Import from Excel, and download the template',
+            ],
         ],
         'item-categories' => [
             'group' => 'System',
@@ -190,12 +210,15 @@ return [
                 'pipeline.view-all',
                 'pipeline.approve',
                 'suppliers.view',
+                'suppliers.export',
                 'purchase-orders.view',
                 'goods-receipts.view',
                 'supplier-invoices.view',
                 'supplier-payments.view',
                 'raw-materials.view',
+                'raw-materials.export',
                 'finished-goods.view',
+                'finished-goods.export',
                 'warehouses.view',
                 'stock-movements.view',
                 'movement-report.view',
@@ -209,6 +232,7 @@ return [
                 'pipeline.view',
                 'pipeline.view-all',
                 'suppliers.view',
+                'suppliers.export',
                 'purchase-orders.view',
                 'goods-receipts.view',
                 'supplier-invoices.view',
@@ -220,7 +244,9 @@ return [
                 'supplier-payments.edit',
                 'supplier-payments.delete',
                 'raw-materials.view',
+                'raw-materials.export',
                 'finished-goods.view',
+                'finished-goods.export',
                 'valuation.view',
                 'finance.view',
                 'finance.edit',

@@ -71,9 +71,9 @@ Route::prefix('v1')->group(function () {
         Route::prefix('inventory')->group(function () {
             Route::get('items', [ItemController::class, 'index'])->middleware('permission:raw-materials.view|finished-goods.view');
             Route::post('items', [ItemController::class, 'store'])->middleware('permission:raw-materials.create|finished-goods.create');
-            Route::post('items/import', [ItemController::class, 'import'])->middleware('permission:raw-materials.create|finished-goods.create');
-            Route::get('items/template', [ItemController::class, 'downloadTemplate'])->middleware('permission:raw-materials.view|finished-goods.view');
-            Route::get('items/export-pdf', [ItemController::class, 'exportPdf'])->middleware('permission:raw-materials.view|finished-goods.view');
+            Route::post('items/import', [ItemController::class, 'import'])->middleware('permission:raw-materials.import|finished-goods.import');
+            Route::get('items/template', [ItemController::class, 'downloadTemplate'])->middleware('permission:raw-materials.import|finished-goods.import');
+            Route::get('items/export-pdf', [ItemController::class, 'exportPdf'])->middleware('permission:raw-materials.export|finished-goods.export');
             Route::put('items/{item}', [ItemController::class, 'update'])->middleware('permission:raw-materials.edit|finished-goods.edit');
             Route::delete('items/{item}', [ItemController::class, 'destroy'])->middleware('permission:raw-materials.delete|finished-goods.delete');
 
@@ -168,8 +168,8 @@ Route::prefix('v1')->group(function () {
             // `projects/import` and `projects/template` must precede
             // `projects/{project}` or the wildcard swallows them.
             Route::get('projects', [ProjectController::class, 'index'])->middleware('permission:projects.view');
-            Route::post('projects/import', [ProjectController::class, 'import'])->middleware('permission:projects.create');
-            Route::get('projects/template', [ProjectController::class, 'downloadTemplate'])->middleware('permission:projects.view');
+            Route::post('projects/import', [ProjectController::class, 'import'])->middleware('permission:projects.import');
+            Route::get('projects/template', [ProjectController::class, 'downloadTemplate'])->middleware('permission:projects.import');
             Route::post('projects', [ProjectController::class, 'store'])->middleware('permission:projects.create');
             Route::put('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:projects.edit');
             Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->middleware('permission:projects.delete');
@@ -246,9 +246,9 @@ Route::prefix('v1')->group(function () {
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unaward']);
             Route::get('suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers.view');
             Route::post('suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');
-            Route::post('suppliers/import', [SupplierController::class, 'import'])->middleware('permission:suppliers.create');
-            Route::get('suppliers/template', [SupplierController::class, 'downloadTemplate'])->middleware('permission:suppliers.view');
-            Route::get('suppliers/export-pdf', [SupplierController::class, 'exportPdf'])->middleware('permission:suppliers.view');
+            Route::post('suppliers/import', [SupplierController::class, 'import'])->middleware('permission:suppliers.import');
+            Route::get('suppliers/template', [SupplierController::class, 'downloadTemplate'])->middleware('permission:suppliers.import');
+            Route::get('suppliers/export-pdf', [SupplierController::class, 'exportPdf'])->middleware('permission:suppliers.export');
             Route::put('suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit');
             Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete');
 
