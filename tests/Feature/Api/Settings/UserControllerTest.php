@@ -289,9 +289,14 @@ class UserControllerTest extends TestCase
     /**
      * The point of the whole grid: what an Admin ticks is what the person gets.
      *
-     * The GM profile grants fifteen squares. Cut back to two, the other
-     * thirteen must be gone — the profile stays on them as a label, and the
+     * A GM starts with the whole GM profile. Cut back to two squares, every
+     * other one must be gone — the profile stays on them as a label, and the
      * role itself hands back nothing.
+     *
+     * The starting count comes from the catalogue rather than a number written
+     * here: what the profile contains is config's business and changes, while
+     * what this test is about — that the selection replaces it entirely — does
+     * not.
      */
     public function test_the_selection_is_exactly_what_the_user_ends_up_with(): void
     {
@@ -301,7 +306,10 @@ class UserControllerTest extends TestCase
         $gm = User::factory()->create();
         $gm->assignRole('GM');
         $gm->syncPermissions(AccessCatalog::defaultPermissionsFor('GM'));
-        $this->assertCount(15, $gm->fresh()->getAllPermissions());
+        $this->assertCount(
+            count(AccessCatalog::defaultPermissionsFor('GM')),
+            $gm->fresh()->getAllPermissions()
+        );
 
         $this->actingAs($admin)->putJson('/api/v1/settings/users/'.$gm->id, [
             'roles' => ['GM'],
