@@ -17,9 +17,16 @@ describe('SupplierPaymentModal', () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
     });
 
+    /**
+     * The title renders at once but the invoices arrive from the API, so
+     * waiting for the heading alone let a test read the select before it had
+     * any options — which is what made `presetInvoiceId` flaky on CI. Wait for
+     * the options themselves and every test below starts from a loaded form.
+     */
     const openCreate = async (props = {}) => {
         render(<SupplierPaymentModal payment={null} onSaved={() => {}} onCancel={() => {}} {...props} />);
         await screen.findByText('Record Supplier Payment');
+        await waitFor(() => expect(screen.getByLabelText(/Invoice/).options.length).toBeGreaterThan(1));
     };
 
     it('opens with the create chrome and its three sections', async () => {

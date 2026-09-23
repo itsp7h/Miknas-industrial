@@ -49,6 +49,10 @@ return [
             'extra' => [
                 'import' => 'Import from Excel, and download the template',
                 'export' => 'Export the list as PDF',
+                // Emptying the directory in one action is not the same as
+                // deleting one supplier you are looking at, so it is granted
+                // separately and `delete` does not imply it.
+                'delete-all' => 'Delete every supplier at once',
             ],
         ],
         'purchase-orders' => [
