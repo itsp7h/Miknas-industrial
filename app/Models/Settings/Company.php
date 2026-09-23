@@ -11,7 +11,7 @@ class Company extends Model
 {
     protected $table = 'settings_companies';
 
-    protected $fillable = ['name', 'lpo_code', 'warehouse_id', 'is_active'];
+    protected $fillable = ['name', 'lpo_code', 'mpr_code', 'warehouse_id', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];
 

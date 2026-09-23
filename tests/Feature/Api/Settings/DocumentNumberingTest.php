@@ -120,6 +120,57 @@ class DocumentNumberingTest extends TestCase
         $this->assertSame('MI-MPR-26-0002', $this->numbers()->next($company, DocumentNumberService::MPR));
     }
 
+    /** Matana files an MRF, not an MPR, and the number says so. */
+    public function test_a_company_may_name_its_own_material_request(): void
+    {
+        $matana = Company::create([
+            'name' => 'Matana steel Factory', 'lpo_code' => 'MSF', 'mpr_code' => 'MRF', 'is_active' => true,
+        ]);
+
+        Carbon::setTestNow('2026-05-04');
+        $this->assertSame('MSF-MRF-26-0001', $this->numbers()->next($matana, DocumentNumberService::MPR));
+        // Only the material request is theirs to name. An LPO is an LPO.
+        $this->assertSame('MSF-LPO-26-0001', $this->numbers()->next($matana, DocumentNumberService::LPO));
+    }
+
+    /** The renamed series counts on its own terms, not alongside the MPRs. */
+    public function test_the_named_series_keeps_its_own_sequence(): void
+    {
+        $matana = Company::create([
+            'name' => 'Matana steel Factory', 'lpo_code' => 'MSF', 'mpr_code' => 'MRF', 'is_active' => true,
+        ]);
+        Carbon::setTestNow('2026-05-04');
+
+        PurchaseRequest::factory()->create(['request_number' => 'MSF-MRF-26-0001', 'company_name' => 'Matana steel Factory']);
+
+        $this->assertSame('MSF-MRF-26-0002', $this->numbers()->next($matana, DocumentNumberService::MPR));
+    }
+
+    /** A company that has not named one files an MPR, as before. */
+    public function test_an_unnamed_material_request_is_an_mpr(): void
+    {
+        $company = Company::create(['name' => 'Steel Tech', 'lpo_code' => 'ST', 'is_active' => true]);
+
+        Carbon::setTestNow('2026-05-04');
+        $this->assertSame('ST-MPR-26-0001', $this->numbers()->next($company, DocumentNumberService::MPR));
+    }
+
+    /** The page needs the token to preview a number it did not mint. */
+    public function test_the_page_carries_each_company_s_material_request_token(): void
+    {
+        Company::create(['name' => 'Matana steel Factory', 'lpo_code' => 'MSF', 'mpr_code' => 'MRF', 'is_active' => true]);
+        Company::create(['name' => 'Steel Tech', 'lpo_code' => 'ST', 'is_active' => true]);
+        Carbon::setTestNow('2026-05-04');
+
+        $this->actingAs($this->admin())
+            ->getJson('/api/v1/settings/document-numbering')
+            ->assertOk()
+            ->assertJsonPath('data.0.mpr_code', 'MRF')
+            ->assertJsonPath('data.0.next_mpr_number', 'MSF-MRF-26-0001')
+            // Resolved, never null: the page should not have to know the default.
+            ->assertJsonPath('data.1.mpr_code', 'MPR');
+    }
+
     public function test_the_page_carries_the_next_number_for_both_documents(): void
     {
         Company::create(['name' => 'Steel Tech', 'lpo_code' => 'ST', 'is_active' => true]);

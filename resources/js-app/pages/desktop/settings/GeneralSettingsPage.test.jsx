@@ -11,8 +11,8 @@ const YY = shortYear();
 
 const PAYLOAD = {
     data: [
-        { id: 1, name: 'Miknas Industrial', is_active: true, lpo_code: 'MI', next_number: `MI-LPO-${YY}-0004`, next_mpr_number: `MI-MPR-${YY}-0007` },
-        { id: 2, name: 'Steel Tech', is_active: true, lpo_code: 'ST', next_number: `ST-LPO-${YY}-0001`, next_mpr_number: `ST-MPR-${YY}-0001` },
+        { id: 1, name: 'Miknas Industrial', is_active: true, lpo_code: 'MI', mpr_code: 'MPR', next_number: `MI-LPO-${YY}-0004`, next_mpr_number: `MI-MPR-${YY}-0007` },
+        { id: 2, name: 'Steel Tech', is_active: true, lpo_code: 'ST', mpr_code: 'MPR', next_number: `ST-LPO-${YY}-0001`, next_mpr_number: `ST-MPR-${YY}-0001` },
     ],
 };
 
@@ -126,6 +126,26 @@ describe('the Settings tab', () => {
             'You do not have permission to view the document numbering.',
             'You do not have permission to view the company warehouses.',
         ]);
+    });
+
+    it('previews a company’s own word for the document, not always MPR', async () => {
+        // Matana files an MRF. The preview follows the company, so editing the
+        // letters must not quietly turn its series back into an MPR.
+        vi.spyOn(client, 'apiGet').mockImplementation(getFor({
+            numbering: {
+                data: [{
+                    id: 3, name: 'Matana steel Factory', is_active: true, lpo_code: 'MSF',
+                    mpr_code: 'MRF', next_number: `MSF-LPO-${YY}-0001`, next_mpr_number: `MSF-MRF-${YY}-0001`,
+                }],
+            },
+        }));
+        renderPage();
+
+        expect(await screen.findByText(`MSF-MRF-${YY}-0001`)).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('Matana steel Factory document code'), { target: { value: 'MS' } });
+        expect(screen.getByText(`MS-MRF-${YY}-0001`)).toBeInTheDocument();
+        expect(screen.getByText(`MS-LPO-${YY}-0001`)).toBeInTheDocument();
     });
 
     it('renders on mobile too, since every page is a pair', async () => {

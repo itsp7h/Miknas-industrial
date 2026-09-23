@@ -30,6 +30,10 @@ const PREVIEW = {
  * Only the letters are editable: the document, the two-digit year and the
  * four-digit sequence are the shape of the number, not a preference, and each
  * document counts separately per company per year.
+ *
+ * The middle token is the company's own word for the document — Matana's
+ * material requests are MRF, not MPR — so the preview reads it off the
+ * payload rather than assuming.
  */
 export default function DocumentNumberingCard({ maxWidth }) {
     const n = useDocumentNumbering();
@@ -71,7 +75,7 @@ export default function DocumentNumberingCard({ maxWidth }) {
                         style={{ width: '100%', textTransform: 'uppercase', fontWeight: 700 }}
                     />
                     <span style={PREVIEW}>
-                        {previewFor(n.codes[company.id], company.next_mpr_number, 'MPR')}
+                        {previewFor(n.codes[company.id], company.next_mpr_number, company.mpr_code || 'MPR')}
                     </span>
                     <span style={PREVIEW}>
                         {previewFor(n.codes[company.id], company.next_number, 'LPO')}

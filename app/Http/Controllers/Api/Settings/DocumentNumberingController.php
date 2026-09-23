@@ -20,19 +20,7 @@ class DocumentNumberingController extends Controller
 {
     public function index(DocumentNumberService $numbers)
     {
-        return response()->json([
-            'data' => Company::orderBy('name')->get(['id', 'name', 'lpo_code', 'is_active'])
-                ->map(fn (Company $company) => [
-                    'id' => $company->id,
-                    'name' => $company->name,
-                    'is_active' => $company->is_active,
-                    'lpo_code' => $company->lpo_code,
-                    // What the next ones would actually read, rather than an
-                    // example: the same calls the generators make.
-                    'next_number' => $numbers->next($company, DocumentNumberService::LPO),
-                    'next_mpr_number' => $numbers->next($company, DocumentNumberService::MPR),
-                ])->values(),
-        ]);
+        return response()->json(['data' => $this->companies($numbers)]);
     }
 
     public function update(Request $request, DocumentNumberService $numbers)
@@ -64,15 +52,26 @@ class DocumentNumberingController extends Controller
 
         return response()->json([
             'message' => 'Document numbering saved.',
-            'data' => Company::orderBy('name')->get(['id', 'name', 'lpo_code', 'is_active'])
-                ->map(fn (Company $company) => [
-                    'id' => $company->id,
-                    'name' => $company->name,
-                    'is_active' => $company->is_active,
-                    'lpo_code' => $company->lpo_code,
-                    'next_number' => $numbers->next($company, DocumentNumberService::LPO),
-                    'next_mpr_number' => $numbers->next($company, DocumentNumberService::MPR),
-                ])->values(),
+            'data' => $this->companies($numbers),
         ]);
+    }
+
+    /** Every company, with what its next number of each document would read. */
+    private function companies(DocumentNumberService $numbers)
+    {
+        return Company::orderBy('name')->get(['id', 'name', 'lpo_code', 'mpr_code', 'is_active'])
+            ->map(fn (Company $company) => [
+                'id' => $company->id,
+                'name' => $company->name,
+                'is_active' => $company->is_active,
+                'lpo_code' => $company->lpo_code,
+                // The company's own word for a material request, resolved
+                // rather than raw, so the page never has to know the default.
+                'mpr_code' => $numbers->token($company, DocumentNumberService::MPR),
+                // What the next ones would actually read, rather than an
+                // example: the same calls the generators make.
+                'next_number' => $numbers->next($company, DocumentNumberService::LPO),
+                'next_mpr_number' => $numbers->next($company, DocumentNumberService::MPR),
+            ])->values();
     }
 }

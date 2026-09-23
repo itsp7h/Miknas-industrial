@@ -17,7 +17,9 @@ use InvalidArgumentException;
  * count separately from its LPOs.
  *
  * A company has one code for both: it is the company's code, not the
- * document's. Only the middle token tells them apart.
+ * document's. Only the middle token tells them apart — and that token is the
+ * company's own word for the document, so Matana's material requests read
+ * MSF-MRF-26-0001 (see `token()`).
  *
  * Each sequence is read back from the numbers already issued under the same
  * prefix rather than kept in a counter, so it cannot drift out of step with
@@ -49,10 +51,31 @@ class DocumentNumberService
 
         $year = ($on ?? now())->format('y');
         $code = trim((string) ($company?->lpo_code ?? ''));
+        $token = $this->token($company, $document);
 
         // A document with no company behind it still needs a number, so it
         // falls to a house series without the leading code.
-        return $code !== '' ? "{$code}-{$document}-{$year}-" : "{$document}-{$year}-";
+        return $code !== '' ? "{$code}-{$token}-{$year}-" : "{$token}-{$year}-";
+    }
+
+    /**
+     * What the middle of the number reads.
+     *
+     * Usually the document itself, but a company may call its material
+     * request something else on its own paperwork — Matana's are MRF, not
+     * MPR — and a number that does not match the document it is written on
+     * helps nobody. Only the material request is the company's to name; an
+     * LPO is an LPO everywhere.
+     */
+    public function token(?Company $company, string $document = self::LPO): string
+    {
+        if ($document !== self::MPR) {
+            return $document;
+        }
+
+        $own = strtoupper(trim((string) ($company?->mpr_code ?? '')));
+
+        return $own !== '' ? $own : self::MPR;
     }
 
     /** What this prefix has reached. 0 when it has issued nothing. */
