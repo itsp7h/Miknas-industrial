@@ -21,6 +21,7 @@ export default function useSupplierList() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [deleting, setDeleting] = useState(null);
+    const [deleteAllOpen, setDeleteAllOpen] = useState(false);
     const fileInputRef = useRef(null);
     const { showToast } = useToast();
 
@@ -73,12 +74,30 @@ export default function useSupplierList() {
         }
     }
 
+    /**
+     * Empty the directory. The server decides which suppliers may actually go
+     * — anything the paperwork points at stays — so its count and its wording
+     * are what the toast shows, and the list is reloaded from what survived
+     * rather than assumed empty.
+     */
+    async function confirmDeleteAll() {
+        setDeleteAllOpen(false);
+        try {
+            const response = await apiDelete('/purchase/suppliers');
+            await refetch();
+            showToast(response.message, response.deleted > 0 ? 'success' : 'warn');
+        } catch (err) {
+            showToast(err?.message || 'Failed to delete suppliers.', 'error');
+        }
+    }
+
     return {
         suppliers,
         query, setQuery,
         modalOpen, setModalOpen,
         editing, openCreate, openEdit, handleSaved,
         deleting, setDeleting, handleDeleteConfirmed,
+        deleteAllOpen, setDeleteAllOpen, confirmDeleteAll,
         fileInputRef, handleImport,
     };
 }

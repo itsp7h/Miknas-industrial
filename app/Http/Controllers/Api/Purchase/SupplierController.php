@@ -10,7 +10,9 @@ use App\Models\Supplier;
 use App\Services\SupplierImportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
@@ -76,6 +78,71 @@ class SupplierController extends Controller
         event(new SupplierSaved($supplier));
 
         return new SupplierResource($supplier);
+    }
+
+    /**
+     * Empty the supplier directory.
+     *
+     * A supplier the paperwork points at cannot go — `purchase_orders`,
+     * `supplier_invoices`, `supplier_payments`, `goods_receipt_notes`,
+     * `rfq_invitations` and `supplier_quotes` are all `restrict` on
+     * `supplier_id`, because an order has to keep saying who it was placed
+     * with. So this deletes the ones that can go and says plainly how many it
+     * kept and why, rather than refusing the lot because one is in use or —
+     * worse — half-emptying the table and reporting success.
+     *
+     * Which suppliers are in use is answered in one query per table rather
+     * than `hasRelatedRecords()` per supplier, which would be six queries each.
+     */
+    public function destroyAll()
+    {
+        $inUse = $this->suppliersInUse();
+
+        $deletable = Supplier::whereNotIn('id', $inUse)->pluck('id');
+        $kept = $inUse->count();
+
+        if ($deletable->isEmpty()) {
+            return response()->json([
+                'deleted' => 0,
+                'kept' => $kept,
+                'message' => $kept === 0
+                    ? 'There are no suppliers to delete.'
+                    : 'Nothing was deleted: every supplier has purchase orders, invoices or other records.',
+            ]);
+        }
+
+        DB::transaction(fn () => Supplier::whereIn('id', $deletable)->delete());
+
+        // The same per-supplier event a single delete fires, so every open
+        // board drops exactly the rows that went rather than being told to
+        // reload.
+        foreach ($deletable as $id) {
+            event(new SupplierDeleted($id));
+        }
+
+        return response()->json([
+            'deleted' => $deletable->count(),
+            'kept' => $kept,
+            'message' => $kept === 0
+                ? $deletable->count().' supplier(s) deleted.'
+                : $deletable->count().' supplier(s) deleted. '.$kept
+                    .' kept, because they have purchase orders, invoices or other records.',
+        ]);
+    }
+
+    /** Ids named by anything that refuses to let a supplier go. */
+    private function suppliersInUse(): Collection
+    {
+        $tables = [
+            'purchase_orders', 'supplier_invoices', 'supplier_payments',
+            'goods_receipt_notes', 'rfq_invitations', 'supplier_quotes',
+        ];
+
+        return collect($tables)
+            ->flatMap(fn (string $table) => DB::table($table)
+                ->whereNotNull('supplier_id')->distinct()->pluck('supplier_id'))
+            ->unique()
+            ->values();
     }
 
     public function destroy(Supplier $supplier)
