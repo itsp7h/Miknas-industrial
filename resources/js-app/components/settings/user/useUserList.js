@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiPost, apiPut } from '../../../api/client';
+import { apiDelete, apiGet, apiPost, apiPut } from '../../../api/client';
 import { useToast } from '../../ui/Toast';
 
 /** Users, the role list and the per-permission toggles. */
@@ -12,6 +12,7 @@ export default function useUserList() {
     const [newUserOpen, setNewUserOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [resetting, setResetting] = useState(null);
+    const [deleting, setDeleting] = useState(null);
     const { showToast } = useToast();
 
     const load = useCallback(() => apiGet('/settings/users')
@@ -53,6 +54,29 @@ export default function useUserList() {
         showToast(response.message, 'success');
     }
 
+    /**
+     * The server owns every reason a delete is refused — the last Admin, your
+     * own account, a request that has to keep naming who raised it — so its
+     * wording is what gets shown rather than a guess made here.
+     */
+    async function confirmDelete() {
+        const user = deleting;
+
+        if (!user) {
+            return;
+        }
+
+        try {
+            const response = await apiDelete(`/settings/users/${user.id}`);
+            setUsers((prev) => prev.filter((row) => row.id !== user.id));
+            showToast(response.message, 'success');
+        } catch (err) {
+            showToast(err?.message || 'Failed to delete user.', 'error');
+        } finally {
+            setDeleting(null);
+        }
+    }
+
     const q = query.trim().toLowerCase();
     const filtered = q
         ? users.filter((user) => [user.name, user.email, ...(user.roles ?? [])]
@@ -65,5 +89,6 @@ export default function useUserList() {
         newUserOpen, setNewUserOpen, createUser,
         editing, setEditing, saveAccess,
         resetting, setResetting, resetPassword,
+        deleting, setDeleting, confirmDelete,
     };
 }

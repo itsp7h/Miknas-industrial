@@ -1,3 +1,4 @@
+import ConfirmModal from '../../../components/ui/ConfirmModal';
 import EditAccessModal from '../../../components/settings/user/EditAccessModal';
 import NewUserModal from '../../../components/settings/user/NewUserModal';
 import ResetPasswordModal from '../../../components/settings/user/ResetPasswordModal';
@@ -70,6 +71,12 @@ export default function UserListPage() {
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
                         <button type="button" onClick={() => u.setResetting(user)} className="btn-secondary btn-sm">Reset Password</button>
                         <button type="button" onClick={() => u.setEditing(user)} className="btn-secondary btn-sm">Edit Access</button>
+                        <button
+                            type="button" onClick={() => u.setDeleting(user)}
+                            className="btn-danger btn-sm" aria-label={`Delete ${user.name}`}
+                        >
+                            Delete
+                        </button>
                     </div>
                 </div>
             ))}
@@ -85,6 +92,13 @@ export default function UserListPage() {
             <ResetPasswordModal
                 key={u.resetting?.id ?? 'none'} user={u.resetting}
                 onClose={() => u.setResetting(null)} onSave={u.resetPassword}
+            />
+            <ConfirmModal
+                open={!!u.deleting}
+                title={`Delete ${u.deleting?.name ?? ''}?`}
+                body="Their account is removed and they can no longer sign in. Documents they created will simply stop naming them."
+                onConfirm={u.confirmDelete}
+                onCancel={() => u.setDeleting(null)}
             />
         </div>
     );

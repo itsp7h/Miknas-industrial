@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api\Settings;
 
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseSignature;
 use App\Models\User;
 use App\Support\AccessCatalog;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -372,6 +374,171 @@ class UserControllerTest extends TestCase
 
         $created = User::where('email', 'noprofile@example.test')->first();
         $this->assertCount(0, $created->getAllPermissions());
+    }
+
+    public function test_admin_can_delete_a_user(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $victim = User::factory()->create(['name' => 'Departing Dan']);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/v1/settings/users/'.$victim->id)
+            ->assertOk()
+            ->assertJsonPath('deleted', true)
+            ->assertJsonPath('id', $victim->id)
+            ->assertJsonPath('message', 'Departing Dan deleted.');
+
+        $this->assertDatabaseMissing('users', ['id' => $victim->id]);
+    }
+
+    public function test_a_non_admin_cannot_delete_a_user(): void
+    {
+        $victim = User::factory()->create();
+
+        $this->deleteJson('/api/v1/settings/users/'.$victim->id)->assertUnauthorized();
+
+        $this->actingAs(User::factory()->create())
+            ->deleteJson('/api/v1/settings/users/'.$victim->id)
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('users', ['id' => $victim->id]);
+    }
+
+    public function test_an_admin_cannot_delete_their_own_account(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        // A second Admin, so it is being their own account that refuses this
+        // rather than their being the last one.
+        User::factory()->create()->assignRole('Admin');
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/v1/settings/users/'.$admin->id)
+            ->assertForbidden()
+            ->assertJsonPath('message', 'You cannot delete your own account.');
+
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
+    /** Admin is the only way back into this page, so the last one stays. */
+    public function test_the_last_admin_cannot_be_deleted(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $other = User::factory()->create();
+        $other->assignRole('Admin');
+
+        // Two Admins: one of them may go.
+        $this->actingAs($admin)->deleteJson('/api/v1/settings/users/'.$other->id)->assertOk();
+
+        // One Admin left, and nobody can remove them — not even themselves,
+        // which the previous test covers, and not another Admin, because there
+        // is none.
+        $this->assertSame(1, User::role('Admin')->count());
+
+        $second = User::factory()->create();
+        $second->assignRole('Admin');
+        $this->actingAs($second)
+            ->deleteJson('/api/v1/settings/users/'.$admin->id)
+            ->assertOk();
+
+        $this->actingAs($second)
+            ->deleteJson('/api/v1/settings/users/'.$second->id)
+            ->assertForbidden();
+    }
+
+    /** `purchase_requests.requested_by` is `restrict`: the MPR keeps the name. */
+    public function test_a_user_who_raised_a_request_cannot_be_deleted(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $requester = User::factory()->create(['name' => 'Rania Requester']);
+        PurchaseRequest::factory()->create(['requested_by' => $requester->id]);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/v1/settings/users/'.$requester->id)
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'message',
+                'Rania Requester cannot be deleted: they raised 1 purchase request. '
+                .'Records have to keep naming who raised and signed them.'
+            );
+
+        $this->assertDatabaseHas('users', ['id' => $requester->id]);
+    }
+
+    /** `purchase_signatures.signed_by` is `restrict` for the same reason. */
+    public function test_a_user_who_signed_a_request_cannot_be_deleted(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $signer = User::factory()->create(['name' => 'Sami Signer']);
+        $request = PurchaseRequest::factory()->create();
+
+        PurchaseSignature::create([
+            'purchase_request_id' => $request->id,
+            'signed_by' => $signer->id,
+            'signature_image' => 'data:image/png;base64,iVBORw0KGgo=',
+            'signed_at' => now(),
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/v1/settings/users/'.$signer->id)
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'message',
+                'Sami Signer cannot be deleted: they signed 1 request. '
+                .'Records have to keep naming who raised and signed them.'
+            );
+    }
+
+    /** Both refusals in one sentence when both apply. */
+    public function test_the_refusal_names_every_reason_at_once(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $busy = User::factory()->create(['name' => 'Bea Busy']);
+
+        $request = PurchaseRequest::factory()->create(['requested_by' => $busy->id]);
+        PurchaseRequest::factory()->create(['requested_by' => $busy->id]);
+        PurchaseSignature::create([
+            'purchase_request_id' => $request->id,
+            'signed_by' => $busy->id,
+            'signature_image' => 'data:image/png;base64,iVBORw0KGgo=',
+            'signed_at' => now(),
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/v1/settings/users/'.$busy->id)
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'message',
+                'Bea Busy cannot be deleted: they raised 2 purchase requests and they signed 1 request. '
+                .'Records have to keep naming who raised and signed them.'
+            );
+    }
+
+    /** Everywhere else the column is `set null`: the document loses the name. */
+    public function test_a_user_named_only_on_a_set_null_column_can_be_deleted(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $requester = User::factory()->create();
+        $approver = User::factory()->create(['name' => 'Gil Approver']);
+
+        $request = PurchaseRequest::factory()->create([
+            'requested_by' => $requester->id,
+            'approved_by' => $approver->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/v1/settings/users/'.$approver->id)
+            ->assertOk();
+
+        $this->assertNull($request->fresh()->approved_by);
     }
 
     public function test_admin_can_email_an_existing_user_a_password_reset_link(): void

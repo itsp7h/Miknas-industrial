@@ -1,3 +1,4 @@
+import ConfirmModal from '../../../components/ui/ConfirmModal';
 import EditAccessModal from '../../../components/settings/user/EditAccessModal';
 import NewUserModal from '../../../components/settings/user/NewUserModal';
 import ResetPasswordModal from '../../../components/settings/user/ResetPasswordModal';
@@ -37,7 +38,10 @@ export default function UserListPage() {
             {u.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
 
             {!u.loading && (
-                <UserTable users={u.filtered} onEditAccess={u.setEditing} onResetPassword={u.setResetting} />
+                <UserTable
+                    users={u.filtered} onEditAccess={u.setEditing}
+                    onResetPassword={u.setResetting} onDelete={u.setDeleting}
+                />
             )}
 
             <NewUserModal
@@ -51,6 +55,13 @@ export default function UserListPage() {
             <ResetPasswordModal
                 key={u.resetting?.id ?? 'none'} user={u.resetting}
                 onClose={() => u.setResetting(null)} onSave={u.resetPassword}
+            />
+            <ConfirmModal
+                open={!!u.deleting}
+                title={`Delete ${u.deleting?.name ?? ''}?`}
+                body="Their account is removed and they can no longer sign in. Documents they created will simply stop naming them."
+                onConfirm={u.confirmDelete}
+                onCancel={() => u.setDeleting(null)}
             />
         </div>
     );
