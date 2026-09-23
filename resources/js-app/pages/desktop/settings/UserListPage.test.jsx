@@ -294,6 +294,71 @@ describe('settings UserListPage', () => {
         expect(await screen.findByText('The password field must be at least 8 characters.')).toBeInTheDocument();
     });
 
+    it('asks before deleting, and takes the row away once it is done', async () => {
+        const del = vi.spyOn(client, 'apiDelete')
+            .mockResolvedValue({ deleted: true, id: 2, message: 'Zoe Nobody deleted.' });
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Zoe Nobody');
+        fireEvent.click(screen.getByLabelText('Delete Zoe Nobody'));
+
+        // A dialog, never window.confirm — and it names who is going.
+        expect(await screen.findByText('Delete Zoe Nobody?')).toBeInTheDocument();
+        expect(del).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByText('Confirm'));
+
+        await waitFor(() => expect(del).toHaveBeenCalledWith('/settings/users/2'));
+        expect(await screen.findByText('Zoe Nobody deleted.')).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByText('zoe@example.test')).not.toBeInTheDocument());
+        // The other row is untouched.
+        expect(screen.getByText('Alan Operations')).toBeInTheDocument();
+    });
+
+    it('leaves the row alone when the dialog is cancelled', async () => {
+        const del = vi.spyOn(client, 'apiDelete');
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Zoe Nobody');
+        fireEvent.click(screen.getByLabelText('Delete Zoe Nobody'));
+        fireEvent.click(await screen.findByText('Cancel'));
+
+        expect(del).not.toHaveBeenCalled();
+        expect(screen.getByText('Zoe Nobody')).toBeInTheDocument();
+    });
+
+    /**
+     * Every reason a delete is refused belongs to the server — the last Admin,
+     * your own account, a request that has to keep naming who raised it — so
+     * its wording is what the toast says, and the row stays.
+     */
+    it('shows the server’s refusal and keeps the user', async () => {
+        vi.spyOn(client, 'apiDelete').mockRejectedValue({
+            message: 'Zoe Nobody cannot be deleted: they raised 3 purchase requests. '
+                + 'Records have to keep naming who raised and signed them.',
+        });
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Zoe Nobody');
+        fireEvent.click(screen.getByLabelText('Delete Zoe Nobody'));
+        fireEvent.click(await screen.findByText('Confirm'));
+
+        expect(await screen.findByText(/cannot be deleted: they raised 3 purchase requests/)).toBeInTheDocument();
+        expect(screen.getByText('zoe@example.test')).toBeInTheDocument();
+    });
+
+    it('offers the same delete on a mobile card', async () => {
+        const del = vi.spyOn(client, 'apiDelete')
+            .mockResolvedValue({ deleted: true, id: 2, message: 'Zoe Nobody deleted.' });
+        wrap(MobileUserListPage);
+
+        await screen.findByText('Zoe Nobody');
+        fireEvent.click(screen.getByLabelText('Delete Zoe Nobody'));
+        fireEvent.click(await screen.findByText('Confirm'));
+
+        await waitFor(() => expect(del).toHaveBeenCalledWith('/settings/users/2'));
+    });
+
     it('mobile lists users as cards with a full-width add button', async () => {
         wrap(MobileUserListPage);
 

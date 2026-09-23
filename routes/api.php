@@ -186,6 +186,7 @@ Route::prefix('v1')->group(function () {
             Route::get('users', [UserController::class, 'index'])->middleware('role:Admin');
             Route::post('users', [UserController::class, 'store'])->middleware('role:Admin');
             Route::put('users/{user}', [UserController::class, 'update'])->middleware('role:Admin');
+            Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('role:Admin');
             // The suffix keeps this clear of the `users/{user}` wildcard above.
             Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('role:Admin');
 

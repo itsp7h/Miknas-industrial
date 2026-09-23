@@ -4,7 +4,7 @@ const ROLE_PILL = {
 };
 
 /** Blade's four columns, roles as blue pills. */
-export default function UserTable({ users, onEditAccess, onResetPassword }) {
+export default function UserTable({ users, onEditAccess, onResetPassword, onDelete }) {
     return (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' }}>
             <table className="table-base" style={{ width: '100%' }}>
@@ -33,8 +33,17 @@ export default function UserTable({ users, onEditAccess, onResetPassword }) {
                                 >
                                     Reset Password
                                 </button>
-                                <button type="button" onClick={() => onEditAccess(user)} className="btn-secondary btn-sm">
+                                <button
+                                    type="button" onClick={() => onEditAccess(user)}
+                                    className="btn-secondary btn-sm" style={{ marginRight: 8 }}
+                                >
                                     Edit Access
+                                </button>
+                                <button
+                                    type="button" onClick={() => onDelete(user)}
+                                    className="btn-danger btn-sm" aria-label={`Delete ${user.name}`}
+                                >
+                                    Delete
                                 </button>
                             </td>
                         </tr>

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseSignature;
 use App\Models\User;
 use App\Support\AccessCatalog;
 use Illuminate\Http\Request;
@@ -104,6 +106,78 @@ class UserController extends Controller
             'message' => 'Access updated for '.$user->name.'.',
             'data' => $this->payload($user->load(['roles', 'permissions'])),
         ]);
+    }
+
+    /**
+     * Remove a user.
+     *
+     * Three things stop a delete, and each is a different kind of wrong:
+     *
+     * - Deleting yourself, which logs you out of a page only you can reach.
+     * - Deleting the last Admin, which leaves nobody able to manage users at
+     *   all. `Gate::before` passes Admin through everything, so an Admin is
+     *   not a convenience — it is the only way back in.
+     * - Deleting someone the paperwork names. `purchase_requests.requested_by`
+     *   and `purchase_signatures.signed_by` are `restrict` in the schema,
+     *   because a request has to keep saying who raised it and a signature has
+     *   to keep saying who signed. The database would refuse this anyway; the
+     *   check is here so it refuses in words rather than as a 500.
+     *
+     * Everywhere else the user is a `set null` — who created an LPO or posted
+     * a stock movement becomes blank rather than blocking the delete, which is
+     * the policy the schema already chose.
+     */
+    public function destroy(Request $request, User $user)
+    {
+        if ($request->user()->id === $user->id) {
+            return response()->json(['message' => 'You cannot delete your own account.'], 403);
+        }
+
+        if ($user->hasRole('Admin') && User::role('Admin')->count() === 1) {
+            return response()->json([
+                'message' => 'This is the only Admin. Give someone else the Admin profile first.',
+            ], 403);
+        }
+
+        $held = $this->paperworkHolding($user);
+
+        if ($held !== []) {
+            return response()->json([
+                'message' => $user->name.' cannot be deleted: '.implode(' and ', $held)
+                    .'. Records have to keep naming who raised and signed them.',
+            ], 422);
+        }
+
+        $id = $user->id;
+        $name = $user->name;
+        $user->delete();
+
+        return response()->json([
+            'deleted' => true,
+            'id' => $id,
+            'message' => $name.' deleted.',
+        ]);
+    }
+
+    /**
+     * The records that name this user and will not give the name up, phrased
+     * for someone reading a toast rather than a schema.
+     */
+    private function paperworkHolding(User $user): array
+    {
+        $held = [];
+
+        $requests = PurchaseRequest::where('requested_by', $user->id)->count();
+        if ($requests > 0) {
+            $held[] = 'they raised '.$requests.' purchase request'.($requests === 1 ? '' : 's');
+        }
+
+        $signatures = PurchaseSignature::where('signed_by', $user->id)->count();
+        if ($signatures > 0) {
+            $held[] = 'they signed '.$signatures.' request'.($signatures === 1 ? '' : 's');
+        }
+
+        return $held;
     }
 
     /**
