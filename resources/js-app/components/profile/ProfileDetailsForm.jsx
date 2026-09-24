@@ -1,16 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-/** Name and email, plus Breeze's unverified-address notice. */
+/**
+ * Name and email, plus Breeze's unverified-address notice.
+ *
+ * The form seeds itself from `user` once, at mount, and never again. It used to
+ * carry an effect re-seeding on every change of that prop — the thing gotcha
+ * #10 forbids, for the reason it gives: a late render changing the prop's
+ * identity wipes whatever the person has typed since. Saving the page writes a
+ * fresh user, so anyone still typing when their own save landed would watch
+ * their edit revert.
+ *
+ * The page mounts this only once the profile has loaded and keys it by the
+ * user, so a different user gets a fresh form rather than a stale one.
+ */
 export default function ProfileDetailsForm({ user, onSave, onResendVerification }) {
     const [name, setName] = useState(user?.name ?? '');
     const [email, setEmail] = useState(user?.email ?? '');
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
-
-    useEffect(() => {
-        setName(user?.name ?? '');
-        setEmail(user?.email ?? '');
-    }, [user]);
 
     async function submit(e) {
         e.preventDefault();
