@@ -107,8 +107,8 @@ test, so no unit suite could have caught it.
 Deploy scripts live in `scripts/`; see `docs/ci-cd-setup.md` for runner setup
 and rollback. Every deploy backs up the SQLite database before migrating.
 
-**Deploys are atomic** on a box cut over to the releases layout
-(`scripts/steelerp-deploy`): a release is built, boot-checked and migrated
+**Deploys are atomic** (`scripts/steelerp-deploy`, on both boxes since
+2026-09-24): a release is built, boot-checked and migrated
 before `current` switches, and switches back if `/up` fails. That makes one
 rule binding: **a migration must work with the release before it.** The old
 code runs on the new schema until the switch, and a rollback moves only the

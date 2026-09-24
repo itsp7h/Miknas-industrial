@@ -50,8 +50,7 @@ die() { printf '\n\033[1;31mxx> %s\033[0m\n' "$*" >&2; exit 1; }
 
 [ -d "$RELEASES" ] && [ -d "$SHARED" ] && [ -d "$REPO" ] \
   || die "$APP_DIR is not in the releases layout (no releases/, shared/ or repo.git).
-    A box still on the in-place checkout deploys with scripts/deploy.sh until
-    it has been cut over; see docs/ci-cd-setup.md."
+    Set a box up with scripts/cutover-to-releases.sh first; see docs/ci-cd-setup.md."
 
 # One deploy at a time per box. The workflows serialise too, but a hand-run
 # deploy or rollback must not interleave with one from Actions.

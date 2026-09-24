@@ -25,27 +25,19 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     steps:
-      # Atomic (steelerp-deploy) once the box is cut over to the releases
-      # layout; the in-place deploy.sh until then.
+      # Atomic: build, boot-check and migrate a release, then switch to it,
+      # and switch back if /up fails. See scripts/steelerp-deploy.
       - name: Deploy
-        run: |
-          if [ -d /var/www/ProjectsERP/releases ] && [ -x /usr/local/sbin/steelerp-deploy ]; then
-            sudo /usr/local/sbin/steelerp-deploy staging github/development
-          else
-            sudo /var/www/ProjectsERP/scripts/deploy.sh staging github/development
-          fi
+        run: sudo /usr/local/sbin/steelerp-deploy staging github/development
 
       - name: Smoke test
         env:
           REVERB_URL: http://192.168.0.38:8080
           REVERB_APP_KEY: ${{ secrets.STAGING_REVERB_APP_KEY }}
-        run: |
-          SMOKE=/var/www/ProjectsERP/current/scripts/smoke-test.sh
-          [ -x "$SMOKE" ] || SMOKE=/var/www/ProjectsERP/scripts/smoke-test.sh
-          "$SMOKE" http://192.168.0.38
+        run: /var/www/ProjectsERP/current/scripts/smoke-test.sh http://192.168.0.38
 
       - name: Report failure
         if: failure()
         run: |
-          echo "::error::Staging deploy failed. The database was backed up to" \
-               "storage/backups before migrating — see scripts/deploy.sh."
+          echo "::error::Staging deploy failed. If it failed before the switch the live" \
+               "release was not touched; the database backup is in shared/storage/backups."

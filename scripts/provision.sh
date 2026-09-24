@@ -9,7 +9,7 @@
 # It owns the Apache vhost, the Reverb websocket proxy, the Apache modules they
 # need, the steelerp-reverb / -queue / -scheduler systemd units, and the
 # runner's sudoers rule. It never writes .env and never deploys: app deploys
-# are scripts/deploy.sh, and the two are separate jobs on purpose (see
+# are scripts/steelerp-deploy, and the two are separate jobs on purpose (see
 # docs/superpowers/specs/2026-09-24-atomic-deploys-design.md).
 #
 # Every file is rendered from scripts/provision/templates/ with the values in
