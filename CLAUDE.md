@@ -77,10 +77,15 @@ SPA's own prefix. The addresses involved are three separate things:
 |---|---|---|
 | `REVERB_SERVER_HOST` / `_PORT` | where Reverb **listens** | `127.0.0.1` (staging `0.0.0.0`) / `8080` |
 | `REVERB_HOST` / `_PORT` / `_SCHEME` | where **PHP publishes** to | the box itself, port `8080`, `http` |
-| `VITE_REVERB_HOST` / `_PORT` / `_SCHEME` | where the **browser** connects | the public domain / `443` / `https` |
+| `REVERB_CLIENT_HOST` / `_PORT` / `_SCHEME` (falling back to `VITE_REVERB_*`) | where the **browser** connects | the public domain / `443` / `https` |
 
-Keep the `VITE_` values as literals, not `"${REVERB_HOST}"`: they are baked
-into the bundle at `npm run build`, so a change needs a redeploy to take effect.
+The browser's address is read **at page load**: `config/reverb.php`'s `client`
+block reaches the SPA as `data-reverb` on `#react-app`, and
+`resources/js-app/reverbConfig.js` reads it, falling back to the build-time
+`VITE_REVERB_*` for `npm run dev`. Changing it needs `config:clear`, not a
+rebuild, and one bundle serves both boxes. If the fallback is what supplies
+it, keep the `VITE_` values as literals, not `"${REVERB_HOST}"`: PHP reads them
+the same way Vite did.
 
 ---
 
