@@ -100,7 +100,8 @@ pass "releases layout; old checkout kept; data and upload intact; up; /up 200"
 echo "== 3. steelerp-deploy deploys on the result"
 FIRST=$(basename "$(readlink "$APP_DIR/current")")
 sleep 1
-"$DEPLOY" staging "$(git -C "$ROOT" rev-parse HEAD)" >/dev/null
+# No CI publishes builds to this throwaway checkout, so build on the box.
+"$DEPLOY" staging "$(git -C "$ROOT" rev-parse HEAD)" --build-here >/dev/null
 [ "$(basename "$(readlink "$APP_DIR/current")")" != "$FIRST" ] || fail "current did not move"
 got=$(php -r '$d = new SQLite3($argv[1]); echo $d->querySingle("SELECT v FROM marker");' "$APP_DIR/shared/database/database.sqlite")
 [ "$got" = survived ] || fail "the deploy lost the data"

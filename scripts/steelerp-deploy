@@ -3,7 +3,9 @@
 # Atomic deploys for SteelERP. Installed by scripts/provision.sh as
 # /usr/local/sbin/steelerp-deploy; the runner's sudoers rule names that path.
 #
-#   steelerp-deploy <staging|production> [git-ref]   build a release and switch to it
+#   steelerp-deploy <staging|production> [git-ref]   deploy CI's build of it and switch to it
+#   steelerp-deploy <staging|production> <git-ref> --build-here
+#                                                    build it on the box instead (no CI build)
 #   steelerp-deploy <staging|production> rollback    switch back to the previous release
 #   steelerp-deploy <staging|production> status      list releases, mark the live one
 #
@@ -20,14 +22,20 @@
 # leaves the live site exactly as it was. A failed health check after it
 # switches straight back.
 #
-# Test hooks (CI runs this against a throwaway APP_DIR): APP_DIR, WEB_USER,
+# Test hooks (CI runs this against a throwaway APP_DIR): APP_DIR, BUILD_REMOTE, WEB_USER,
 # KEEP_RELEASES, HEALTH_URL, SKIP_SERVICES=1 (no systemctl), SKIP_FRONTEND=1
 # (no npm), SKIP_CHOWN=1.
 #
 set -euo pipefail
 
-ENVIRONMENT="${1:?usage: steelerp-deploy <staging|production> [git-ref|rollback|status]}"
+ENVIRONMENT="${1:?usage: steelerp-deploy <staging|production> [git-ref [--build-here]|rollback|status]}"
 ACTION="${2:-}"
+BUILD_HERE=
+case "${3:-}" in
+  "") ;;
+  --build-here) BUILD_HERE=1 ;;
+  *) echo "error: unknown option '$3'" >&2; exit 2 ;;
+esac
 
 case "$ENVIRONMENT" in
   staging) DEFAULT_REF="github/development" ;;
@@ -39,6 +47,8 @@ APP_DIR="${APP_DIR:-/var/www/ProjectsERP}"
 WEB_USER="${WEB_USER:-www-data}"
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 REPO="$APP_DIR/repo.git"
+# The GitHub remote in repo.git: where CI publishes refs/builds/<sha>.
+BUILD_REMOTE="${BUILD_REMOTE:-github}"
 RELEASES="$APP_DIR/releases"
 SHARED="$APP_DIR/shared"
 CURRENT="$APP_DIR/current"
@@ -176,6 +186,24 @@ NEW="$RELEASES/$ID"
 note "$REF = $SHA"
 note "release $ID"
 
+# CI builds every push to development and main once, and publishes the result
+# as refs/builds/<sha>: the source plus vendor/ and public/build/. Fetching it
+# here, as root, over the box's own key, is what keeps the runner from being
+# able to hand root something to run. Both boxes unpack the same tree.
+if [ -z "$BUILD_HERE" ]; then
+  git --git-dir="$REPO" fetch --quiet "$BUILD_REMOTE" "+refs/builds/$SHA:refs/builds/$SHA" 2>/dev/null \
+    || die "CI has not published a build of $SHA (refs/builds/$SHA). Only pushes
+    to development and main are built, once their tests pass. To build this
+    commit on the box instead: steelerp-deploy $ENVIRONMENT $SHA --build-here"
+  [ "$(git --git-dir="$REPO" rev-parse "refs/builds/$SHA^")" = "$SHA" ] \
+    || die "refs/builds/$SHA is not a build of $SHA"
+  SOURCE="refs/builds/$SHA"
+  note "build $(git --git-dir="$REPO" rev-parse "$SOURCE^{tree}") (tree), built by CI"
+else
+  SOURCE="$SHA"
+  note "building on this box (--build-here)"
+fi
+
 # A release that fails before the switch is removed, so it cannot be mistaken
 # for a good one by a later rollback.
 cleanup_failed() {
@@ -187,9 +215,9 @@ cleanup_failed() {
 }
 trap cleanup_failed EXIT
 
-log "Building the release"
+log "Unpacking the release"
 mkdir -p "$NEW"
-git --git-dir="$REPO" archive "$SHA" | tar -x -C "$NEW"
+git --git-dir="$REPO" archive "$SOURCE" | tar -x -C "$NEW"
 # What outlives a release lives in shared/, linked in relatively so the
 # release can be inspected (or moved) without the links breaking.
 rm -rf "$NEW/storage"
@@ -197,19 +225,21 @@ ln -s ../../shared/storage "$NEW/storage"
 ln -s ../../shared/.env "$NEW/.env"
 ln -s ../storage/app/public "$NEW/public/storage"
 
-(
-  cd "$NEW"
-  # composer's post-autoload-dump runs package:discover, which boots the app:
-  # the first place a release that cannot boot is caught.
-  COMPOSER_ALLOW_SUPERUSER=1 composer install --no-interaction --prefer-dist \
-    --no-progress --no-dev --optimize-autoloader --quiet
-  if [ "${SKIP_FRONTEND:-}" != 1 ]; then
-    npm ci --silent --no-audit --no-fund
-    npm run build --silent
-    # Only needed to build. Kept, it would cost ~300 MB per release.
-    rm -rf node_modules
-  fi
-)
+if [ -n "$BUILD_HERE" ]; then
+  (
+    cd "$NEW"
+    # composer's post-autoload-dump runs package:discover, which boots the app:
+    # the first place a release that cannot boot is caught.
+    COMPOSER_ALLOW_SUPERUSER=1 composer install --no-interaction --prefer-dist \
+      --no-progress --no-dev --optimize-autoloader --quiet
+    if [ "${SKIP_FRONTEND:-}" != 1 ]; then
+      npm ci --silent --no-audit --no-fund
+      npm run build --silent
+      # Only needed to build. Kept, it would cost ~300 MB per release.
+      rm -rf node_modules
+    fi
+  )
+fi
 
 log "Checking the release boots"
 # Boots the console kernel with every provider and route file, including
