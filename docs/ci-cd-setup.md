@@ -194,6 +194,45 @@ installed copy older than the one in the release says so, in yellow.
 (CI's *Atomic deploy* job): the switch, a release that cannot boot never going
 live, rollback, the switch back after a failed health check, and pruning.
 
+## Cutting a box over to the releases layout
+
+Once per box, **staging first**, by hand as root:
+
+```bash
+sudo /var/www/ProjectsERP/scripts/cutover-to-releases.sh staging            # plan: checks + steps, changes nothing
+sudo /var/www/ProjectsERP/scripts/cutover-to-releases.sh staging --apply
+```
+
+The plan checks that the box can be cut over:
+
+- it is the right machine, and a clean checkout;
+- nothing from an earlier attempt is in the way;
+- the database exists and an online backup is possible;
+- there is enough disk.
+
+`--apply` then:
+
+1. builds `ProjectsERP.next` beside the live site;
+2. puts the site in maintenance mode and stops the queue worker;
+3. copies `storage` again and takes an online backup of the database;
+4. swaps the two directories;
+5. provisions from the new release, which moves Apache and the units to
+   `current/` and installs `steelerp-deploy`;
+6. lifts maintenance mode and checks `/up`.
+
+The downtime is steps 2–6, typically well under a minute. **If anything after
+the swap fails, the old checkout is put back, re-provisioned and brought back
+up automatically.** Either way it is kept at `ProjectsERP.pre-releases`: leave
+it until production has run a week on the new layout.
+
+**Order matters.** `deploy-staging.yml` and `deploy-production.yml` run from
+`main` (they are `workflow_run` triggered). The fallback that sends a
+cut-over box to `steelerp-deploy` must therefore be on `main` **before** either
+box is cut over. Otherwise the next deploy calls a `deploy.sh` that is no
+longer at the path the old workflow uses.
+
+`tests/deploy/cutover.sh` covers all of this end to end in CI.
+
 ## Rollback
 
 **On the releases layout:** run the **Rollback** workflow, or

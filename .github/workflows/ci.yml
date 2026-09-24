@@ -133,3 +133,9 @@ jobs:
       # pruning. See the header of tests/deploy/atomic-deploy.sh.
       - name: Deploy, break, roll back, prune
         run: tests/deploy/atomic-deploy.sh
+
+      # The one-time move of an in-place checkout to that layout: data and
+      # uploads survive, steelerp-deploy works on the result, and a failure
+      # after the swap puts the old checkout back.
+      - name: Cut over an in-place checkout
+        run: tests/deploy/cutover.sh
