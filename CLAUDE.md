@@ -37,20 +37,50 @@ php artisan serve    # http://localhost:8000
 
 | | Production | Staging |
 |---|---|---|
-| URL | https://steelerp.p7h.me | http://192.168.0.38 |
+| URL | https://steelerp.p7h.me | https://staging-steelerp.p7h.me, and http://192.168.0.38 on the LAN |
 | Host | LXC `SteelERP`, 192.168.0.46 | LXC `steelERPstaging`, 192.168.0.38 |
 | Branch | `main` | `development` |
-| Deploys | tag `v*` or manual, behind approval | automatic, once CI is green |
+| Deploys | on a green CI for `main`, a `v*` tag, or manual — always behind approval | automatic, once CI is green |
 
-Public traffic reaches production through Cloudflare → a tunnel host on
+Public traffic reaches both boxes through Cloudflare → a tunnel host on
 192.168.1.10 → Apache on port 80. Nothing inbound reaches either container
 directly, which is why deploys run on **self-hosted** GitHub Actions runners
 (`steelerp-production`, `steelerp-staging`) rather than GitHub-hosted ones.
 
-Both boxes run `steelerp-reverb`, `steelerp-queue` and `steelerp-scheduler`
-as systemd units. Staging has `ULTRAMSG_ENABLED=false` — it carries a copy of
+**Every hostname a browser uses must be in `SANCTUM_STATEFUL_DOMAINS`** in that
+box's `.env`, or Sanctum never starts a session for it and the API login dies
+with *"Session store not set on request."* Staging's public domain was missing
+from it until 2026-09-24, which broke logging in there.
+
+Both boxes run `steelerp-reverb` and `steelerp-queue` as systemd units.
+Staging runs `steelerp-scheduler` too (a oneshot `schedule:run` on a one-minute
+timer). Production has none until it is provisioned.
+
+**Machine setup is code: `scripts/provision.sh`.** It owns the vhost, the
+websocket proxy, the three units and the runner's sudoers rule, rendered from
+`scripts/provision/templates/`. A plan (the default) prints a diff and changes
+nothing; `--apply` validates each group before reloading. Change a box by
+editing the templates, never the box — the next provision overwrites
+hand edits. See `docs/ci-cd-setup.md`.
+Staging has `ULTRAMSG_ENABLED=false` — it carries a copy of
 live customer data, so an enabled WhatsApp integration there would message
 real customers.
+
+**Browsers reach Reverb through Apache, not on port 8080.** The page is HTTPS,
+so the SPA must dial `wss://<domain>:443`, and Apache hands that one request
+shape to Reverb on the box. The rules live in `/etc/apache2/steelerp-reverb.conf`,
+pulled in by an `Include` at the end of the site's vhost. They fire only on an
+`Upgrade: websocket` request to `/app/{32-hex key}`, because `/app` is also the
+SPA's own prefix. The addresses involved are three separate things:
+
+| `.env` keys | Means | Value on either box |
+|---|---|---|
+| `REVERB_SERVER_HOST` / `_PORT` | where Reverb **listens** | `127.0.0.1` (staging `0.0.0.0`) / `8080` |
+| `REVERB_HOST` / `_PORT` / `_SCHEME` | where **PHP publishes** to | the box itself, port `8080`, `http` |
+| `VITE_REVERB_HOST` / `_PORT` / `_SCHEME` | where the **browser** connects | the public domain / `443` / `https` |
+
+Keep the `VITE_` values as literals, not `"${REVERB_HOST}"`: they are baked
+into the bundle at `npm run build`, so a change needs a redeploy to take effect.
 
 ---
 
