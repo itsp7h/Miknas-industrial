@@ -43,7 +43,7 @@ That downgrades the missing-CI failure to a warning in the run log. It is a
 separate explicit input rather than an implicit property of manual runs, so an
 untested deploy is visible as such afterwards.
 
-Refs handed to `deploy.sh` are validated by the script itself — `github/main`,
+Refs handed to `steelerp-deploy` are validated by the script itself — `github/main`,
 `github/development`, a `v*` tag, or a commit SHA. Anything else exits 2 before
 the script touches the tree, because that argument reaches a root shell through
 the NOPASSWD sudo rule.
@@ -97,11 +97,11 @@ should show as Idle.
 The scripts are standalone — nothing about them depends on Actions:
 
 ```bash
-sudo /var/www/ProjectsERP/scripts/deploy.sh staging          # defaults to github/development
-/var/www/ProjectsERP/scripts/smoke-test.sh http://192.168.0.38
+sudo steelerp-deploy staging                 # defaults to github/development
+/var/www/ProjectsERP/current/scripts/smoke-test.sh http://192.168.0.38
 
-sudo /var/www/ProjectsERP/scripts/deploy.sh production v1.2.0
-/var/www/ProjectsERP/scripts/smoke-test.sh https://steelerp.p7h.me
+sudo steelerp-deploy production v1.2.0       # a v* tag or a commit SHA
+/var/www/ProjectsERP/current/scripts/smoke-test.sh https://steelerp.p7h.me
 ```
 
 ## Provisioning a box
@@ -141,10 +141,17 @@ for the same approval a production deploy does. The workflow runs the
 `provision.sh` deployed on the box, so a template change reaches a box by
 **deploying it first and provisioning second**.
 
-**A new box:** check out the repo at `/var/www/ProjectsERP`, write its `.env`,
-run `scripts/install-runner.sh`, then `sudo scripts/provision.sh <env> --apply`
-by hand. The first apply is what grants the runner its sudo rule, so it cannot
-come from Actions.
+**A new box:**
+
+1. Check out the repo at `/var/www/ProjectsERP`, with `github` as a remote.
+2. Write its `.env` and create the database.
+3. Run `composer install` and `npm ci && npm run build`.
+4. Run `scripts/install-runner.sh`.
+5. Run `sudo scripts/cutover-to-releases.sh <env> --apply`. It moves the
+   checkout into the releases layout and provisions the box, which is also
+   what grants the runner its sudo rule, so it cannot come from Actions.
+
+Add the box's values to `scripts/provision/<env>.conf` first.
 
 CI renders both boxes' config on every push (the *Deploy & provision scripts*
 job), so a template with an unreplaced `@PLACEHOLDER@` fails the PR, not a
@@ -152,10 +159,9 @@ server.
 
 ## Atomic deploys (`steelerp-deploy`)
 
-A box cut over to the releases layout deploys with
-`/usr/local/sbin/steelerp-deploy`, which provisioning installs from
-`scripts/steelerp-deploy`. A box still on the in-place checkout keeps using
-`scripts/deploy.sh`; the workflows pick whichever fits the box.
+Both boxes deploy with `/usr/local/sbin/steelerp-deploy`, which provisioning
+installs from `scripts/steelerp-deploy`. The old in-place `deploy.sh` was
+removed once both boxes had been cut over (staging and production, 2026-09-24).
 
 ```
 /var/www/ProjectsERP/
@@ -194,44 +200,33 @@ installed copy older than the one in the release says so, in yellow.
 (CI's *Atomic deploy* job): the switch, a release that cannot boot never going
 live, rollback, the switch back after a failed health check, and pruning.
 
-## Cutting a box over to the releases layout
+## Setting up a box: `cutover-to-releases.sh`
 
-Once per box, **staging first**, by hand as root:
+`scripts/cutover-to-releases.sh <env>` turns a plain checkout into the releases
+layout. Both boxes went through it once on 2026-09-24, and it is now step 5 of
+setting up a new box (above).
 
 ```bash
-sudo /var/www/ProjectsERP/scripts/cutover-to-releases.sh staging            # plan: checks + steps, changes nothing
-sudo /var/www/ProjectsERP/scripts/cutover-to-releases.sh staging --apply
+sudo scripts/cutover-to-releases.sh <env>            # plan: checks + steps, changes nothing
+sudo scripts/cutover-to-releases.sh <env> --apply
 ```
 
-The plan checks that the box can be cut over:
+The plan checks: the right machine, a clean checkout, nothing from an earlier
+attempt in the way, the database present, an online backup possible, and
+enough disk.
 
-- it is the right machine, and a clean checkout;
-- nothing from an earlier attempt is in the way;
-- the database exists and an online backup is possible;
-- there is enough disk.
+`--apply` builds the layout beside the checkout, then:
 
-`--apply` then:
+1. enters maintenance mode and stops the queue;
+2. takes a final copy of storage and an online backup of the database;
+3. swaps the two directories;
+4. provisions;
+5. lifts maintenance mode and checks `/up`.
 
-1. builds `ProjectsERP.next` beside the live site;
-2. puts the site in maintenance mode and stops the queue worker;
-3. copies `storage` again and takes an online backup of the database;
-4. swaps the two directories;
-5. provisions from the new release, which moves Apache and the units to
-   `current/` and installs `steelerp-deploy`;
-6. lifts maintenance mode and checks `/up`.
+If anything after the swap fails, it puts the checkout back by itself. The old
+checkout is kept at `ProjectsERP.pre-releases` either way.
 
-The downtime is steps 2–6, typically well under a minute. **If anything after
-the swap fails, the old checkout is put back, re-provisioned and brought back
-up automatically.** Either way it is kept at `ProjectsERP.pre-releases`: leave
-it until production has run a week on the new layout.
-
-**Order matters.** `deploy-staging.yml` and `deploy-production.yml` run from
-`main` (they are `workflow_run` triggered). The fallback that sends a
-cut-over box to `steelerp-deploy` must therefore be on `main` **before** either
-box is cut over. Otherwise the next deploy calls a `deploy.sh` that is no
-longer at the path the old workflow uses.
-
-`tests/deploy/cutover.sh` covers all of this end to end in CI.
+`tests/deploy/cutover.sh` covers it end to end in CI.
 
 ## Rollback
 
@@ -239,13 +234,17 @@ longer at the path the old workflow uses.
 `sudo steelerp-deploy <env> rollback`. It moves the code back one release;
 the database stays as it is.
 
-**On the in-place layout, or to undo a migration:** every deploy backs the SQLite database up to `storage/backups/` *before*
-migrating, keeping the last 20. To roll back:
+**To undo a migration:** every deploy takes an online backup of the database
+before migrating, into `shared/storage/backups/`, keeping the last 20. Roll the
+code back first, then restore the database:
 
 ```bash
+sudo steelerp-deploy production rollback
 sudo systemctl stop steelerp-queue steelerp-reverb
-cp storage/backups/database-<timestamp>.sqlite database/database.sqlite
-sudo scripts/deploy.sh production <previous-tag-or-sha>
+cp /var/www/ProjectsERP/shared/storage/backups/database-<timestamp>.sqlite \
+   /var/www/ProjectsERP/shared/database/database.sqlite
+sudo chown www-data:www-data /var/www/ProjectsERP/shared/database/database.sqlite
+sudo systemctl start steelerp-queue steelerp-reverb
 ```
 
 ## What the smoke tests actually check
