@@ -1,0 +1,4 @@
+# Managed by scripts/provision.sh. The runner gets root for these two scripts
+# and nothing else: deploying the app, and provisioning the machine.
+@RUNNER_USER@ ALL=(root) NOPASSWD: @APP_DIR@/scripts/deploy.sh
+@RUNNER_USER@ ALL=(root) NOPASSWD: @APP_DIR@/scripts/provision.sh

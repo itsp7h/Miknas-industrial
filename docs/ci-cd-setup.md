@@ -6,7 +6,8 @@
 |---|---|---|---|
 | `ci.yml` | push to `main` or `development`, any PR | GitHub-hosted | PHP syntax check, Pint (changed files), PHPUnit on 8.2 + 8.3, Vitest, Vite build |
 | `deploy-staging.yml` | CI green on `development`, or manual | self-hosted `staging` | Deploy + smoke test `http://192.168.0.38` |
-| `deploy-production.yml` | tag `v*`, or manual | self-hosted `production` | Verify CI is green for the commit, then deploy + smoke test `https://steelerp.p7h.me`, behind an approval gate |
+| `deploy-production.yml` | CI green on `main`, tag `v*`, or manual | self-hosted `production` | Verify CI is green for the commit, then deploy + smoke test `https://steelerp.p7h.me`, behind an approval gate |
+| `provision.yml` | manual only | self-hosted, the chosen box | `provision.sh` plan, then `--apply` if ticked; production's apply behind the approval gate |
 
 ## Branching
 
@@ -102,27 +103,51 @@ sudo /var/www/ProjectsERP/scripts/deploy.sh production v1.2.0
 /var/www/ProjectsERP/scripts/smoke-test.sh https://steelerp.p7h.me
 ```
 
-## Setting up a box for live updates
+## Provisioning a box
 
-Browsers reach Reverb at `wss://<domain>:443`, which Apache hands to Reverb
-on the box. A new or rebuilt box needs that proxy once. Deploys do not touch
-Apache, so it survives them:
+Everything about a box that is not the app is owned by `scripts/provision.sh`,
+from the templates in `scripts/provision/templates/` and the per-box values in
+`scripts/provision/<env>.conf`. It covers:
+
+- the Apache vhost;
+- the Reverb websocket proxy (`/etc/apache2/steelerp-reverb.conf`) and the
+  modules it needs;
+- the `steelerp-reverb`, `steelerp-queue` and `steelerp-scheduler` units (the
+  scheduler as a oneshot plus a one-minute timer);
+- the runner's sudoers rule.
+
+It never writes `.env` and never deploys.
 
 ```bash
-sudo /var/www/ProjectsERP/scripts/setup-reverb-proxy.sh steelerp.p7h.me          # production
-sudo /var/www/ProjectsERP/scripts/setup-reverb-proxy.sh staging-steelerp.p7h.me  # staging
+sudo /var/www/ProjectsERP/scripts/provision.sh staging            # plan: prints a diff, changes nothing
+sudo /var/www/ProjectsERP/scripts/provision.sh staging --apply    # back up, validate, write, reload
+     scripts/provision.sh production --render /tmp/out            # render only, no root needed
 ```
 
-It enables the Apache proxy modules and writes `/etc/apache2/steelerp-reverb.conf`.
-It includes that file from the site's vhost (after taking a `.bak-` copy),
-reloads Apache, and finishes by checking that a websocket upgrade answers `101`.
-It is safe to re-run.
+Before anything reloads, `--apply` validates each group as a whole: the
+sudoers rule with `visudo -c`, the units with `systemd-analyze verify`, and
+Apache with `apache2ctl configtest`. Apache is rolled back from its backups if
+the configtest refuses the new config. Every replaced file keeps a
+`.bak-<timestamp>` copy next to it. Units are restarted only when their own
+file changed, so a scheduler change does not drop everyone's websocket.
 
-It changes Apache only. If the built bundle dials some other address, it
-says so and prints the three `VITE_REVERB_*` lines `.env` needs. Those are
-baked in at build time, so fixing them takes a redeploy. Before running it,
-make sure `steelerp-reverb` is installed and running: the script stops if
-nothing listens on Reverb's port.
+`provision.sh` refuses to run on a machine whose hostname is not the one its
+config names, so the wrong environment cannot be applied to the wrong box.
+
+**From Actions:** the **Provision** workflow (`provision.yml`, manual) always
+runs a plan first. Tick *apply* to make the changes. Applying production waits
+for the same approval a production deploy does. The workflow runs the
+`provision.sh` deployed on the box, so a template change reaches a box by
+**deploying it first and provisioning second**.
+
+**A new box:** check out the repo at `/var/www/ProjectsERP`, write its `.env`,
+run `scripts/install-runner.sh`, then `sudo scripts/provision.sh <env> --apply`
+by hand. The first apply is what grants the runner its sudo rule, so it cannot
+come from Actions.
+
+CI renders both boxes' config on every push (the *Deploy & provision scripts*
+job), so a template with an unreplaced `@PLACEHOLDER@` fails the PR, not a
+server.
 
 ## Rollback
 

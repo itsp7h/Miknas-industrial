@@ -36,13 +36,10 @@ else
   log "User 'runner' already exists"
 fi
 
-# 2. The only privilege it gets: the deploy script, nothing else.
-log "Granting sudo for the deploy script only"
-cat > /etc/sudoers.d/steelerp-deploy <<'SUDO'
-runner ALL=(root) NOPASSWD: /var/www/ProjectsERP/scripts/deploy.sh
-SUDO
-chmod 440 /etc/sudoers.d/steelerp-deploy
-visudo -c -f /etc/sudoers.d/steelerp-deploy
+# 2. Its privileges (root for deploy.sh and provision.sh, nothing else) are
+#    the sudoers rule that scripts/provision.sh owns, so they are granted by
+#    provisioning, not here. Two writers of one file would undo each other.
+#    See the last step.
 
 # 3. Runner binaries.
 if [ ! -f "$RUNNER_HOME/config.sh" ]; then
@@ -78,4 +75,5 @@ cd "$RUNNER_HOME"
 ./svc.sh start
 
 log "Done — verify at $REPO_URL/settings/actions/runners"
+log "Next: sudo scripts/provision.sh $ROLE --apply (grants the runner its sudo rule)"
 systemctl list-units --type=service | grep -i 'actions.runner' || true
