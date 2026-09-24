@@ -23,7 +23,7 @@
 # switches straight back.
 #
 # Test hooks (CI runs this against a throwaway APP_DIR): APP_DIR, BUILD_REMOTE, WEB_USER,
-# KEEP_RELEASES, HEALTH_URL, SKIP_SERVICES=1 (no systemctl), SKIP_FRONTEND=1
+# KEEP_RELEASES, HEALTH_URL, RETRY_DELAY, SKIP_SERVICES=1 (no systemctl), SKIP_FRONTEND=1
 # (no npm), SKIP_CHOWN=1.
 #
 set -euo pipefail
@@ -86,6 +86,21 @@ switch_to() {
 }
 
 env_value() { grep -E "^$1=" "$SHARED/.env" | tail -1 | cut -d= -f2- | tr -d '"' || true; }
+
+# GitHub's SSH endpoint refuses a key now and then for a few seconds
+# ("Permission denied (publickey)") with the key perfectly fine: it failed two
+# deploys in two days, and both re-runs passed. Nothing has been touched yet
+# at this point, so trying again is safe.
+with_retry() {
+  local n
+  for n in 1 2 3 4; do
+    "$@" && return 0
+    [ "$n" = 4 ] && break
+    warn "attempt $n of: $* failed; retrying in $((n * ${RETRY_DELAY:-5}))s"
+    sleep $((n * ${RETRY_DELAY:-5}))
+  done
+  return 1
+}
 
 # Reload what caches the old paths: mod_php's realpath cache (a graceful
 # reload replaces the workers) and the long-running workers, whose
@@ -178,7 +193,8 @@ PREVIOUS=$(live_release)
 log "Deploying $ENVIRONMENT from $REF (live: ${PREVIOUS:-none})"
 
 log "Fetching"
-git --git-dir="$REPO" fetch --all --prune --tags --quiet
+with_retry git --git-dir="$REPO" fetch --all --prune --tags --quiet \
+  || die "could not fetch from GitHub after 4 attempts; nothing was changed"
 SHA=$(git --git-dir="$REPO" rev-parse --verify --quiet "$REF^{commit}") \
   || die "ref '$REF' does not resolve to a commit in $REPO"
 ID="$(date -u +%Y%m%dT%H%M%S)-${SHA:0:7}"
@@ -191,7 +207,7 @@ note "release $ID"
 # here, as root, over the box's own key, is what keeps the runner from being
 # able to hand root something to run. Both boxes unpack the same tree.
 if [ -z "$BUILD_HERE" ]; then
-  git --git-dir="$REPO" fetch --quiet "$BUILD_REMOTE" "+refs/builds/$SHA:refs/builds/$SHA" 2>/dev/null \
+  with_retry git --git-dir="$REPO" fetch --quiet "$BUILD_REMOTE" "+refs/builds/$SHA:refs/builds/$SHA" 2>/dev/null \
     || die "CI has not published a build of $SHA (refs/builds/$SHA). Only pushes
     to development and main are built, once their tests pass. To build this
     commit on the box instead: steelerp-deploy $ENVIRONMENT $SHA --build-here"

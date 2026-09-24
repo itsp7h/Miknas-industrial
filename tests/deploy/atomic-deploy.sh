@@ -41,7 +41,7 @@ live() { basename "$(readlink "$APP_DIR/current")"; }
 count_releases() { find "$APP_DIR/releases" -mindepth 1 -maxdepth 1 -type d | wc -l; }
 
 export APP_DIR="$T/app"
-export SKIP_SERVICES=1 SKIP_FRONTEND=1 SKIP_CHOWN=1
+export RETRY_DELAY=0 SKIP_SERVICES=1 SKIP_FRONTEND=1 SKIP_CHOWN=1
 export HEALTH_URL="http://127.0.0.1:$PORT/up"
 export KEEP_RELEASES=3
 
