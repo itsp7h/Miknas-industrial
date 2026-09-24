@@ -21,12 +21,29 @@ const OPTIONS = {
 describe('PurchaseOrderModal', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
-        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+        // Answers a beat late on purpose, as a real network does. With an
+        // instant mock the lists usually land before the first interaction,
+        // so a test that forgets to wait for them passes locally and fails on
+        // a slow CI runner. Late, it fails everywhere, every time.
+        vi.spyOn(client, 'apiGet').mockImplementation(
+            () => new Promise((resolve) => setTimeout(() => resolve(OPTIONS), 20)),
+        );
     });
+
+    /**
+     * The dialog draws its chrome at once and fetches its supplier and item
+     * lists after, so its title is no evidence the form is usable. Choosing
+     * supplier 3 before option 3 exists leaves the select empty, `required`
+     * then blocks the submit, and the test waits out its timeout for an alert
+     * that nothing will raise — which is how this file failed on slow CI
+     * runners. Wait for the options themselves.
+     */
+    const optionsLoaded = () => screen.findByRole('option', { name: 'Gulf Metals' });
 
     const openCreate = async (props = {}) => {
         render(<PurchaseOrderModal order={null} onSaved={() => {}} onCancel={() => {}} {...props} />);
         await screen.findByText('New Purchase Order');
+        await optionsLoaded();
     };
 
     it('opens with the create chrome and the order sections', async () => {
@@ -161,6 +178,7 @@ describe('PurchaseOrderModal', () => {
 
         render(<PurchaseOrderModal order={order} onSaved={onSaved} onCancel={() => {}} />);
         await screen.findByText('Edit Purchase Order');
+        await optionsLoaded();
 
         expect(screen.getByText('PO-00005')).toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Order Items' })).not.toBeInTheDocument();
