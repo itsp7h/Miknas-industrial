@@ -102,6 +102,28 @@ sudo /var/www/ProjectsERP/scripts/deploy.sh production v1.2.0
 /var/www/ProjectsERP/scripts/smoke-test.sh https://steelerp.p7h.me
 ```
 
+## Setting up a box for live updates
+
+Browsers reach Reverb at `wss://<domain>:443`, which Apache hands to Reverb
+on the box. A new or rebuilt box needs that proxy once. Deploys do not touch
+Apache, so it survives them:
+
+```bash
+sudo /var/www/ProjectsERP/scripts/setup-reverb-proxy.sh steelerp.p7h.me          # production
+sudo /var/www/ProjectsERP/scripts/setup-reverb-proxy.sh staging-steelerp.p7h.me  # staging
+```
+
+It enables the Apache proxy modules and writes `/etc/apache2/steelerp-reverb.conf`.
+It includes that file from the site's vhost (after taking a `.bak-` copy),
+reloads Apache, and finishes by checking that a websocket upgrade answers `101`.
+It is safe to re-run.
+
+It changes Apache only. If the built bundle dials some other address, it
+says so and prints the three `VITE_REVERB_*` lines `.env` needs. Those are
+baked in at build time, so fixing them takes a redeploy. Before running it,
+make sure `steelerp-reverb` is installed and running: the script stops if
+nothing listens on Reverb's port.
+
 ## Rollback
 
 Every deploy backs the SQLite database up to `storage/backups/` *before*
