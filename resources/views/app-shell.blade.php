@@ -36,6 +36,9 @@
              door. The API checks again regardless. --}}
         data-permissions="{{ json_encode(auth()->user()?->getAllPermissions()->pluck('name')->values() ?? []) }}"
         data-currency="{{ \App\Http\Controllers\Api\Settings\FinanceController::currencyCode() }}"
+        {{-- Where Echo connects, read at runtime so one build serves both
+             boxes. See config/reverb.php, 'client'. Public key only. --}}
+        data-reverb="{{ json_encode(config('reverb.client')) }}"
     ></div>
 </body>
 </html>

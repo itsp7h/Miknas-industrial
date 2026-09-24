@@ -99,4 +99,32 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Browser Connection
+    |--------------------------------------------------------------------------
+    |
+    | Where the SPA's Echo client connects, handed to it at page load through
+    | the app shell's `data-reverb`. This is the third of the three Reverb
+    | addresses and must not be confused with the other two: `servers` above
+    | is where Reverb listens, and `apps.*.options` is where PHP publishes to.
+    | Behind Apache both of those are 127.0.0.1:8080, while the browser dials
+    | the public domain on 443.
+    |
+    | It used to be baked into the bundle at `npm run build` via VITE_REVERB_*,
+    | so changing it meant a rebuild and one build could not serve two boxes.
+    | Read here, it is a runtime setting. It falls back to the VITE_ values,
+    | so a box whose .env predates REVERB_CLIENT_* keeps working unedited.
+    |
+    | Only the public app key belongs here, never the secret.
+    |
+    */
+
+    'client' => [
+        'key' => env('REVERB_APP_KEY'),
+        'host' => env('REVERB_CLIENT_HOST', env('VITE_REVERB_HOST')),
+        'port' => (int) env('REVERB_CLIENT_PORT', env('VITE_REVERB_PORT', 443)),
+        'scheme' => env('REVERB_CLIENT_SCHEME', env('VITE_REVERB_SCHEME', 'https')),
+    ],
+
 ];

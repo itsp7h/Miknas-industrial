@@ -62,4 +62,42 @@ class AppShellRouteTest extends TestCase
         $response->assertDontSee('id="sidebar"', false);
         $response->assertSee('id="react-app"', false);
     }
+
+    /**
+     * Echo reads where to connect from the page, not from the bundle, so one
+     * build can serve both boxes (config/reverb.php, 'client').
+     */
+    public function test_the_shell_hands_echo_its_reverb_address_at_runtime(): void
+    {
+        config([
+            'reverb.client' => [
+                'key' => 'public-app-key',
+                'host' => 'staging-steelerp.p7h.me',
+                'port' => 443,
+                'scheme' => 'https',
+            ],
+        ]);
+
+        $html = $this->actingAs(User::factory()->create())->get('/app')->assertOk()->getContent();
+
+        preg_match('/data-reverb="([^"]*)"/', $html, $match);
+        $this->assertNotEmpty($match, 'the shell must carry data-reverb');
+        $this->assertSame(
+            ['key' => 'public-app-key', 'host' => 'staging-steelerp.p7h.me', 'port' => 443, 'scheme' => 'https'],
+            json_decode(html_entity_decode($match[1]), true),
+        );
+    }
+
+    /** The browser gets the public key; the secret signs server-side only. */
+    public function test_the_reverb_secret_never_reaches_the_page(): void
+    {
+        config([
+            'reverb.apps.apps.0.secret' => 'do-not-leak-this-secret',
+            'broadcasting.connections.reverb.secret' => 'do-not-leak-this-secret',
+        ]);
+
+        $this->actingAs(User::factory()->create())->get('/app')
+            ->assertOk()
+            ->assertDontSee('do-not-leak-this-secret', false);
+    }
 }
