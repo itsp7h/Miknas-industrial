@@ -1,0 +1,43 @@
+name: Rollback
+
+# Point `current` back at the previous release on one box, in one atomic
+# switch. The code only: migrations are forward-only, so the database stays as
+# it is (the release rolled back to must already run on this schema). To undo
+# a migration, restore the backup the deploy took; see docs/ci-cd-setup.md.
+#
+# Only for a box cut over to the releases layout. Production's run waits for
+# the same approval a production deploy does.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Which box'
+        type: choice
+        options: [staging, production]
+        required: true
+
+# A rollback and a deploy on the same box must never overlap.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Roll back ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
+    runs-on: [self-hosted, steelerp, "${{ inputs.environment }}"]
+    steps:
+      - name: Roll back
+        env:
+          TARGET: ${{ inputs.environment }}
+        run: sudo /usr/local/sbin/steelerp-deploy "$TARGET" rollback
+
+      - name: Smoke test
+        env:
+          TARGET: ${{ inputs.environment }}
+        run: |
+          case "$TARGET" in
+            production) URL=https://steelerp.p7h.me ;;
+            *) URL=http://192.168.0.38 ;;
+          esac
+          /var/www/ProjectsERP/current/scripts/smoke-test.sh "$URL"

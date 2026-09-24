@@ -95,7 +95,7 @@ jobs:
       # These run as root on the servers, and a script that does not parse
       # only says so once it is already on a box.
       - name: Shell syntax check
-        run: for f in scripts/*.sh; do bash -n "$f" || exit 1; done
+        run: for f in scripts/*.sh scripts/steelerp-deploy tests/deploy/*.sh; do bash -n "$f" || exit 1; done
 
       # Renders both boxes' config the way provision.sh would, without root
       # and without a server. A template with an unreplaced @PLACEHOLDER@
@@ -105,3 +105,31 @@ jobs:
           for env in staging production; do
             scripts/provision.sh "$env" --render "$RUNNER_TEMP/provision/$env"
           done
+
+  atomic-deploy:
+    name: Atomic deploy (end to end)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, intl, zip, gd, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-deploy-${{ hashFiles('composer.lock') }}
+
+      # Runs the real steelerp-deploy against a throwaway releases layout:
+      # real git archive, composer, Laravel boot, migrations and HTTP /up. It
+      # covers the switch, a release that cannot boot never going live,
+      # rollback, the automatic switch back on a failed health check, and
+      # pruning. See the header of tests/deploy/atomic-deploy.sh.
+      - name: Deploy, break, roll back, prune
+        run: tests/deploy/atomic-deploy.sh
