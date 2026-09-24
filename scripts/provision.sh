@@ -87,6 +87,14 @@ VARS=(ENVIRONMENT ENV_LABEL APP_DIR APP_ROOT WEB_USER RUNNER_USER DOMAIN
 
 render() {
   local src="$TEMPLATES/$1" out="$2" v
+  # repo:<path> is a file installed as it is, not a template: a script such as
+  # steelerp-deploy, whose own "$@" and ${arr[@]} must not be touched.
+  if [[ "$1" == repo:* ]]; then
+    src="$HERE/${1#repo:}"
+    [ -f "$src" ] || die "missing $src"
+    cp "$src" "$out"
+    return
+  fi
   [ -f "$src" ] || die "missing template $src"
   cp "$src" "$out"
   for v in "${VARS[@]}"; do
@@ -199,6 +207,7 @@ MANAGED=(
   "systemd|steelerp-scheduler.service|/etc/systemd/system/steelerp-scheduler.service|644"
   "systemd|steelerp-scheduler.timer|/etc/systemd/system/steelerp-scheduler.timer|644"
   "sudoers|sudoers|/etc/sudoers.d/steelerp-deploy|440"
+  "bin|repo:steelerp-deploy|/usr/local/sbin/steelerp-deploy|755"
 )
 UNITS=(steelerp-reverb.service steelerp-queue.service
   steelerp-scheduler.service steelerp-scheduler.timer)
@@ -221,7 +230,7 @@ note "app root  $APP_ROOT"
 # ===========================================================================
 MISSING_MODS=()
 if [ "$MODE" = --render ]; then
-  for group in apache systemd sudoers; do manage_group "$group"; done
+  for group in apache systemd sudoers bin; do manage_group "$group"; done
   log "Rendered $ENVIRONMENT into $RENDER_DIR"
   exit 0
 fi
@@ -265,6 +274,14 @@ log "sudoers"
 manage_group sudoers
 
 # ===========================================================================
+# 5. The deploy script sudo runs. Installed outside the tree it deploys, so
+#    what root executes changes only when a box is provisioned, never as a
+#    side effect of the deploy itself.
+# ===========================================================================
+log "Deploy script"
+manage_group bin
+
+# ===========================================================================
 # Plan ends here
 # ===========================================================================
 if [ "$MODE" != --apply ]; then
@@ -282,6 +299,14 @@ fi
 # is installed; Apache can only be validated as a whole config, so its files
 # are installed first and rolled back if configtest refuses them.
 # ===========================================================================
+# The deploy script before the sudoers rule that names it, so the rule never
+# points at a file that is not there yet.
+if group_changed bin; then
+  log "Applying the deploy script"
+  bash -n "$WORK/bin/steelerp-deploy" || die "steelerp-deploy does not parse; nothing was written"
+  commit_group bin
+fi
+
 if group_changed sudoers; then
   log "Applying sudoers"
   visudo -c -q -f "$WORK/sudoers/steelerp-deploy" \

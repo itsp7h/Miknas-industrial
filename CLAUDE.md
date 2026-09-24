@@ -107,6 +107,14 @@ test, so no unit suite could have caught it.
 Deploy scripts live in `scripts/`; see `docs/ci-cd-setup.md` for runner setup
 and rollback. Every deploy backs up the SQLite database before migrating.
 
+**Deploys are atomic** on a box cut over to the releases layout
+(`scripts/steelerp-deploy`): a release is built, boot-checked and migrated
+before `current` switches, and switches back if `/up` fails. That makes one
+rule binding: **a migration must work with the release before it.** The old
+code runs on the new schema until the switch, and a rollback moves only the
+code. Expand, then contract: add the new column in one release and drop the old
+one in a later release, never both at once.
+
 **Any Vitest test that renders a component reaching Echo must `vi.mock` it.**
 `resources/js-app/echo.js` instantiates Pusher at import time, so without a
 `VITE_REVERB_APP_KEY` it throws and the whole suite file fails to load with

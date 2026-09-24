@@ -171,11 +171,21 @@ jobs:
           # reaches a root shell through sudo. It is a 40-char SHA produced by
           # `verify`, and deploy.sh re-validates it independently.
           REF: ${{ needs.verify.outputs.sha }}
+        # A box cut over to the releases layout deploys atomically with the
+        # installed steelerp-deploy; one still on the in-place checkout uses
+        # deploy.sh. The fallback goes once both boxes are cut over.
         run: |
-          sudo /var/www/ProjectsERP/scripts/deploy.sh production "$REF"
+          if [ -d /var/www/ProjectsERP/releases ] && [ -x /usr/local/sbin/steelerp-deploy ]; then
+            sudo /usr/local/sbin/steelerp-deploy production "$REF"
+          else
+            sudo /var/www/ProjectsERP/scripts/deploy.sh production "$REF"
+          fi
 
       - name: Smoke test
-        run: /var/www/ProjectsERP/scripts/smoke-test.sh https://steelerp.p7h.me
+        run: |
+          SMOKE=/var/www/ProjectsERP/current/scripts/smoke-test.sh
+          [ -x "$SMOKE" ] || SMOKE=/var/www/ProjectsERP/scripts/smoke-test.sh
+          "$SMOKE" https://steelerp.p7h.me
 
       - name: Report failure
         if: failure()

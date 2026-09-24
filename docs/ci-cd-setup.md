@@ -7,6 +7,7 @@
 | `ci.yml` | push to `main` or `development`, any PR | GitHub-hosted | PHP syntax check, Pint (changed files), PHPUnit on 8.2 + 8.3, Vitest, Vite build |
 | `deploy-staging.yml` | CI green on `development`, or manual | self-hosted `staging` | Deploy + smoke test `http://192.168.0.38` |
 | `deploy-production.yml` | CI green on `main`, tag `v*`, or manual | self-hosted `production` | Verify CI is green for the commit, then deploy + smoke test `https://steelerp.p7h.me`, behind an approval gate |
+| `rollback.yml` | manual only | self-hosted, the chosen box | `steelerp-deploy <env> rollback` + smoke test; production behind the approval gate |
 | `provision.yml` | manual only | self-hosted, the chosen box | `provision.sh` plan, then `--apply` if ticked; production's apply behind the approval gate |
 
 ## Branching
@@ -149,9 +150,57 @@ CI renders both boxes' config on every push (the *Deploy & provision scripts*
 job), so a template with an unreplaced `@PLACEHOLDER@` fails the PR, not a
 server.
 
+## Atomic deploys (`steelerp-deploy`)
+
+A box cut over to the releases layout deploys with
+`/usr/local/sbin/steelerp-deploy`, which provisioning installs from
+`scripts/steelerp-deploy`. A box still on the in-place checkout keeps using
+`scripts/deploy.sh`; the workflows pick whichever fits the box.
+
+```
+/var/www/ProjectsERP/
+  repo.git/                 git source, fetched and never checked out
+  releases/<UTC>-<sha>/     one per deploy; the last 5 are kept
+  shared/.env               the box's only .env (DB_DATABASE is absolute)
+  shared/storage/           logs, sessions, uploads, storage/backups
+  current -> releases/…     the only thing that ever switches
+```
+
+A deploy builds the release, links in `shared/`, checks that it **boots**
+(`artisan about` and `route:list`), backs up the database, and migrates. Only
+**then** does it switch `current`, in a single `rename`. Anything that fails
+before the switch removes the half-built release and leaves the live site
+untouched. After the switch it reloads Apache and restarts the workers, then
+checks `/up`. **If `/up` fails, it switches back by itself.**
+
+```bash
+sudo steelerp-deploy staging                 # deploy github/development
+sudo steelerp-deploy production <sha|v-tag>
+sudo steelerp-deploy staging status          # list releases, mark the live one
+sudo steelerp-deploy staging rollback        # back to the previous release
+```
+
+**Migrations must be backward-compatible with the release before them.** From
+the migration until the switch, the old code runs against the new schema.
+Rollback also relies on it, because it moves the code and never the database.
+Add a column in one release and drop the old one in a later release, never
+both at once.
+
+`steelerp-deploy` is what sudo runs, so a change to it reaches a box when the
+box is **provisioned**, not when it is deployed. A deploy that finds the
+installed copy older than the one in the release says so, in yellow.
+
+`tests/deploy/atomic-deploy.sh` runs the real script end to end on every push
+(CI's *Atomic deploy* job): the switch, a release that cannot boot never going
+live, rollback, the switch back after a failed health check, and pruning.
+
 ## Rollback
 
-Every deploy backs the SQLite database up to `storage/backups/` *before*
+**On the releases layout:** run the **Rollback** workflow, or
+`sudo steelerp-deploy <env> rollback`. It moves the code back one release;
+the database stays as it is.
+
+**On the in-place layout, or to undo a migration:** every deploy backs the SQLite database up to `storage/backups/` *before*
 migrating, keeping the last 20. To roll back:
 
 ```bash
