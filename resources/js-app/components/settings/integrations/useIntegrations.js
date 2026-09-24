@@ -33,10 +33,14 @@ export default function useIntegrations() {
         Promise.all([loadWhatsapp(), loadAccounts()]).finally(() => setLoading(false));
     }, [loadWhatsapp, loadAccounts]);
 
+    /** Answers with what was saved, which the panel shows in place. */
     async function saveWhatsapp(values) {
         const response = await apiPut('/settings/integrations/whatsapp', values);
-        setWhatsapp({ ...EMPTY_WHATSAPP, ...response });
+        const saved = { ...EMPTY_WHATSAPP, ...response };
+        setWhatsapp(saved);
         showToast('WhatsApp settings saved.', 'success');
+
+        return saved;
     }
 
     /** Both test endpoints answer 200 with success:false, so read the body. */

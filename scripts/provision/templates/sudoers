@@ -1,4 +1,9 @@
-# Managed by scripts/provision.sh. The runner gets root for these two scripts
-# and nothing else: deploying the app, and provisioning the machine.
+# Managed by scripts/provision.sh. The runner gets root for these scripts and
+# nothing else: deploying the app, and provisioning the machine.
+#
+# steelerp-deploy is the atomic deploy, installed by provisioning outside the
+# tree it deploys. deploy.sh is the in-place deploy that a box still on the
+# old checkout layout uses; it goes once both boxes are cut over.
+@RUNNER_USER@ ALL=(root) NOPASSWD: /usr/local/sbin/steelerp-deploy
+@RUNNER_USER@ ALL=(root) NOPASSWD: @APP_ROOT@/scripts/provision.sh
 @RUNNER_USER@ ALL=(root) NOPASSWD: @APP_DIR@/scripts/deploy.sh
-@RUNNER_USER@ ALL=(root) NOPASSWD: @APP_DIR@/scripts/provision.sh

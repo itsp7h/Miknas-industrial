@@ -25,14 +25,24 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     steps:
+      # Atomic (steelerp-deploy) once the box is cut over to the releases
+      # layout; the in-place deploy.sh until then.
       - name: Deploy
-        run: sudo /var/www/ProjectsERP/scripts/deploy.sh staging github/development
+        run: |
+          if [ -d /var/www/ProjectsERP/releases ] && [ -x /usr/local/sbin/steelerp-deploy ]; then
+            sudo /usr/local/sbin/steelerp-deploy staging github/development
+          else
+            sudo /var/www/ProjectsERP/scripts/deploy.sh staging github/development
+          fi
 
       - name: Smoke test
         env:
           REVERB_URL: http://192.168.0.38:8080
           REVERB_APP_KEY: ${{ secrets.STAGING_REVERB_APP_KEY }}
-        run: /var/www/ProjectsERP/scripts/smoke-test.sh http://192.168.0.38
+        run: |
+          SMOKE=/var/www/ProjectsERP/current/scripts/smoke-test.sh
+          [ -x "$SMOKE" ] || SMOKE=/var/www/ProjectsERP/scripts/smoke-test.sh
+          "$SMOKE" http://192.168.0.38
 
       - name: Report failure
         if: failure()
