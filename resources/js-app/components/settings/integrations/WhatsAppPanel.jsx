@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import SecretField from './SecretField';
 import Switch from './Switch';
 import { useToast } from '../../ui/Toast';
@@ -30,22 +30,27 @@ export default function WhatsAppPanel({ whatsapp, onSave, onTest, onSendTest, co
     const [sending, setSending] = useState(false);
     const { showToast } = useToast();
 
-    useEffect(() => {
-        setEnabled(whatsapp.enabled);
-        setInstanceId(whatsapp.instance_id);
-        setWebhookPath(whatsapp.webhook_path);
-        setToken('');
-        setSecret('');
-    }, [whatsapp]);
+    // The form seeds from `whatsapp` once, at mount, and never re-seeds from the
+    // prop: that would throw away whatever the user has changed since (gotcha
+    // #10). After a save it takes the saved values from the save itself.
 
     async function save() {
         setSaving(true);
         setErrors({});
         try {
-            await onSave({
+            const saved = await onSave({
                 enabled, instance_id: instanceId, webhook_path: webhookPath,
                 token: token || null, webhook_secret: secret || null,
             });
+            // Show what the server kept, and empty the secret fields: they are
+            // write-only, and a value left in them would be sent again.
+            if (saved) {
+                setEnabled(saved.enabled);
+                setInstanceId(saved.instance_id);
+                setWebhookPath(saved.webhook_path);
+            }
+            setToken('');
+            setSecret('');
         } catch (err) {
             setErrors(Object.fromEntries(
                 Object.entries(err?.errors ?? {}).map(([key, messages]) => [key, messages[0]])
