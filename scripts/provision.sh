@@ -291,8 +291,15 @@ fi
 
 if group_changed systemd; then
   log "Applying systemd units"
-  systemd-analyze verify "$WORK"/systemd/*.service "$WORK"/systemd/*.timer \
-    || die "systemd-analyze refused the rendered units; nothing was written"
+  # verify also loads the units ours depend on, and prints warnings about
+  # them: on TurnKey that is inithooks.service, every time. Show only what is
+  # about our own files, so a real warning is not buried under a familiar one.
+  # The exit status still decides.
+  if ! VERIFY_OUT=$(systemd-analyze verify "$WORK"/systemd/*.service "$WORK"/systemd/*.timer 2>&1); then
+    printf '%s\n' "$VERIFY_OUT" | sed 's/^/      /'
+    die "systemd-analyze refused the rendered units; nothing was written"
+  fi
+  printf '%s\n' "$VERIFY_OUT" | grep -F -e "$WORK/" -e steelerp- | sed 's/^/      /' || true
   commit_group systemd
   systemctl daemon-reload
   systemctl enable --quiet steelerp-reverb.service steelerp-queue.service steelerp-scheduler.timer
