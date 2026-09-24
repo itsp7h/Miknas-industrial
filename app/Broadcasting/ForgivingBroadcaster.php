@@ -57,4 +57,19 @@ class ForgivingBroadcaster implements Broadcaster
     {
         return $this->inner->validAuthenticationResponse($request, $result);
     }
+
+    /**
+     * Everything else the manager forwards — `Broadcast::channel()` above all.
+     *
+     * `BroadcastManager::__call()` hands any method it does not know to the
+     * driver, and `routes/channels.php` calls `Broadcast::channel()` on every
+     * boot. The contract names only the three methods above, so without this a
+     * decorated driver takes the whole app down: it did, on staging, the moment
+     * this class became the `reverb` driver. Tests run on the `null` driver and
+     * never noticed.
+     */
+    public function __call(string $method, array $parameters): mixed
+    {
+        return $this->inner->{$method}(...$parameters);
+    }
 }

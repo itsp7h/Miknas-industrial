@@ -168,4 +168,37 @@ class ForgivingBroadcastTest extends TestCase
 
         $this->assertInstanceOf(ForgivingBroadcaster::class, Broadcast::connection('reverb'));
     }
+
+    /**
+     * The regression that took staging down: `routes/channels.php` runs on
+     * every boot and calls `Broadcast::channel()`, which the manager forwards
+     * to the driver. The suite runs on the `null` driver, so nothing here had
+     * ever loaded that file with the decorator in place.
+     */
+    public function test_the_channel_routes_load_on_the_reverb_driver(): void
+    {
+        $this->pointBroadcastingAtNothing();
+        Broadcast::purge('reverb');
+
+        require base_path('routes/channels.php');
+
+        $this->assertInstanceOf(ForgivingBroadcaster::class, Broadcast::driver());
+        $this->assertArrayHasKey('purchase', Broadcast::driver()->getChannels()->all());
+    }
+
+    /**
+     * Channels registered through the decorator must be the ones `auth()`
+     * consults, or every private subscription would be refused.
+     */
+    public function test_a_private_channel_authorizes_through_the_decorator(): void
+    {
+        $this->pointBroadcastingAtNothing();
+        Broadcast::purge('reverb');
+        require base_path('routes/channels.php');
+
+        $this->actingAs(User::factory()->create())
+            ->post('/broadcasting/auth', ['channel_name' => 'private-purchase', 'socket_id' => '1234.5678'])
+            ->assertOk()
+            ->assertJsonStructure(['auth']);
+    }
 }
