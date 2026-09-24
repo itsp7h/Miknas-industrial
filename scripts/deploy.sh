@@ -144,4 +144,33 @@ if systemctl is-active apache2 >/dev/null 2>&1; then
   systemctl reload apache2
 fi
 
+# ---------------------------------------------------------------------------
+# Keep the Reverb websocket proxy in place. Browsers reach Reverb at
+# wss://<domain>:443 through Apache, and that rule lives in Apache's config
+# rather than in the app, so nothing re-created it: until 2026-09-24 neither
+# box had it at all. Re-applying it on every deploy means a rebuilt box gets
+# live updates back at its next deploy. setup-reverb-proxy.sh is idempotent
+# and runs `apache2ctl configtest` before it reloads, so a bad rule fails the
+# deploy instead of reaching the running Apache.
+#
+# The domain is the one the bundle was just built to dial. A box that does not
+# serve the SPA over HTTPS (a LAN-only setup) needs no proxy, so it is skipped.
+# ---------------------------------------------------------------------------
+env_value() { grep -E "^$1=" .env | tail -1 | cut -d= -f2- | tr -d '"' || true; }
+WS_HOST=$(env_value VITE_REVERB_HOST)
+# Unset means https, the same default resources/js-app/echo.js applies.
+WS_SCHEME=$(env_value VITE_REVERB_SCHEME)
+WS_SCHEME=${WS_SCHEME:-https}
+
+if [ "$WS_SCHEME" != "https" ]; then
+  warn "VITE_REVERB_SCHEME is '$WS_SCHEME', not https — skipping the Reverb proxy."
+elif [ -z "$WS_HOST" ] || [[ "$WS_HOST" == *'$'* ]]; then
+  warn "VITE_REVERB_HOST is '${WS_HOST:-unset}' — set it to the public domain as a literal. Skipping the Reverb proxy."
+elif ! systemctl is-active steelerp-reverb >/dev/null 2>&1; then
+  warn "steelerp-reverb is not running — skipping the Reverb proxy. Live updates will not work."
+else
+  log "Ensuring the Reverb websocket proxy for $WS_HOST"
+  APP_DIR="$APP_DIR" "$APP_DIR/scripts/setup-reverb-proxy.sh" "$WS_HOST"
+fi
+
 log "Deploy of $ENVIRONMENT complete"

@@ -102,27 +102,39 @@ sudo /var/www/ProjectsERP/scripts/deploy.sh production v1.2.0
 /var/www/ProjectsERP/scripts/smoke-test.sh https://steelerp.p7h.me
 ```
 
-## Setting up a box for live updates
+## Live updates: the Reverb websocket proxy
 
-Browsers reach Reverb at `wss://<domain>:443`, which Apache hands to Reverb
-on the box. A new or rebuilt box needs that proxy once. Deploys do not touch
-Apache, so it survives them:
+Browsers reach Reverb at `wss://<domain>:443`, and Apache hands those requests
+to Reverb on the box. **`deploy.sh` sets this up on every deploy** by running
+`scripts/setup-reverb-proxy.sh` for the domain in `VITE_REVERB_HOST`, so a new
+or rebuilt box gets it at its first deploy. The script does four things:
+
+1. enables the Apache proxy modules;
+2. writes `/etc/apache2/steelerp-reverb.conf` and includes it from the site's
+   vhost, after taking a `.bak-` copy;
+3. runs `apache2ctl configtest` and only then reloads Apache;
+4. checks that a websocket upgrade answers `101`.
+
+If it cannot get a `101`, the deploy fails. A bad rule fails at `configtest`,
+before it ever reaches the running Apache.
+
+The deploy skips the proxy, with a yellow `!!>` warning in the log, when:
+
+- `VITE_REVERB_SCHEME` is not `https` (a LAN-only box needs no proxy);
+- `VITE_REVERB_HOST` is unset or still interpolated (`"${REVERB_HOST}"`). It
+  must be the public domain as a literal;
+- `steelerp-reverb` is not running.
+
+It can also be run by hand, and is safe to re-run:
 
 ```bash
 sudo /var/www/ProjectsERP/scripts/setup-reverb-proxy.sh steelerp.p7h.me          # production
 sudo /var/www/ProjectsERP/scripts/setup-reverb-proxy.sh staging-steelerp.p7h.me  # staging
 ```
 
-It enables the Apache proxy modules and writes `/etc/apache2/steelerp-reverb.conf`.
-It includes that file from the site's vhost (after taking a `.bak-` copy),
-reloads Apache, and finishes by checking that a websocket upgrade answers `101`.
-It is safe to re-run.
-
 It changes Apache only. If the built bundle dials some other address, it
-says so and prints the three `VITE_REVERB_*` lines `.env` needs. Those are
-baked in at build time, so fixing them takes a redeploy. Before running it,
-make sure `steelerp-reverb` is installed and running: the script stops if
-nothing listens on Reverb's port.
+reports it and prints the three `VITE_REVERB_*` lines `.env` needs. Those are
+baked in at build time, so fixing them takes a redeploy.
 
 ## Rollback
 

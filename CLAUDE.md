@@ -62,7 +62,8 @@ real customers.
 **Browsers reach Reverb through Apache, not on port 8080.** The page is HTTPS,
 so the SPA must dial `wss://<domain>:443`, and Apache hands that one request
 shape to Reverb on the box. The rules live in `/etc/apache2/steelerp-reverb.conf`,
-pulled in by an `Include` at the end of the site's vhost. They fire only on an
+pulled in by an `Include` at the end of the site's vhost; `deploy.sh`
+re-applies them on every deploy through `scripts/setup-reverb-proxy.sh`. They fire only on an
 `Upgrade: websocket` request to `/app/{32-hex key}`, because `/app` is also the
 SPA's own prefix. The addresses involved are three separate things:
 
