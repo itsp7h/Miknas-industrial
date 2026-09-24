@@ -139,3 +139,48 @@ jobs:
       # after the swap puts the old checkout back.
       - name: Cut over an in-place checkout
         run: tests/deploy/cutover.sh
+
+  # Build once, here, and publish the result for both boxes to deploy.
+  # scripts/build-release.sh records the source plus vendor/, public/build/
+  # and bootstrap/cache/ as a commit and pushes it to refs/builds/<sha>.
+  # steelerp-deploy fetches that ref as root over the box's own key, so the
+  # deploying runner never hands root anything to run. Staging and production
+  # unpack the same tree.
+  #
+  # Only pushes to development and main are built, and only once every test
+  # job is green: a commit that failed its tests has no build, so it cannot
+  # be deployed. Pushing refs/builds/* does not trigger CI (it is not a branch).
+  build:
+    name: Build release
+    needs: [php, js, scripts, atomic-deploy]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 8.2, the version both boxes run, so the optimised autoloader and the
+      # platform check match the machine that will execute them.
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, intl, zip, gd, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-build-${{ hashFiles('composer.lock') }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build and publish refs/builds/${{ github.sha }}
+        run: scripts/build-release.sh --push origin
+

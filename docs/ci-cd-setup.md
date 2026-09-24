@@ -4,7 +4,7 @@
 
 | Workflow | Trigger | Runner | What it does |
 |---|---|---|---|
-| `ci.yml` | push to `main` or `development`, any PR | GitHub-hosted | PHP syntax check, Pint (changed files), PHPUnit on 8.2 + 8.3, Vitest, Vite build |
+| `ci.yml` | push to `main` or `development`, any PR | GitHub-hosted | PHP syntax check, Pint, PHPUnit on 8.2 + 8.3, Vitest, Vite build, the deploy scripts end to end; on a push, once all of that is green, **builds the release once** and publishes it as `refs/builds/<sha>` |
 | `deploy-staging.yml` | CI green on `development`, or manual | self-hosted `staging` | Deploy + smoke test `http://192.168.0.38` |
 | `deploy-production.yml` | CI green on `main`, tag `v*`, or manual | self-hosted `production` | Verify CI is green for the commit, then deploy + smoke test `https://steelerp.p7h.me`, behind an approval gate |
 | `rollback.yml` | manual only | self-hosted, the chosen box | `steelerp-deploy <env> rollback` + smoke test; production behind the approval gate |
@@ -172,7 +172,21 @@ removed once both boxes had been cut over (staging and production, 2026-09-24).
   current -> releases/…     the only thing that ever switches
 ```
 
-A deploy builds the release, links in `shared/`, checks that it **boots**
+**Build once, deploy the same build everywhere.** CI builds each push to
+`development` and `main` once, after every test job is green:
+`scripts/build-release.sh` runs `composer install --no-dev` and
+`npm run build`, then records the source plus `vendor/`, `public/build/` and
+`bootstrap/cache/` as a commit. It pushes that commit to `refs/builds/<sha>`.
+A deploy fetches that ref **as root, over the box's own SSH key**, and unpacks
+it. Nothing is built on the servers, and staging and production run the same
+tree (the deploy log prints its hash). It is a git ref, not an uploaded file,
+because the deploying runner is unprivileged: anything it handed to
+`sudo steelerp-deploy` could be swapped, while a ref root fetches from GitHub
+cannot. A commit with no build (its tests failed, or it was never pushed to
+those branches) is refused. `--build-here` builds it on the box instead, for
+an emergency.
+
+The deploy links in `shared/`, checks that the release **boots**
 (`artisan about` and `route:list`), backs up the database, and migrates. Only
 **then** does it switch `current`, in a single `rename`. Anything that fails
 before the switch removes the half-built release and leaves the live site
@@ -180,8 +194,9 @@ untouched. After the switch it reloads Apache and restarts the workers, then
 checks `/up`. **If `/up` fails, it switches back by itself.**
 
 ```bash
-sudo steelerp-deploy staging                 # deploy github/development
+sudo steelerp-deploy staging                 # deploy CI's build of github/development
 sudo steelerp-deploy production <sha|v-tag>
+sudo steelerp-deploy staging <sha> --build-here   # no CI build: build on the box
 sudo steelerp-deploy staging status          # list releases, mark the live one
 sudo steelerp-deploy staging rollback        # back to the previous release
 ```
