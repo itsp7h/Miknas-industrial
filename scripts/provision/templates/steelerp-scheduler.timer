@@ -1,0 +1,10 @@
+[Unit]
+Description=SteelERP @ENV_LABEL@ - run Laravel scheduler every minute
+
+[Timer]
+OnCalendar=*:0/1
+AccuracySec=1s
+Persistent=false
+
+[Install]
+WantedBy=timers.target

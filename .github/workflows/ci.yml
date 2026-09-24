@@ -84,3 +84,24 @@ jobs:
       # build, so the build is part of CI rather than only of deploys.
       - name: Build assets
         run: npm run build
+
+  scripts:
+    name: Deploy & provision scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # These run as root on the servers, and a script that does not parse
+      # only says so once it is already on a box.
+      - name: Shell syntax check
+        run: for f in scripts/*.sh; do bash -n "$f" || exit 1; done
+
+      # Renders both boxes' config the way provision.sh would, without root
+      # and without a server. A template with an unreplaced @PLACEHOLDER@
+      # fails here instead of in a plan on the box.
+      - name: Provisioning templates render
+        run: |
+          for env in staging production; do
+            scripts/provision.sh "$env" --render "$RUNNER_TEMP/provision/$env"
+          done

@@ -1,0 +1,15 @@
+[Unit]
+Description=SteelERP @ENV_LABEL@ - Laravel Reverb websocket server
+After=network.target
+
+[Service]
+Type=simple
+User=@WEB_USER@
+Group=@WEB_USER@
+WorkingDirectory=@APP_ROOT@
+ExecStart=/usr/bin/php artisan reverb:start --host=@REVERB_BIND@ --port=@REVERB_PORT@
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

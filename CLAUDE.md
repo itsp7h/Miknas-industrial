@@ -53,8 +53,15 @@ with *"Session store not set on request."* Staging's public domain was missing
 from it until 2026-09-24, which broke logging in there.
 
 Both boxes run `steelerp-reverb` and `steelerp-queue` as systemd units.
-Production has never had `steelerp-scheduler`; staging's has not been
-checked since this table claimed both boxes ran one.
+Staging runs `steelerp-scheduler` too (a oneshot `schedule:run` on a one-minute
+timer). Production has none until it is provisioned.
+
+**Machine setup is code: `scripts/provision.sh`.** It owns the vhost, the
+websocket proxy, the three units and the runner's sudoers rule, rendered from
+`scripts/provision/templates/`. A plan (the default) prints a diff and changes
+nothing; `--apply` validates each group before reloading. Change a box by
+editing the templates, never the box — the next provision overwrites
+hand edits. See `docs/ci-cd-setup.md`.
 Staging has `ULTRAMSG_ENABLED=false` — it carries a copy of
 live customer data, so an enabled WhatsApp integration there would message
 real customers.
