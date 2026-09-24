@@ -31,10 +31,10 @@ describe('ProfilePage', () => {
     });
 
     /**
-     * Wait for the *loaded value*, not merely for the label: the form renders
-     * empty and fills in when apiGet resolves, so keying off the label let a
-     * loaded runner click Save before the email arrived and assert against an
-     * empty payload. That is what made this file flaky in CI.
+     * Wait for the *loaded value*, not merely for the label: the page mounts
+     * the form only once the profile has arrived, so the label appearing is
+     * the signal that the values are there — but waiting on the value itself
+     * states that intent rather than relying on it.
      */
     const loadedForm = () => waitFor(() =>
         expect(screen.getByLabelText('Email')).toHaveValue('admin@erp.com'));
@@ -45,6 +45,11 @@ describe('ProfilePage', () => {
         await loadedForm();
 
         fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });
+        // Assert the field took it before submitting. When this failed on CI it
+        // posted the *loaded* name, and the payload mismatch did not say whether
+        // the typing had not landed or had been overwritten. This one does.
+        expect(screen.getByLabelText('Name')).toHaveValue('Renamed');
+
         fireEvent.click(screen.getAllByText('Save')[0]);
 
         await waitFor(() => expect(put).toHaveBeenCalledWith('/profile', { name: 'Renamed', email: 'admin@erp.com' }));
