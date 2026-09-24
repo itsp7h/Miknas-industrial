@@ -2,9 +2,13 @@
 
 namespace App\Providers;
 
+use App\Broadcasting\ForgivingBroadcaster;
 use App\Models\MailAccount;
 use App\Models\Setting;
+use Illuminate\Broadcasting\Broadcasters\PusherBroadcaster;
+use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Mail\MailManager;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use PromoSeven\UltraMessage\Facades\UltraMessage;
@@ -17,6 +21,18 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::before(function ($user, string $ability) {
             return $user->hasRole('Admin') ? true : null;
+        });
+
+        // Laravel checks its custom creators before its own `createReverbDriver`,
+        // so this replaces the driver rather than sitting beside it. What it
+        // wraps is built by the framework's own `pusher()` factory, so the
+        // client keeps whatever timeouts and options the config asks for.
+        Broadcast::extend('reverb', function ($app, array $config) {
+            $manager = $app->make(BroadcastManager::class);
+
+            return new ForgivingBroadcaster(
+                new PusherBroadcaster($manager->pusher($config), $config['jsonp'] ?? false)
+            );
         });
 
         UltraMessage::configUsing(function () {

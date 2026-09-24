@@ -49,6 +49,9 @@ case "$ENVIRONMENT" in
 esac
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
+# Yellow, and on stderr, so a skipped step is not mistaken for a done one
+# when the log is skimmed for `==>`.
+warn() { printf '\n\033[1;33m!!> %s\033[0m\n' "$*" >&2; }
 
 cd "$APP_DIR"
 
@@ -110,12 +113,29 @@ chown -R "$WEB_USER:$WEB_USER" storage bootstrap/cache database public/build pub
 # ---------------------------------------------------------------------------
 # Restart background workers if this host runs them. Guarded, because the unit
 # names only exist where they have been installed.
+#
+# The guard used to pass over a missing unit in silence, and that is how
+# production ran without Reverb long enough for it to be noticed as "deleting
+# an item gives a server error" rather than as "the websocket server is not
+# running". A skipped worker is not a normal outcome on a host that is meant to
+# have one, so say so, loudly enough to read in the deploy log.
 # ---------------------------------------------------------------------------
 for unit in steelerp-reverb steelerp-queue; do
-  if systemctl list-unit-files "$unit.service" >/dev/null 2>&1 \
-     && systemctl is-enabled "$unit" >/dev/null 2>&1; then
-    log "Restarting $unit"
-    systemctl restart "$unit"
+  if ! systemctl list-unit-files "$unit.service" >/dev/null 2>&1; then
+    warn "$unit is not installed on this host — skipping. Live updates will not work."
+    continue
+  fi
+
+  if ! systemctl is-enabled "$unit" >/dev/null 2>&1; then
+    warn "$unit is installed but not enabled — skipping. Run: systemctl enable --now $unit"
+    continue
+  fi
+
+  log "Restarting $unit"
+  systemctl restart "$unit"
+
+  if ! systemctl is-active "$unit" >/dev/null 2>&1; then
+    warn "$unit did not come back up after a restart. Check: systemctl status $unit"
   fi
 done
 
