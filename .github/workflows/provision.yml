@@ -38,10 +38,7 @@ jobs:
       - name: Show what would change
         env:
           TARGET: ${{ inputs.environment }}
-        run: |
-          PROVISION=/var/www/ProjectsERP/current/scripts/provision.sh
-          [ -x "$PROVISION" ] || PROVISION=/var/www/ProjectsERP/scripts/provision.sh
-          sudo "$PROVISION" "$TARGET"
+        run: sudo /var/www/ProjectsERP/current/scripts/provision.sh "$TARGET"
 
   apply:
     name: Apply (${{ inputs.environment }})
@@ -54,7 +51,4 @@ jobs:
       - name: Apply
         env:
           TARGET: ${{ inputs.environment }}
-        run: |
-          PROVISION=/var/www/ProjectsERP/current/scripts/provision.sh
-          [ -x "$PROVISION" ] || PROVISION=/var/www/ProjectsERP/scripts/provision.sh
-          sudo "$PROVISION" "$TARGET" --apply
+        run: sudo /var/www/ProjectsERP/current/scripts/provision.sh "$TARGET" --apply

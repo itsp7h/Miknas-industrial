@@ -36,7 +36,7 @@ else
   log "User 'runner' already exists"
 fi
 
-# 2. Its privileges (root for deploy.sh and provision.sh, nothing else) are
+# 2. Its privileges (root for steelerp-deploy and provision.sh, nothing else) are
 #    the sudoers rule that scripts/provision.sh owns, so they are granted by
 #    provisioning, not here. Two writers of one file would undo each other.
 #    See the last step.
