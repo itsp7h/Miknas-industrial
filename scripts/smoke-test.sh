@@ -100,16 +100,31 @@ fi
 #    `pusher:error` 4001. So read the first frame and require
 #    `pusher:connection_established`, which also proves REVERB_APP_KEY is right.
 #    curl exits on --max-time with the socket still open; that is expected.
+#
+#    The deploy restarts Reverb moments before this runs, and a check that
+#    lands before Reverb is listening gets no answer at all (000): it failed a
+#    staging deploy on 2026-09-27 whose Reverb was fine seconds later. So it
+#    tries up to 5 times, 3s apart, and fails only if every attempt did.
 if [ -n "${REVERB_URL:-}" ]; then
-  WS=$(curl --http1.1 --silent --max-time 5 -o - -w '\n%{http_code}' \
-    -H "Connection: Upgrade" -H "Upgrade: websocket" \
-    -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-    "${REVERB_URL%/}/app/${REVERB_APP_KEY:-invalid}?protocol=7&client=js&version=8.4.0" 2>/dev/null | tr -d '\000')
-  CODE=${WS##*$'\n'}
+  WS_ATTEMPTS="${WS_ATTEMPTS:-5}"
+  for attempt in $(seq 1 "$WS_ATTEMPTS"); do
+    WS=$(curl --http1.1 --silent --max-time 5 -o - -w '\n%{http_code}' \
+      -H "Connection: Upgrade" -H "Upgrade: websocket" \
+      -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+      "${REVERB_URL%/}/app/${REVERB_APP_KEY:-invalid}?protocol=7&client=js&version=8.4.0" 2>/dev/null | tr -d '\000')
+    CODE=${WS##*$'\n'}
+    if [ "$CODE" = "101" ] && printf '%s' "$WS" | grep -aq 'pusher:connection_established'; then
+      break
+    fi
+    # A refused key is a definite answer; retrying cannot change it.
+    if [ "$CODE" = "101" ]; then break; fi
+    [ "$attempt" -lt "$WS_ATTEMPTS" ] && sleep "${WS_RETRY_DELAY:-3}"
+  done
+  TRIES=""; [ "$attempt" -gt 1 ] && TRIES=" (attempt $attempt of $WS_ATTEMPTS)"
   if [ "$CODE" != "101" ]; then
-    bad "reverb did not upgrade at $REVERB_URL (got ${CODE:-no response}, want 101)"
+    bad "reverb did not upgrade at $REVERB_URL (got ${CODE:-no response}, want 101) after $WS_ATTEMPTS attempts"
   elif printf '%s' "$WS" | grep -aq 'pusher:connection_established'; then
-    ok "reverb accepts a websocket connection at $REVERB_URL"
+    ok "reverb accepts a websocket connection at $REVERB_URL$TRIES"
   else
     bad "reverb upgraded but did not establish a connection: $(printf '%s' "$WS" | grep -ao '"message[^}]*' | head -1 | tr -d '\\')"
   fi
