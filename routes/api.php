@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\Settings\IntegrationController;
 use App\Http\Controllers\Api\Settings\ItemCategoryController;
 use App\Http\Controllers\Api\Settings\MailAccountController;
 use App\Http\Controllers\Api\Settings\ProjectController;
+use App\Http\Controllers\Api\Settings\RequesterController;
 use App\Http\Controllers\Api\Settings\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -176,6 +177,12 @@ Route::prefix('v1')->group(function () {
             Route::post('projects/{project}/locations', [ProjectController::class, 'storeLocation'])->middleware('permission:projects.create');
             Route::put('projects/{project}/locations/{location}', [ProjectController::class, 'updateLocation'])->middleware('permission:projects.edit');
             Route::delete('projects/{project}/locations/{location}', [ProjectController::class, 'destroyLocation'])->middleware('permission:projects.delete');
+
+            // System → Requested By: who the MPR form offers, per company.
+            Route::get('requesters', [RequesterController::class, 'index'])->middleware('permission:requesters.view');
+            Route::post('requesters', [RequesterController::class, 'store'])->middleware('permission:requesters.create');
+            Route::put('requesters/{requester}', [RequesterController::class, 'update'])->middleware('permission:requesters.edit');
+            Route::delete('requesters/{requester}', [RequesterController::class, 'destroy'])->middleware('permission:requesters.delete');
 
             // Item sections — "Raw Materials / Chemical Materials".
             Route::get('item-categories', [ItemCategoryController::class, 'index'])->middleware('permission:item-categories.view');

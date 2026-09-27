@@ -10,6 +10,7 @@ use App\Models\Settings\Company;
 use App\Models\Settings\Department;
 use App\Models\Settings\Location;
 use App\Models\Settings\ProjectSetting;
+use App\Models\Settings\Requester;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -62,24 +63,28 @@ class RequestFormTest extends TestCase
 
     /**
      * Requested By was a free-text box, so the same person was recorded three
-     * different ways. The form picks from the system's users instead.
+     * different ways. The form picks from System → Requested By, each person
+     * carrying the companies it offers them for. User accounts are not on it:
+     * a login like "Admin User" is not someone who asks for materials.
      */
-    public function test_form_options_carry_the_users_a_request_can_be_raised_for(): void
+    public function test_form_options_carry_the_requesters_with_their_companies(): void
     {
-        User::factory()->create(['name' => 'Zainab Ali']);
-        User::factory()->create(['name' => 'Ahmed Khan']);
+        $miknas = Company::create(['name' => 'Miknas Industrial', 'is_active' => true]);
+        $steelTech = Company::create(['name' => 'Steel Tech', 'is_active' => true]);
+        Requester::create(['name' => 'Zainab Ali'])->companies()->sync([$miknas->id, $steelTech->id]);
+        Requester::create(['name' => 'Ahmed Khan'])->companies()->sync([$steelTech->id]);
+        User::factory()->create(['name' => 'Admin User']);
 
-        $names = $this->actingAs($this->requester())
+        $requesters = $this->actingAs($this->requester())
             ->getJson('/api/v1/purchase/requests/form-options')
             ->assertOk()
             ->json('requesters');
 
-        $this->assertContains('Zainab Ali', $names);
-        $this->assertContains('Ahmed Khan', $names);
         // Sorted, so the dropdown reads the way the settings list does.
-        $sorted = $names;
-        sort($sorted);
-        $this->assertSame($sorted, $names);
+        $this->assertSame(['Ahmed Khan', 'Zainab Ali'], array_column($requesters, 'name'));
+        $this->assertSame([$steelTech->id], $requesters[0]['company_ids']);
+        $this->assertEqualsCanonicalizing([$miknas->id, $steelTech->id], $requesters[1]['company_ids']);
+        $this->assertNotContains('Admin User', array_column($requesters, 'name'));
     }
 
     public function test_form_options_carry_projects_with_their_company_and_locations(): void
