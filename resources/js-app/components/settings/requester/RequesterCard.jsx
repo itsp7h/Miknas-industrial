@@ -29,7 +29,8 @@ export default function RequesterCard({ compact = false }) {
 
     const q = query.trim().toLowerCase();
     const shown = q
-        ? r.requesters.filter((p) => `${p.name} ${p.companies.map((c) => c.name).join(' ')}`.toLowerCase().includes(q))
+        ? r.requesters.filter((p) => [p.name, ...p.companies.map((c) => c.name), ...(p.phones ?? [])]
+            .join(' ').toLowerCase().includes(q))
         : r.requesters;
 
     return (
@@ -55,6 +56,53 @@ export default function RequesterCard({ compact = false }) {
                     />
                     {r.errors.name && <p className="text-sm text-red-600 mt-1">{r.errors.name}</p>}
                 </div>
+
+                <fieldset style={{ border: 0, padding: 0, margin: '0 0 12px' }} disabled={!canSubmit}>
+                    <legend className="form-label">
+                        Contact numbers <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span>
+                    </legend>
+                    {r.values.phones.map((phone, index) => (
+                        <div key={index} style={{ marginBottom: 8 }}>
+                            <div style={{ display: 'flex', gap: 8, maxWidth: compact ? undefined : 360 }}>
+                                <input
+                                    type="tel"
+                                    inputMode="tel"
+                                    aria-label={`Contact number ${index + 1}`}
+                                    className="form-input"
+                                    placeholder="+973 3312 3456"
+                                    value={phone}
+                                    onChange={(e) => r.setPhone(index, e.target.value)}
+                                    style={canSubmit ? undefined : DISABLED}
+                                />
+                                {(r.values.phones.length > 1 || phone !== '') && (
+                                    <button
+                                        type="button"
+                                        aria-label={`Remove contact number ${index + 1}`}
+                                        onClick={() => r.removePhone(index)}
+                                        className="btn-secondary btn-sm"
+                                        style={canSubmit ? undefined : DISABLED}
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                            {r.errors.phoneRows?.[index] && (
+                                <p className="text-sm text-red-600 mt-1">{r.errors.phoneRows[index]}</p>
+                            )}
+                        </div>
+                    ))}
+                    {r.errors.phones && <p className="text-sm text-red-600 mt-1">{r.errors.phones}</p>}
+                    <button
+                        type="button"
+                        onClick={r.addPhone}
+                        style={{
+                            fontSize: 13, color: '#2563eb', background: 'none', border: 0, padding: 0,
+                            ...(canSubmit ? { cursor: 'pointer' } : DISABLED),
+                        }}
+                    >
+                        + Add number
+                    </button>
+                </fieldset>
 
                 <fieldset style={{ border: 0, padding: 0, margin: '0 0 12px' }} disabled={!canSubmit}>
                     <legend className="form-label">Companies</legend>
@@ -105,7 +153,7 @@ export default function RequesterCard({ compact = false }) {
                     type="search"
                     aria-label="Search people"
                     className="form-input"
-                    placeholder="Search by name or company…"
+                    placeholder="Search by name, company or number…"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     style={{ maxWidth: compact ? undefined : 320 }}
@@ -134,6 +182,20 @@ export default function RequesterCard({ compact = false }) {
                 >
                     <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14 }}>{person.name}</div>
+                        {person.phones?.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 4 }}>
+                                {person.phones.map((phone) => (
+                                    // tel: so a tap on a phone dials it.
+                                    <a
+                                        key={phone}
+                                        href={`tel:${phone.replace(/[^\d+]/g, '')}`}
+                                        style={{ fontSize: 13, color: '#475569', textDecoration: 'none' }}
+                                    >
+                                        📞 {phone}
+                                    </a>
+                                ))}
+                            </div>
+                        )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                             {person.companies.map((company) => (
                                 <span

@@ -34,7 +34,7 @@ class RequesterController extends Controller
         $data = $this->validated($request);
 
         $requester = DB::transaction(function () use ($data) {
-            $requester = Requester::create(['name' => $data['name']]);
+            $requester = Requester::create(['name' => $data['name'], 'phones' => $data['phones']]);
             $requester->companies()->sync($data['company_ids']);
 
             return $requester;
@@ -52,7 +52,7 @@ class RequesterController extends Controller
         $data = $this->validated($request, $requester);
 
         DB::transaction(function () use ($requester, $data) {
-            $requester->update(['name' => $data['name']]);
+            $requester->update(['name' => $data['name'], 'phones' => $data['phones']]);
             $requester->companies()->sync($data['company_ids']);
         });
 
@@ -79,16 +79,34 @@ class RequesterController extends Controller
 
     private function validated(Request $request, ?Requester $existing = null): array
     {
-        $request->merge(['name' => trim((string) $request->input('name'))]);
+        // A row added and left empty is not a number; trimmed, blank rows go
+        // before validation so they neither fail it nor get stored.
+        $phones = collect((array) $request->input('phones', []))
+            ->map(fn ($phone) => trim((string) $phone))
+            ->filter(fn ($phone) => $phone !== '')
+            ->values()->all();
+        $request->merge(['name' => trim((string) $request->input('name')), 'phones' => $phones]);
 
-        return $request->validate([
+        $data = $request->validate([
             'name' => 'required|string|max:255|unique:requesters,name'.($existing ? ','.$existing->id : ''),
             // At least one: a requester in no company would be offered nowhere.
             'company_ids' => 'required|array|min:1',
             'company_ids.*' => 'integer|distinct|exists:settings_companies,id',
+            // Optional, as many as they have. Digits with the usual separators,
+            // and at least 5 digits, so a stray letter or a half-typed number
+            // is caught here rather than found when someone tries to call.
+            'phones' => 'array|max:10',
+            'phones.*' => ['string', 'max:30', 'distinct', 'regex:/^\+?[0-9\s\-()]*$/', 'regex:/(\d.*){5,}/'],
         ], [
             'company_ids.required' => 'Choose at least one company.',
             'company_ids.min' => 'Choose at least one company.',
+            'phones.max' => 'Up to 10 numbers per person.',
+            'phones.*.regex' => 'Enter a phone number: digits, spaces, +, - and brackets, at least 5 digits.',
+            'phones.*.distinct' => 'This number is already listed for this person.',
+            'phones.*.max' => 'A phone number is at most 30 characters.',
         ]);
+        $data['phones'] = $data['phones'] ?? [];
+
+        return $data;
     }
 }

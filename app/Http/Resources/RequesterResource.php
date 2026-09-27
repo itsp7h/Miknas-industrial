@@ -14,6 +14,7 @@ class RequesterResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'phones' => array_values($this->phones ?? []),
             'company_ids' => $companies->pluck('id')->values(),
             'companies' => $companies->map(fn ($company) => [
                 'id' => $company->id,

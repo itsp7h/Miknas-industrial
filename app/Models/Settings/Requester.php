@@ -12,7 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class Requester extends Model
 {
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'phones'];
+
+    /** Contact numbers, in the order they were entered. */
+    protected $casts = ['phones' => 'array'];
 
     public function companies(): BelongsToMany
     {
