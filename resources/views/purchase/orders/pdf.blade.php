@@ -77,6 +77,11 @@
 
     .signatures { width: 100%; border-collapse: collapse; margin-top: 40px; }
     .signatures td { vertical-align: top; padding: 0; }
+    /* Centred over the name, the way the name is centred over the line. The
+       same height is kept in both blocks, signed or not, so the two lines stay
+       level. */
+    .sig-img-wrap { text-align: center; height: 60px; margin-bottom: 4px; }
+    .sig-img { max-height: 60px; max-width: 200px; }
     .sig-block { width: 45%; }
     .sig-gap { width: 10%; }
     .sig-line { border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 10px; color: #64748b; text-align: center; }
@@ -236,11 +241,18 @@
 <table class="signatures">
     <tr>
         <td class="sig-block">
+            {{-- The issuer's signature as it was when the LPO was issued. --}}
+            <div class="sig-img-wrap">
+                @if ($order->prepared_signature)
+                    <img class="sig-img" src="{{ $order->prepared_signature }}" alt="Signature">
+                @endif
+            </div>
             <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
             <div class="sig-line">Prepared By</div>
         </td>
         <td class="sig-gap"></td>
         <td class="sig-block">
+            <div class="sig-img-wrap"></div>
             <div class="sig-name">&nbsp;</div>
             <div class="sig-line">Approved By</div>
         </td>

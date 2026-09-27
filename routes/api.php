@@ -66,6 +66,8 @@ Route::prefix('v1')->group(function () {
         Route::get('profile', [ProfileController::class, 'show']);
         Route::put('profile', [ProfileController::class, 'update']);
         Route::put('profile/password', [ProfileController::class, 'updatePassword']);
+        Route::put('profile/signature', [ProfileController::class, 'updateSignature']);
+        Route::delete('profile/signature', [ProfileController::class, 'destroySignature']);
         Route::delete('profile', [ProfileController::class, 'destroy']);
         Route::post('profile/verification-notification', [ProfileController::class, 'sendVerificationNotification']);
 

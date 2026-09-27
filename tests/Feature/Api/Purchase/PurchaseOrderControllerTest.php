@@ -40,7 +40,8 @@ class PurchaseOrderControllerTest extends TestCase
     /** A user cleared to generate LPOs, which is what PO create/edit/delete gates on. */
     private function procurementUser(): User
     {
-        $user = User::factory()->create();
+        // LPOs are issued under the issuer's saved signature.
+        $user = User::factory()->withSignature()->create();
         $user->givePermissionTo([
             'pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
             'pipeline.award', 'pipeline.generate-lpo', 'pipeline.view-active-pipeline',

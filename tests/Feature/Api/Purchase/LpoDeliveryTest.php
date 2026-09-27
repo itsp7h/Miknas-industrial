@@ -62,7 +62,8 @@ class LpoDeliveryTest extends TestCase
 
     private function officer(): User
     {
-        $user = User::factory()->create();
+        // LPOs are issued under the issuer's saved signature.
+        $user = User::factory()->withSignature()->create();
         $user->givePermissionTo([
             'pipeline.view', 'pipeline.manage-rfq', 'pipeline.manage-quotes',
             'pipeline.award', 'pipeline.generate-lpo', 'pipeline.view-active-pipeline',

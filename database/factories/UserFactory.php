@@ -42,4 +42,15 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /** A 1×1 PNG: the smallest real image an LPO signature can be. */
+    public const SIGNATURE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+    /** A user with a signature saved, as anyone issuing LPOs needs. */
+    public function withSignature(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'signature_image' => self::SIGNATURE,
+        ]);
+    }
 }

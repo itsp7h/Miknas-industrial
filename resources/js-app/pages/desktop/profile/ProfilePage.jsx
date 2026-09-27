@@ -2,6 +2,7 @@ import DeleteAccountModal from '../../../components/profile/DeleteAccountModal';
 import PasswordForm from '../../../components/profile/PasswordForm';
 import ProfileDetailsForm from '../../../components/profile/ProfileDetailsForm';
 import ProfileSection from '../../../components/profile/ProfileSection';
+import SignatureSettings from '../../../components/profile/SignatureSettings';
 import useProfile from '../../../components/profile/useProfile';
 import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 
@@ -15,7 +16,7 @@ export default function ProfilePage({ compact = false }) {
         <div style={{ maxWidth: compact ? '100%' : 896 }}>
             <div className="mb-5">
                 <h1 className="page-title">Profile</h1>
-                <p className="page-subtitle">Your account details, password and account removal.</p>
+                <p className="page-subtitle">Your account details, password, signature and account removal.</p>
             </div>
 
             {p.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
@@ -41,6 +42,19 @@ export default function ProfilePage({ compact = false }) {
                         maxWidth={maxWidth}
                     >
                         <PasswordForm onSave={p.savePassword} />
+                    </ProfileSection>
+
+                    <ProfileSection
+                        title="Signature"
+                        description="Printed in the Prepared By box of every LPO you issue. Draw it or upload an image once; replacing it later changes only LPOs issued afterwards."
+                        maxWidth={maxWidth}
+                    >
+                        <SignatureSettings
+                            signature={p.user.signature}
+                            onSave={p.saveSignature}
+                            onRemove={p.removeSignature}
+                            compact={compact}
+                        />
                     </ProfileSection>
 
                     <ProfileSection
