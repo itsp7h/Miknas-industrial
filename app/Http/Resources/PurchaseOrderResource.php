@@ -28,6 +28,8 @@ class PurchaseOrderResource extends JsonResource
             'sent_to' => $this->sent_to,
             'notes' => $this->notes,
             'created_by_name' => $this->whenLoaded('createdBy', fn () => $this->createdBy?->name),
+            // Whether the LPO went out signed; the image itself stays on the documents.
+            'prepared_signed' => ! is_null($this->prepared_signature),
             'items' => PurchaseOrderItemResource::collection($this->whenLoaded('items')),
             // The detail page renders the supplier block of the printed LPO, so it
             // needs the contact fields rather than just the name.

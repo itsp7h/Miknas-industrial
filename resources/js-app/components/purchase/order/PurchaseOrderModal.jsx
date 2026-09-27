@@ -4,6 +4,7 @@ import FormModal, { Field, FormSection, fieldErrors, messagesFrom } from '../../
 import OrderItemRows, { blankLine } from './OrderItemRows';
 import { CREATE_CHROME, EDIT_CHROME } from './purchaseOrderModalChrome';
 import { apiGet, apiPost, apiPut } from '../../../api/client';
+import SignatureDialog from '../../signature/SignatureDialog';
 
 /**
  * The purchase order form, in the same dialog as the MPR and supplier forms
@@ -47,8 +48,12 @@ export default function PurchaseOrderModal({ order, onSaved, onCancel }) {
         setMessages([]);
     }
 
+    // A new order is an LPO issued under the creator's saved signature; without
+    // one the server says so, the signature is asked for, and the save retried.
+    const [askingSignature, setAskingSignature] = useState(false);
+
     async function submit(event) {
-        event.preventDefault();
+        event?.preventDefault();
         if (saving) return;
 
         setSaving(true);
@@ -78,6 +83,11 @@ export default function PurchaseOrderModal({ order, onSaved, onCancel }) {
                 : await apiPost('/purchase/orders', payload);
             onSaved(response.data);
         } catch (rejection) {
+            if (rejection?.code === 'signature_required') {
+                setAskingSignature(true);
+
+                return;
+            }
             setErrors(fieldErrors(rejection));
             // Anything that is not a 422 used to leave the dialog silent.
             setMessages(messagesFrom(rejection, 'The purchase order could not be saved. Please try again.'));
@@ -188,6 +198,11 @@ export default function PurchaseOrderModal({ order, onSaved, onCancel }) {
                     />
                 </FormSection>
             </form>
+            <SignatureDialog
+                open={askingSignature}
+                onClose={() => setAskingSignature(false)}
+                onSaved={() => { setAskingSignature(false); return submit(); }}
+            />
         </FormModal>
     );
 }

@@ -18,12 +18,20 @@ const OPTIONS = {
 describe('GrnModal', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
-        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+        // Answers a beat late, as a real network does, so a test that forgets
+        // to wait for the options fails every time rather than only on a slow
+        // CI runner (the PurchaseOrderModal tests do the same).
+        vi.spyOn(client, 'apiGet').mockImplementation(
+            () => new Promise((resolve) => setTimeout(() => resolve(OPTIONS), 20)),
+        );
     });
 
+    // Wait for the order list, not just the title: an order chosen before
+    // its <option> exists is dropped (see the warehouse block below).
     const open = async (props = {}) => {
         render(<GrnModal onSaved={() => {}} onCancel={() => {}} {...props} />);
         await screen.findByText('New Goods Receipt Note');
+        await screen.findByRole('option', { name: /PO-00005/ });
     };
 
     it('opens with the create chrome and the three sections', async () => {
@@ -177,12 +185,22 @@ describe('GrnModal and the company warehouse', () => {
 
     beforeEach(() => {
         vi.restoreAllMocks();
-        vi.spyOn(client, 'apiGet').mockResolvedValue(LINKED);
+        // Answers a beat late, as a real network does, so a test that forgets
+        // to wait for the options fails every time rather than only on a slow
+        // CI runner (the PurchaseOrderModal tests do the same).
+        vi.spyOn(client, 'apiGet').mockImplementation(
+            () => new Promise((resolve) => setTimeout(() => resolve(LINKED), 20)),
+        );
     });
 
+    // The title renders before the order list arrives. Choosing order 6
+    // before its <option> exists is silently dropped and the select stays
+    // empty, which is how this block failed on a slow CI runner. Wait for
+    // the options themselves.
     const open = async () => {
         render(<GrnModal onSaved={() => {}} onCancel={() => {}} />);
         await screen.findByText('New Goods Receipt Note');
+        await screen.findByRole('option', { name: /PO-00006/ });
     };
 
     it('fills the warehouse in from the order’s company and locks it', async () => {
