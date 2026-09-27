@@ -7,7 +7,8 @@
 #   scripts/smoke-test.sh http://192.168.0.38          # staging
 #   scripts/smoke-test.sh https://steelerp.p7h.me      # production
 #
-# Optional: REVERB_URL=http://192.168.0.38:8080 to also check websockets.
+# Optional: REVERB_URL=https://steelerp.p7h.me plus REVERB_APP_KEY to also
+# check websockets, through the same public address a browser uses.
 #
 set -uo pipefail
 
@@ -89,13 +90,29 @@ fi
 
 # 6. Websockets, when a Reverb URL is given. The React app's live updates
 #    depend on this and nothing else in the suite would notice it being down.
+#    Point it at the public https://<domain>, the address a browser dials, so
+#    the Cloudflare tunnel and Apache's proxy rules are tested too, not just
+#    Reverb on port 8080.
+#
+#    --http1.1: over TLS curl otherwise negotiates HTTP/2, where Upgrade does
+#    not exist, and the request lands on the SPA's /app route instead (302).
+#    A 101 alone proves little: Reverb upgrades for any key and only then sends
+#    `pusher:error` 4001. So read the first frame and require
+#    `pusher:connection_established`, which also proves REVERB_APP_KEY is right.
+#    curl exits on --max-time with the socket still open; that is expected.
 if [ -n "${REVERB_URL:-}" ]; then
-  CODE=$(curl --silent --max-time 10 -o /dev/null -w '%{http_code}' \
+  WS=$(curl --http1.1 --silent --max-time 5 -o - -w '\n%{http_code}' \
     -H "Connection: Upgrade" -H "Upgrade: websocket" \
     -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-    "${REVERB_URL%/}/app/${REVERB_APP_KEY:-invalid}?protocol=7&client=js&version=8.4.0" 2>/dev/null)
-  if [ "$CODE" = "101" ]; then ok "reverb accepts websocket upgrades"
-  else bad "reverb did not upgrade (got $CODE, want 101)"; fi
+    "${REVERB_URL%/}/app/${REVERB_APP_KEY:-invalid}?protocol=7&client=js&version=8.4.0" 2>/dev/null | tr -d '\000')
+  CODE=${WS##*$'\n'}
+  if [ "$CODE" != "101" ]; then
+    bad "reverb did not upgrade at $REVERB_URL (got ${CODE:-no response}, want 101)"
+  elif printf '%s' "$WS" | grep -aq 'pusher:connection_established'; then
+    ok "reverb accepts a websocket connection at $REVERB_URL"
+  else
+    bad "reverb upgraded but did not establish a connection: $(printf '%s' "$WS" | grep -ao '"message[^}]*' | head -1 | tr -d '\\')"
+  fi
 fi
 
 echo

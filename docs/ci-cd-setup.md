@@ -85,8 +85,12 @@ should show as Idle.
 
 ## Repository configuration
 
-- **Secret `STAGING_REVERB_APP_KEY`** — the staging `REVERB_APP_KEY`, used by
-  the staging smoke test to open a websocket against Reverb.
+- **Secrets `STAGING_REVERB_APP_KEY` and `PRODUCTION_REVERB_APP_KEY`** — each
+  box's `REVERB_APP_KEY`, used by its smoke test (after a deploy or a rollback)
+  to open a websocket through the public domain. The key is not confidential:
+  every logged-in browser receives it in `data-reverb`, which is also the
+  easiest place to read it. A wrong value fails the check with *Application
+  does not exist*.
 - **Environment `production`** — add required reviewers under
   Settings → Environments. That is what makes production deploys wait for a
   human. It is the second of two gates; the first is the `verify` job's CI
@@ -275,7 +279,10 @@ the part unit tests cannot reach:
    frontend is broken
 5. An unknown route does not leak `APP_KEY`, DB credentials, or framework paths
    (i.e. `APP_DEBUG` is not on in a public environment)
-6. Reverb accepts a websocket upgrade, when `REVERB_URL` is set
+6. A websocket connects through the public `wss://<domain>`, when `REVERB_URL`
+   is set — the whole path a browser takes (Cloudflare, the tunnel, Apache's
+   proxy rules, Reverb). It requires Reverb's `pusher:connection_established`,
+   not merely a 101: Reverb upgrades for any key and only then refuses it
 
 It exits non-zero if any check fails, and treats an unreachable host as a
 failure rather than a pass.

@@ -30,9 +30,11 @@ jobs:
       - name: Deploy
         run: sudo /usr/local/sbin/steelerp-deploy staging github/development
 
+      # The websocket is checked on the public domain, the address a browser
+      # dials, so the tunnel and Apache's proxy rules are covered as well.
       - name: Smoke test
         env:
-          REVERB_URL: http://192.168.0.38:8080
+          REVERB_URL: https://staging-steelerp.p7h.me
           REVERB_APP_KEY: ${{ secrets.STAGING_REVERB_APP_KEY }}
         run: /var/www/ProjectsERP/current/scripts/smoke-test.sh http://192.168.0.38
 

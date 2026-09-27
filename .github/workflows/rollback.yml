@@ -35,9 +35,13 @@ jobs:
       - name: Smoke test
         env:
           TARGET: ${{ inputs.environment }}
+          STAGING_KEY: ${{ secrets.STAGING_REVERB_APP_KEY }}
+          PRODUCTION_KEY: ${{ secrets.PRODUCTION_REVERB_APP_KEY }}
         run: |
           case "$TARGET" in
-            production) URL=https://steelerp.p7h.me ;;
-            *) URL=http://192.168.0.38 ;;
+            production) URL=https://steelerp.p7h.me
+                        export REVERB_URL=$URL REVERB_APP_KEY=$PRODUCTION_KEY ;;
+            *) URL=http://192.168.0.38
+               export REVERB_URL=https://staging-steelerp.p7h.me REVERB_APP_KEY=$STAGING_KEY ;;
           esac
           /var/www/ProjectsERP/current/scripts/smoke-test.sh "$URL"
