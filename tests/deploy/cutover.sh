@@ -32,7 +32,7 @@ trap cleanup EXIT
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$*"; }
 fail() { printf '  \033[31mFAIL\033[0m %s\n' "$*"; exit 1; }
 
-export SKIP_HOST_CHECK=1 SKIP_SERVICES=1 SKIP_PROVISION=1 SKIP_CHOWN=1
+export RETRY_DELAY=0 SKIP_HOST_CHECK=1 SKIP_SERVICES=1 SKIP_PROVISION=1 SKIP_CHOWN=1
 export SKIP_FRONTEND=1
 export HEALTH_URL="http://127.0.0.1:$PORT/up"
 
