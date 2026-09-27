@@ -13,6 +13,13 @@ function messagesFrom(rejection) {
     return fromErrors.length ? fromErrors : [rejection?.message || 'Could not save that request.'];
 }
 
+/** The names System → Requested By maps to a company, in list order. */
+function requestersFor(requesters, companyId) {
+    return requesters
+        .filter((person) => (person.company_ids ?? []).includes(companyId))
+        .map((person) => person.name);
+}
+
 /**
  * The MPR form, shared by the new-request and edit-request modals. Both Blade
  * components rendered the same three sections in the same chrome and differed
@@ -67,6 +74,12 @@ export default function RequestModal({
 
         return (options?.departments ?? []).filter((d) => d.company_id === company.id);
     }, [options, company]);
+    // Requested By follows the company the same way: System → Requested By
+    // maps each person to the companies they raise requests for.
+    const offeredRequesters = useMemo(
+        () => (company?.id ? requestersFor(requesters, company.id) : []),
+        [requesters, company]
+    );
 
     /**
      * What choosing a company settles on its own.
@@ -88,11 +101,14 @@ export default function RequestModal({
             ? (options?.departments ?? []).filter((d) => d.company_id === chosen.id)
             : [];
 
+        const theirRequesters = chosen ? requestersFor(requesters, chosen.id) : [];
+
         return {
             company_name: companyName,
             project_name: onlyProject?.name ?? '',
             location: offeredLocations.length === 1 ? offeredLocations[0] : '',
             department: theirDepartments.length === 1 ? theirDepartments[0].name : '',
+            requested_by_name: theirRequesters.length === 1 ? theirRequesters[0] : '',
         };
     }
 
@@ -182,18 +198,25 @@ export default function RequestModal({
                             </label>
                             <select
                                 id="mpr-requested-by" required className="form-input"
+                                disabled={!company && !values.requested_by_name}
                                 value={values.requested_by_name ?? ''}
                                 onChange={(e) => set('requested_by_name', e.target.value)}
                             >
-                                <option value="">— Select Person —</option>
-                                {/* A name typed before this was a picker, or a user
-                                    since renamed or removed, stays selectable rather
-                                    than silently emptying the field on the next save. */}
-                                {values.requested_by_name && !requesters.includes(values.requested_by_name) && (
+                                <option value="">{company ? '— Select Person —' : '— Select a company first —'}</option>
+                                {/* A name typed before this was a picker, or a person
+                                    since renamed, removed or unmapped from this company,
+                                    stays selectable rather than silently emptying the
+                                    field on the next save. */}
+                                {values.requested_by_name && !offeredRequesters.includes(values.requested_by_name) && (
                                     <option value={values.requested_by_name}>{values.requested_by_name}</option>
                                 )}
-                                {requesters.map((name) => <option key={name} value={name}>{name}</option>)}
+                                {offeredRequesters.map((name) => <option key={name} value={name}>{name}</option>)}
                             </select>
+                            {company && offeredRequesters.length === 0 && (
+                                <p style={{ fontSize: 12, color: '#b45309', marginTop: 4 }}>
+                                    No one is set up for {company.name} yet. Add them under System → Requested By.
+                                </p>
+                            )}
                         </div>
 
                         <UrgencyPicker

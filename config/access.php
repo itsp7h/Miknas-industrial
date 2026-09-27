@@ -139,6 +139,12 @@ return [
                 'import' => 'Import from Excel, and download the template',
             ],
         ],
+        // The people the MPR form's Requested By offers, per company.
+        'requesters' => [
+            'group' => 'System',
+            'label' => 'Requested By',
+            'actions' => ['view', 'create', 'edit', 'delete'],
+        ],
         'item-categories' => [
             'group' => 'System',
             'label' => 'Item Categories',

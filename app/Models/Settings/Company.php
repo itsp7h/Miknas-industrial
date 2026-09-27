@@ -5,6 +5,7 @@ namespace App\Models\Settings;
 use App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
@@ -29,5 +30,11 @@ class Company extends Model
     public function departments(): HasMany
     {
         return $this->hasMany(Department::class, 'company_id');
+    }
+
+    /** The people an MPR for this company can be raised for. */
+    public function requesters(): BelongsToMany
+    {
+        return $this->belongsToMany(Requester::class, 'company_requester', 'company_id', 'requester_id');
     }
 }

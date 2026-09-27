@@ -177,6 +177,10 @@ Api/                              ← the React SPA's JSON API
              IntegrationController  WhatsApp (UltraMSG)
              MailAccountController  mail accounts
              VatController          the global VAT rate
+             RequesterController    System → Requested By: the people the
+                                    MPR's Requested By offers, each mapped
+                                    to one or more companies (not Admin-only:
+                                    `requesters.*` squares)
 
 Auth/                             Breeze's, session-establishing. Their GET
                                   actions now render `auth.shell` — the React

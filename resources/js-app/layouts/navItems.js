@@ -89,6 +89,7 @@ export const NAV_GROUPS = [
         items: [
             { type: 'link', to: '/app/settings/companies', label: 'Companies', icon: BUILDING, permission: 'companies.view' },
             { type: 'link', to: '/app/settings/projects', label: 'Projects', icon: FOLDER, permission: 'projects.view' },
+            { type: 'link', to: '/app/settings/requested-by', label: 'Requested By', icon: USERS, permission: 'requesters.view' },
             { type: 'link', to: '/app/settings/users', label: 'Users', icon: USERS, adminOnly: true },
             { type: 'link', to: '/app/settings/integrations', label: 'Integrations', icon: COG, adminOnly: true },
             { type: 'link', to: '/app/settings/finance', label: 'Finance', icon: RECEIPT, permission: 'finance.view' },
