@@ -52,9 +52,9 @@ box's `.env`, or Sanctum never starts a session for it and the API login dies
 with *"Session store not set on request."* Staging's public domain was missing
 from it until 2026-09-24, which broke logging in there.
 
-Both boxes run `steelerp-reverb` and `steelerp-queue` as systemd units.
-Staging runs `steelerp-scheduler` too (a oneshot `schedule:run` on a one-minute
-timer). Production has none until it is provisioned.
+Both boxes run `steelerp-reverb`, `steelerp-queue` and `steelerp-scheduler`
+as systemd units (the scheduler is a oneshot `schedule:run` on a one-minute
+timer; the app schedules nothing yet).
 
 **Machine setup is code: `scripts/provision.sh`.** It owns the vhost, the
 websocket proxy, the three units and the runner's sudoers rule, rendered from
@@ -117,6 +117,21 @@ rule binding: **a migration must work with the release before it.** The old
 code runs on the new schema until the switch, and a rollback moves only the
 code. Expand, then contract: add the new column in one release and drop the old
 one in a later release, never both at once.
+
+Three things reach a box by different routes, and mixing them up has cost a
+deploy before:
+
+| Change to | Reaches a box |
+|---|---|
+| app code, `scripts/smoke-test.sh` | with the deploy of the release that carries it |
+| `.github/workflows/deploy-*.yml` | only once it is on **`main`** — `workflow_run` workflows always run from the default branch, so a staging deploy of `development` still runs `main`'s copy |
+| `scripts/steelerp-deploy`, `scripts/provision.sh` and its templates | only when the **Provision** workflow runs, and it runs the copy in `current`, so **deploy first, then provision**; a deploy that finds its installed `steelerp-deploy` older than the release's says so in yellow |
+
+Each box's smoke test opens a websocket through its public domain with the
+`STAGING_REVERB_APP_KEY` / `PRODUCTION_REVERB_APP_KEY` secret, and passes only
+on Reverb's `pusher:connection_established` — Reverb answers 101 to any key,
+so a 101 alone proves nothing (that is how staging's missing secret went
+unnoticed until 2026-09-27).
 
 **Any Vitest test that renders a component reaching Echo must `vi.mock` it.**
 `resources/js-app/echo.js` instantiates Pusher at import time, so without a

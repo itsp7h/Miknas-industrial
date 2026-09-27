@@ -1,7 +1,16 @@
 # Atomic Deploys, Build Once, Separate Provisioning — Design Spec
 
 **Date:** 2026-09-24
-**Status:** proposed, awaiting review
+**Status:** implemented — all six phases shipped by 2026-09-27 (PRs #19–#36).
+`docs/ci-cd-setup.md` describes the system as built; this spec is the design
+record. Where they differ, the build won:
+- **Build once** ships as a git ref, `refs/builds/<sha>`, fetched by root over
+  the box's own key, not as an Actions artifact `release-<sha>` downloaded by
+  the runner: a file the unprivileged runner passed to sudo could be swapped.
+- **The public websocket smoke test** also requires
+  `pusher:connection_established`, because Reverb answers 101 to any key.
+- **The deploy's GitHub fetch is retried** (up to four attempts), after
+  GitHub's SSH briefly refused a good key on two deploys.
 **Replaces:** the in-place `scripts/deploy.sh` flow described in `docs/ci-cd-setup.md`
 **Supersedes:** PR #17 (`chore/deploy-applies-reverb-proxy`), which should be closed unmerged
 
