@@ -15,7 +15,7 @@ use App\Models\PurchaseRequestItem;
 use App\Models\Settings\Company;
 use App\Models\Settings\Department;
 use App\Models\Settings\ProjectSetting;
-use App\Models\User;
+use App\Models\Settings\Requester;
 use App\Services\DocumentNumberService;
 use App\Services\ItemCatalogue;
 use Illuminate\Http\Request;
@@ -86,9 +86,14 @@ class PurchaseRequestController extends Controller
             'departments' => Department::where('is_active', true)->orderBy('name')
                 ->get(['id', 'name', 'company_id']),
             // Requested By names a person, and a free-text box spelled the same
-            // one three ways. The form picks from these; only the name is
+            // one three ways. The form picks from System → Requested By,
+            // showing only the chosen company's people; only the name is
             // stored, since requested_by stays whoever created the request.
-            'requesters' => User::orderBy('name')->pluck('name')->values(),
+            'requesters' => Requester::with('companies:id')->orderBy('name')->get()
+                ->map(fn (Requester $requester) => [
+                    'name' => $requester->name,
+                    'company_ids' => $requester->companies->pluck('id')->values(),
+                ])->values(),
             // What the description field completes from, and where it takes
             // each material's unit. Name and unit only: the form needs nothing
             // else, and the list is sent whole on every open.

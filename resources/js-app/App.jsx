@@ -77,6 +77,8 @@ import MobileFinancePage from './pages/mobile/settings/FinancePage';
 import DesktopGeneralSettingsPage from './pages/desktop/settings/GeneralSettingsPage';
 import MobileGeneralSettingsPage from './pages/mobile/settings/GeneralSettingsPage';
 import DesktopItemCategoryPage from './pages/desktop/settings/ItemCategoryPage';
+import DesktopRequesterPage from './pages/desktop/settings/RequesterPage';
+import MobileRequesterPage from './pages/mobile/settings/RequesterPage';
 import MobileItemCategoryPage from './pages/mobile/settings/ItemCategoryPage';
 import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
 import MobileProductionOutputListPage from './pages/mobile/production/ProductionOutputListPage';
@@ -122,6 +124,7 @@ export default function App({
     const IntegrationsPage = viewport === 'mobile' ? MobileIntegrationsPage : DesktopIntegrationsPage;
     const FinancePage = viewport === 'mobile' ? MobileFinancePage : DesktopFinancePage;
     const ItemCategoryPage = viewport === 'mobile' ? MobileItemCategoryPage : DesktopItemCategoryPage;
+    const RequesterPage = viewport === 'mobile' ? MobileRequesterPage : DesktopRequesterPage;
     const GeneralSettingsPage = viewport === 'mobile' ? MobileGeneralSettingsPage : DesktopGeneralSettingsPage;
     const ProfilePage = viewport === 'mobile' ? MobileProfilePage : DesktopProfilePage;
 
@@ -215,6 +218,7 @@ export default function App({
                         path="/app/settings/vat"
                         element={<Navigate to="/app/settings/finance" replace />}
                     />
+                    <Route path="/app/settings/requested-by" element={<RequesterPage />} />
                     <Route path="/app/settings/item-categories" element={<ItemCategoryPage />} />
                     <Route path="/app/settings/general" element={<GeneralSettingsPage />} />
                     <Route path="/app/profile" element={<ProfilePage />} />

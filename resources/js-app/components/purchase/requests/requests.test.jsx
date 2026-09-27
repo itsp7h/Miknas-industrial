@@ -32,7 +32,13 @@ const OPTIONS = {
         { id: 3, name: 'Welding Rod', unit: null },
     ],
     units: ['PCS', 'KG'],
-    requesters: ['Admin User', 'Ali', 'nelson'],
+    // System → Requested By: each person and the companies they request for.
+    // Desert Logistics has exactly one person; Gulf Marine has nobody yet.
+    requesters: [
+        { name: 'Ali', company_ids: [3] },
+        { name: 'nelson', company_ids: [3, 5] },
+        { name: 'Sara', company_ids: [3] },
+    ],
     today: '2026-09-01',
 };
 
@@ -211,16 +217,52 @@ describe('the new-request modal', () => {
         fireEvent.click(screen.getByText('Miknas Steel'));
         expect(screen.getByLabelText('Location / Project')).toHaveValue('');
     });
-    // Requested By was a free-text box, so one person arrived spelled three ways.
-    it('picks the requester from the system users', async () => {
+    // Requested By was a free-text box, so one person arrived spelled three
+    // ways; then a list of every user account, for every company. It now
+    // offers the people System → Requested By maps to the chosen company.
+    it("offers only the chosen company's people, once a company is chosen", async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open new'));
         await screen.findByText('New Purchase Request');
 
         const field = screen.getByLabelText(/Requested By/);
         expect(field.tagName).toBe('SELECT');
-        expect(within(field).getByRole('option', { name: 'Ali' })).toBeInTheDocument();
-        expect(within(field).getByRole('option', { name: 'nelson' })).toBeInTheDocument();
+        expect(field).toBeDisabled();
+        expect(within(field).getByRole('option', { name: '— Select a company first —' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+
+        expect(field).toBeEnabled();
+        const names = within(field).getAllByRole('option').map((o) => o.textContent);
+        expect(names).toEqual(['— Select Person —', 'Ali', 'nelson', 'Sara']);
+    });
+
+    it('fills Requested By when the company has exactly one person, and clears it on a change', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Desert Logistics'));
+        expect(screen.getByLabelText(/^Requested By/)).toHaveValue('nelson');
+
+        // Several on offer: nobody is chosen for the user.
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Miknas Steel'));
+        expect(screen.getByLabelText(/^Requested By/)).toHaveValue('');
+    });
+
+    it('says where to add people when the company has none', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await screen.findByText('New Purchase Request');
+
+        fireEvent.click(screen.getByLabelText(/Company/));
+        fireEvent.click(screen.getByText('Gulf Marine'));
+
+        expect(screen.getByText('No one is set up for Gulf Marine yet. Add them under System → Requested By.')).toBeInTheDocument();
+        expect(within(screen.getByLabelText(/^Requested By/)).getAllByRole('option')).toHaveLength(1);
     });
 
     it('posts the form and drops rows left blank', async () => {
