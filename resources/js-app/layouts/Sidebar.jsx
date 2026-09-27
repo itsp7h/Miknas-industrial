@@ -195,9 +195,15 @@ export function SidebarFooter({ userName, userEmail, logoutUrl, csrfToken }) {
 
 export default function Sidebar({ isAdmin, can, isActive, userName, userEmail, logoutUrl, csrfToken }) {
     return (
+        // Pinned to the viewport. As a plain flex child it stretched to the
+        // page's full height and scrolled away with it, so on a long list (1,193
+        // imported suppliers) the menu was gone after the first screen. Sticky
+        // with a viewport height keeps it in view, and a menu taller than the
+        // screen scrolls inside itself.
         <aside style={{
             width: 260, minWidth: 260, background: '#0f172a',
             display: 'flex', flexDirection: 'column', overflowY: 'auto',
+            position: 'sticky', top: 0, height: '100vh', alignSelf: 'flex-start',
         }}>
             <Brand />
             <nav style={{ padding: 12, flex: 1 }}>
