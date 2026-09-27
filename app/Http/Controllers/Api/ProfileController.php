@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Support\IssuerSignature;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -80,6 +81,39 @@ class ProfileController extends Controller
         return response()->json(['message' => 'A new verification link has been sent to your email address.']);
     }
 
+    /**
+     * The signature LPOs are issued under, drawn or uploaded once. Replacing it
+     * changes only LPOs issued from now on; each one keeps the copy it went out
+     * with.
+     */
+    public function updateSignature(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'signature_image' => ['required', 'string', function ($attribute, $value, $fail) {
+                if (! IssuerSignature::isValidImage($value)) {
+                    $fail('The signature must be a PNG or JPEG image under 512 KB.');
+                }
+            }],
+        ]);
+
+        $request->user()->forceFill(['signature_image' => $data['signature_image']])->save();
+
+        return response()->json([
+            'message' => 'Signature saved. It will appear on every LPO you issue.',
+            'data' => $this->payload($request->user()),
+        ]);
+    }
+
+    public function destroySignature(Request $request): JsonResponse
+    {
+        $request->user()->forceFill(['signature_image' => null])->save();
+
+        return response()->json([
+            'message' => 'Signature removed. You will be asked for one before issuing your next LPO.',
+            'data' => $this->payload($request->user()),
+        ]);
+    }
+
     private function payload($user): array
     {
         return [
@@ -88,6 +122,7 @@ class ProfileController extends Controller
             'email' => $user->email,
             'email_verified' => ! is_null($user->email_verified_at),
             'roles' => $user->roles->pluck('name'),
+            'signature' => $user->signature_image,
         ];
     }
 }

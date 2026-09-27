@@ -14,6 +14,7 @@ use App\Models\Supplier;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
 use App\Services\DocumentNumberService;
 use App\Services\LpoDeliveryService;
+use App\Support\IssuerSignature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -62,8 +63,10 @@ class PurchaseOrderController extends Controller
         ]);
 
         $this->authorizeOrderAccess($data['purchase_request_id'] ?? null);
+        // A hand-made order is an LPO too, printed and sent the same way.
+        $signature = IssuerSignature::require(auth()->user());
 
-        $order = DB::transaction(function () use ($data) {
+        $order = DB::transaction(function () use ($data, $signature) {
             $order = PurchaseOrder::create([
                 'po_number' => $this->nextPoNumber($data['purchase_request_id'] ?? null),
                 'supplier_id' => $data['supplier_id'],
@@ -74,6 +77,7 @@ class PurchaseOrderController extends Controller
                 'total_amount' => $this->totalFor($data['items']),
                 'status' => 'draft',
                 'created_by' => auth()->id(),
+                'prepared_signature' => $signature,
             ]);
 
             $this->replaceItems($order, $data['items']);

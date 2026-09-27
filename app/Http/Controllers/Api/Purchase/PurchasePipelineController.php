@@ -13,6 +13,7 @@ use App\Services\LpoDeliveryService;
 use App\Services\LpoGenerationService;
 use App\Services\PurchaseStageService;
 use App\Services\RfqInvitationService;
+use App\Support\IssuerSignature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -189,6 +190,8 @@ class PurchasePipelineController extends Controller
         LpoDeliveryService $delivery
     ) {
         $this->authorize('generateLpo', $purchaseRequest);
+        // Every LPO carries its issuer's signature, so none is issued without one.
+        IssuerSignature::require(auth()->user());
 
         try {
             $orders = $service->generate($purchaseRequest);

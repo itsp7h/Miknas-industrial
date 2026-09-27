@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ConfirmModal from '../../ui/ConfirmModal';
+import SignatureDialog from '../../signature/SignatureDialog';
 import RecordGrnModal from './RecordGrnModal';
 import SignatureModal from './SignatureModal';
 import SupplierSelectModal from './SupplierSelectModal';
@@ -13,15 +14,32 @@ import { useToast } from '../../ui/Toast';
  */
 export default function PipelineDialogs({ open, onClose, request, actions }) {
     const [sendingInvites, setSendingInvites] = useState(false);
+    // Issuing needs the issuer's saved signature; without one the server says
+    // so, and the signature is asked for here and the LPO issued after it.
+    const [askingSignature, setAskingSignature] = useState(false);
     const { showToast } = useToast();
 
-    async function confirmLpo() {
-        onClose();
+    async function issueLpo() {
         try {
             await actions.generateLpo();
         } catch (err) {
+            if (err?.code === 'signature_required') {
+                setAskingSignature(true);
+
+                return;
+            }
             showToast(err?.message || 'Could not issue the LPO.', 'error');
         }
+    }
+
+    async function confirmLpo() {
+        onClose();
+        await issueLpo();
+    }
+
+    async function signatureSaved() {
+        setAskingSignature(false);
+        await issueLpo();
     }
 
     async function sendInvitations() {
@@ -81,6 +99,12 @@ export default function PipelineDialogs({ open, onClose, request, actions }) {
                     : 'An LPO will be generated from the awarded items and sent to each awarded supplier.'}
                 onConfirm={confirmLpo}
                 onCancel={onClose}
+            />
+
+            <SignatureDialog
+                open={askingSignature}
+                onClose={() => setAskingSignature(false)}
+                onSaved={signatureSaved}
             />
         </>
     );

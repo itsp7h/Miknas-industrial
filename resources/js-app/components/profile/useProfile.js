@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPost, apiPut } from '../../api/client';
 import { useToast } from '../ui/Toast';
 
-/** The signed-in user's own profile: details, password, deletion. */
+/** The signed-in user's own profile: details, password, signature, deletion. */
 export default function useProfile() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -31,6 +31,18 @@ export default function useProfile() {
         showToast(response.message, 'success');
     }
 
+    async function saveSignature(image) {
+        const response = await apiPut('/profile/signature', { signature_image: image });
+        setUser(response.data);
+        showToast(response.message, 'success');
+    }
+
+    async function removeSignature() {
+        const response = await apiDelete('/profile/signature');
+        setUser(response.data);
+        showToast(response.message, 'success');
+    }
+
     async function resendVerification() {
         const response = await apiPost('/profile/verification-notification');
         showToast(response.message, 'success');
@@ -47,7 +59,7 @@ export default function useProfile() {
 
     return {
         user, loading,
-        saveDetails, savePassword, resendVerification,
+        saveDetails, savePassword, resendVerification, saveSignature, removeSignature,
         deleteOpen, setDeleteOpen, deleteAccount,
     };
 }

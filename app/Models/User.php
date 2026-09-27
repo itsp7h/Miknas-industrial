@@ -35,6 +35,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        // A data URL tens of kilobytes long; only the profile asks for it.
+        'signature_image',
     ];
 
     /**

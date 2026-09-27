@@ -62,6 +62,8 @@ class LpoGenerationService
             'total_amount' => $items->sum('total_price'),
             'status' => 'sent',
             'created_by' => auth()->id(),
+            // Frozen here: the LPO keeps the signature it went out with.
+            'prepared_signature' => auth()->user()?->signature_image,
         ]);
 
         foreach ($items as $quoteItem) {
