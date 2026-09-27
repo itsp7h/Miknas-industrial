@@ -27,6 +27,15 @@ const renderLink = (item, active = false) =>
     );
 
 describe('Sidebar', () => {
+    // A long page (1,193 imported suppliers) used to scroll the menu out of
+    // view: the aside stretched to the page's height instead of the screen's.
+    it('stays pinned to the viewport and scrolls its own menu', () => {
+        const { container } = renderSidebar();
+        const aside = container.querySelector('aside');
+        expect(aside).toHaveStyle({ position: 'sticky', top: '0px', height: '100vh', overflowY: 'auto' });
+        expect(aside.style.alignSelf).toBe('flex-start');
+    });
+
     it('renders the brand block', () => {
         renderSidebar();
         expect(screen.getByText('SteelERP')).toBeInTheDocument();
