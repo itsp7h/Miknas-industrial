@@ -17,8 +17,8 @@ const MIKNAS = { id: 1, name: 'Miknas Industrial' };
 const STEEL_TECH = { id: 2, name: 'Steel Tech' };
 
 const PEOPLE = [
-    { id: 10, name: 'Ali', company_ids: [1, 2], companies: [MIKNAS, STEEL_TECH] },
-    { id: 11, name: 'Zainab', company_ids: [2], companies: [STEEL_TECH] },
+    { id: 10, name: 'Ali', phones: ['+973 3312 3456', '17 555 010'], company_ids: [1, 2], companies: [MIKNAS, STEEL_TECH] },
+    { id: 11, name: 'Zainab', phones: [], company_ids: [2], companies: [STEEL_TECH] },
 ];
 
 const ALL = ['requesters.view', 'requesters.create', 'requesters.edit', 'requesters.delete'];
@@ -56,7 +56,7 @@ describe('settings RequesterPage (System → Requested By)', () => {
         fireEvent.click(screen.getByLabelText('Steel Tech'));
         fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
-        await waitFor(() => expect(post).toHaveBeenCalledWith('/settings/requesters', { name: 'Omar', company_ids: [1, 2] }));
+        await waitFor(() => expect(post).toHaveBeenCalledWith('/settings/requesters', { name: 'Omar', company_ids: [1, 2], phones: [] }));
         expect(await screen.findByText('Omar')).toBeInTheDocument();
         expect(screen.getByText('Omar added.')).toBeInTheDocument();
         // The form resets for the next person.
@@ -84,7 +84,7 @@ describe('settings RequesterPage (System → Requested By)', () => {
         fireEvent.click(screen.getByLabelText('Miknas Industrial'));
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/requesters/11', { name: 'Zainab Ali', company_ids: [1] }));
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/requesters/11', { name: 'Zainab Ali', company_ids: [1], phones: [] }));
         expect(await screen.findByText('Zainab Ali')).toBeInTheDocument();
     });
 
@@ -127,6 +127,87 @@ describe('settings RequesterPage (System → Requested By)', () => {
         expect(screen.getByText(/No one matches/)).toBeInTheDocument();
     });
 
+    it("shows each person's numbers as tap-to-call links", async () => {
+        renderPage();
+        await screen.findByText('Ali');
+
+        const link = screen.getByText(/\+973 3312 3456/).closest('a');
+        expect(link).toHaveAttribute('href', 'tel:+97333123456');
+        expect(screen.getByText(/17 555 010/).closest('a')).toHaveAttribute('href', 'tel:17555010');
+    });
+
+    it('adds several numbers, and does not send a row left blank', async () => {
+        const post = vi.spyOn(client, 'apiPost').mockResolvedValue({
+            data: { id: 12, name: 'Omar', phones: ['33123456', '17000111'], company_ids: [1], companies: [MIKNAS] },
+        });
+        renderPage();
+        await screen.findByText('Ali');
+
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Omar' } });
+        fireEvent.click(screen.getByLabelText('Miknas Industrial'));
+        fireEvent.change(screen.getByLabelText('Contact number 1'), { target: { value: '33123456' } });
+        fireEvent.click(screen.getByText('+ Add number'));
+        fireEvent.click(screen.getByText('+ Add number'));
+        fireEvent.change(screen.getByLabelText('Contact number 3'), { target: { value: ' 17000111 ' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+        await waitFor(() => expect(post).toHaveBeenCalledWith('/settings/requesters', {
+            name: 'Omar', company_ids: [1], phones: ['33123456', '17000111'],
+        }));
+        // Back to a single empty row for the next person.
+        expect(await screen.findByLabelText('Contact number 1')).toHaveValue('');
+        expect(screen.queryByLabelText('Contact number 2')).not.toBeInTheDocument();
+    });
+
+    it("puts a number's error under the row it came from, skipping blank rows", async () => {
+        vi.spyOn(client, 'apiPost').mockRejectedValue({
+            message: 'Invalid.',
+            errors: { 'phones.1': ['Enter a phone number: digits, spaces, +, - and brackets, at least 5 digits.'] },
+        });
+        renderPage();
+        await screen.findByText('Ali');
+
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Omar' } });
+        fireEvent.change(screen.getByLabelText('Contact number 1'), { target: { value: '33123456' } });
+        fireEvent.click(screen.getByText('+ Add number'));
+        fireEvent.click(screen.getByText('+ Add number'));
+        // Row 2 stays blank, so the server's phones.1 is row 3.
+        fireEvent.change(screen.getByLabelText('Contact number 3'), { target: { value: 'abc' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+        const message = await screen.findByText(/Enter a phone number/);
+        expect(message.parentElement).toContainElement(screen.getByLabelText('Contact number 3'));
+    });
+
+    it('loads a person\'s numbers for editing and removes one', async () => {
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({
+            data: { ...PEOPLE[0], phones: ['17 555 010'] },
+        });
+        renderPage();
+        await screen.findByText('Ali');
+
+        fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+        expect(screen.getByLabelText('Contact number 1')).toHaveValue('+973 3312 3456');
+        expect(screen.getByLabelText('Contact number 2')).toHaveValue('17 555 010');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Remove contact number 1' }));
+        expect(screen.getByLabelText('Contact number 1')).toHaveValue('17 555 010');
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/requesters/10', {
+            name: 'Ali', company_ids: [1, 2], phones: ['17 555 010'],
+        }));
+    });
+
+    it('finds a person by their number', async () => {
+        renderPage();
+        await screen.findByText('Ali');
+
+        fireEvent.change(screen.getByLabelText('Search people'), { target: { value: '3312' } });
+        expect(screen.getByText('Ali')).toBeInTheDocument();
+        expect(screen.queryByText('Zainab')).not.toBeInTheDocument();
+    });
+
     // CLAUDE.md #14: what the viewer may not do stays on the page, disabled.
     it('shows the actions disabled, with the reason, to a view-only user', async () => {
         renderPage(['requesters.view']);
@@ -137,6 +218,7 @@ describe('settings RequesterPage (System → Requested By)', () => {
         expect(add).toHaveAttribute('title', 'You do not have permission to add people on this list');
         expect(screen.getByLabelText('Name')).toBeDisabled();
         expect(screen.getByLabelText('Miknas Industrial')).toBeDisabled();
+        expect(screen.getByLabelText('Contact number 1')).toBeDisabled();
 
         screen.getAllByRole('button', { name: 'Edit' }).forEach((b) => expect(b).toBeDisabled());
         screen.getAllByRole('button', { name: 'Delete' }).forEach((b) => {
