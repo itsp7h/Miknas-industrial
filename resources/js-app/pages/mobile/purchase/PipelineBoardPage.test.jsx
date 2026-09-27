@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { RequestModalProvider } from '../../../components/purchase/requests/RequestModalProvider';
 import PipelineBoardPage from './PipelineBoardPage';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 let handlers = {};
@@ -156,5 +157,31 @@ describe('PipelineBoardPage (mobile)', () => {
         });
 
         expect(screen.getByText('MPR26-0012')).toBeInTheDocument();
+    });
+});
+
+describe('PipelineBoardPage (mobile): + New Request without pipeline.create', () => {
+    const renderAs = (permissions) => render(
+        <MemoryRouter><ToastProvider><AccessProvider permissions={permissions}><RequestModalProvider>
+            <PipelineBoardPage currentUserId={1} canViewAllPurchaseRequests />
+        </RequestModalProvider></AccessProvider></ToastProvider></MemoryRouter>
+    );
+
+    it('is shown disabled, with the reason, to someone who may view but not create', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        renderAs(['pipeline.view', 'pipeline.view-all', 'pipeline.approve']);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        const button = screen.getByRole('button', { name: '+ New Request' });
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('title', 'You do not have permission to create purchase requests');
+    });
+
+    it('is enabled for someone who may create', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        renderAs(['pipeline.view', 'pipeline.create']);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        expect(screen.getByRole('button', { name: '+ New Request' })).toBeEnabled();
     });
 });

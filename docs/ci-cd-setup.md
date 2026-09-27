@@ -5,8 +5,8 @@
 | Workflow | Trigger | Runner | What it does |
 |---|---|---|---|
 | `ci.yml` | push to `main` or `development`, any PR | GitHub-hosted | PHP syntax check, Pint, PHPUnit on 8.2 + 8.3, Vitest, Vite build, the deploy scripts end to end; on a push, once all of that is green, **builds the release once** and publishes it as `refs/builds/<sha>` |
-| `deploy-staging.yml` | CI green on `development`, or manual | self-hosted `staging` | Deploy + smoke test `http://192.168.0.38` |
-| `deploy-production.yml` | CI green on `main`, tag `v*`, or manual | self-hosted `production` | Verify CI is green for the commit, then deploy + smoke test `https://steelerp.p7h.me`, behind an approval gate |
+| `deploy-staging.yml` | CI green on `development`, or manual | self-hosted `staging` | Deploy CI's build + smoke test `http://192.168.0.38` (websocket via `https://staging-steelerp.p7h.me`) |
+| `deploy-production.yml` | CI green on `main`, tag `v*`, or manual | self-hosted `production` | Verify CI is green for the commit, then deploy CI's build + smoke test `https://steelerp.p7h.me`, behind an approval gate |
 | `rollback.yml` | manual only | self-hosted, the chosen box | `steelerp-deploy <env> rollback` + smoke test; production behind the approval gate |
 | `provision.yml` | manual only | self-hosted, the chosen box | `provision.sh` plan, then `--apply` if ticked; production's apply behind the approval gate |
 
@@ -15,18 +15,27 @@
 | Branch | Deploys to | How |
 |---|---|---|
 | `development` | staging (`192.168.0.38`) | automatically, once CI is green |
-| `main` | production (`steelerp.p7h.me`) | merge from `development`, then tag `v*` or run the workflow manually |
+| `main` | production (`steelerp.p7h.me`) | merge a PR from `development`; the deploy waits for approval |
 
-Day-to-day work lands on `development`. Nothing reaches production without an
-explicit tag or manual run, a green CI run for that exact commit, *and* an
-approval on the `production` environment.
+Day-to-day work lands on `development`, one branch and PR per change. It
+reaches production as a PR from `development` into `main`. Nothing reaches
+production without a green CI run for that exact commit *and* an approval on
+the `production` environment. A `v*` tag or a manual run are the other two
+ways in, behind the same two gates.
+
+**Deploy workflows always run from `main`.** `deploy-*.yml` start from
+`workflow_run`, and GitHub reads a `workflow_run` workflow's file from the
+default branch, whichever branch's CI triggered it. So a change to a deploy
+workflow (its `env`, its steps) takes effect on *both* boxes only once it is
+on `main`. Scripts are different: `smoke-test.sh` runs from the release it
+just deployed, and `steelerp-deploy` from wherever provisioning installed it.
 
 ### The production CI gate
 
-Staging consumes CI's verdict through `workflow_run`. Production cannot — it is
-triggered by a tag push or a manual run, and CI does not run on tags. So
-`deploy-production.yml` has a `verify` job that runs first, on a GitHub-hosted
-runner:
+A merge into `main` reaches production through `workflow_run`, like staging,
+but a tag push or a manual run carries no CI verdict, and CI does not run on
+tags. So `deploy-production.yml` has a `verify` job that runs first on every
+trigger, on a GitHub-hosted runner:
 
 1. It resolves the requested ref (tag, branch or SHA) to an immutable commit
    SHA through the API, and the deploy job then deploys *that SHA* — so a branch
@@ -61,8 +70,10 @@ polls GitHub over outbound HTTPS, which both containers already have.
 ## Installing a runner
 
 Use `scripts/install-runner.sh` — it creates the unprivileged `runner` user,
-grants it sudo for the deploy script *only*, downloads and registers the runner
-with the right labels, and installs it as a service.
+downloads and registers the runner with the right labels, and installs it as a
+service. Its sudo rule (exactly `steelerp-deploy` and
+`current/scripts/provision.sh`, nothing else) comes from provisioning, not from
+this script.
 
 Grab a registration token first (it expires in about an hour):
 <https://github.com/itsp7h/Miknas-industrial/settings/actions/runners/new>
@@ -108,6 +119,10 @@ sudo steelerp-deploy production v1.2.0       # a v* tag or a commit SHA
 /var/www/ProjectsERP/current/scripts/smoke-test.sh https://steelerp.p7h.me
 ```
 
+The smoke test skips its websocket check unless it is given the public address
+and the box's key: prefix it with
+`REVERB_URL=https://<domain> REVERB_APP_KEY=<key>`.
+
 ## Provisioning a box
 
 Everything about a box that is not the app is owned by `scripts/provision.sh`,
@@ -124,8 +139,8 @@ from the templates in `scripts/provision/templates/` and the per-box values in
 It never writes `.env` and never deploys.
 
 ```bash
-sudo /var/www/ProjectsERP/scripts/provision.sh staging            # plan: prints a diff, changes nothing
-sudo /var/www/ProjectsERP/scripts/provision.sh staging --apply    # back up, validate, write, reload
+sudo /var/www/ProjectsERP/current/scripts/provision.sh staging          # plan: prints a diff, changes nothing
+sudo /var/www/ProjectsERP/current/scripts/provision.sh staging --apply  # back up, validate, write, reload
      scripts/provision.sh production --render /tmp/out            # render only, no root needed
 ```
 
@@ -205,6 +220,11 @@ sudo steelerp-deploy staging status          # list releases, mark the live one
 sudo steelerp-deploy staging rollback        # back to the previous release
 ```
 
+A deploy's first step, fetching from GitHub, is retried up to four times with
+a growing pause: GitHub's SSH endpoint now and then refuses a perfectly good
+key for a few seconds. Nothing has changed on the box at that point, so a
+retry is safe; after the fourth failure it stops with *nothing was changed*.
+
 **Migrations must be backward-compatible with the release before them.** From
 the migration until the switch, the old code runs against the new schema.
 Rollback also relies on it, because it moves the code and never the database.
@@ -243,7 +263,9 @@ enough disk.
 5. lifts maintenance mode and checks `/up`.
 
 If anything after the swap fails, it puts the checkout back by itself. The old
-checkout is kept at `ProjectsERP.pre-releases` either way.
+checkout is kept at `ProjectsERP.pre-releases` either way. On both boxes that
+copy has served its purpose once production has run a week on releases: delete
+it after 2026-10-01.
 
 `tests/deploy/cutover.sh` covers it end to end in CI.
 
@@ -286,3 +308,12 @@ the part unit tests cannot reach:
 
 It exits non-zero if any check fails, and treats an unreachable host as a
 failure rather than a pass.
+
+The deploy workflows give check 6 the public domain and the box's key; the
+check forces HTTP/1.1, since over TLS curl would otherwise negotiate HTTP/2,
+where there is no Upgrade and the request lands on the SPA's `/app` route.
+Staging's HTML checks still use its LAN address, `http://192.168.0.38`.
+
+A failed smoke test does **not** roll back: by the time it runs, `/up` has
+already passed and the release is live. Read which check failed. A websocket
+failure, for instance, is usually the secret or Reverb, not the release.

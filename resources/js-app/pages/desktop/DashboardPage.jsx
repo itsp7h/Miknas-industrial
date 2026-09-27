@@ -2,6 +2,7 @@ import SmartLink from '../../components/dashboard/SmartLink';
 import { ChevronIcon } from '../../components/dashboard/icons';
 import { KPIS, KPI_COLUMNS, QUICK_ACTIONS, QUICK_ACTION_COLUMNS, MODULES, MODULE_COLUMNS, formatKpi } from '../../components/dashboard/data';
 import useDashboardSummary from '../../components/dashboard/useDashboardSummary';
+import { useAccess } from '../../layouts/AccessContext';
 
 const CARD = 'bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex items-start gap-4';
 
@@ -26,6 +27,7 @@ function KpiBody({ kpi, summary }) {
 
 export default function DashboardPage({ currentUserId, userName }) {
     const summary = useDashboardSummary(currentUserId);
+    const { can } = useAccess();
 
     return (
         <div>
@@ -51,21 +53,46 @@ export default function DashboardPage({ currentUserId, userName }) {
             <div className="mb-6">
                 <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Quick Actions</h2>
                 <div className={`grid grid-cols-1 sm:grid-cols-2 ${QUICK_ACTION_COLUMNS} gap-3`}>
-                    {QUICK_ACTIONS.map((action) => (
-                        <SmartLink
-                            key={action.label}
-                            to={action.to}
-                            className={`group bg-white rounded-xl p-4 border border-slate-200 ${action.border} hover:shadow-md transition-all duration-200 flex items-center gap-4`}
-                        >
-                            <div className={`w-10 h-10 rounded-lg ${action.iconWrap} flex items-center justify-center flex-shrink-0 transition-colors`}>
-                                <action.Icon className={`w-5 h-5 ${action.iconColor}`} />
-                            </div>
-                            <div>
-                                <p className={`text-sm font-semibold text-slate-700 ${action.labelHover}`}>{action.label}</p>
-                                <p className="text-xs text-slate-400 mt-0.5">{action.caption}</p>
-                            </div>
-                        </SmartLink>
-                    ))}
+                    {QUICK_ACTIONS.map((action) => {
+                        const body = (
+                            <>
+                                <div className={`w-10 h-10 rounded-lg ${action.iconWrap} flex items-center justify-center flex-shrink-0 transition-colors`}>
+                                    <action.Icon className={`w-5 h-5 ${action.iconColor}`} />
+                                </div>
+                                <div>
+                                    <p className={`text-sm font-semibold text-slate-700 ${action.labelHover}`}>{action.label}</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">{action.caption}</p>
+                                </div>
+                            </>
+                        );
+
+                        // An action this person may not take stays on the page,
+                        // disabled with the reason, rather than linking to a
+                        // form that would refuse them.
+                        if (action.permission && !can(action.permission)) {
+                            return (
+                                <div
+                                    key={action.label}
+                                    aria-disabled="true"
+                                    title={action.deniedReason}
+                                    className="bg-white rounded-xl p-4 border border-slate-200 flex items-center gap-4"
+                                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                >
+                                    {body}
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <SmartLink
+                                key={action.label}
+                                to={action.to}
+                                className={`group bg-white rounded-xl p-4 border border-slate-200 ${action.border} hover:shadow-md transition-all duration-200 flex items-center gap-4`}
+                            >
+                                {body}
+                            </SmartLink>
+                        );
+                    })}
                 </div>
             </div>
 

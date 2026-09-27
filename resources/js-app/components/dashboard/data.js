@@ -95,6 +95,10 @@ const ALL_QUICK_ACTIONS = [
         // The MPR form is a modal, not a page: the board opens it on ?new=1,
         // which is also where the old /purchase/requests/create URL redirects.
         to: '/app/purchase/pipeline?new=1',
+        // Shown to everyone, live only for those who may create; the rest see
+        // it disabled with this reason (see the dashboard pages).
+        permission: 'pipeline.create',
+        deniedReason: 'You do not have permission to create purchase requests',
         Icon: PlusIcon,
         border: 'hover:border-amber-300',
         iconWrap: 'bg-amber-50 group-hover:bg-amber-100',
