@@ -2,6 +2,7 @@ import SmartLink from '../../components/dashboard/SmartLink';
 import { ChevronIcon } from '../../components/dashboard/icons';
 import { KPIS, QUICK_ACTIONS, MODULES, formatKpi } from '../../components/dashboard/data';
 import useDashboardSummary from '../../components/dashboard/useDashboardSummary';
+import { useAccess } from '../../layouts/AccessContext';
 
 // Same palette and figures as desktop; the layout is what changes. KPIs go
 // two-up so all five stay visible without a long scroll, and each card drops
@@ -29,6 +30,7 @@ function KpiBody({ kpi, summary }) {
 
 export default function DashboardPage({ currentUserId, userName }) {
     const summary = useDashboardSummary(currentUserId);
+    const { can } = useAccess();
 
     return (
         <div>
@@ -53,21 +55,37 @@ export default function DashboardPage({ currentUserId, userName }) {
 
             <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Quick Actions</h2>
             <div className="grid grid-cols-1 gap-2 mb-6">
-                {QUICK_ACTIONS.map((action) => (
-                    <SmartLink
-                        key={action.label}
-                        to={action.to}
-                        className="bg-white rounded-xl p-3 border border-slate-200 flex items-center gap-3"
-                    >
-                        <div className={`w-10 h-10 rounded-lg ${action.iconWrap} flex items-center justify-center flex-shrink-0`}>
-                            <action.Icon className={`w-5 h-5 ${action.iconColor}`} />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-700">{action.label}</p>
-                            <p className="text-xs text-slate-400 mt-0.5">{action.caption}</p>
-                        </div>
-                    </SmartLink>
-                ))}
+                {QUICK_ACTIONS.map((action) => {
+                    const body = (
+                        <>
+                            <div className={`w-10 h-10 rounded-lg ${action.iconWrap} flex items-center justify-center flex-shrink-0`}>
+                                <action.Icon className={`w-5 h-5 ${action.iconColor}`} />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-700">{action.label}</p>
+                                <p className="text-xs text-slate-400 mt-0.5">{action.caption}</p>
+                            </div>
+                        </>
+                    );
+                    const className = 'bg-white rounded-xl p-3 border border-slate-200 flex items-center gap-3';
+
+                    // Disabled with the reason, not hidden; see desktop.
+                    if (action.permission && !can(action.permission)) {
+                        return (
+                            <div
+                                key={action.label}
+                                aria-disabled="true"
+                                title={action.deniedReason}
+                                className={className}
+                                style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                            >
+                                {body}
+                            </div>
+                        );
+                    }
+
+                    return <SmartLink key={action.label} to={action.to} className={className}>{body}</SmartLink>;
+                })}
             </div>
 
             <div className="grid grid-cols-1 gap-3">

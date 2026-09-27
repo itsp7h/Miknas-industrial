@@ -566,3 +566,23 @@ What that means for new work:
   went with the auth screens.
 - The design spec `docs/superpowers/specs/2026-08-03-blade-mobile-desktop-split-design.md`
   is history now, not a plan.
+
+### 14. An action someone may not take is shown disabled — not hidden, not dead
+When a person can open a page but lacks the permission for one of its actions,
+that action stays on the page **disabled**, with the reason as its tooltip —
+never removed, and never left live to fail with a 403 on click.
+```jsx
+const canCreate = useAccess().can('pipeline.create');
+<button disabled={!canCreate}
+        title={canCreate ? undefined : 'You do not have permission to create purchase requests'}
+        style={canCreate ? undefined : { opacity: 0.5, cursor: 'not-allowed' }}>
+```
+- A link-shaped action (a dashboard quick action) renders as a non-link
+  `aria-disabled="true"` element carrying the same `title`.
+- Anything that opens the action another way (a `?new=1` URL) must check the
+  same permission.
+- `useAccess().can()` only decides what to *offer*; the API still enforces.
+- Whole tabs a person cannot open are still hidden from the sidebar
+  (`navItems.js`) — this rule is about actions *on* a page they can see.
+- Older pages still hide some actions (e.g. the GRN list's New button). Bring
+  one into line when you touch it.

@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { RequestModalProvider } from '../../../components/purchase/requests/RequestModalProvider';
 import PipelineBoardPage from './PipelineBoardPage';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 let handlers = {};
@@ -122,9 +123,9 @@ describe('PipelineBoardPage (desktop)', () => {
             },
         });
 
-        render(<MemoryRouter><ToastProvider><RequestModalProvider>
+        render(<MemoryRouter><ToastProvider><AccessProvider permissions={['pipeline.create']}><RequestModalProvider>
             <PipelineBoardPage currentUserId={1} canViewAllPurchaseRequests />
-        </RequestModalProvider></ToastProvider></MemoryRouter>);
+        </RequestModalProvider></AccessProvider></ToastProvider></MemoryRouter>);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
         fireEvent.click(screen.getByText('+ New Request'));
@@ -251,5 +252,51 @@ describe('PipelineBoardPage (desktop)', () => {
         });
 
         expect(screen.getByText('MPR26-0012')).toBeInTheDocument();
+    });
+});
+
+describe('PipelineBoardPage (desktop): + New Request without pipeline.create', () => {
+    // Earlier tests leave their apiGet spies (and a form-options call) behind.
+    beforeEach(() => vi.restoreAllMocks());
+
+    const renderAs = (permissions, url = '/') => render(
+        <MemoryRouter initialEntries={[url]}><ToastProvider><AccessProvider permissions={permissions}><RequestModalProvider>
+            <PipelineBoardPage currentUserId={1} canViewAllPurchaseRequests />
+        </RequestModalProvider></AccessProvider></ToastProvider></MemoryRouter>
+    );
+
+    // The GM holds pipeline.view + view-all + approve: they read and sign, and
+    // the button stays on the page, disabled, rather than failing on click.
+    it('is shown disabled, with the reason, to someone who may view but not create', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        renderAs(['pipeline.view', 'pipeline.view-all', 'pipeline.approve']);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        const button = screen.getByRole('button', { name: '+ New Request' });
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('title', 'You do not have permission to create purchase requests');
+
+        fireEvent.click(button);
+        expect(screen.queryByText('New Purchase Request')).not.toBeInTheDocument();
+        expect(client.apiGet).not.toHaveBeenCalledWith(expect.stringContaining('form-options'));
+    });
+
+    it('ignores ?new=1 (the dashboard shortcut) for them too', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        renderAs(['pipeline.view'], '/?new=1');
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        expect(screen.queryByText('New Purchase Request')).not.toBeInTheDocument();
+        expect(client.apiGet).not.toHaveBeenCalledWith(expect.stringContaining('form-options'));
+    });
+
+    it('is enabled for someone who may create', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        renderAs(['pipeline.view', 'pipeline.create']);
+        await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
+
+        const button = screen.getByRole('button', { name: '+ New Request' });
+        expect(button).toBeEnabled();
+        expect(button).not.toHaveAttribute('title');
     });
 });

@@ -6,6 +6,7 @@ import TabPills from '../../../components/ui/TabPills';
 import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
 import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
+import { useAccess } from '../../../layouts/AccessContext';
 
 const STAGE_LABELS = {
     draft: 'Draft', gm_approval: 'GM Approval', rfq: 'RFQ', quoting: 'Quoting',
@@ -48,6 +49,10 @@ export default function PipelineBoardPage({
     currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
 } = {}) {
     const { openNew } = useRequestModal();
+    // Offered to everyone who can see the board, but live only for those who
+    // may create: disabled rather than hidden, so a view-only reader (the GM,
+    // who signs) sees the action exists and that it is not theirs.
+    const canCreate = useAccess().can('pipeline.create');
     const [params, setParams] = useSearchParams();
     const { items, setItems } = useLiveList({
         endpoint: '/purchase/pipeline',
@@ -94,10 +99,10 @@ export default function PipelineBoardPage({
     // param is stripped so a reload or a back-navigation does not reopen it.
     useEffect(() => {
         if (params.get('new') !== '1') return;
-        openNew(acceptRow);
+        if (canCreate) openNew(acceptRow);
         params.delete('new');
         setParams(params, { replace: true });
-    }, [params, setParams, openNew, acceptRow]);
+    }, [params, setParams, openNew, acceptRow, canCreate]);
 
     // A deleted request has to leave every board showing it.
     useEffect(() => {
@@ -142,7 +147,14 @@ export default function PipelineBoardPage({
                     tab={tab} onChange={setTab}
                     style={{ marginBottom: 0 }}
                 />
-                <button type="button" onClick={() => openNew(acceptRow)} className="btn-primary btn-sm">
+                <button
+                    type="button"
+                    onClick={() => openNew(acceptRow)}
+                    disabled={!canCreate}
+                    title={canCreate ? undefined : 'You do not have permission to create purchase requests'}
+                    className="btn-primary btn-sm"
+                    style={canCreate ? undefined : { opacity: 0.5, cursor: 'not-allowed' }}
+                >
                     + New Request
                 </button>
             </div>
