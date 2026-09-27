@@ -20,9 +20,17 @@ jobs:
     # Self-hosted: staging lives on a private LAN (192.168.0.38) that
     # GitHub-hosted runners cannot reach. See docs/ci-cd-setup.md.
     runs-on: [self-hosted, steelerp, staging]
+    # Only a CI run for a *push* to development deploys. `branches:` above
+    # matches the branch a CI run was for, whatever started it, so a pull
+    # request from development (the release PR into main) redeployed staging
+    # a second time — and so would a fork's PR from a branch it named
+    # `development`. The repository check closes the fork case outright.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      github.event_name == 'workflow_dispatch' || (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      )
 
     steps:
       # Atomic: build, boot-check and migrate a release, then switch to it,
