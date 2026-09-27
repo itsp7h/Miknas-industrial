@@ -176,11 +176,65 @@ describe('settings IntegrationsPage', () => {
         fireEvent.click((await screen.findAllByText('Edit'))[0]);
 
         expect(await screen.findByText('Edit Mail Account')).toBeInTheDocument();
-        expect(screen.getByLabelText('Account Name (used in code)')).toHaveValue('support');
+        // The form mounts only once the account has arrived, so finding the
+        // field at all means it is already filled in.
+        expect(await screen.findByLabelText('Account Name (used in code)')).toHaveValue('support');
         expect(screen.getByLabelText('Host')).toHaveValue('smtp.example.test');
         const password = screen.getByLabelText('Password');
         expect(password).toHaveValue('');
         expect(password).toHaveAttribute('placeholder', 'Stored — leave blank to keep it');
+    });
+
+    // It used to mount blank and fill in when the fetch landed, overwriting
+    // anything typed first; on a slow CI runner the prefill test caught it blank.
+    it('shows Loading, never a blank form, until the account arrives', async () => {
+        let release;
+        const pending = new Promise((resolve) => { release = resolve; });
+        const base = client.apiGet.getMockImplementation();
+        client.apiGet.mockImplementation((url) => (
+            url === '/settings/mail-accounts/1' ? pending : base(url)
+        ));
+        wrap();
+
+        fireEvent.click(await screen.findByText('✉️ Email'));
+        fireEvent.click((await screen.findAllByText('Edit'))[0]);
+
+        expect(await screen.findByText('Edit Mail Account')).toBeInTheDocument();
+        expect(screen.getByText('Loading…')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Account Name (used in code)')).not.toBeInTheDocument();
+
+        release({ data: { ...ACCOUNTS[0], config: { host: 'smtp.example.test' }, secrets_set: {} } });
+
+        expect(await screen.findByLabelText('Account Name (used in code)')).toHaveValue('support');
+        expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    });
+
+    it('keeps what was typed: nothing re-seeds the open form', async () => {
+        wrap();
+
+        fireEvent.click(await screen.findByText('✉️ Email'));
+        fireEvent.click((await screen.findAllByText('Edit'))[0]);
+        const host = await screen.findByLabelText('Host');
+        fireEvent.change(host, { target: { value: 'smtp.changed.test' } });
+
+        // Give any late effect a chance to run over it.
+        await new Promise((r) => setTimeout(r, 20));
+        expect(screen.getByLabelText('Host')).toHaveValue('smtp.changed.test');
+        expect(client.apiGet.mock.calls.filter(([url]) => url === '/settings/mail-accounts/1')).toHaveLength(1);
+    });
+
+    it('says so when the account cannot be loaded', async () => {
+        const base = client.apiGet.getMockImplementation();
+        client.apiGet.mockImplementation((url) => (
+            url === '/settings/mail-accounts/1' ? Promise.reject(new Error('boom')) : base(url)
+        ));
+        wrap();
+
+        fireEvent.click(await screen.findByText('✉️ Email'));
+        fireEvent.click((await screen.findAllByText('Edit'))[0]);
+
+        expect(await screen.findByText('Could not load that account.')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Account Name (used in code)')).not.toBeInTheDocument();
     });
 
     it('slugifies the account name as it is typed', async () => {

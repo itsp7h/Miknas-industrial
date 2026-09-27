@@ -17,44 +17,81 @@ const EMPTY = {
 /** Blade slugified the account name as you typed, since it is used in code. */
 const slugify = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
+/**
+ * The Add/Edit dialog. Editing waits for the account's config before the form
+ * mounts, and the form seeds itself from it once (keyed per account), the way
+ * gotcha #10 prescribes. It used to mount blank and fill in when the fetch
+ * landed, from an effect keyed on the `account` object: whatever was typed in
+ * the meantime was overwritten, a live update to the row would have re-fetched
+ * over the user's edits, and CI's test of the prefill failed whenever the
+ * runner checked before the fetch returned.
+ */
 export default function MailAccountModal({ open, account, onClose, onSave, onTest }) {
-    const [values, setValues] = useState(EMPTY);
-    const [secretsSet, setSecretsSet] = useState({ client_secret: false, password: false });
+    const accountId = account?.id ?? null;
+    // { id, values, secretsSet } once the edited account has arrived, or { id, error }.
+    const [loaded, setLoaded] = useState(null);
+
+    useEffect(() => {
+        if (!open || accountId === null) return undefined;
+        let cancelled = false;
+        setLoaded(null);
+
+        apiGet(`/settings/mail-accounts/${accountId}`)
+            .then((response) => {
+                if (cancelled) return;
+                const data = response.data;
+                const config = data.config ?? {};
+                setLoaded({
+                    id: accountId,
+                    values: {
+                        ...EMPTY,
+                        name: data.name, label: data.label, type: data.type,
+                        from_address: data.from_address, from_name: data.from_name ?? '',
+                        tenant_id: config.tenant_id ?? '', client_id: config.client_id ?? '',
+                        host: config.host ?? '', port: config.port ?? 587,
+                        encryption: config.encryption ?? 'tls', username: config.username ?? '',
+                    },
+                    secretsSet: data.secrets_set ?? { client_secret: false, password: false },
+                });
+            })
+            .catch(() => { if (!cancelled) setLoaded({ id: accountId, error: 'Could not load that account.' }); });
+
+        return () => { cancelled = true; };
+    }, [open, accountId]);
+
+    const title = account ? 'Edit Mail Account' : 'Add Mail Account';
+    const ready = !account || (loaded?.id === accountId && !loaded.error);
+
+    return (
+        <Modal open={open} title={title} onClose={onClose}>
+            {account && loaded?.id === accountId && loaded.error && (
+                <p style={{ color: '#dc2626', fontSize: 13 }}>{loaded.error}</p>
+            )}
+            {!ready && !(loaded?.id === accountId && loaded?.error) && (
+                <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>
+            )}
+            {ready && (
+                <MailAccountForm
+                    key={accountId ?? 'new'}
+                    account={account}
+                    initial={account ? loaded.values : EMPTY}
+                    secretsSet={account ? loaded.secretsSet : { client_secret: false, password: false }}
+                    onClose={onClose}
+                    onSave={onSave}
+                    onTest={onTest}
+                />
+            )}
+        </Modal>
+    );
+}
+
+/** Mounted fresh for each open, and seeded from `initial` exactly once. */
+function MailAccountForm({ account, initial, secretsSet, onClose, onSave, onTest }) {
+    const [values, setValues] = useState(initial);
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
     const [testState, setTestState] = useState(null);
     const [testing, setTesting] = useState(false);
-
-    // An existing account's non-secret config is fetched on open; its secrets
-    // never leave the server, so those fields start blank.
-    useEffect(() => {
-        if (!open) return;
-        setErrors({});
-        setTestState(null);
-
-        if (!account) {
-            setValues(EMPTY);
-            setSecretsSet({ client_secret: false, password: false });
-
-            return;
-        }
-
-        apiGet(`/settings/mail-accounts/${account.id}`)
-            .then((response) => {
-                const data = response.data;
-                const config = data.config ?? {};
-                setValues({
-                    ...EMPTY,
-                    name: data.name, label: data.label, type: data.type,
-                    from_address: data.from_address, from_name: data.from_name ?? '',
-                    tenant_id: config.tenant_id ?? '', client_id: config.client_id ?? '',
-                    host: config.host ?? '', port: config.port ?? 587,
-                    encryption: config.encryption ?? 'tls', username: config.username ?? '',
-                });
-                setSecretsSet(data.secrets_set ?? { client_secret: false, password: false });
-            })
-            .catch(() => setErrors({ name: 'Could not load that account.' }));
-    }, [open, account]);
 
     function setField(name, value) {
         setValues((prev) => ({ ...prev, [name]: value }));
@@ -111,7 +148,7 @@ export default function MailAccountModal({ open, account, onClose, onSave, onTes
     const isAzure = values.type === 'azure';
 
     return (
-        <Modal open={open} title={account ? 'Edit Mail Account' : 'Add Mail Account'} onClose={onClose}>
+        <>
             <div style={{ marginBottom: 16 }}>
                 <label htmlFor="ma-name" className="form-label">
                     Account Name <span style={{ color: '#9ca3af', fontWeight: 400 }}>(used in code)</span>
@@ -256,6 +293,6 @@ export default function MailAccountModal({ open, account, onClose, onSave, onTes
                     </button>
                 </div>
             </div>
-        </Modal>
+        </>
     );
 }
