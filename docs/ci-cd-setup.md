@@ -23,6 +23,13 @@ production without a green CI run for that exact commit *and* an approval on
 the `production` environment. A `v*` tag or a manual run are the other two
 ways in, behind the same two gates.
 
+**Only a CI run for a push deploys.** A `workflow_run` trigger's `branches:`
+filter matches the branch a CI run was *for*, not what started it, so a pull
+request from `development` (the release PR into `main`) used to redeploy
+staging a second time, and a fork's PR from a branch it named `development` or
+`main` could have triggered a deploy. Both deploy jobs now also require
+`workflow_run.event == 'push'` from this repository.
+
 **Deploy workflows always run from `main`.** `deploy-*.yml` start from
 `workflow_run`, and GitHub reads a `workflow_run` workflow's file from the
 default branch, whichever branch's CI triggered it. So a change to a deploy
