@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
 import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
+import { useAccess } from '../../../layouts/AccessContext';
 
 const STAGE_LABELS = {
     draft: 'Draft', gm_approval: 'GM Approval', rfq: 'RFQ', quoting: 'Quoting',
@@ -17,6 +18,8 @@ export default function PipelineBoardPage({
     currentUserId, canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
 } = {}) {
     const { openNew } = useRequestModal();
+    // Disabled, not hidden, for anyone who may view but not create; see desktop.
+    const canCreate = useAccess().can('pipeline.create');
     const [params, setParams] = useSearchParams();
     const { items, setItems } = useLiveList({
         endpoint: '/purchase/pipeline',
@@ -63,10 +66,10 @@ export default function PipelineBoardPage({
     // param is stripped so a reload or a back-navigation does not reopen it.
     useEffect(() => {
         if (params.get('new') !== '1') return;
-        openNew(acceptRow);
+        if (canCreate) openNew(acceptRow);
         params.delete('new');
         setParams(params, { replace: true });
-    }, [params, setParams, openNew, acceptRow]);
+    }, [params, setParams, openNew, acceptRow, canCreate]);
 
     // A deleted request has to leave every board showing it.
     useEffect(() => {
@@ -131,10 +134,14 @@ export default function PipelineBoardPage({
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={() => openNew(acceptRow)}
+                        disabled={!canCreate}
+                        title={canCreate ? undefined : 'You do not have permission to create purchase requests'}
                         style={{
                             flexShrink: 0, background: '#fff', color: '#2563eb', border: 0, borderRadius: 12,
                             padding: '10px 14px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+                            ...(canCreate ? {} : { opacity: 0.5, cursor: 'not-allowed' }),
                         }}
                     >
                         + New Request

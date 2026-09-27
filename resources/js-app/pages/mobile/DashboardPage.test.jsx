@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from './DashboardPage';
+import { AccessProvider } from '../../layouts/AccessContext';
 import { ToastProvider } from '../../components/ui/Toast';
 import * as client from '../../api/client';
 
@@ -60,5 +61,37 @@ describe('mobile DashboardPage', () => {
         expect(screen.queryByRole('heading', { name: 'Production' })).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Sales' })).not.toBeInTheDocument();
         expect(screen.queryByText('New Sales Order')).not.toBeInTheDocument();
+    });
+});
+
+describe('mobile DashboardPage: New Purchase Request and pipeline.create', () => {
+    const renderAs = (permissions) => render(
+        <ToastProvider><AccessProvider permissions={permissions}>
+            <MemoryRouter><DashboardPage currentUserId={1} userName="Ikram" /></MemoryRouter>
+        </AccessProvider></ToastProvider>
+    );
+
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(SUMMARY);
+    });
+
+    it('shows the action disabled, not linked, without pipeline.create', async () => {
+        renderAs(['pipeline.view', 'pipeline.approve']);
+        await screen.findByText('BD 3,580');
+
+        const label = screen.getByText('New Purchase Request');
+        expect(label.closest('a')).toBeNull();
+        const card = label.closest('[aria-disabled="true"]');
+        expect(card).not.toBeNull();
+        expect(card).toHaveAttribute('title', 'You do not have permission to create purchase requests');
+    });
+
+    it('links it to the board with pipeline.create', async () => {
+        renderAs(['pipeline.create']);
+        await screen.findByText('BD 3,580');
+
+        expect(screen.getByText('New Purchase Request').closest('a'))
+            .toHaveAttribute('href', '/app/purchase/pipeline?new=1');
     });
 });
