@@ -142,6 +142,54 @@ class RequesterControllerTest extends TestCase
             ->assertOk();
     }
 
+    public function test_it_stores_several_contact_numbers_in_order_and_drops_blank_rows(): void
+    {
+        $this->actingAs($this->manager())
+            ->postJson('/api/v1/settings/requesters', [
+                'name' => 'Omar',
+                'company_ids' => [$this->miknas->id],
+                'phones' => [' +973 3312 3456 ', '', '(017) 555-0101', '   '],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.phones', ['+973 3312 3456', '(017) 555-0101']);
+
+        $this->assertSame(['+973 3312 3456', '(017) 555-0101'], Requester::where('name', 'Omar')->first()->phones);
+    }
+
+    public function test_numbers_are_optional_and_can_be_replaced_or_cleared(): void
+    {
+        $manager = $this->manager();
+        $id = $this->actingAs($manager)
+            ->postJson('/api/v1/settings/requesters', ['name' => 'Omar', 'company_ids' => [$this->miknas->id]])
+            ->assertCreated()
+            ->assertJsonPath('data.phones', [])
+            ->json('data.id');
+
+        $this->actingAs($manager)
+            ->putJson("/api/v1/settings/requesters/{$id}", ['name' => 'Omar', 'company_ids' => [$this->miknas->id], 'phones' => ['33123456']])
+            ->assertOk()->assertJsonPath('data.phones', ['33123456']);
+
+        $this->actingAs($manager)
+            ->putJson("/api/v1/settings/requesters/{$id}", ['name' => 'Omar', 'company_ids' => [$this->miknas->id], 'phones' => []])
+            ->assertOk()->assertJsonPath('data.phones', []);
+    }
+
+    public function test_it_rejects_something_that_is_not_a_phone_number(): void
+    {
+        $manager = $this->manager();
+        $body = fn (array $phones) => ['name' => 'Omar', 'company_ids' => [$this->miknas->id], 'phones' => $phones];
+
+        $this->actingAs($manager)->postJson('/api/v1/settings/requesters', $body(['3312 34ab']))
+            ->assertStatus(422)->assertJsonValidationErrors('phones.0');
+        // Separators alone, or too few digits to call.
+        $this->actingAs($manager)->postJson('/api/v1/settings/requesters', $body(['33123456', '12-3']))
+            ->assertStatus(422)->assertJsonValidationErrors('phones.1');
+        $this->actingAs($manager)->postJson('/api/v1/settings/requesters', $body(['33123456', '33123456']))
+            ->assertStatus(422)->assertJsonValidationErrors('phones.1');
+        $this->actingAs($manager)->postJson('/api/v1/settings/requesters', $body(array_fill(0, 11, '33123456')))
+            ->assertStatus(422)->assertJsonValidationErrors('phones');
+    }
+
     /** A request stores the name, so removing the person leaves it untouched. */
     public function test_deleting_a_person_leaves_their_requests_alone(): void
     {
