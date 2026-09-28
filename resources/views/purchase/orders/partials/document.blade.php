@@ -166,6 +166,10 @@
             @if($order->purchaseRequest?->location)
                 <div class="party-line">{{ $order->purchaseRequest->location }}</div>
             @endif
+            {{-- The address saved for that location under Settings → Projects. --}}
+            @if(! empty($shipToAddress))
+                <div class="party-line">{{ $shipToAddress }}</div>
+            @endif
             {{-- The MPR's project, not its company: the company already heads the
                  letterhead, and the site is where the goods are for. --}}
             @if($order->purchaseRequest?->project_name)

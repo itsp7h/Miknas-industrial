@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
+use App\Models\Settings\Company;
+use App\Models\Settings\Location;
+use App\Models\Settings\ProjectSetting;
 use App\Models\Settings\Requester;
 use App\Models\Supplier;
 use App\Models\User;
@@ -131,5 +134,70 @@ class LpoDocumentTest extends TestCase
 
         $this->assertStringNotContainsString('P: ', $this->shipToHtml('Zainab'));
         $this->assertStringNotContainsString('P: ', $this->shipToHtml('Someone Unlisted'));
+    }
+
+    private function locationHtml(array $mpr): string
+    {
+        $order = $this->order();
+        $order->update(['purchase_request_id' => PurchaseRequest::factory()->create($mpr)->id]);
+
+        return view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
+    }
+
+    private function projectWith(string $project, string $location, ?string $address, ?Company $company = null): void
+    {
+        $company ??= Company::firstOrCreate(['name' => 'Miknas Industrial'], ['is_active' => true]);
+        ProjectSetting::create(['name' => $project, 'company_id' => $company->id, 'is_active' => true])
+            ->locations()->create(['name' => $location, 'address' => $address, 'is_active' => true]);
+    }
+
+    public function test_ship_to_shows_the_address_saved_for_the_mprs_location(): void
+    {
+        $this->projectWith('Forkoll', 'Askar Forkoll', 'Road 4523, Block 945, Askar, Bahrain');
+
+        $html = $this->locationHtml(['project_name' => 'Forkoll', 'location' => 'Askar Forkoll']);
+
+        $this->assertMatchesRegularExpression(
+            '#<div class="party-line">Askar Forkoll</div>\s*(\{\{--.*?--\}\}\s*)?<div class="party-line">Road 4523, Block 945, Askar, Bahrain</div>#s',
+            $html,
+        );
+    }
+
+    /** Two projects can each have a location of the same name. */
+    public function test_the_mprs_own_project_wins_a_shared_location_name(): void
+    {
+        $this->projectWith('Hidd Works', 'Main Yard', 'Road 1, Block 115, Hidd, Bahrain');
+        $this->projectWith('Forkoll', 'Main Yard', 'Road 4523, Block 945, Askar, Bahrain');
+
+        $html = $this->locationHtml(['project_name' => 'Forkoll', 'location' => 'Main Yard']);
+
+        $this->assertStringContainsString('Road 4523, Block 945, Askar, Bahrain', $html);
+        $this->assertStringNotContainsString('Hidd, Bahrain', $html);
+    }
+
+    /** The MPR form offers every location under the company's projects. */
+    public function test_a_location_under_another_project_of_the_company_is_found(): void
+    {
+        $this->projectWith('Askar Site', 'Askar Forkoll', 'Road 4523, Block 945, Askar, Bahrain');
+
+        $html = $this->locationHtml(['project_name' => 'Forkoll', 'location' => 'Askar Forkoll']);
+
+        $this->assertStringContainsString('Road 4523, Block 945, Askar, Bahrain', $html);
+    }
+
+    public function test_no_address_line_without_a_saved_address(): void
+    {
+        $this->projectWith('Forkoll', 'Askar Forkoll', null);
+        $this->projectWith('Other', 'Same Name', 'Same Name');
+
+        $this->assertDoesNotMatchRegularExpression(
+            '#<div class="party-line">Askar Forkoll</div>\s*(\{\{--.*?--\}\}\s*)?<div class="party-line">#s',
+            $this->locationHtml(['project_name' => 'Forkoll', 'location' => 'Askar Forkoll']),
+        );
+        // An "address" that only repeats the location's name is not printed twice.
+        $this->assertSame(1, substr_count(
+            $this->locationHtml(['project_name' => 'Other', 'location' => 'Same Name']),
+            '<div class="party-line">Same Name</div>',
+        ));
     }
 }
