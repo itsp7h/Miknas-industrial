@@ -164,6 +164,8 @@ Route::prefix('v1')->group(function () {
             Route::post('companies', [CompanyController::class, 'store'])->middleware('permission:companies.create');
             Route::put('companies/{company}', [CompanyController::class, 'update'])->middleware('permission:companies.edit');
             Route::delete('companies/{company}', [CompanyController::class, 'destroy'])->middleware('permission:companies.delete');
+            Route::put('companies/{company}/images/{image}', [CompanyController::class, 'updateImage'])->whereIn('image', ['logo', 'stamp'])->middleware('permission:companies.edit');
+            Route::delete('companies/{company}/images/{image}', [CompanyController::class, 'destroyImage'])->whereIn('image', ['logo', 'stamp'])->middleware('permission:companies.edit');
             Route::post('companies/{company}/departments', [CompanyController::class, 'storeDepartment'])->middleware('permission:companies.create');
             Route::put('companies/{company}/departments/{department}', [CompanyController::class, 'updateDepartment'])->middleware('permission:companies.edit');
             Route::delete('companies/{company}/departments/{department}', [CompanyController::class, 'destroyDepartment'])->middleware('permission:companies.delete');

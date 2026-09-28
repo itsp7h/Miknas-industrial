@@ -26,26 +26,9 @@ class IssuerSignature
         return $user->signature_image;
     }
 
-    /**
-     * A drawn or uploaded signature arrives as a data URL. It is stored and
-     * later rendered into PDFs, so it must really be a small PNG or JPEG, not
-     * whatever string was posted.
-     */
+    /** A drawn or uploaded signature: a small PNG or JPEG data URL (see ImageDataUrl). */
     public static function isValidImage(string $value): bool
     {
-        if (! preg_match('#^data:image/(png|jpeg);base64,([A-Za-z0-9+/=]+)$#', $value, $m)) {
-            return false;
-        }
-
-        $bytes = base64_decode($m[2], true);
-        if ($bytes === false || strlen($bytes) > 512 * 1024) {
-            return false;
-        }
-
-        $info = @getimagesizefromstring($bytes);
-
-        return $info !== false
-            && in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG], true)
-            && $info[0] <= 2000 && $info[1] <= 2000;
+        return ImageDataUrl::isValid($value);
     }
 }

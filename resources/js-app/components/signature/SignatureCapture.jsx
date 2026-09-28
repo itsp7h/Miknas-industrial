@@ -1,46 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { readImageFile } from '../image/readImage';
 
 /** The largest the stored image gets; the LPO prints it at most 200×60. */
-const MAX_W = 600;
-const MAX_H = 200;
-/** The server refuses anything over 512 KB; stay well under it. */
-const MAX_BYTES = 400 * 1024;
+const BOX = { maxW: 600, maxH: 200 };
 
 const TAB = (active) => ({
     fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 8, border: 0, cursor: 'pointer',
     background: active ? '#2563eb' : '#f1f5f9', color: active ? '#fff' : '#475569',
 });
-
-/** A data URL's decoded size, near enough. */
-const bytesOf = (dataUrl) => Math.ceil((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
-
-/**
- * Scales an uploaded image to fit the signature box and re-encodes it, so a
- * 4 MB phone photo of a signature becomes a few kilobytes. PNG keeps a
- * transparent background; a photo too busy for that falls back to JPEG.
- */
-function normalise(image) {
-    const scale = Math.min(1, MAX_W / image.width, MAX_H / image.height);
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(image.width * scale));
-    canvas.height = Math.max(1, Math.round(image.height * scale));
-    const context = canvas.getContext('2d');
-    if (!context) return null;
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-    const png = canvas.toDataURL('image/png');
-    if (bytesOf(png) <= MAX_BYTES) return png;
-
-    const flat = document.createElement('canvas');
-    flat.width = canvas.width;
-    flat.height = canvas.height;
-    const flatContext = flat.getContext('2d');
-    flatContext.fillStyle = '#fff';
-    flatContext.fillRect(0, 0, flat.width, flat.height);
-    flatContext.drawImage(canvas, 0, 0);
-
-    return flat.toDataURL('image/jpeg', 0.85);
-}
 
 /**
  * Draw a signature, or upload an image of one. Reports a PNG/JPEG data URL
@@ -124,34 +91,11 @@ export default function SignatureCapture({ onChange }) {
         event.target.value = '';
         setError('');
         if (!file) return;
-        if (!['image/png', 'image/jpeg'].includes(file.type)) {
-            setError('Choose a PNG or JPEG image.');
 
-            return;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-            setError('That image is over 5 MB. Choose a smaller one.');
-
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            const image = new Image();
-            image.onload = () => {
-                const dataUrl = normalise(image);
-                if (!dataUrl) {
-                    setError('That image could not be read.');
-
-                    return;
-                }
-                setUpload(dataUrl);
-                onChange(dataUrl);
-            };
-            image.onerror = () => setError('That image could not be read.');
-            image.src = reader.result;
-        };
-        reader.readAsDataURL(file);
+        readImageFile(file, BOX).then((dataUrl) => {
+            setUpload(dataUrl);
+            onChange(dataUrl);
+        }, (err) => setError(err.message));
     }
 
     return (
