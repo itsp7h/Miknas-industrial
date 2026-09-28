@@ -224,9 +224,13 @@ describe('desktop production pages', () => {
     // A run normally yields the order's own product, so choosing the order fills
     // the item in — but it stays editable for a by-product or another grade.
     it('production output preselects the order\u2019s product as the item', async () => {
+        // The options answer a beat late, as a real network does, so a test
+        // that forgets to wait for them fails every time rather than only on
+        // a loaded CI runner (as GrnModal.test.jsx does since #49).
+        const late = (body) => new Promise((resolve) => setTimeout(() => resolve(body), 20));
         vi.spyOn(client, 'apiGet').mockImplementation((url) => (
             url.endsWith('/form-options')
-                ? Promise.resolve({
+                ? late({
                     production_orders: [{ id: 1, order_number: 'PO-00001', product_id: 7, product_name: 'Frame', quantity_to_produce: '10.00', quantity_produced: '4.00' }],
                     warehouses: [{ id: 1, name: 'Main' }],
                     products: [{ id: 7, item_code: 'FG-1', item_name: 'Frame' }, { id: 8, item_code: 'FG-2', item_name: 'Panel' }],
@@ -236,6 +240,9 @@ describe('desktop production pages', () => {
         wrap(<ProductionOutputListPage />);
 
         const orderSelect = await screen.findByLabelText(/Production Order/);
+        // Wait for the order itself, not just the select: an order chosen
+        // before its <option> exists is dropped, and the item stays empty.
+        await screen.findByRole('option', { name: /PO-00001/ });
         fireEvent.change(orderSelect, { target: { value: '1' } });
         expect(screen.getByLabelText(/Item \(Finished Good\)/)).toHaveValue('7');
         expect(screen.getByText('4.00 of 10.00 made so far.')).toBeInTheDocument();
