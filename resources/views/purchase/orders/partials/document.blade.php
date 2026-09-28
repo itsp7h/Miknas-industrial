@@ -131,17 +131,24 @@
         <td class="party">
             <div class="party-title">Vendor</div>
             <div class="party-name">{{ $order->supplier->name ?? '—' }}</div>
+            {{-- Name, email and phone first: who the LPO is to and how to reach
+                 them. Every number the supplier has, in the order the
+                 Suppliers list shows them, each once. --}}
+            @php
+                $vendorPhones = collect([$order->supplier?->phone, $order->supplier?->phone2, $order->supplier?->whatsapp])
+                    ->map(fn ($p) => trim((string) $p))->filter()->unique()->values();
+            @endphp
+            @if($order->supplier?->email)
+                <div class="party-line">{{ $order->supplier->email }}</div>
+            @endif
+            @if($vendorPhones->isNotEmpty())
+                <div class="party-line">P: {{ $vendorPhones->implode(' / ') }}</div>
+            @endif
             @if($order->supplier?->contact_person)
                 <div class="party-line">{{ $order->supplier->contact_person }}</div>
             @endif
             @if($order->supplier?->address)
                 <div class="party-line">{{ $order->supplier->address }}</div>
-            @endif
-            @if($order->supplier?->phone)
-                <div class="party-line">P: {{ $order->supplier->phone }}</div>
-            @endif
-            @if($order->supplier?->email)
-                <div class="party-line">{{ $order->supplier->email }}</div>
             @endif
         </td>
         <td class="party-gap"></td>
