@@ -16,6 +16,8 @@ export default function useRequesters() {
         mergeKey: 'id',
         errorMessage: 'Failed to load the Requested By list.',
     });
+    // The form is a dialog: closed until Add person or Edit opens it.
+    const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [values, setValues] = useState(BLANK);
     const [errors, setErrors] = useState({});
@@ -31,15 +33,24 @@ export default function useRequesters() {
         setEditing(null);
         setValues(BLANK);
         setErrors({});
+        setFormOpen(true);
     }
 
     function openEdit(requester) {
+        setFormOpen(true);
         setEditing(requester);
         setValues({
             name: requester.name,
             company_ids: [...requester.company_ids],
             phones: requester.phones?.length ? [...requester.phones] : [''],
         });
+        setErrors({});
+    }
+
+    function closeForm() {
+        setFormOpen(false);
+        setEditing(null);
+        setValues(BLANK);
         setErrors({});
     }
 
@@ -90,7 +101,7 @@ export default function useRequesters() {
                 ? await apiPut(`/settings/requesters/${editing.id}`, payload)
                 : await apiPost('/settings/requesters', payload);
             upsertItem(response.data);
-            openNew();
+            closeForm();
             showToast(response.message || 'Saved.', 'success');
         } catch (err) {
             // `company_ids.0` and friends all belong under the checkboxes; a
@@ -119,7 +130,7 @@ export default function useRequesters() {
         try {
             const response = await apiDelete(`/settings/requesters/${requester.id}`);
             removeItem(requester.id);
-            if (editing?.id === requester.id) openNew();
+            if (editing?.id === requester.id) closeForm();
             showToast(response?.message || 'Removed.', 'success');
         } catch (err) {
             showToast(err.message || 'Failed to remove.', 'error');
@@ -128,8 +139,8 @@ export default function useRequesters() {
 
     return {
         requesters, companies,
-        editing, values, setName, toggleCompany, setPhone, addPhone, removePhone, errors, saving,
-        openNew, openEdit, save,
+        formOpen, editing, values, setName, toggleCompany, setPhone, addPhone, removePhone, errors, saving,
+        openNew, openEdit, closeForm, save,
         deleting, setDeleting, confirmDelete,
     };
 }

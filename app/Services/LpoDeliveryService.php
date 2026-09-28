@@ -6,6 +6,7 @@ use App\Mail\LpoIssuedMail;
 use App\Models\MailAccount;
 use App\Models\PurchaseOrder;
 use App\Models\Setting;
+use App\Models\Settings\Requester;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
@@ -126,6 +127,12 @@ class LpoDeliveryService
         $discount = 0;
         $total = $subtotal + $vatAmount - $discount;
 
-        return compact('order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total');
+        // Ship To's contact numbers: the MPR keeps only the person's name, so
+        // they are looked up on System → Requested By, where names are unique.
+        // Looked up, not frozen — a number corrected there reaches every LPO.
+        $name = $order->purchaseRequest?->requested_by_name;
+        $shipToPhones = $name ? (Requester::where('name', $name)->value('phones') ?? []) : [];
+
+        return compact('order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total', 'shipToPhones');
     }
 }

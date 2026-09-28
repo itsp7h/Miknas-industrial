@@ -22,14 +22,14 @@ describe('mobile settings RequesterPage', () => {
         });
     });
 
-    it('renders the same list and form in the compact layout', async () => {
+    it('renders the same list, and its Add person button, in the compact layout', async () => {
         render(<ToastProvider><AccessProvider permissions={['requesters.view', 'requesters.create']}>
             <RequesterPage />
         </AccessProvider></ToastProvider>);
 
         expect(await screen.findByText('Ali')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Requested By' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: '+ Add person' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
     });
 });

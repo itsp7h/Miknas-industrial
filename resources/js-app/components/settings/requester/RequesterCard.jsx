@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ConfirmModal from '../../ui/ConfirmModal';
 import { useAccess } from '../../../layouts/AccessContext';
+import RequesterModal from './RequesterModal';
 import useRequesters from './useRequesters';
 
 const DISABLED = { opacity: 0.5, cursor: 'not-allowed' };
@@ -11,7 +12,8 @@ const denied = (action) => `You do not have permission to ${action} people on th
  * ticked against the companies they raise requests for.
  *
  * One tree with a `compact` flag rather than a desktop/mobile pair: the form is
- * a name and a set of checkboxes, and two copies of it would drift.
+ * a name and a set of checkboxes, and two copies of it would drift. Adding and
+ * editing happen in a dialog (`RequesterModal`), so the page is the list.
  *
  * Actions the viewer may not take stay on the page, disabled with the reason
  * (CLAUDE.md #14).
@@ -24,8 +26,6 @@ export default function RequesterCard({ compact = false }) {
     const canCreate = can('requesters.create');
     const canEdit = can('requesters.edit');
     const canDelete = can('requesters.delete');
-    // The form either adds or edits; which permission it needs follows.
-    const canSubmit = r.editing ? canEdit : canCreate;
 
     const q = query.trim().toLowerCase();
     const shown = q
@@ -35,120 +35,7 @@ export default function RequesterCard({ compact = false }) {
 
     return (
         <div>
-            <div style={{
-                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                padding: compact ? 12 : 16, marginBottom: 16,
-            }}>
-                <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>
-                    {r.editing ? `Edit ${r.editing.name}` : 'Add a person'}
-                </h2>
-
-                <div style={{ marginBottom: 12 }}>
-                    <label htmlFor="rq-name" className="form-label">Name</label>
-                    <input
-                        id="rq-name"
-                        className="form-input"
-                        value={r.values.name}
-                        onChange={(e) => r.setName(e.target.value)}
-                        placeholder="e.g. Ali Hassan"
-                        disabled={!canSubmit}
-                        style={canSubmit ? undefined : DISABLED}
-                    />
-                    {r.errors.name && <p className="text-sm text-red-600 mt-1">{r.errors.name}</p>}
-                </div>
-
-                <fieldset style={{ border: 0, padding: 0, margin: '0 0 12px' }} disabled={!canSubmit}>
-                    <legend className="form-label">
-                        Contact numbers <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span>
-                    </legend>
-                    {r.values.phones.map((phone, index) => (
-                        <div key={index} style={{ marginBottom: 8 }}>
-                            <div style={{ display: 'flex', gap: 8, maxWidth: compact ? undefined : 360 }}>
-                                <input
-                                    type="tel"
-                                    inputMode="tel"
-                                    aria-label={`Contact number ${index + 1}`}
-                                    className="form-input"
-                                    placeholder="+973 3312 3456"
-                                    value={phone}
-                                    onChange={(e) => r.setPhone(index, e.target.value)}
-                                    style={canSubmit ? undefined : DISABLED}
-                                />
-                                {(r.values.phones.length > 1 || phone !== '') && (
-                                    <button
-                                        type="button"
-                                        aria-label={`Remove contact number ${index + 1}`}
-                                        onClick={() => r.removePhone(index)}
-                                        className="btn-secondary btn-sm"
-                                        style={canSubmit ? undefined : DISABLED}
-                                    >
-                                        ×
-                                    </button>
-                                )}
-                            </div>
-                            {r.errors.phoneRows?.[index] && (
-                                <p className="text-sm text-red-600 mt-1">{r.errors.phoneRows[index]}</p>
-                            )}
-                        </div>
-                    ))}
-                    {r.errors.phones && <p className="text-sm text-red-600 mt-1">{r.errors.phones}</p>}
-                    <button
-                        type="button"
-                        onClick={r.addPhone}
-                        style={{
-                            fontSize: 13, color: '#2563eb', background: 'none', border: 0, padding: 0,
-                            ...(canSubmit ? { cursor: 'pointer' } : DISABLED),
-                        }}
-                    >
-                        + Add number
-                    </button>
-                </fieldset>
-
-                <fieldset style={{ border: 0, padding: 0, margin: '0 0 12px' }} disabled={!canSubmit}>
-                    <legend className="form-label">Companies</legend>
-                    {r.companies.length === 0 && (
-                        <p style={{ fontSize: 13, color: '#64748b' }}>No active companies — add one under System → Companies.</p>
-                    )}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: compact ? 8 : 12 }}>
-                        {r.companies.map((company) => (
-                            <label
-                                key={company.id}
-                                style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, color: '#334155',
-                                    border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 10px',
-                                    ...(canSubmit ? { cursor: 'pointer' } : DISABLED),
-                                }}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={r.values.company_ids.includes(company.id)}
-                                    onChange={() => r.toggleCompany(company.id)}
-                                />
-                                {company.name}
-                            </label>
-                        ))}
-                    </div>
-                    {r.errors.company_ids && <p className="text-sm text-red-600 mt-1">{r.errors.company_ids}</p>}
-                </fieldset>
-
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                        type="button"
-                        onClick={r.save}
-                        disabled={!canSubmit || r.saving}
-                        title={canSubmit ? undefined : denied(r.editing ? 'edit' : 'add')}
-                        className="btn-primary btn-sm"
-                        style={canSubmit ? undefined : DISABLED}
-                    >
-                        {r.saving ? 'Saving…' : (r.editing ? 'Save' : 'Add')}
-                    </button>
-                    {r.editing && (
-                        <button type="button" onClick={r.openNew} className="btn-secondary btn-sm">Cancel</button>
-                    )}
-                </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: compact ? 'wrap' : 'nowrap' }}>
                 <input
                     type="search"
                     aria-label="Search people"
@@ -161,6 +48,20 @@ export default function RequesterCard({ compact = false }) {
                 <span style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap' }}>
                     {q ? `${shown.length} of ${r.requesters.length}` : r.requesters.length} {r.requesters.length === 1 ? 'person' : 'people'}
                 </span>
+                <button
+                    type="button"
+                    onClick={r.openNew}
+                    disabled={!canCreate}
+                    title={canCreate ? undefined : denied('add')}
+                    className="btn-primary"
+                    style={{
+                        marginLeft: 'auto', flexShrink: 0, whiteSpace: 'nowrap',
+                        ...(compact ? { width: '100%', justifyContent: 'center' } : {}),
+                        ...(canCreate ? {} : DISABLED),
+                    }}
+                >
+                    + Add person
+                </button>
             </div>
 
             {r.requesters.length === 0 && (
@@ -234,6 +135,8 @@ export default function RequesterCard({ compact = false }) {
                     </div>
                 </div>
             ))}
+
+            <RequesterModal r={r} compact={compact} />
 
             <ConfirmModal
                 open={!!r.deleting}
