@@ -163,10 +163,12 @@
             @if($order->purchaseRequest?->location)
                 <div class="party-line">{{ $order->purchaseRequest->location }}</div>
             @endif
-            @if($order->purchaseRequest?->company_name)
+            {{-- The MPR's project, not its company: the company already heads the
+                 letterhead, and the site is where the goods are for. --}}
+            @if($order->purchaseRequest?->project_name)
             <div class="site-box">
                 <div class="site-label">Site / Project</div>
-                <div class="site-value">{{ $order->purchaseRequest->company_name }}</div>
+                <div class="site-value">{{ $order->purchaseRequest->project_name }}</div>
             </div>
             @endif
         </td>

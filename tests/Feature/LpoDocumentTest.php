@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseRequest;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\LpoDeliveryService;
@@ -77,5 +78,27 @@ class LpoDocumentTest extends TestCase
         $html = view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
 
         $this->assertStringNotContainsString('P: ', $html);
+    }
+
+    public function test_site_project_shows_the_mprs_project_not_its_company(): void
+    {
+        $order = $this->order();
+        $order->update(['purchase_request_id' => PurchaseRequest::factory()->create([
+            'company_name' => 'Miknas Industrial', 'project_name' => 'Forkoll',
+        ])->id]);
+        $html = view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
+
+        $this->assertMatchesRegularExpression('#Site / Project</div>\s*<div class="site-value">Forkoll</div>#', $html);
+    }
+
+    public function test_an_mpr_without_a_project_prints_no_site_box(): void
+    {
+        $order = $this->order();
+        $order->update(['purchase_request_id' => PurchaseRequest::factory()->create([
+            'company_name' => 'Miknas Industrial', 'project_name' => null,
+        ])->id]);
+        $html = view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
+
+        $this->assertStringNotContainsString('Site / Project', $html);
     }
 }
