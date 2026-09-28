@@ -12,6 +12,7 @@
         width: 40px; height: 40px; border-radius: 6px;
         background: #16a34a; text-align: center; padding: 10px 0 0;
     }
+    .brand-logo { display: block; }
     .brand-name { font-size: 19px; font-weight: 700; color: #0f172a; }
     .brand-sub  { font-size: 10px; color: #64748b; margin-top: 1px; }
 
@@ -73,15 +74,19 @@
 
     .signatures { width: 100%; border-collapse: collapse; margin-top: 40px; }
     .signatures td { vertical-align: top; padding: 0; }
-    /* Centred over the name, the way the name is centred over the line. The
-       same height is kept in both blocks, signed or not, so the two lines stay
-       level. */
-    .sig-img-wrap { text-align: center; height: 60px; margin-bottom: 4px; }
+    /* Both blocks draw the same fixed-height area above their line, content
+       at its foot — the signature and name in one, the company's stamp in
+       the other — so the two lines stay level, signed or not, stamped or
+       not. A table cell, because DomPDF honours a cell's height and
+       vertical-align where it would not a div's. */
+    .sig-area { width: 100%; border-collapse: collapse; }
+    .sig-area td { height: 100px; padding: 0 0 6px; vertical-align: bottom; text-align: center; }
     .sig-img { max-height: 60px; max-width: 200px; }
+    .sig-stamp { display: inline-block; }
     .sig-block { width: 45%; }
     .sig-gap { width: 10%; }
     .sig-line { border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 10px; color: #64748b; text-align: center; }
-    .sig-name { font-size: 11px; font-weight: 700; color: #0f172a; margin-bottom: 26px; text-align: center; }
+    .sig-name { font-size: 11px; font-weight: 700; color: #0f172a; margin-top: 4px; text-align: center; }
 
     .disclaimer { text-align: center; font-size: 11px; font-weight: 700; margin-top: 24px; text-decoration: underline; }
     .disclaimer-sub { text-align: center; font-size: 9.5px; color: #64748b; margin-top: 2px; }
@@ -94,11 +99,18 @@
         <td>
             <table style="border-collapse:collapse;">
                 <tr>
+                    @if(! empty($logo))
+                    {{-- The company's logo (Settings → Companies), fitted to 160×56. --}}
+                    <td style="padding:0;vertical-align:middle;">
+                        <img class="brand-logo" src="{{ $logo['src'] }}" width="{{ $logo['width'] }}" height="{{ $logo['height'] }}" alt="{{ $company->name }}">
+                    </td>
+                    @else
                     <td style="width:40px;padding:0;">
                         <div class="brand-box">
                             <img src="data:image/svg+xml;base64,{{ base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>') }}" width="20" height="20" alt="">
                         </div>
                     </td>
+                    @endif
                     <td style="padding:0 0 0 10px;vertical-align:middle;">
                         <div class="brand-name">{{ $company->name ?? 'SteelERP' }}</div>
                         <div class="brand-sub">{{ $order->purchaseRequest->company_name ?? 'Manufacturing & Trading' }}</div>
@@ -248,19 +260,23 @@
 <table class="signatures">
     <tr>
         <td class="sig-block">
-            {{-- The issuer's signature as it was when the LPO was issued. --}}
-            <div class="sig-img-wrap">
+            <table class="sig-area"><tr><td>
+                {{-- The issuer's signature as it was when the LPO was issued. --}}
                 @if ($order->prepared_signature)
                     <img class="sig-img" src="{{ $order->prepared_signature }}" alt="Signature">
                 @endif
-            </div>
-            <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
+                <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
+            </td></tr></table>
             <div class="sig-line">Prepared By</div>
         </td>
         <td class="sig-gap"></td>
         <td class="sig-block">
-            <div class="sig-img-wrap"></div>
-            <div class="sig-name">&nbsp;</div>
+            <table class="sig-area"><tr><td>
+                {{-- The company's stamp (Settings → Companies), fitted to 150×90. --}}
+                @if (! empty($stamp))
+                    <img class="sig-stamp" src="{{ $stamp['src'] }}" width="{{ $stamp['width'] }}" height="{{ $stamp['height'] }}" alt="{{ $company->name }} stamp">
+                @endif
+            </td></tr></table>
             <div class="sig-line">Approved By</div>
         </td>
     </tr>
