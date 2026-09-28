@@ -64,6 +64,19 @@ export default function useCompanyList() {
         }
     }
 
+    /** `kind` is 'logo' or 'stamp'; `image` a PNG/JPEG data URL. */
+    async function uploadImage(company, kind, image) {
+        const response = await apiPut(`/settings/companies/${company.id}/images/${kind}`, { image });
+        replaceCompany(response.data);
+        showToast(response.message || 'Saved.', 'success');
+    }
+
+    async function removeImage(company, kind) {
+        const response = await apiDelete(`/settings/companies/${company.id}/images/${kind}`);
+        replaceCompany(response.data);
+        showToast(response.message || 'Removed.', 'success');
+    }
+
     async function addDepartment(company, name) {
         const response = await apiPost(`/settings/companies/${company.id}/departments`, { name });
         replaceCompany(response.data);
@@ -97,6 +110,7 @@ export default function useCompanyList() {
         companies, meta, loading,
         addOpen, setAddOpen, addCompany, saveCompany,
         deleting, setDeleting, handleDelete,
+        uploadImage, removeImage,
         addDepartment, saveDepartment,
         deletingDepartment, setDeletingDepartment, handleDeleteDepartment,
     };

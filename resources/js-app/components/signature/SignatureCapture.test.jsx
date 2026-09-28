@@ -23,17 +23,17 @@ describe('SignatureCapture', () => {
         expect(onChange).toHaveBeenLastCalledWith(null);
     });
 
-    it('refuses a file that is not a PNG or JPEG, before reading it', () => {
+    it('refuses a file that is not a PNG or JPEG, before reading it', async () => {
         render(<SignatureCapture onChange={() => {}} />);
         fireEvent.click(screen.getByRole('tab', { name: /Upload/ }));
 
         const gif = new File(['GIF89a'], 'sig.gif', { type: 'image/gif' });
         fireEvent.change(screen.getByLabelText('Signature image'), { target: { files: [gif] } });
 
-        expect(screen.getByText('Choose a PNG or JPEG image.')).toBeInTheDocument();
+        expect(await screen.findByText('Choose a PNG or JPEG image.')).toBeInTheDocument();
     });
 
-    it('refuses an image over 5 MB', () => {
+    it('refuses an image over 5 MB', async () => {
         render(<SignatureCapture onChange={() => {}} />);
         fireEvent.click(screen.getByRole('tab', { name: /Upload/ }));
 
@@ -41,6 +41,6 @@ describe('SignatureCapture', () => {
         Object.defineProperty(big, 'size', { value: 6 * 1024 * 1024 });
         fireEvent.change(screen.getByLabelText('Signature image'), { target: { files: [big] } });
 
-        expect(screen.getByText('That image is over 5 MB. Choose a smaller one.')).toBeInTheDocument();
+        expect(await screen.findByText('That image is over 5 MB. Choose a smaller one.')).toBeInTheDocument();
     });
 });

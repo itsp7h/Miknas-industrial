@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import DesktopCompanyListPage from './CompanyListPage';
 import MobileCompanyListPage from '../../mobile/settings/CompanyListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { AccessProvider } from '../../../layouts/AccessContext';
+import * as readImage from '../../../components/image/readImage';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
@@ -169,5 +171,99 @@ describe('settings CompanyListPage', () => {
         expect(button).toHaveStyle({ width: '100%' });
         expect(screen.getByText('Miknas Industrial')).toBeInTheDocument();
         expect(screen.getByText('Accounts')).toBeInTheDocument();
+    });
+
+    describe('logo and stamp', () => {
+        const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+        const withAccess = (permissions, Page = DesktopCompanyListPage) => render(
+            <ToastProvider><AccessProvider permissions={permissions}><Page /></AccessProvider></ToastProvider>
+        );
+        const header = async (name) => (await screen.findByText(name)).closest('div').parentElement;
+
+        it('puts Upload and View for the logo and the stamp on the purple bar', async () => {
+            withAccess(['companies.view', 'companies.edit']);
+
+            const bar = await header('Miknas Industrial');
+            ['Upload Logo', 'View Logo', 'Upload Stamp', 'View Stamp', '+ Department', 'Edit', 'Delete']
+                .forEach((name) => expect(within(bar).getByRole('button', { name })).toBeInTheDocument());
+            // Nothing uploaded yet: nothing to view.
+            expect(within(bar).getByRole('button', { name: 'View Stamp' })).toBeDisabled();
+            expect(within(bar).getByRole('button', { name: 'View Stamp' })).toHaveAttribute('title', 'No stamp uploaded yet');
+        });
+
+        it('uploads a logo, which then shows beside the name', async () => {
+            vi.spyOn(readImage, 'readImageFile').mockResolvedValue(PNG);
+            const put = vi.spyOn(client, 'apiPut').mockResolvedValue({
+                data: { ...COMPANIES[0], logo: PNG, stamp: null }, message: 'Logo saved for Miknas Industrial.',
+            });
+            withAccess(['companies.view', 'companies.edit']);
+
+            const file = new File(['png'], 'logo.png', { type: 'image/png' });
+            fireEvent.change(await screen.findByLabelText('Logo image for Miknas Industrial'), { target: { files: [file] } });
+
+            await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/companies/1/images/logo', { image: PNG }));
+            expect(readImage.readImageFile).toHaveBeenCalledWith(file, { maxW: 800, maxH: 400 });
+            expect(await screen.findByTestId('company-header-logo')).toHaveAttribute('src', PNG);
+            expect(screen.getByText('Logo saved for Miknas Industrial.')).toBeInTheDocument();
+            expect(screen.getAllByRole('button', { name: 'View Logo' })[0]).toBeEnabled();
+        });
+
+        it('shows the stamp in a pop-up, and removes it from there', async () => {
+            vi.spyOn(client, 'apiGet').mockResolvedValue({
+                ...PAYLOAD, data: [{ ...COMPANIES[0], stamp: PNG }, COMPANIES[1]],
+            });
+            const del = vi.spyOn(client, 'apiDelete').mockResolvedValue({
+                data: { ...COMPANIES[0], stamp: null }, message: 'Stamp removed from Miknas Industrial.',
+            });
+            withAccess(['companies.view', 'companies.edit']);
+
+            fireEvent.click(within(await header('Miknas Industrial')).getByRole('button', { name: 'View Stamp' }));
+            expect(screen.getByRole('heading', { name: 'Miknas Industrial — Stamp' })).toBeInTheDocument();
+            expect(screen.getByAltText('Miknas Industrial stamp')).toHaveAttribute('src', PNG);
+
+            fireEvent.click(screen.getByRole('button', { name: 'Remove Stamp' }));
+
+            await waitFor(() => expect(del).toHaveBeenCalledWith('/settings/companies/1/images/stamp'));
+            await waitFor(() => expect(screen.queryByAltText('Miknas Industrial stamp')).not.toBeInTheDocument());
+            expect(screen.getByText('Stamp removed from Miknas Industrial.')).toBeInTheDocument();
+        });
+
+        it('keeps the building icon in the header of a company with no logo', async () => {
+            vi.spyOn(client, 'apiGet').mockResolvedValue({
+                ...PAYLOAD, data: [{ ...COMPANIES[0], logo: PNG }, { ...COMPANIES[1], logo: null }],
+            });
+            withAccess(['companies.view']);
+
+            expect(await screen.findAllByTestId('company-header-logo')).toHaveLength(1);
+            expect(screen.getByTestId('company-header-logo')).toHaveAttribute('alt', 'Miknas Industrial logo');
+        });
+
+        it("toasts an unreadable file's reason, and uploads nothing", async () => {
+            vi.spyOn(readImage, 'readImageFile').mockRejectedValue(new Error('Choose a PNG or JPEG image.'));
+            const put = vi.spyOn(client, 'apiPut');
+            withAccess(['companies.view', 'companies.edit']);
+
+            fireEvent.change(await screen.findByLabelText('Stamp image for Miknas Industrial'), {
+                target: { files: [new File(['gif'], 's.gif', { type: 'image/gif' })] },
+            });
+
+            expect(await screen.findByText('Choose a PNG or JPEG image.')).toBeInTheDocument();
+            expect(put).not.toHaveBeenCalled();
+        });
+
+        // CLAUDE.md #14: on the page, disabled, with the reason — but viewing needs nothing more.
+        it('without companies.edit, disables Upload and Remove but still lets you view', async () => {
+            vi.spyOn(client, 'apiGet').mockResolvedValue({ ...PAYLOAD, data: [{ ...COMPANIES[0], stamp: PNG }] });
+            withAccess(['companies.view'], MobileCompanyListPage);
+
+            const bar = await header('Miknas Industrial');
+            const upload = within(bar).getByRole('button', { name: 'Upload Stamp' });
+            expect(upload).toBeDisabled();
+            expect(upload).toHaveAttribute('title', "You do not have permission to change a company's stamp");
+
+            fireEvent.click(within(bar).getByRole('button', { name: 'View Stamp' }));
+            expect(screen.getByAltText('Miknas Industrial stamp')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Remove Stamp' })).toBeDisabled();
+        });
     });
 });
