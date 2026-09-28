@@ -156,6 +156,40 @@ class ProjectControllerTest extends TestCase
             ->assertOk()->assertJsonPath('data.locations', []);
     }
 
+    public function test_a_location_keeps_its_road_block_city_and_country(): void
+    {
+        $project = $this->project();
+        $admin = $this->admin();
+
+        $created = $this->actingAs($admin)
+            ->postJson("/api/v1/settings/projects/{$project->id}/locations", [
+                'name' => 'Askar Yard', 'latitude' => 26.0667, 'longitude' => 50.5577,
+                'road' => 'Road 3803', 'block' => '945', 'city' => 'Sitra', 'country' => 'Bahrain',
+            ])->assertCreated()
+            ->assertJsonPath('data.locations.0.road', 'Road 3803')
+            ->assertJsonPath('data.locations.0.block', '945')
+            ->assertJsonPath('data.locations.0.city', 'Sitra')
+            ->assertJsonPath('data.locations.0.country', 'Bahrain');
+
+        // An edit that leaves a part out clears it, as it does the address.
+        $this->actingAs($admin)
+            ->putJson("/api/v1/settings/projects/{$project->id}/locations/{$created->json('data.locations.0.id')}", [
+                'name' => 'Askar Yard', 'city' => 'Askar', 'country' => 'Bahrain',
+            ])->assertOk()
+            ->assertJsonPath('data.locations.0.road', null)
+            ->assertJsonPath('data.locations.0.city', 'Askar');
+    }
+
+    public function test_an_address_part_longer_than_a_column_is_rejected(): void
+    {
+        $project = $this->project();
+
+        $this->actingAs($this->admin())
+            ->postJson("/api/v1/settings/projects/{$project->id}/locations", [
+                'name' => 'Yard', 'road' => str_repeat('x', 256),
+            ])->assertStatus(422)->assertJsonValidationErrors(['road']);
+    }
+
     public function test_coordinates_outside_the_globe_are_rejected(): void
     {
         $project = $this->project();

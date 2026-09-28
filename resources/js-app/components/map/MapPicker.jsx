@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { searchPlaces, describePoint } from './geocode';
+import { addBasemap } from './basemap';
+import { PIN } from './pin';
 
 // Bahrain. Both existing warehouses are here — Askar and Hidd — so an empty
 // picker opens where the next one is likely to be rather than mid-Atlantic.
@@ -8,24 +10,6 @@ const DEFAULT_CENTER = [26.0667, 50.5577];
 const DEFAULT_ZOOM = 10;
 const PINNED_ZOOM = 15;
 
-const TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-
-/**
- * Leaflet's default marker is a PNG it resolves by URL, which a bundler
- * rewrites and Leaflet then cannot find — the classic broken-image pin. A
- * divIcon sidesteps the asset pipeline entirely, and matches how every other
- * icon in this app is drawn.
- */
-const PIN = L.divIcon({
-    className: '',
-    html: `<svg width="30" height="30" viewBox="0 0 24 24" fill="#dc2626" stroke="#fff" stroke-width="1.5">
-        <path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7z"/>
-        <circle cx="12" cy="9" r="2.5" fill="#fff" stroke="none"/>
-    </svg>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 29],
-});
 
 const round = (n) => Math.round(n * 1e7) / 1e7;
 
@@ -75,7 +59,7 @@ export default function MapPicker({ latitude, longitude, onPick, disabled = fals
         const instance = L.map(container.current, { scrollWheelZoom: false })
             .setView(hasPoint ? [latitude, longitude] : DEFAULT_CENTER, hasPoint ? PINNED_ZOOM : DEFAULT_ZOOM);
 
-        L.tileLayer(TILES, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(instance);
+        const cancelBasemap = addBasemap(instance);
         instance.on('click', (e) => choose(e.latlng.lat, e.latlng.lng));
         map.current = instance;
 
@@ -86,6 +70,7 @@ export default function MapPicker({ latitude, longitude, onPick, disabled = fals
 
         return () => {
             clearTimeout(settle);
+            cancelBasemap();
             instance.remove();
             map.current = null;
             marker.current = null;

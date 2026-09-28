@@ -19,6 +19,10 @@ class ProjectSettingResource extends JsonResource
                 'id' => $location->id,
                 'name' => $location->name,
                 'address' => $location->address,
+                'road' => $location->road,
+                'block' => $location->block,
+                'city' => $location->city,
+                'country' => $location->country,
                 // Cast so the page can format them; SQLite hands back strings.
                 'latitude' => $location->latitude !== null ? (float) $location->latitude : null,
                 'longitude' => $location->longitude !== null ? (float) $location->longitude : null,

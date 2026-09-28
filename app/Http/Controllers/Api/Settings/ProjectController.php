@@ -151,6 +151,10 @@ class ProjectController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'nullable|string|max:500',
+            'road' => 'nullable|string|max:255',
+            'block' => 'nullable|string|max:20',
+            'city' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
         ]);
@@ -158,6 +162,10 @@ class ProjectController extends Controller
         return [
             'name' => $data['name'],
             'address' => $data['address'] ?? null,
+            'road' => $data['road'] ?? null,
+            'block' => $data['block'] ?? null,
+            'city' => $data['city'] ?? null,
+            'country' => $data['country'] ?? null,
             'latitude' => $data['latitude'] ?? null,
             'longitude' => $data['longitude'] ?? null,
         ];
