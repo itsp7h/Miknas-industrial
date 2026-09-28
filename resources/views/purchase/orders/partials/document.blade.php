@@ -157,6 +157,9 @@
             @if($order->purchaseRequest?->requested_by_name)
                 <div class="party-name">{{ $order->purchaseRequest->requested_by_name }}</div>
             @endif
+            @if(! empty($shipToPhones))
+                <div class="party-line">P: {{ implode(' / ', $shipToPhones) }}</div>
+            @endif
             @if($order->purchaseRequest?->department)
                 <div class="party-line">{{ $order->purchaseRequest->department }}</div>
             @endif

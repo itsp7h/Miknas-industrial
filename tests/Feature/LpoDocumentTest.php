@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
+use App\Models\Settings\Requester;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\LpoDeliveryService;
@@ -21,7 +22,7 @@ class LpoDocumentTest extends TestCase
     private function order(array $supplier = []): PurchaseOrder
     {
         return PurchaseOrder::create([
-            'po_number' => 'LPO-DOC-1', 'supplier_id' => Supplier::factory()->create($supplier)->id,
+            'po_number' => 'LPO-DOC-'.(PurchaseOrder::count() + 1), 'supplier_id' => Supplier::factory()->create($supplier)->id,
             'po_date' => '2026-09-28', 'total_amount' => 5, 'status' => 'sent',
             'created_by' => User::factory()->create()->id,
         ]);
@@ -100,5 +101,35 @@ class LpoDocumentTest extends TestCase
         $html = view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
 
         $this->assertStringNotContainsString('Site / Project', $html);
+    }
+
+    private function shipToHtml(?string $requestedBy): string
+    {
+        $order = $this->order(['phone' => null, 'phone2' => null, 'whatsapp' => null]);
+        $order->update(['purchase_request_id' => PurchaseRequest::factory()->create([
+            'requested_by_name' => $requestedBy,
+        ])->id]);
+
+        return view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
+    }
+
+    public function test_ship_to_shows_the_requesters_name_and_contact_numbers(): void
+    {
+        Requester::create(['name' => 'Ali Hassan', 'phones' => ['+973 3312 3456', '17 555 010']]);
+
+        $html = $this->shipToHtml('Ali Hassan');
+
+        $this->assertMatchesRegularExpression(
+            '#<div class="party-name">Ali Hassan</div>\s*<div class="party-line">P: \+973 3312 3456 / 17 555 010</div>#',
+            $html,
+        );
+    }
+
+    public function test_ship_to_prints_no_number_for_someone_not_on_the_list_or_without_one(): void
+    {
+        Requester::create(['name' => 'Zainab', 'phones' => []]);
+
+        $this->assertStringNotContainsString('P: ', $this->shipToHtml('Zainab'));
+        $this->assertStringNotContainsString('P: ', $this->shipToHtml('Someone Unlisted'));
     }
 }
