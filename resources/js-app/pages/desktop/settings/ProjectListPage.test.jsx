@@ -122,7 +122,8 @@ describe('settings ProjectListPage', () => {
         expect(screen.getByLabelText(/Location Name/)).toBeInTheDocument();
         expect(screen.getByLabelText('Latitude')).toBeInTheDocument();
         expect(screen.getByLabelText('Longitude')).toBeInTheDocument();
-        expect(screen.getByLabelText('Search address on map')).toBeInTheDocument();
+        expect(screen.getByLabelText('Search the map')).toBeInTheDocument();
+        expect(screen.getByLabelText('Road / Street')).toBeInTheDocument();
     });
 
     it('edits a location through the same modal, prefilled', async () => {
@@ -139,7 +140,9 @@ describe('settings ProjectListPage', () => {
         fireEvent.click(screen.getByText('Save Location'));
 
         await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/projects/1/locations/10', {
-            name: 'North Yard', address: 'Industrial Area 4', latitude: 25.2048, longitude: 55.2708, is_active: true,
+            name: 'North Yard', address: 'Industrial Area 4',
+            road: null, block: null, city: null, country: null,
+            latitude: 25.2048, longitude: 55.2708, is_active: true,
         }));
     });
 

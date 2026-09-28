@@ -9,7 +9,7 @@ class Location extends Model
 {
     protected $table = 'settings_locations';
 
-    protected $fillable = ['name', 'project_id', 'is_active', 'address', 'latitude', 'longitude'];
+    protected $fillable = ['name', 'project_id', 'is_active', 'address', 'road', 'block', 'city', 'country', 'latitude', 'longitude'];
 
     protected $casts = ['is_active' => 'boolean', 'latitude' => 'float', 'longitude' => 'float'];
 

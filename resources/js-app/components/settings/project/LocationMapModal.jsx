@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import useLeaflet from './useLeaflet';
+import L from 'leaflet';
 import { useToast } from '../../ui/Toast';
+import { addBasemap } from '../../map/basemap';
+import { PIN } from '../../map/pin';
+import { addressOfPoint, findAddress, searchPlaces } from '../../map/geocode';
+
+const NO_PARTS = { road: '', block: '', city: '', country: '' };
+const PART_FIELDS = [
+    ['road', 'Road / Street', 'e.g. Road 2734'],
+    ['block', 'Block', 'e.g. 338'],
+    ['city', 'City', 'e.g. Manama'],
+    ['country', 'Country', 'e.g. Bahrain'],
+];
 
 const DEFAULT_CENTRE = [25.2048, 55.2708];
 const DEFAULT_ZOOM = 11;
@@ -8,79 +19,157 @@ const DEFAULT_ZOOM = 11;
 /**
  * The Blade location modal: form on the left, a Leaflet map on the right. Click
  * the map to drop the pin, drag it to adjust, or type an address and search it
- * against Nominatim — all as before, with the map wired up through refs instead
- * of module-level globals so two modals can never share one map instance.
+ * against Nominatim — with the map wired up through refs instead of
+ * module-level globals so two modals can never share one map instance. It is
+ * the bundled Leaflet the warehouse picker uses, drawing the same English
+ * OpenFreeMap basemap (map/basemap.js); it used to load a second copy of
+ * Leaflet from a CDN, which the MapLibre layer cannot attach to.
+ *
+ * Wherever the pin lands — a click, a drag, a search — the road, block, city
+ * and country under it are looked up (Nominatim, in English) and fill
+ * their fields. It works the other way too: type the city into "Search the
+ * map", fill in the road or block, and the search button takes the pin
+ * to that address — leaving what was typed as typed. Those four *are* the address: the one-line
+ * `address` is saved as them joined, and the box above them is a search box
+ * that finds a place and is not saved. A location from before the four
+ * fields keeps its typed address until they are filled.
+ *
+ * Typed coordinates move the pin but look nothing up: Nominatim allows one
+ * request a second, not one a keystroke.
  */
 export default function LocationMapModal({ open, project, location, onClose, onSave }) {
     const isEdit = !!location;
     const mapNode = useRef(null);
     const map = useRef(null);
     const marker = useRef(null);
-    const { ready, failed } = useLeaflet(open);
     const { showToast } = useToast();
 
     const [name, setName] = useState('');
-    const [address, setAddress] = useState('');
+    const [search, setSearch] = useState('');
+    const [parts, setParts] = useState(NO_PARTS);
+    const [lookingUp, setLookingUp] = useState('');
+    // Each lookup's number; an answer for a pin since moved is dropped.
+    const lookup = useRef(0);
     const [lat, setLat] = useState('');
     const [lng, setLng] = useState('');
     const [isActive, setIsActive] = useState(true);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
 
-    // Reset whenever the modal is opened for a different location.
+    // Seeded when the modal opens, for that location — keyed on its id, not on
+    // the object, so a refresh of the list underneath (a new object for the
+    // same location) never wipes what is being typed.
     useEffect(() => {
         if (!open) return;
         setName(location?.name ?? '');
-        setAddress(location?.address ?? '');
+        const saved = {
+            road: location?.road ?? '', block: location?.block ?? '',
+            city: location?.city ?? '', country: location?.country ?? '',
+        };
+        setParts(saved);
+        // An address typed before the four fields existed waits in the search
+        // box, one click from filling them.
+        setSearch(Object.values(saved).some(Boolean) ? '' : (location?.address ?? ''));
+        lookup.current += 1;
+        setLookingUp('');
         setLat(location?.latitude != null ? String(location.latitude) : '');
         setLng(location?.longitude != null ? String(location.longitude) : '');
         setIsActive(location ? location.is_active : true);
         setError('');
-    }, [open, location]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, location?.id]);
+
+    /** The address under a pin the user just placed fills the four fields. */
+    async function fillAddressFrom(nextLat, nextLng) {
+        const ticket = ++lookup.current;
+        setLookingUp('Looking up the address under the pin…');
+        const found = await addressOfPoint(nextLat, nextLng);
+        if (ticket !== lookup.current) return;
+        setLookingUp('');
+        if (!found) return;
+        setParts({ road: found.road, block: found.block, city: found.city, country: found.country });
+    }
+
+    /** Moves the pin to the address `target` names; the fields keep what was typed. */
+    async function movePinToParts(target) {
+        const ticket = ++lookup.current;
+        setLookingUp('Finding that address on the map…');
+        const found = await findAddress(target);
+        if (ticket !== lookup.current) return;
+        if (!found) {
+            setLookingUp('');
+            showToast('The map could not find that address — drop the pin by hand.', 'warn');
+
+            return;
+        }
+        setLookingUp('');
+        setLat(found.latitude.toFixed(7));
+        setLng(found.longitude.toFixed(7));
+        placePin(found.latitude, found.longitude);
+        // Close is not exact: say so, rather than leave a pin that looks sure.
+        if (found.matched !== 'road' && target.road?.trim()) {
+            const fallback = found.matched === 'block' ? `block ${target.block.trim()}` : target.city.trim();
+            showToast(`${target.road.trim()} is not on the map — the pin is at ${fallback}. Drag it to the exact spot.`, 'warn');
+        }
+    }
+
+    /** The one-line address: the four parts joined, else what was saved before. */
+    function addressLine() {
+        const joined = PART_FIELDS
+            .map(([part]) => (part === 'block' && parts.block.trim() ? `Block ${parts.block.trim()}` : parts[part].trim()))
+            .filter(Boolean).join(', ');
+
+        return joined || location?.address || null;
+    }
 
     function placePin(nextLat, nextLng) {
-        const L = window.L;
-        if (!L || !map.current) return;
+        if (!map.current) return;
 
         const latlng = L.latLng(nextLat, nextLng);
 
         if (marker.current) {
             marker.current.setLatLng(latlng);
         } else {
-            marker.current = L.marker(latlng, { draggable: true }).addTo(map.current);
+            marker.current = L.marker(latlng, { icon: PIN, draggable: true }).addTo(map.current);
             marker.current.on('dragend', (event) => {
                 const position = event.target.getLatLng();
                 setLat(position.lat.toFixed(7));
                 setLng(position.lng.toFixed(7));
+                fillAddressFrom(position.lat, position.lng);
             });
         }
 
         map.current.setView(latlng, Math.max(map.current.getZoom(), 14));
     }
 
-    // Build the map once Leaflet is in and the node exists; tear it down on close
-    // so reopening starts clean.
+    // Build the map when the modal opens; tear it down on close so reopening
+    // starts clean.
     useEffect(() => {
-        if (!open || !ready || !mapNode.current || map.current) return;
+        if (!open || !mapNode.current || map.current) return undefined;
 
-        const L = window.L;
         map.current = L.map(mapNode.current).setView(DEFAULT_CENTRE, DEFAULT_ZOOM);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 19,
-        }).addTo(map.current);
+        const cancelBasemap = addBasemap(map.current);
+        // The modal is still laying out when the map measures its box, which
+        // leaves grey tiles; Leaflet re-measures on demand.
+        const settle = setTimeout(() => map.current?.invalidateSize(), 120);
 
         map.current.on('click', (event) => {
             setLat(event.latlng.lat.toFixed(7));
             setLng(event.latlng.lng.toFixed(7));
             placePin(event.latlng.lat, event.latlng.lng);
+            fillAddressFrom(event.latlng.lat, event.latlng.lng);
         });
 
         if (location?.latitude != null && location?.longitude != null) {
             placePin(location.latitude, location.longitude);
         }
+
+        return () => {
+            clearTimeout(settle);
+            cancelBasemap();
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, ready, location]);
+    }, [open, location?.id]);
 
     useEffect(() => {
         if (open) return;
@@ -101,24 +190,34 @@ export default function LocationMapModal({ open, project, location, onClose, onS
         if (valid) placePin(parsedLat, parsedLng);
     }
 
+    /**
+     * The search button. With a road or block filled in, the search box
+     * is the city and the button goes to the whole address. With only the
+     * search box, it finds that place and the pin fills the fields.
+     */
     async function geocode() {
-        const query = address.trim();
+        const query = search.trim();
+        const street = ['road', 'block'].some((part) => parts[part].trim());
+
+        if (street) {
+            const target = { ...parts, city: query || parts.city };
+            if (query) setParts((prev) => ({ ...prev, city: query }));
+            await movePinToParts(target);
+
+            return;
+        }
         if (!query) {
-            showToast('Enter an address to search.', 'warn');
+            showToast('Type a city or a place, or fill in the address, to search.', 'warn');
 
             return;
         }
         try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-                { headers: { 'Accept-Language': 'en' } }
-            );
-            const results = await response.json();
-            if (results?.length) {
-                const found = [parseFloat(results[0].lat), parseFloat(results[0].lon)];
-                setLat(found[0].toFixed(7));
-                setLng(found[1].toFixed(7));
-                placePin(found[0], found[1]);
+            const [first] = await searchPlaces(query);
+            if (first) {
+                setLat(first.latitude.toFixed(7));
+                setLng(first.longitude.toFixed(7));
+                placePin(first.latitude, first.longitude);
+                fillAddressFrom(first.latitude, first.longitude);
             } else {
                 showToast('Address not found — try a more specific query.', 'warn');
             }
@@ -138,7 +237,11 @@ export default function LocationMapModal({ open, project, location, onClose, onS
         try {
             await onSave(project, location, {
                 name: name.trim(),
-                address: address.trim() || null,
+                address: addressLine(),
+                road: parts.road.trim() || null,
+                block: parts.block.trim() || null,
+                city: parts.city.trim() || null,
+                country: parts.country.trim() || null,
                 latitude: lat !== '' ? parseFloat(lat) : null,
                 longitude: lng !== '' ? parseFloat(lng) : null,
                 is_active: isActive,
@@ -199,17 +302,17 @@ export default function LocationMapModal({ open, project, location, onClose, onS
                         </div>
 
                         <div>
-                            <label htmlFor="location-address" className="form-label">Address</label>
+                            <label htmlFor="location-search" className="form-label">Search the map</label>
                             <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
                                 <input
-                                    id="location-address" type="text" className="form-input"
-                                    style={{ flex: 1, fontSize: 13 }} placeholder="Street, City, Country"
-                                    value={address}
-                                    onChange={(e) => setAddress(e.target.value)}
+                                    id="location-search" type="search" className="form-input"
+                                    style={{ flex: 1, fontSize: 13 }} placeholder="City or place, e.g. Manama"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); geocode(); } }}
                                 />
                                 <button
-                                    type="button" onClick={geocode} title="Search address on map" aria-label="Search address on map"
+                                    type="button" onClick={geocode} title="Find this place on the map" aria-label="Find this place on the map"
                                     style={{
                                         flexShrink: 0, padding: '0 11px', background: '#f1f5f9', border: '1px solid #e2e8f0',
                                         borderRadius: 6, cursor: 'pointer', color: '#475569', display: 'flex', alignItems: 'center',
@@ -221,6 +324,28 @@ export default function LocationMapModal({ open, project, location, onClose, onS
                                 </button>
                             </div>
                         </div>
+
+                        <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                            <legend className="form-label">Address</legend>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                {PART_FIELDS.map(([part, label, placeholder]) => (
+                                    <div key={part}>
+                                        <label htmlFor={`location-${part}`} className="form-label">{label}</label>
+                                        <input
+                                            id={`location-${part}`} type="text" className="form-input"
+                                            style={{ width: '100%', fontSize: 13 }} placeholder={placeholder}
+                                            value={parts[part]}
+                                            onChange={(e) => setParts((prev) => ({ ...prev, [part]: e.target.value }))}
+                                            // Enter searches, as it does in the search box.
+                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); geocode(); } }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                            <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 0' }} aria-live="polite">
+                                {lookingUp || 'Filled from the pin — or fill it in, with the city above, and search.'}
+                            </p>
+                        </fieldset>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                             <div>
@@ -246,9 +371,9 @@ export default function LocationMapModal({ open, project, location, onClose, onS
                         <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '9px 11px' }}>
                             <p style={{ fontSize: 11, color: '#0369a1', margin: 0, lineHeight: 1.6 }}>
                                 <strong>Map tips:</strong><br />
-                                • Click anywhere on the map to place the pin<br />
-                                • Drag the pin to fine-tune position<br />
-                                • Type an address and press <strong>↵</strong> or click the search button to find it
+                                • Click anywhere on the map to place the pin — the address fills in<br />
+                                • Or type the city above, fill in the road or block, and click search<br />
+                                • Drag the pin to fine-tune position
                             </p>
                         </div>
 
@@ -262,25 +387,13 @@ export default function LocationMapModal({ open, project, location, onClose, onS
 
                     <div style={{ flex: 1, position: 'relative', minWidth: 280, minHeight: 420 }}>
                         <div ref={mapNode} style={{ height: '100%', width: '100%', minHeight: 420 }} />
-                        {!ready && (
-                            <div style={{
-                                position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: '#f8fafc', color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: 24,
-                            }}>
-                                {failed
-                                    ? 'The map could not be loaded. Type the latitude and longitude instead.'
-                                    : 'Loading map…'}
-                            </div>
-                        )}
-                        {ready && (
-                            <div style={{
-                                position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
-                                background: 'rgba(15,23,42,0.72)', color: '#fff', fontSize: 11, padding: '4px 12px',
-                                borderRadius: 20, pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 1000,
-                            }}>
-                                Click map to place pin • Drag pin to adjust
-                            </div>
-                        )}
+                        <div style={{
+                            position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+                            background: 'rgba(15,23,42,0.72)', color: '#fff', fontSize: 11, padding: '4px 12px',
+                            borderRadius: 20, pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 1000,
+                        }}>
+                            Click map to place pin • Drag pin to adjust
+                        </div>
                     </div>
                 </div>
 
