@@ -5,7 +5,10 @@ namespace App\Services;
 use App\Mail\LpoIssuedMail;
 use App\Models\MailAccount;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseRequest;
 use App\Models\Setting;
+use App\Models\Settings\Location;
+use App\Models\Settings\Requester;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
@@ -126,6 +129,42 @@ class LpoDeliveryService
         $discount = 0;
         $total = $subtotal + $vatAmount - $discount;
 
-        return compact('order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total');
+        // Ship To's contact numbers: the MPR keeps only the person's name, so
+        // they are looked up on System → Requested By, where names are unique.
+        // Looked up, not frozen — a number corrected there reaches every LPO.
+        $name = $order->purchaseRequest?->requested_by_name;
+        $shipToPhones = $name ? (Requester::where('name', $name)->value('phones') ?? []) : [];
+
+        $shipToAddress = $this->shipToAddress($order->purchaseRequest, $company?->id);
+
+        return compact('order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total', 'shipToPhones', 'shipToAddress');
+    }
+
+    /**
+     * The address saved for the MPR's location under Settings → Projects.
+     *
+     * The MPR keeps the location's name only, and its form offers every
+     * location under the company's projects, not just the chosen project's —
+     * so the name is looked for under that project first, then under the
+     * company's other projects, then anywhere. Looked up, not frozen, like
+     * the requester's numbers: an address corrected there reaches every LPO.
+     */
+    private function shipToAddress(?PurchaseRequest $pr, ?int $companyId): ?string
+    {
+        if (! $pr?->location) {
+            return null;
+        }
+
+        $candidates = Location::where('name', $pr->location)->whereNotNull('address')
+            ->with('project:id,name,company_id')->get();
+
+        $location = $candidates->first(fn ($l) => $pr->project_name && $l->project?->name === $pr->project_name)
+            ?? $candidates->first(fn ($l) => $companyId && $l->project?->company_id === $companyId)
+            ?? $candidates->first();
+
+        $address = trim((string) $location?->address);
+
+        // An address that only repeats the location's name adds nothing.
+        return $address !== '' && $address !== $pr->location ? $address : null;
     }
 }

@@ -13,6 +13,10 @@ class CompanyResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'is_active' => (bool) $this->is_active,
+            // The page shows both as thumbnails; the model hides them from
+            // every other payload.
+            'logo' => $this->logo_image,
+            'stamp' => $this->stamp_image,
             // The card header counts departments, and deletion is refused while
             // projects still belong to the company, so the page needs both.
             'project_count' => $this->whenCounted('projects'),

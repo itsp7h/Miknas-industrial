@@ -39,6 +39,8 @@ export default function CompanyListPage() {
                     onAddDepartment={c.addDepartment}
                     onSaveDepartment={c.saveDepartment}
                     onDeleteDepartment={(co, department) => c.setDeletingDepartment({ company: co, department })}
+                    onUploadImage={c.uploadImage}
+                    onRemoveImage={c.removeImage}
                 />
             ))}
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CompanyResource;
 use App\Models\Settings\Company;
 use App\Models\Settings\Department;
+use App\Support\ImageDataUrl;
 use Illuminate\Http\Request;
 
 class CompanyController extends Controller
@@ -65,6 +66,35 @@ class CompanyController extends Controller
         $company->delete();
 
         return response()->json(['deleted' => true, 'id' => $id]);
+    }
+
+    /**
+     * Upload or replace a company's logo or stamp. `{image}` is `logo` or
+     * `stamp`; the route constrains it, and Company::IMAGES maps it to a column.
+     */
+    public function updateImage(Request $request, Company $company, string $image)
+    {
+        $label = ucfirst($image);
+        $data = $request->validate([
+            'image' => ['required', 'string', function ($attribute, $value, $fail) use ($label) {
+                if (! ImageDataUrl::isValid($value)) {
+                    $fail("The {$label} must be a PNG or JPEG image under 512 KB.");
+                }
+            }],
+        ]);
+
+        $company->forceFill([Company::IMAGES[$image] => $data['image']])->save();
+
+        return (new CompanyResource($this->loaded($company)))
+            ->additional(['message' => "{$label} saved for {$company->name}."]);
+    }
+
+    public function destroyImage(Company $company, string $image)
+    {
+        $company->forceFill([Company::IMAGES[$image] => null])->save();
+
+        return (new CompanyResource($this->loaded($company)))
+            ->additional(['message' => ucfirst($image)." removed from {$company->name}."]);
     }
 
     public function storeDepartment(Request $request, Company $company)

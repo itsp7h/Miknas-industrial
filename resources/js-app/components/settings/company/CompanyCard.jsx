@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useAccess } from '../../../layouts/AccessContext';
+import CompanyImages from './CompanyImages';
 import { BuildingIcon, PeopleIcon } from './icons';
 
 const INACTIVE_BADGE = {
@@ -84,7 +86,11 @@ function InlineEditor({ value, active, onSave, onCancel, placeholder, compact = 
  * inline add and edit rows. This is the Blade page's structure, with the
  * show/hide of each strip held in React state instead of toggled CSS classes.
  */
-export default function CompanyCard({ company, onSave, onDelete, onAddDepartment, onSaveDepartment, onDeleteDepartment }) {
+export default function CompanyCard({
+    company, onSave, onDelete, onAddDepartment, onSaveDepartment, onDeleteDepartment,
+    onUploadImage, onRemoveImage,
+}) {
+    const canEditImages = useAccess().can('companies.edit');
     const [editing, setEditing] = useState(false);
     const [addingDepartment, setAddingDepartment] = useState(false);
     const [editingDepartmentId, setEditingDepartmentId] = useState(null);
@@ -98,14 +104,26 @@ export default function CompanyCard({ company, onSave, onDelete, onAddDepartment
                 padding: '0.875rem 1.25rem', background: 'linear-gradient(135deg,#eef2ff,#e0e7ff)', flexWrap: 'wrap',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <BuildingIcon />
+                    {/* The company's own logo where it has one, else the building mark. */}
+                    {company.logo ? (
+                        <img
+                            src={company.logo} alt={`${company.name} logo`} data-testid="company-header-logo"
+                            style={{ height: 28, maxWidth: 96, objectFit: 'contain', flexShrink: 0, background: '#fff', borderRadius: 4, padding: 2 }}
+                        />
+                    ) : <BuildingIcon />}
                     <span style={{ fontSize: 15, fontWeight: 700, color: '#3730a3' }}>{company.name}</span>
                     {!company.is_active && <span style={INACTIVE_BADGE}>Inactive</span>}
                     <span style={{ fontSize: 12, color: '#7c3aed', opacity: 0.8 }}>
                         {departments.length} {departments.length === 1 ? 'dept' : 'depts'}
                     </span>
                 </div>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {onUploadImage && (
+                        <CompanyImages
+                            company={company} canEdit={canEditImages}
+                            onUpload={onUploadImage} onRemove={onRemoveImage}
+                        />
+                    )}
                     <button
                         type="button" onClick={() => setAddingDepartment(true)}
                         className="btn-secondary btn-sm" style={{ borderColor: '#a78bfa', color: '#6d28d9' }}

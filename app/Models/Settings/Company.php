@@ -16,6 +16,12 @@ class Company extends Model
 
     protected $casts = ['is_active' => 'boolean'];
 
+    /** Tens of kilobytes each: only the Companies page (and documents) carry them. */
+    protected $hidden = ['logo_image', 'stamp_image'];
+
+    /** What the image routes accept, and the column each one fills. */
+    public const IMAGES = ['logo' => 'logo_image', 'stamp' => 'stamp_image'];
+
     /** Where this company's purchases are received. Null means no yard is implied. */
     public function warehouse(): BelongsTo
     {
