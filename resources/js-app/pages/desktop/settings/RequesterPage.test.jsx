@@ -51,17 +51,36 @@ describe('settings RequesterPage (System → Requested By)', () => {
         renderPage();
         await screen.findByText('Ali');
 
-        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Omar' } });
+        fireEvent.click(screen.getByRole('button', { name: '+ Add person' }));
+        fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Omar' } });
         fireEvent.click(screen.getByLabelText('Miknas Industrial'));
         fireEvent.click(screen.getByLabelText('Steel Tech'));
-        fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Add Person' }));
 
         await waitFor(() => expect(post).toHaveBeenCalledWith('/settings/requesters', { name: 'Omar', company_ids: [1, 2], phones: [] }));
         expect(await screen.findByText('Omar')).toBeInTheDocument();
         expect(screen.getByText('Omar added.')).toBeInTheDocument();
-        // The form resets for the next person.
-        expect(screen.getByLabelText('Name')).toHaveValue('');
+        // The dialog closes, and opens blank for the next person.
+        expect(screen.queryByRole('heading', { name: 'Add a person' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: '+ Add person' }));
+        expect(screen.getByLabelText(/^Name/)).toHaveValue('');
         expect(screen.getByLabelText('Miknas Industrial')).not.toBeChecked();
+    });
+
+    it('keeps the form out of the page until Add person opens it, and Cancel closes it', async () => {
+        renderPage();
+        await screen.findByText('Ali');
+
+        expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: '+ Add person' }));
+        expect(screen.getByRole('heading', { name: 'Add a person' })).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Half typed' } });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+        expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument();
+        // Reopening starts clean rather than with what was abandoned.
+        fireEvent.click(screen.getByRole('button', { name: '+ Add person' }));
+        expect(screen.getByLabelText(/^Name/)).toHaveValue('');
     });
 
     it('edits a person: loads their companies, and saves the change', async () => {
@@ -79,7 +98,7 @@ describe('settings RequesterPage (System → Requested By)', () => {
         expect(screen.getByLabelText('Steel Tech')).toBeChecked();
         expect(screen.getByLabelText('Miknas Industrial')).not.toBeChecked();
 
-        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Zainab Ali' } });
+        fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Zainab Ali' } });
         fireEvent.click(screen.getByLabelText('Steel Tech'));
         fireEvent.click(screen.getByLabelText('Miknas Industrial'));
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -95,8 +114,9 @@ describe('settings RequesterPage (System → Requested By)', () => {
         renderPage();
         await screen.findByText('Ali');
 
-        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Omar' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+        fireEvent.click(screen.getByRole('button', { name: '+ Add person' }));
+        fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Omar' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add Person' }));
 
         expect(await screen.findByText('Choose at least one company.')).toBeInTheDocument();
     });
@@ -143,19 +163,22 @@ describe('settings RequesterPage (System → Requested By)', () => {
         renderPage();
         await screen.findByText('Ali');
 
-        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Omar' } });
+        fireEvent.click(screen.getByRole('button', { name: '+ Add person' }));
+        fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Omar' } });
         fireEvent.click(screen.getByLabelText('Miknas Industrial'));
         fireEvent.change(screen.getByLabelText('Contact number 1'), { target: { value: '33123456' } });
         fireEvent.click(screen.getByText('+ Add number'));
         fireEvent.click(screen.getByText('+ Add number'));
         fireEvent.change(screen.getByLabelText('Contact number 3'), { target: { value: ' 17000111 ' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Add Person' }));
 
         await waitFor(() => expect(post).toHaveBeenCalledWith('/settings/requesters', {
             name: 'Omar', company_ids: [1], phones: ['33123456', '17000111'],
         }));
         // Back to a single empty row for the next person.
-        expect(await screen.findByLabelText('Contact number 1')).toHaveValue('');
+        await waitFor(() => expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: '+ Add person' }));
+        expect(screen.getByLabelText('Contact number 1')).toHaveValue('');
         expect(screen.queryByLabelText('Contact number 2')).not.toBeInTheDocument();
     });
 
@@ -167,13 +190,14 @@ describe('settings RequesterPage (System → Requested By)', () => {
         renderPage();
         await screen.findByText('Ali');
 
-        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Omar' } });
+        fireEvent.click(screen.getByRole('button', { name: '+ Add person' }));
+        fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Omar' } });
         fireEvent.change(screen.getByLabelText('Contact number 1'), { target: { value: '33123456' } });
         fireEvent.click(screen.getByText('+ Add number'));
         fireEvent.click(screen.getByText('+ Add number'));
         // Row 2 stays blank, so the server's phones.1 is row 3.
         fireEvent.change(screen.getByLabelText('Contact number 3'), { target: { value: 'abc' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Add Person' }));
 
         const message = await screen.findByText(/Enter a phone number/);
         expect(message.parentElement).toContainElement(screen.getByLabelText('Contact number 3'));
@@ -213,12 +237,11 @@ describe('settings RequesterPage (System → Requested By)', () => {
         renderPage(['requesters.view']);
         await screen.findByText('Ali');
 
-        const add = screen.getByRole('button', { name: 'Add' });
+        const add = screen.getByRole('button', { name: '+ Add person' });
         expect(add).toBeDisabled();
         expect(add).toHaveAttribute('title', 'You do not have permission to add people on this list');
-        expect(screen.getByLabelText('Name')).toBeDisabled();
-        expect(screen.getByLabelText('Miknas Industrial')).toBeDisabled();
-        expect(screen.getByLabelText('Contact number 1')).toBeDisabled();
+        fireEvent.click(add);
+        expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument();
 
         screen.getAllByRole('button', { name: 'Edit' }).forEach((b) => expect(b).toBeDisabled());
         screen.getAllByRole('button', { name: 'Delete' }).forEach((b) => {
