@@ -83,6 +83,8 @@
     .sig-area td { height: 100px; padding: 0 0 6px; vertical-align: bottom; text-align: center; }
     .sig-img { max-height: 60px; max-width: 200px; }
     .sig-stamp { display: inline-block; }
+    .sig-area td.sig-stamp-cell { width: 150px; }
+    .sig-with-stamp .sig-img { max-width: 160px; }
     .sig-block { width: 45%; }
     .sig-gap { width: 10%; }
     .sig-line { border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 10px; color: #64748b; text-align: center; }
@@ -260,23 +262,27 @@
 <table class="signatures">
     <tr>
         <td class="sig-block">
-            <table class="sig-area"><tr><td>
-                {{-- The issuer's signature as it was when the LPO was issued. --}}
-                @if ($order->prepared_signature)
-                    <img class="sig-img" src="{{ $order->prepared_signature }}" alt="Signature">
+            <table class="sig-area{{ empty($stamp) ? '' : ' sig-with-stamp' }}"><tr>
+                <td>
+                    {{-- The issuer's signature as it was when the LPO was issued. --}}
+                    @if ($order->prepared_signature)
+                        <img class="sig-img" src="{{ $order->prepared_signature }}" alt="Signature">
+                    @endif
+                    <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
+                </td>
+                {{-- The company's stamp (Settings → Companies), fitted to 150×90,
+                     beside the issuer's signature. --}}
+                @if (! empty($stamp))
+                    <td class="sig-stamp-cell">
+                        <img class="sig-stamp" src="{{ $stamp['src'] }}" width="{{ $stamp['width'] }}" height="{{ $stamp['height'] }}" alt="{{ $company->name }} stamp">
+                    </td>
                 @endif
-                <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
-            </td></tr></table>
+            </tr></table>
             <div class="sig-line">Prepared By</div>
         </td>
         <td class="sig-gap"></td>
         <td class="sig-block">
-            <table class="sig-area"><tr><td>
-                {{-- The company's stamp (Settings → Companies), fitted to 150×90. --}}
-                @if (! empty($stamp))
-                    <img class="sig-stamp" src="{{ $stamp['src'] }}" width="{{ $stamp['width'] }}" height="{{ $stamp['height'] }}" alt="{{ $company->name }} stamp">
-                @endif
-            </td></tr></table>
+            <table class="sig-area"><tr><td></td></tr></table>
             <div class="sig-line">Approved By</div>
         </td>
     </tr>
