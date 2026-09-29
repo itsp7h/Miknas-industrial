@@ -138,7 +138,7 @@ class LpoDeliveryService
 
         $shipToAddress = $this->shipToAddress($order->purchaseRequest, $company?->id);
 
-        // The company's logo in the letterhead and its stamp over Approved By,
+        // The company's logo in the letterhead and its stamp beside Prepared By,
         // both from Settings → Companies and looked up, not frozen: a logo
         // replaced there reaches every LPO. Sized here, not by CSS (see
         // ImageDataUrl::fit). Without a logo the letterhead keeps its mark.
