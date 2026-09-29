@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\Purchase;
 use App\Events\GrnDeleted;
 use App\Events\GrnSaved;
 use App\Models\GoodsReceiptNote;
+use App\Models\GrnDocument;
 use App\Models\Item;
 use App\Models\PurchaseOrder;
 use App\Models\StockLevel;
@@ -12,7 +13,9 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class GoodsReceiptNoteControllerTest extends TestCase
@@ -30,6 +33,8 @@ class GoodsReceiptNoteControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Storage::fake('local');
 
         $this->supplier = Supplier::factory()->create();
         $this->item = Item::create([
@@ -72,6 +77,9 @@ class GoodsReceiptNoteControllerTest extends TestCase
                 'unit_cost' => 10,
                 'type' => 'inventory',
             ]],
+            'lpo_document' => UploadedFile::fake()->create('lpo.pdf', 120, 'application/pdf'),
+            'grn_document' => UploadedFile::fake()->image('delivery-note.jpg'),
+            'tax_invoice_document' => UploadedFile::fake()->create('invoice.pdf', 80, 'application/pdf'),
         ], $overrides);
     }
 
@@ -272,5 +280,109 @@ class GoodsReceiptNoteControllerTest extends TestCase
             ->assertStatus(422);
 
         $this->assertDatabaseHas('goods_receipt_notes', ['id' => $grn->id]);
+    }
+
+    // ------------------------------------------------------------------
+    // Documents — the LPO, GRN and tax invoice a receipt is recorded against.
+    // ------------------------------------------------------------------
+
+    public function test_it_stores_the_three_documents_with_the_grn(): void
+    {
+        $response = $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('data.documents.0.kind', 'lpo')
+            ->assertJsonPath('data.documents.0.label', 'LPO')
+            ->assertJsonPath('data.documents.0.name', 'lpo.pdf')
+            ->assertJsonPath('data.documents.1.name', 'delivery-note.jpg')
+            ->assertJsonPath('data.documents.2.label', 'Tax Invoice')
+            ->assertJsonPath('data.documents.2.name', 'invoice.pdf');
+
+        $id = $response->json('data.id');
+        // Relative, so the link is right on whichever hostname the page is on.
+        $response->assertJsonPath('data.documents.2.url', "/purchase/grns/{$id}/documents/tax_invoice");
+        foreach (GrnDocument::where('goods_receipt_note_id', $id)->get() as $document) {
+            Storage::disk('local')->assertExists($document->path);
+            $this->assertStringStartsWith("grn-documents/{$id}/", $document->path);
+        }
+        $this->assertSame(3, GrnDocument::where('goods_receipt_note_id', $id)->count());
+    }
+
+    public function test_each_document_is_required(): void
+    {
+        foreach (['lpo_document' => 'LPO', 'grn_document' => 'GRN', 'tax_invoice_document' => 'Tax Invoice'] as $field => $label) {
+            $payload = $this->payload();
+            unset($payload[$field]);
+
+            $this->actingAs($this->user())
+                ->postJson('/api/v1/purchase/grns', $payload)
+                ->assertStatus(422)
+                ->assertJsonValidationErrors([$field => "The {$label} document field is required."]);
+        }
+
+        $this->assertSame(0, GoodsReceiptNote::count());
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_a_document_must_be_a_pdf_or_an_image(): void
+    {
+        $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $this->payload([
+                'lpo_document' => UploadedFile::fake()->create('lpo.docx', 50, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('lpo_document');
+    }
+
+    public function test_a_document_opens_inline_under_its_uploaded_name(): void
+    {
+        $user = $this->user();
+        $id = $this->actingAs($user)->postJson('/api/v1/purchase/grns', $this->payload())->json('data.id');
+
+        $response = $this->actingAs($user)->get("/purchase/grns/{$id}/documents/lpo")->assertOk();
+
+        $this->assertStringStartsWith('inline', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('lpo.pdf', $response->headers->get('Content-Disposition'));
+    }
+
+    public function test_a_document_needs_permission_to_view_goods_receipts(): void
+    {
+        $id = $this->actingAs($this->user())->postJson('/api/v1/purchase/grns', $this->payload())->json('data.id');
+
+        $this->actingAs(User::factory()->create())
+            ->get("/purchase/grns/{$id}/documents/lpo")
+            ->assertForbidden();
+    }
+
+    public function test_an_unknown_or_missing_document_is_not_found(): void
+    {
+        $grn = $this->makeGrn();
+
+        $this->actingAs($this->user())->get("/purchase/grns/{$grn->id}/documents/lpo")->assertNotFound();
+        $this->actingAs($this->user())->get("/purchase/grns/{$grn->id}/documents/passport")->assertNotFound();
+    }
+
+    /** A receipt recorded before uploads were asked for lists all three as missing. */
+    public function test_an_older_grn_lists_its_documents_as_not_uploaded(): void
+    {
+        $grn = $this->makeGrn();
+
+        $this->actingAs($this->user())
+            ->getJson("/api/v1/purchase/grns/{$grn->id}")
+            ->assertOk()
+            ->assertJsonCount(3, 'data.documents')
+            ->assertJsonPath('data.documents.0.url', null)
+            ->assertJsonPath('data.documents.2.name', null);
+    }
+
+    public function test_deleting_a_grn_deletes_its_documents(): void
+    {
+        $user = $this->user();
+        $id = $this->actingAs($user)->postJson('/api/v1/purchase/grns', $this->payload())->json('data.id');
+
+        $this->actingAs($user)->deleteJson("/api/v1/purchase/grns/{$id}")->assertOk();
+
+        $this->assertSame(0, GrnDocument::count());
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 }

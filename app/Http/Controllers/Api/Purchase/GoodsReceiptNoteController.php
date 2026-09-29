@@ -7,6 +7,7 @@ use App\Events\GrnSaved;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GrnResource;
 use App\Models\GoodsReceiptNote;
+use App\Models\GrnDocument;
 use App\Models\GrnItem;
 use App\Models\PurchaseOrder;
 use App\Models\StockLevel;
@@ -18,10 +19,17 @@ use App\Services\PurchaseStageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 
 class GoodsReceiptNoteController extends Controller
 {
     public const TYPES = ['inventory', 'consumable'];
+
+    /** What each uploaded document may be: a scan or a PDF, up to 10 MB. */
+    private const DOCUMENT_RULE = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
+
+    /** Relations every single-GRN response carries. */
+    private const DETAIL = ['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem', 'documents'];
 
     /**
      * Company name -> warehouse id, for the life of one request.
@@ -67,8 +75,7 @@ class GoodsReceiptNoteController extends Controller
     public function show(GoodsReceiptNote $grn)
     {
         return new GrnResource($grn->load([
-            'purchaseOrder.supplier', 'warehouse', 'receivedBy',
-            'items.item', 'items.purchaseOrderItem',
+            ...self::DETAIL, 'receivedBy',
         ]));
     }
 
@@ -121,7 +128,10 @@ class GoodsReceiptNoteController extends Controller
             'items.*.quantity_received' => 'required|numeric|min:0.01',
             'items.*.unit_cost' => 'nullable|numeric|min:0',
             'items.*.type' => 'nullable|in:'.implode(',', self::TYPES),
-        ]);
+            // The LPO, the supplier's GRN and the tax invoice: a receipt is
+            // recorded against all three, so all three are required.
+            ...collect(GrnDocument::KINDS)->keys()->mapWithKeys(fn ($kind) => ["{$kind}_document" => self::DOCUMENT_RULE])->all(),
+        ], [], collect(GrnDocument::KINDS)->mapWithKeys(fn ($label, $kind) => ["{$kind}_document" => "{$label} document"])->all());
 
         $po = PurchaseOrder::with(['items', 'purchaseRequest'])->findOrFail($data['purchase_order_id']);
 
@@ -138,40 +148,64 @@ class GoodsReceiptNoteController extends Controller
             ], 422);
         }
 
-        $grn = DB::transaction(function () use ($data, $po) {
-            $grn = GoodsReceiptNote::create([
-                'grn_number' => $this->nextGrnNumber(),
-                'purchase_order_id' => $po->id,
-                'supplier_id' => $po->supplier_id,
-                'warehouse_id' => $data['warehouse_id'],
-                'received_date' => $data['received_date'],
-                // The Blade controller validated no notes field and omitted it
-                // from create(), so whatever the user typed was discarded.
-                'notes' => $data['notes'] ?? null,
-                'status' => 'draft',
-                'received_by' => auth()->id(),
-            ]);
+        // Files written so far, so a failed save leaves none behind: the
+        // transaction rolls the rows back, but not the disk.
+        $stored = [];
 
-            foreach ($data['items'] as $line) {
-                $poItemId = $line['purchase_order_item_id']
-                    ?? $po->items->firstWhere('item_id', $line['item_id'])?->id;
-
-                GrnItem::create([
-                    'goods_receipt_note_id' => $grn->id,
-                    'purchase_order_item_id' => $poItemId,
-                    'item_id' => $line['item_id'],
-                    'quantity_received' => $line['quantity_received'],
-                    'unit_cost' => $line['unit_cost'] ?? 0,
-                    'type' => $line['type'] ?? 'inventory',
+        try {
+            $grn = DB::transaction(function () use ($data, $po, $request, &$stored) {
+                $grn = GoodsReceiptNote::create([
+                    'grn_number' => $this->nextGrnNumber(),
+                    'purchase_order_id' => $po->id,
+                    'supplier_id' => $po->supplier_id,
+                    'warehouse_id' => $data['warehouse_id'],
+                    'received_date' => $data['received_date'],
+                    // The Blade controller validated no notes field and omitted it
+                    // from create(), so whatever the user typed was discarded.
+                    'notes' => $data['notes'] ?? null,
+                    'status' => 'draft',
+                    'received_by' => auth()->id(),
                 ]);
-            }
 
-            return $grn;
-        });
+                foreach ($data['items'] as $line) {
+                    $poItemId = $line['purchase_order_item_id']
+                        ?? $po->items->firstWhere('item_id', $line['item_id'])?->id;
+
+                    GrnItem::create([
+                        'goods_receipt_note_id' => $grn->id,
+                        'purchase_order_item_id' => $poItemId,
+                        'item_id' => $line['item_id'],
+                        'quantity_received' => $line['quantity_received'],
+                        'unit_cost' => $line['unit_cost'] ?? 0,
+                        'type' => $line['type'] ?? 'inventory',
+                    ]);
+                }
+
+                foreach (array_keys(GrnDocument::KINDS) as $kind) {
+                    $file = $request->file("{$kind}_document");
+                    $stored[] = $path = $file->store("grn-documents/{$grn->id}", GrnDocument::DISK);
+
+                    $grn->documents()->create([
+                        'kind' => $kind,
+                        'path' => $path,
+                        'original_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'size' => $file->getSize(),
+                        'uploaded_by' => auth()->id(),
+                    ]);
+                }
+
+                return $grn;
+            });
+        } catch (\Throwable $e) {
+            Storage::disk(GrnDocument::DISK)->delete($stored);
+
+            throw $e;
+        }
 
         event(new GrnSaved($grn));
 
-        return (new GrnResource($grn->load(['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem'])))
+        return (new GrnResource($grn->load(self::DETAIL)))
             ->response()->setStatusCode(201);
     }
 
@@ -227,7 +261,7 @@ class GoodsReceiptNoteController extends Controller
 
         event(new GrnSaved($grn));
 
-        return new GrnResource($grn->fresh(['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem']));
+        return new GrnResource($grn->fresh(self::DETAIL));
     }
 
     public function destroy(GoodsReceiptNote $grn)
@@ -240,8 +274,13 @@ class GoodsReceiptNoteController extends Controller
 
         DB::transaction(function () use ($grn) {
             $grn->items()->delete();
+            $grn->documents()->delete();
             $grn->delete();
         });
+
+        // After the rows are gone, so a failed delete keeps the files the
+        // surviving rows point at.
+        Storage::disk(GrnDocument::DISK)->deleteDirectory("grn-documents/{$id}");
 
         event(new GrnDeleted($id));
 

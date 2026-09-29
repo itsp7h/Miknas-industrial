@@ -10,6 +10,8 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -33,6 +35,8 @@ class GrnCompanyWarehouseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Storage::fake('local');
 
         $this->askar = Warehouse::create(['name' => 'Askar', 'code' => 'WH-ASKAR']);
         $this->hidd = Warehouse::create(['name' => 'Hidd', 'code' => 'WH-HIDD']);
@@ -90,6 +94,9 @@ class GrnCompanyWarehouseTest extends TestCase
                 'unit_cost' => 10,
                 'type' => 'inventory',
             ]],
+            'lpo_document' => UploadedFile::fake()->create('lpo.pdf', 120, 'application/pdf'),
+            'grn_document' => UploadedFile::fake()->image('delivery-note.jpg'),
+            'tax_invoice_document' => UploadedFile::fake()->create('invoice.pdf', 80, 'application/pdf'),
         ];
     }
 

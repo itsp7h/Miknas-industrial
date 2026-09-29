@@ -10,6 +10,44 @@ function Row({ label, children }) {
     );
 }
 
+/** "1.2 MB", "340 KB" — enough to tell a scan from a one-page PDF. */
+function fileSize(bytes) {
+    if (!bytes) return '';
+    return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+/**
+ * The LPO, GRN and tax invoice uploaded with the receipt. Each opens in a new
+ * tab from a web route (see GrnDocumentController). A receipt recorded before
+ * uploads were asked for lists all three as not uploaded.
+ */
+function Documents({ documents }) {
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Documents</h2>
+            <dl className="space-y-3 text-sm">
+                {documents.map((doc) => (
+                    <div key={doc.kind} className="flex justify-between" style={{ gap: '1rem' }}>
+                        <dt className="text-gray-500">{doc.label}</dt>
+                        <dd className="m-0" style={{ minWidth: 0, textAlign: 'right' }}>
+                            {doc.url ? (
+                                <a href={doc.url} target="_blank" rel="noreferrer"
+                                   className="text-blue-600 hover:underline"
+                                   style={{ overflowWrap: 'anywhere' }}>
+                                    {doc.name}
+                                </a>
+                            ) : (
+                                <span className="text-gray-400">Not uploaded</span>
+                            )}
+                            {doc.url && doc.size ? <span className="text-gray-400"> · {fileSize(doc.size)}</span> : null}
+                        </dd>
+                    </div>
+                ))}
+            </dl>
+        </div>
+    );
+}
+
 /** The Blade GRN show page: a details card plus the received-items table. */
 export default function GrnDetail({ grn, compact = false }) {
     if (!grn) return null;
@@ -47,6 +85,8 @@ export default function GrnDetail({ grn, compact = false }) {
                         )}
                     </dl>
                 </div>
+
+                {grn.documents && <Documents documents={grn.documents} />}
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

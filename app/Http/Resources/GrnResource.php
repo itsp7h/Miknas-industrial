@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\GrnDocument;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,6 +26,20 @@ class GrnResource extends JsonResource
             'notes' => $this->notes,
             'received_by_name' => $this->whenLoaded('receivedBy', fn () => $this->receivedBy?->name),
             'items' => GrnItemResource::collection($this->whenLoaded('items')),
+            // The LPO, GRN and tax invoice, in that order. A receipt recorded
+            // before uploads were asked for has none, and the page says so.
+            'documents' => $this->whenLoaded('documents', fn () => collect(GrnDocument::KINDS)
+                ->map(function ($label, $kind) {
+                    $document = $this->documents->firstWhere('kind', $kind);
+
+                    return [
+                        'kind' => $kind,
+                        'label' => $label,
+                        'name' => $document?->original_name,
+                        'size' => $document?->size,
+                        'url' => $document ? route('purchase.grns.documents', [$this->id, $kind], false) : null,
+                    ];
+                })->values()),
         ];
     }
 }

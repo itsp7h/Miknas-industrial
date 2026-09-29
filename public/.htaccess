@@ -1,3 +1,13 @@
+# Uploads: a goods receipt carries three documents of up to 10 MB each (the
+# API validates max:10240). PHP's stock 2 MB / 8 MB would drop the whole
+# request body before Laravel saw it, and the form would report every field
+# as missing. The boxes run mod_php; the guard keeps this inert elsewhere,
+# since php_value under PHP-FPM is a 500.
+<IfModule php_module>
+    php_value upload_max_filesize 12M
+    php_value post_max_size 40M
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

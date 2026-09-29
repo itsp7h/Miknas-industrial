@@ -130,6 +130,30 @@ describe('GrnDetail', () => {
         expect(screen.getByText('No items recorded.')).toBeInTheDocument();
     });
 
+    it('lists the LPO, GRN and tax invoice, each opening in a new tab', () => {
+        renderIn(<GrnDetail grn={{
+            ...GRN,
+            documents: [
+                { kind: 'lpo', label: 'LPO', name: 'lpo.pdf', size: 250 * 1024, url: '/purchase/grns/1/documents/lpo' },
+                { kind: 'grn', label: 'GRN', name: 'delivery.jpg', size: 2.5 * 1024 * 1024, url: '/purchase/grns/1/documents/grn' },
+                { kind: 'tax_invoice', label: 'Tax Invoice', name: null, size: null, url: null },
+            ],
+        }} />);
+
+        expect(screen.getByText('Documents')).toBeInTheDocument();
+        const lpo = screen.getByRole('link', { name: 'lpo.pdf' });
+        expect(lpo).toHaveAttribute('href', '/purchase/grns/1/documents/lpo');
+        expect(lpo).toHaveAttribute('target', '_blank');
+        expect(screen.getByText(/250 KB/)).toBeInTheDocument();
+        expect(screen.getByText(/2\.5 MB/)).toBeInTheDocument();
+        expect(screen.getByText('Not uploaded')).toBeInTheDocument();
+    });
+
+    it('leaves the documents card out when the payload carries none', () => {
+        renderIn(<GrnDetail grn={GRN} />);
+        expect(screen.queryByText('Documents')).not.toBeInTheDocument();
+    });
+
     it('renders nothing rather than crashing before the GRN loads', () => {
         const { container } = renderIn(<GrnDetail grn={null} />);
         expect(container).toBeEmptyDOMElement();
