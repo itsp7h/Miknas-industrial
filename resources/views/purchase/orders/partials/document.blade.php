@@ -296,6 +296,13 @@
 <div class="disclaimer">This is not a Tax Invoice!</div>
 <div class="disclaimer-sub">FOR {{ strtoupper($company->name ?? 'SteelERP') }}</div>
 
+{{-- The person on System → Requested By who asked for the goods, and their
+     numbers — the same lookup as Ship To. An MPR with no requester falls
+     back to whoever issued the LPO. --}}
 <div class="footer">
-    Should you have any enquiries concerning this purchase order, please contact {{ $order->createdBy->name ?? 'us' }}.
+    @if($order->purchaseRequest?->requested_by_name)
+        Should you have any enquiries concerning this purchase order, please contact {{ $order->purchaseRequest->requested_by_name }}@if(! empty($shipToPhones)) on {{ implode(' / ', $shipToPhones) }}@endif.
+    @else
+        Should you have any enquiries concerning this purchase order, please contact {{ $order->createdBy->name ?? 'us' }}.
+    @endif
 </div>
