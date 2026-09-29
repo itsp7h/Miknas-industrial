@@ -77,6 +77,18 @@ describe.each([
         expect(screen.getByText('AB12C')).toBeInTheDocument();
     });
 
+    /** The Ref is asked for first, under the opening line, before any price. */
+    it('asks for the Ref under the opening line, above the items', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const ref = screen.getByLabelText(/^Ref/);
+        const intro = screen.getByText(/Please enter your unit prices/);
+        const firstPrice = screen.getByLabelText('Unit price for Steel rod 12mm');
+        expect(intro.compareDocumentPosition(ref) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(ref.compareDocumentPosition(firstPrice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('totals each line and the quote, applying VAT only where it is ticked', async () => {
         mount();
         await screen.findByText('MPR-0042');
