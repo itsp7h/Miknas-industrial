@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Settings\Location;
 use App\Models\Settings\Requester;
 use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
+use App\Support\ImageDataUrl;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -137,7 +138,17 @@ class LpoDeliveryService
 
         $shipToAddress = $this->shipToAddress($order->purchaseRequest, $company?->id);
 
-        return compact('order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total', 'shipToPhones', 'shipToAddress');
+        // The company's logo in the letterhead and its stamp over Approved By,
+        // both from Settings → Companies and looked up, not frozen: a logo
+        // replaced there reaches every LPO. Sized here, not by CSS (see
+        // ImageDataUrl::fit). Without a logo the letterhead keeps its mark.
+        $logo = ImageDataUrl::sized($company?->logo_image, 160, 56);
+        $stamp = ImageDataUrl::sized($company?->stamp_image, 150, 90);
+
+        return compact(
+            'order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total',
+            'shipToPhones', 'shipToAddress', 'logo', 'stamp',
+        );
     }
 
     /**
