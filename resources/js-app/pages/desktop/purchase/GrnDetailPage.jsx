@@ -1,12 +1,15 @@
 import { Link, useParams } from 'react-router-dom';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
+import ConfirmGrnButton from '../../../components/purchase/grn/ConfirmGrnButton';
 import GrnDetail from '../../../components/purchase/grn/GrnDetail';
 import useGrnDetail from '../../../components/purchase/grn/useGrnDetail';
+import { useAccess } from '../../../layouts/AccessContext';
 import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 
 export default function GrnDetailPage() {
     const { id } = useParams();
     const g = useGrnDetail(id);
+    const canUpload = useAccess().can('goods-receipts.edit');
 
     useSetPageTitle(g.grn ? `Goods Receipt Note — ${g.grn.grn_number}` : null);
 
@@ -23,16 +26,16 @@ export default function GrnDetailPage() {
                 {/* Confirming is what receives the stock; the Blade show page had no
                     way to do it. */}
                 {g.grn && g.grn.status !== 'confirmed' && (
-                    <button type="button" onClick={() => g.setConfirming(true)} className="btn-success">
+                    <ConfirmGrnButton grn={g.grn} onClick={() => g.setConfirming(true)}>
                         Confirm &amp; Receive Stock
-                    </button>
+                    </ConfirmGrnButton>
                 )}
             </div>
 
             {g.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
             {!g.loading && !g.grn && <p style={{ fontSize: 14, color: '#64748b' }}>That GRN could not be found.</p>}
 
-            <GrnDetail grn={g.grn} />
+            <GrnDetail grn={g.grn} canUpload={canUpload} uploading={g.uploading} onUpload={g.uploadDocuments} />
 
             <ConfirmModal
                 open={g.confirming}

@@ -40,6 +40,11 @@ class GrnResource extends JsonResource
                         'url' => $document ? route('purchase.grns.documents', [$this->id, $kind], false) : null,
                     ];
                 })->values()),
+            // What the receipt still needs, by label ("Tax Invoice"), for the
+            // "Needs …" badge. Empty once all three are in.
+            'missing_documents' => $this->whenLoaded('documents', fn () => collect(GrnDocument::KINDS)
+                ->reject(fn ($label, $kind) => $this->documents->contains('kind', $kind))
+                ->values()),
             // Whatever else came with the delivery, in upload order.
             'other_documents' => $this->whenLoaded('documents', fn () => $this->documents
                 ->where('kind', GrnDocument::OTHER)->sortBy('id')

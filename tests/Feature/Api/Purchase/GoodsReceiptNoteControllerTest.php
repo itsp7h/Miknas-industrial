@@ -83,7 +83,11 @@ class GoodsReceiptNoteControllerTest extends TestCase
         ], $overrides);
     }
 
-    private function makeGrn(string $status = 'draft'): GoodsReceiptNote
+    /**
+     * A saved receipt; with its LPO, GRN and tax invoice unless $documents is
+     * false, since confirming needs all three.
+     */
+    private function makeGrn(string $status = 'draft', bool $documents = true): GoodsReceiptNote
     {
         $grn = GoodsReceiptNote::create([
             'grn_number' => 'GRN-'.random_int(10000, 99999),
@@ -100,6 +104,12 @@ class GoodsReceiptNoteControllerTest extends TestCase
             'unit_cost' => 10,
             'type' => 'inventory',
         ]);
+
+        if ($documents) {
+            foreach (array_keys(GrnDocument::KINDS) as $kind) {
+                $grn->documents()->create(['kind' => $kind, 'path' => "grn-documents/{$grn->id}/{$kind}.pdf", 'original_name' => "{$kind}.pdf"]);
+            }
+        }
 
         return $grn;
     }
@@ -308,20 +318,125 @@ class GoodsReceiptNoteControllerTest extends TestCase
         $this->assertSame(3, GrnDocument::where('goods_receipt_note_id', $id)->count());
     }
 
-    public function test_each_document_is_required(): void
+    /**
+     * Paperwork can follow the goods: a receipt saves with any of the three
+     * missing and says which it still needs.
+     */
+    public function test_a_grn_saves_without_a_document_and_says_what_it_needs(): void
     {
-        foreach (['lpo_document' => 'LPO', 'grn_document' => 'GRN', 'tax_invoice_document' => 'Tax Invoice'] as $field => $label) {
-            $payload = $this->payload();
-            unset($payload[$field]);
+        $payload = $this->payload();
+        unset($payload['tax_invoice_document']);
 
-            $this->actingAs($this->user())
-                ->postJson('/api/v1/purchase/grns', $payload)
-                ->assertStatus(422)
-                ->assertJsonValidationErrors([$field => "The {$label} document field is required."]);
-        }
+        $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.missing_documents', ['Tax Invoice'])
+            ->assertJsonPath('data.documents.2.url', null);
 
-        $this->assertSame(0, GoodsReceiptNote::count());
-        $this->assertSame([], Storage::disk('local')->allFiles());
+        $none = $this->payload();
+        unset($none['lpo_document'], $none['grn_document'], $none['tax_invoice_document']);
+
+        $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $none)
+            ->assertCreated()
+            ->assertJsonPath('data.missing_documents', ['LPO', 'GRN', 'Tax Invoice']);
+    }
+
+    public function test_the_list_says_what_each_grn_needs(): void
+    {
+        $payload = $this->payload();
+        unset($payload['grn_document']);
+        $this->actingAs($this->user())->postJson('/api/v1/purchase/grns', $payload)->assertCreated();
+        $this->actingAs($this->user())->postJson('/api/v1/purchase/grns', $this->payload())->assertCreated();
+
+        $rows = collect($this->actingAs($this->user())->getJson('/api/v1/purchase/grns')->assertOk()->json('data'));
+
+        $this->assertEqualsCanonicalizing([['GRN'], []], $rows->pluck('missing_documents')->all());
+    }
+
+    public function test_a_missing_document_can_be_uploaded_later(): void
+    {
+        Event::fake([GrnSaved::class]);
+        $user = $this->user();
+        $payload = $this->payload();
+        unset($payload['tax_invoice_document']);
+        $id = $this->actingAs($user)->postJson('/api/v1/purchase/grns', $payload)->json('data.id');
+        GoodsReceiptNote::find($id)->update(['status' => 'confirmed']);
+
+        // After confirming too: a tax invoice often arrives after the goods.
+        $this->actingAs($user)
+            ->postJson("/api/v1/purchase/grns/{$id}/documents", [
+                'tax_invoice_document' => UploadedFile::fake()->create('invoice-late.pdf', 30, 'application/pdf'),
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Documents uploaded.')
+            ->assertJsonPath('data.missing_documents', [])
+            ->assertJsonPath('data.documents.2.name', 'invoice-late.pdf');
+
+        Event::assertDispatched(GrnSaved::class);
+    }
+
+    public function test_uploading_a_named_document_again_replaces_it(): void
+    {
+        $user = $this->user();
+        $id = $this->actingAs($user)->postJson('/api/v1/purchase/grns', $this->payload())->json('data.id');
+        $old = GrnDocument::where('goods_receipt_note_id', $id)->where('kind', 'lpo')->firstOrFail();
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/purchase/grns/{$id}/documents", [
+                'lpo_document' => UploadedFile::fake()->create('lpo-signed.pdf', 30, 'application/pdf'),
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.documents.0.name', 'lpo-signed.pdf');
+
+        $this->assertSame(1, GrnDocument::where('goods_receipt_note_id', $id)->where('kind', 'lpo')->count());
+        Storage::disk('local')->assertMissing($old->path);
+    }
+
+    public function test_other_files_added_later_stop_at_five(): void
+    {
+        $user = $this->user();
+        $id = $this->actingAs($user)->postJson('/api/v1/purchase/grns', $this->payload([
+            'other_documents' => array_map(fn ($i) => UploadedFile::fake()->create("x{$i}.pdf", 5, 'application/pdf'), range(1, 4)),
+        ]))->json('data.id');
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/purchase/grns/{$id}/documents", ['other_documents' => [
+                UploadedFile::fake()->create('five.pdf', 5, 'application/pdf'),
+                UploadedFile::fake()->create('six.pdf', 5, 'application/pdf'),
+            ]])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['other_documents' => 'A receipt holds at most 5 other files.']);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/purchase/grns/{$id}/documents", ['other_documents' => [
+                UploadedFile::fake()->create('five.pdf', 5, 'application/pdf'),
+            ]])
+            ->assertOk()
+            ->assertJsonCount(5, 'data.other_documents');
+    }
+
+    public function test_an_upload_with_no_file_is_refused(): void
+    {
+        $grn = $this->makeGrn();
+
+        $this->actingAs($this->user())
+            ->postJson("/api/v1/purchase/grns/{$grn->id}/documents", [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['documents' => 'Choose a file to upload.']);
+    }
+
+    public function test_uploading_later_needs_permission_to_edit_goods_receipts(): void
+    {
+        $grn = $this->makeGrn(documents: false);
+        $viewer = User::factory()->create();
+        $viewer->givePermissionTo('goods-receipts.view');
+
+        $this->actingAs($viewer)
+            ->postJson("/api/v1/purchase/grns/{$grn->id}/documents", [
+                'lpo_document' => UploadedFile::fake()->create('lpo.pdf', 5, 'application/pdf'),
+            ])
+            ->assertForbidden();
     }
 
     public function test_a_document_must_be_a_pdf_or_an_image(): void
@@ -356,7 +471,7 @@ class GoodsReceiptNoteControllerTest extends TestCase
 
     public function test_an_unknown_or_missing_document_is_not_found(): void
     {
-        $grn = $this->makeGrn();
+        $grn = $this->makeGrn(documents: false);
 
         $this->actingAs($this->user())->get("/purchase/grns/{$grn->id}/documents/lpo")->assertNotFound();
         $this->actingAs($this->user())->get("/purchase/grns/{$grn->id}/documents/passport")->assertNotFound();
@@ -365,7 +480,7 @@ class GoodsReceiptNoteControllerTest extends TestCase
     /** A receipt recorded before uploads were asked for lists all three as missing. */
     public function test_an_older_grn_lists_its_documents_as_not_uploaded(): void
     {
-        $grn = $this->makeGrn();
+        $grn = $this->makeGrn(documents: false);
 
         $this->actingAs($this->user())
             ->getJson("/api/v1/purchase/grns/{$grn->id}")
@@ -454,5 +569,21 @@ class GoodsReceiptNoteControllerTest extends TestCase
         // Nor is one of the three named documents reachable as an "other".
         $lpo = GrnDocument::where('goods_receipt_note_id', $id)->where('kind', 'lpo')->firstOrFail();
         $this->actingAs($user)->get("/purchase/grns/{$id}/documents/other/{$lpo->id}")->assertNotFound();
+    }
+
+    /** Saving without a document is allowed; completing the receipt is not. */
+    public function test_a_grn_missing_a_document_cannot_be_confirmed(): void
+    {
+        $grn = $this->makeGrn(documents: false);
+        $grn->documents()->create(['kind' => 'lpo', 'path' => 'x/lpo.pdf', 'original_name' => 'lpo.pdf']);
+
+        $this->actingAs($this->user())
+            ->patchJson("/api/v1/purchase/grns/{$grn->id}/confirm")
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Upload the GRN and Tax Invoice before confirming this GRN.')
+            ->assertJsonPath('missing_documents', ['GRN', 'Tax Invoice']);
+
+        $this->assertSame('draft', $grn->fresh()->status);
+        $this->assertSame(0, StockLevel::count());
     }
 }
