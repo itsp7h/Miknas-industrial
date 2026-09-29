@@ -29,7 +29,7 @@ class GrnSaved implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return (new GrnResource(
-            $this->grn->loadMissing(['purchaseOrder.supplier', 'warehouse', 'items.item'])
+            $this->grn->loadMissing(['purchaseOrder.supplier', 'warehouse', 'items.item', 'documents'])
         ))->resolve();
     }
 }

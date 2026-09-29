@@ -33,6 +33,11 @@ class GoodsReceiptNote extends Model
         return $this->hasMany(GrnItem::class);
     }
 
+    public function documents()
+    {
+        return $this->hasMany(GrnDocument::class);
+    }
+
     public function receivedBy()
     {
         return $this->belongsTo(User::class, 'received_by');

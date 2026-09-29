@@ -3,7 +3,39 @@ import useViewport from '../../../hooks/useViewport';
 import FormModal, { Field, FormSection, fieldErrors, messagesFrom } from '../../ui/FormModal';
 import GrnItemRows from './GrnItemRows';
 import { CREATE_CHROME } from './grnModalChrome';
-import { apiGet, apiPost } from '../../../api/client';
+import { apiGet, apiPostForm } from '../../../api/client';
+
+/** The paperwork a receipt is recorded against, as the API names each file. */
+export const DOCUMENTS = [
+    { name: 'lpo_document', label: 'LPO' },
+    { name: 'grn_document', label: 'GRN' },
+    { name: 'tax_invoice_document', label: 'Tax Invoice' },
+];
+
+const ACCEPT = '.pdf,.jpg,.jpeg,.png';
+// The API's max:10240. Checked here too, so a scan that is too big is named
+// at once instead of after the whole upload.
+const MAX_BYTES = 10 * 1024 * 1024;
+
+/**
+ * The payload as multipart form data, since it carries files: nested values
+ * flatten to `items[0][item_id]`, which Laravel reads back as the same array.
+ */
+function toFormData(payload, files) {
+    const form = new FormData();
+    const append = (key, value) => {
+        if (value === null || value === undefined) return;
+        if (typeof value === 'object') {
+            Object.entries(value).forEach(([k, v]) => append(`${key}[${k}]`, v));
+        } else {
+            form.append(key, value);
+        }
+    };
+    Object.entries(payload).forEach(([key, value]) => append(key, value));
+    Object.entries(files).forEach(([key, file]) => { if (file) form.append(key, file); });
+
+    return form;
+}
 
 /**
  * The goods receipt form, in the same dialog as the other purchase forms
@@ -26,6 +58,7 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
         notes: '',
     }));
     const [lines, setLines] = useState([]);
+    const [files, setFiles] = useState({});
     const [errors, setErrors] = useState({});
     const [messages, setMessages] = useState([]);
     const [saving, setSaving] = useState(false);
@@ -85,6 +118,20 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
         setMessages([]);
     }
 
+    function setFile(name, file, input) {
+        setMessages([]);
+        if (file && file.size > MAX_BYTES) {
+            // Clear the input, so the browser's required check stops it too.
+            if (input) input.value = '';
+            setFiles((prev) => ({ ...prev, [name]: null }));
+            setErrors((prev) => ({ ...prev, [name]: 'This file is larger than 10 MB.' }));
+
+            return;
+        }
+        setFiles((prev) => ({ ...prev, [name]: file ?? null }));
+        setErrors((prev) => (prev[name] ? { ...prev, [name]: undefined } : prev));
+    }
+
     async function submit(event) {
         event.preventDefault();
         if (saving) return;
@@ -94,7 +141,7 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
         setMessages([]);
 
         try {
-            const response = await apiPost('/purchase/grns', {
+            const response = await apiPostForm('/purchase/grns', toFormData({
                 ...values,
                 notes: values.notes || null,
                 items: lines.map((line) => ({
@@ -104,7 +151,7 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                     unit_cost: line.unit_cost,
                     type: line.type,
                 })),
-            });
+            }, files));
             onSaved(response.data);
         } catch (rejection) {
             setErrors(fieldErrors(rejection));
@@ -181,6 +228,28 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                     lines={lines} accent={chrome.accent} compact={compact} errors={errors}
                     hasOrder={!!values.purchase_order_id} onChange={setLines}
                 />
+
+                <FormSection accent={chrome.accent} title="Documents">
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: compact ? '1fr' : 'repeat(3,minmax(0,1fr))',
+                        gap: '1rem',
+                    }}>
+                        {DOCUMENTS.map((doc) => (
+                            <Field
+                                key={doc.name} idPrefix="grn" values={values} errors={errors} onChange={setField}
+                                label={doc.label} name={doc.name} required hint="PDF, JPG or PNG, up to 10 MB."
+                            >
+                                <input
+                                    id={`grn-${doc.name}`} name={doc.name} type="file" accept={ACCEPT} required
+                                    aria-invalid={errors[doc.name] ? true : undefined}
+                                    className={`form-input${errors[doc.name] ? ' form-input-error' : ''}`}
+                                    onChange={(e) => setFile(doc.name, e.target.files?.[0], e.target)}
+                                />
+                            </Field>
+                        ))}
+                    </div>
+                </FormSection>
 
                 <FormSection accent={chrome.accent} title="Notes" last>
                     {field({ label: 'Notes', name: 'notes', type: 'textarea', rows: 2 })}
