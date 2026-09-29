@@ -125,6 +125,26 @@ class LpoSignatureTest extends TestCase
         $this->assertSame(UserFactory::SIGNATURE, PurchaseOrder::firstOrFail()->prepared_signature);
     }
 
+    /**
+     * The order's page in the app frames the print view with ?embed=1: the
+     * same document, without its own Print button or grey backdrop.
+     */
+    public function test_the_embedded_lpo_is_the_print_document_without_its_chrome(): void
+    {
+        $issuer = $this->issuer();
+        $this->actingAs($issuer)->postJson("/api/v1/purchase/pipeline/{$this->pr->id}/lpo")->assertOk();
+        $order = PurchaseOrder::firstOrFail();
+
+        $embedded = $this->actingAs($issuer)->get("/purchase/orders/{$order->id}/print?embed=1")->assertOk()->getContent();
+        $printed = $this->actingAs($issuer)->get("/purchase/orders/{$order->id}/print")->assertOk()->getContent();
+
+        $this->assertStringContainsString('<body class="embed">', $embedded);
+        $this->assertStringNotContainsString('<body class="embed">', $printed);
+        $sheet = fn ($html) => preg_replace('#^.*<div class="sheet">(.*)</div>\s*</body>.*$#s', '$1', $html);
+        $this->assertSame($sheet($printed), $sheet($embedded));
+        $this->assertStringContainsString('Nelson Issuer', $sheet($embedded));
+    }
+
     public function test_the_printed_and_pdf_lpo_carry_the_signature_over_prepared_by(): void
     {
         $issuer = $this->issuer();

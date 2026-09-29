@@ -28,40 +28,17 @@ const ORDER = {
 };
 
 describe('PurchaseOrderDetail', () => {
-    it('heads the sheet with the project company and the LPO title', () => {
+    /**
+     * The page shows the LPO itself — the sheet Print opens and the PDF is
+     * drawn from — not a React copy of it, which had drifted.
+     */
+    it('shows the printed LPO in a frame, not a lookalike', () => {
         render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
-        expect(screen.getByText('Miknas Industrial')).toBeInTheDocument();
-        expect(screen.getByText('Local Purchase Order')).toBeInTheDocument();
-        expect(screen.getByText('PO-00007')).toBeInTheDocument();
-        expect(screen.getByText('Sent')).toBeInTheDocument();
-    });
 
-    it('shows the full supplier block, not just the name', () => {
-        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
-        ['Gulf Metals', 'Ali', 'Sitra', '17000000', 'ali@gulf.example'].forEach((text) => {
-            expect(screen.getByText(text)).toBeInTheDocument();
-        });
-    });
-
-    it('shows the reference MPR and the notes', () => {
-        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
-        expect(screen.getByText('MPR-0004')).toBeInTheDocument();
-        expect(screen.getByText('Deliver to gate 3.')).toBeInTheDocument();
-    });
-
-    it('renders lines in a table on desktop and totals them', () => {
-        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} /></MemoryRouter>);
-        expect(screen.getByRole('table')).toBeInTheDocument();
-        expect(screen.getByText('Steel Plate')).toBeInTheDocument();
-        expect(screen.getByText('BD 345.000')).toBeInTheDocument();
-    });
-
-    // A five-column table cannot be read on a phone, so mobile stacks the lines.
-    it('stacks lines instead of tabulating them when compact', () => {
-        render(<MemoryRouter><PurchaseOrderDetail order={ORDER} compact /></MemoryRouter>);
-        expect(screen.queryByRole('table')).not.toBeInTheDocument();
-        expect(screen.getByText('1. Steel Plate')).toBeInTheDocument();
-        expect(screen.getByText('Total Amount')).toBeInTheDocument();
+        const frame = screen.getByTitle('LPO PO-00007');
+        expect(frame.tagName).toBe('IFRAME');
+        expect(frame).toHaveAttribute('src', '/purchase/orders/7/print?embed=1');
+        expect(screen.queryByText('Local Purchase Order')).not.toBeInTheDocument();
     });
 
     it('lists linked GRNs with a link to each', () => {
@@ -78,10 +55,5 @@ describe('PurchaseOrderDetail', () => {
     it('renders nothing rather than crashing before the order loads', () => {
         const { container } = render(<MemoryRouter><PurchaseOrderDetail order={null} /></MemoryRouter>);
         expect(container).toBeEmptyDOMElement();
-    });
-
-    it('falls back to an em dash for a missing delivery date', () => {
-        render(<MemoryRouter><PurchaseOrderDetail order={{ ...ORDER, expected_delivery_date: null }} /></MemoryRouter>);
-        expect(screen.getByText('—')).toBeInTheDocument();
     });
 });
