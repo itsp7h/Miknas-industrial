@@ -16,6 +16,8 @@ const ACCEPT = '.pdf,.jpg,.jpeg,.png';
 // The API's max:10240. Checked here too, so a scan that is too big is named
 // at once instead of after the whole upload.
 const MAX_BYTES = 10 * 1024 * 1024;
+// Optional extra files beside the three, as many as the API takes.
+const MAX_OTHER = 5;
 
 /**
  * The payload as multipart form data, since it carries files: nested values
@@ -32,7 +34,10 @@ function toFormData(payload, files) {
         }
     };
     Object.entries(payload).forEach(([key, value]) => append(key, value));
-    Object.entries(files).forEach(([key, file]) => { if (file) form.append(key, file); });
+    Object.entries(files).forEach(([key, file]) => {
+        if (Array.isArray(file)) file.forEach((each) => form.append(`${key}[]`, each));
+        else if (file) form.append(key, file);
+    });
 
     return form;
 }
@@ -118,6 +123,24 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
         setMessages([]);
     }
 
+    /** The optional Other files: any number up to MAX_OTHER, each within MAX_BYTES. */
+    function setOthers(list, input) {
+        setMessages([]);
+        const chosen = Array.from(list ?? []);
+        const problem = chosen.length > MAX_OTHER
+            ? `Attach at most ${MAX_OTHER} other files.`
+            : chosen.some((file) => file.size > MAX_BYTES) ? 'Each file must be 10 MB or smaller.' : null;
+        if (problem) {
+            if (input) input.value = '';
+            setFiles((prev) => ({ ...prev, other_documents: [] }));
+            setErrors((prev) => ({ ...prev, other_documents: problem }));
+
+            return;
+        }
+        setFiles((prev) => ({ ...prev, other_documents: chosen }));
+        setErrors((prev) => (prev.other_documents ? { ...prev, other_documents: undefined } : prev));
+    }
+
     function setFile(name, file, input) {
         setMessages([]);
         if (file && file.size > MAX_BYTES) {
@@ -160,6 +183,11 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
             setSaving(false);
         }
     }
+
+    // The API keys a bad file by its position (other_documents.2); the form
+    // has one input for them all, so any of those lands under it.
+    const otherError = errors.other_documents
+        ?? Object.entries(errors).find(([key, value]) => key.startsWith('other_documents.') && value)?.[1];
 
     const field = (props) => (
         <Field idPrefix="grn" values={values} errors={errors} onChange={setField} {...props} />
@@ -248,6 +276,22 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                                 />
                             </Field>
                         ))}
+                    </div>
+
+                    <div style={{ marginTop: '1rem' }}>
+                        <Field
+                            idPrefix="grn" values={values} onChange={setField}
+                            errors={{ other_documents: otherError }}
+                            label="Other" name="other_documents"
+                            hint={`Optional. Anything else that came with the delivery — up to ${MAX_OTHER} files, PDF, JPG or PNG, 10 MB each.`}
+                        >
+                            <input
+                                id="grn-other_documents" name="other_documents" type="file" accept={ACCEPT} multiple
+                                aria-invalid={otherError ? true : undefined}
+                                className={`form-input${otherError ? ' form-input-error' : ''}`}
+                                onChange={(e) => setOthers(e.target.files, e.target)}
+                            />
+                        </Field>
                     </div>
                 </FormSection>
 

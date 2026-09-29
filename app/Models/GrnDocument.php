@@ -18,6 +18,11 @@ class GrnDocument extends Model
         'tax_invoice' => 'Tax Invoice',
     ];
 
+    /** Optional extra files, any number up to MAX_OTHER; not in KINDS. */
+    public const OTHER = 'other';
+
+    public const MAX_OTHER = 5;
+
     public const DISK = 'local';
 
     protected $fillable = ['goods_receipt_note_id', 'kind', 'path', 'original_name', 'mime_type', 'size', 'uploaded_by'];

@@ -21,7 +21,7 @@ function fileSize(bytes) {
  * tab from a web route (see GrnDocumentController). A receipt recorded before
  * uploads were asked for lists all three as not uploaded.
  */
-function Documents({ documents }) {
+function Documents({ documents, others = [] }) {
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Documents</h2>
@@ -43,6 +43,23 @@ function Documents({ documents }) {
                         </dd>
                     </div>
                 ))}
+                {/* The optional extras, one link each. */}
+                <div className="flex justify-between" style={{ gap: '1rem' }}>
+                    <dt className="text-gray-500">Other</dt>
+                    <dd className="m-0" style={{ minWidth: 0, textAlign: 'right' }}>
+                        {others.length === 0 && <span className="text-gray-400">None</span>}
+                        {others.map((doc) => (
+                            <div key={doc.id}>
+                                <a href={doc.url} target="_blank" rel="noreferrer"
+                                   className="text-blue-600 hover:underline"
+                                   style={{ overflowWrap: 'anywhere' }}>
+                                    {doc.name}
+                                </a>
+                                {doc.size ? <span className="text-gray-400"> · {fileSize(doc.size)}</span> : null}
+                            </div>
+                        ))}
+                    </dd>
+                </div>
             </dl>
         </div>
     );
@@ -86,7 +103,7 @@ export default function GrnDetail({ grn, compact = false }) {
                     </dl>
                 </div>
 
-                {grn.documents && <Documents documents={grn.documents} />}
+                {grn.documents && <Documents documents={grn.documents} others={grn.other_documents ?? []} />}
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

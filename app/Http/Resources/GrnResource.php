@@ -40,6 +40,15 @@ class GrnResource extends JsonResource
                         'url' => $document ? route('purchase.grns.documents', [$this->id, $kind], false) : null,
                     ];
                 })->values()),
+            // Whatever else came with the delivery, in upload order.
+            'other_documents' => $this->whenLoaded('documents', fn () => $this->documents
+                ->where('kind', GrnDocument::OTHER)->sortBy('id')
+                ->map(fn ($document) => [
+                    'id' => $document->id,
+                    'name' => $document->original_name,
+                    'size' => $document->size,
+                    'url' => route('purchase.grns.documents.other', [$this->id, $document->id], false),
+                ])->values()),
         ];
     }
 }

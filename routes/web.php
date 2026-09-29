@@ -89,6 +89,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // its detail page in a new tab.
         Route::get('grns/{grn}/documents/{kind}', [GrnDocumentController::class, 'show'])
             ->middleware('permission:goods-receipts.view')->name('grns.documents');
+        Route::get('grns/{grn}/documents/other/{document}', [GrnDocumentController::class, 'showOther'])
+            ->whereNumber('document')->middleware('permission:goods-receipts.view')->name('grns.documents.other');
         Route::get('grns/{grn}', fn ($grn) => redirect("/app/purchase/grns/{$grn}"))
             ->whereNumber('grn');
         Route::redirect('invoices', '/app/purchase/invoices');
