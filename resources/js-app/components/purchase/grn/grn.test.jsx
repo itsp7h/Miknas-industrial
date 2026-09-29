@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import GrnTable from './GrnTable';
 import GrnDetail from './GrnDetail';
-import { badgeClassFor, formatDate, qty } from './grnStyles';
+import { badgeClassFor, confirmBlockedReason, formatDate, needsLabel, qty } from './grnStyles';
 
 const GRNS = [
     {
@@ -41,9 +41,46 @@ describe('grnStyles', () => {
     });
 });
 
+describe('missing documents', () => {
+    it('names what a receipt still needs, and nothing once it has it all', () => {
+        expect(needsLabel({ missing_documents: ['Tax Invoice'] })).toBe('Needs Tax Invoice');
+        expect(needsLabel({ missing_documents: ['LPO', 'Tax Invoice'] })).toBe('Needs LPO & Tax Invoice');
+        expect(needsLabel({ missing_documents: ['LPO', 'GRN', 'Tax Invoice'] })).toBe('Needs LPO, GRN & Tax Invoice');
+        expect(needsLabel({ missing_documents: [] })).toBeNull();
+        expect(needsLabel({})).toBeNull();
+    });
+
+    it('says why Confirm is blocked', () => {
+        expect(confirmBlockedReason({ missing_documents: ['GRN'] })).toBe('Upload the GRN to confirm this GRN.');
+        expect(confirmBlockedReason({ missing_documents: [] })).toBeNull();
+    });
+});
+
 describe('GrnTable', () => {
     const renderTable = (rows = GRNS, handlers = {}) =>
         renderIn(<GrnTable grns={rows} onConfirm={handlers.onConfirm ?? (() => {})} onDelete={handlers.onDelete ?? (() => {})} />);
+
+    /** Saved with paperwork missing: flagged, and not confirmable until it is in. */
+    it('flags a receipt that needs a document and disables its Confirm', () => {
+        const onConfirm = vi.fn();
+        renderTable([{ ...GRNS[0], status: 'draft', missing_documents: ['Tax Invoice'] }], { onConfirm });
+
+        expect(screen.getByText('Needs Tax Invoice')).toHaveClass('badge-red');
+        const confirm = screen.getByRole('button', { name: 'Confirm' });
+        expect(confirm).toBeDisabled();
+        expect(confirm).toHaveAttribute('title', 'Upload the Tax Invoice to confirm this GRN.');
+        fireEvent.click(confirm);
+        expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it('lets a receipt with all three documents be confirmed', () => {
+        const onConfirm = vi.fn();
+        renderTable([{ ...GRNS[0], status: 'draft', missing_documents: [] }], { onConfirm });
+
+        expect(screen.queryByText(/^Needs /)).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+        expect(onConfirm).toHaveBeenCalled();
+    });
 
     it('renders all seven Blade columns', () => {
         renderTable();
@@ -166,6 +203,38 @@ describe('GrnDetail', () => {
 
         renderIn(<GrnDetail grn={{ ...GRN, documents, other_documents: [] }} />);
         expect(screen.getByText('None')).toBeInTheDocument();
+    });
+
+    it('offers Upload for each missing document and sends the chosen file', () => {
+        const onUpload = vi.fn();
+        renderIn(<GrnDetail canUpload onUpload={onUpload} grn={{
+            ...GRN, missing_documents: ['Tax Invoice'], other_documents: [],
+            documents: [
+                { kind: 'lpo', label: 'LPO', name: 'lpo.pdf', size: 1024, url: '/purchase/grns/1/documents/lpo' },
+                { kind: 'grn', label: 'GRN', name: 'grn.pdf', size: 1024, url: '/purchase/grns/1/documents/grn' },
+                { kind: 'tax_invoice', label: 'Tax Invoice', name: null, size: null, url: null },
+            ],
+        }} />);
+
+        expect(screen.getByText('Needs Tax Invoice')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Upload LPO')).not.toBeInTheDocument();
+        const file = new File(['%PDF'], 'invoice.pdf', { type: 'application/pdf' });
+        fireEvent.change(screen.getByLabelText('Upload Tax Invoice'), { target: { files: [file] } });
+        expect(onUpload).toHaveBeenCalledWith('tax_invoice_document', [file]);
+
+        fireEvent.change(screen.getByLabelText('Add other files'), { target: { files: [file] } });
+        expect(onUpload).toHaveBeenLastCalledWith('other_documents', [file]);
+    });
+
+    it('shows Upload disabled, with the reason, to someone who may not add documents', () => {
+        renderIn(<GrnDetail canUpload={false} onUpload={() => {}} grn={{
+            ...GRN, missing_documents: ['LPO'], other_documents: [],
+            documents: [{ kind: 'lpo', label: 'LPO', name: null, size: null, url: null }],
+        }} />);
+
+        const input = screen.getByLabelText('Upload LPO');
+        expect(input).toBeDisabled();
+        expect(input.closest('label')).toHaveAttribute('title', 'You do not have permission to add documents to goods receipts');
     });
 
     it('leaves the documents card out when the payload carries none', () => {

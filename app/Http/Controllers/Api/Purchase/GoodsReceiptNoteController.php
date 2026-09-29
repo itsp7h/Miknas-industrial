@@ -17,6 +17,7 @@ use App\Models\Warehouse;
 use App\Notifications\Purchase\GoodsReceiptConfirmedNotification;
 use App\Services\PurchaseStageService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -28,7 +29,7 @@ class GoodsReceiptNoteController extends Controller
     /** What each uploaded file may be: a scan or a PDF, up to 10 MB. */
     private const FILE_RULE = 'file|mimes:pdf,jpg,jpeg,png|max:10240';
 
-    private const DOCUMENT_RULE = 'required|'.self::FILE_RULE;
+    private const DOCUMENT_RULE = 'nullable|'.self::FILE_RULE;
 
     /** Relations every single-GRN response carries. */
     private const DETAIL = ['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem', 'documents'];
@@ -70,7 +71,8 @@ class GoodsReceiptNoteController extends Controller
     public function index()
     {
         return GrnResource::collection(
-            GoodsReceiptNote::with(['purchaseOrder.supplier', 'warehouse'])->latest()->get()
+            // Documents too, so each row can say what paperwork it still needs.
+            GoodsReceiptNote::with(['purchaseOrder.supplier', 'warehouse', 'documents'])->latest()->get()
         );
     }
 
@@ -130,18 +132,11 @@ class GoodsReceiptNoteController extends Controller
             'items.*.quantity_received' => 'required|numeric|min:0.01',
             'items.*.unit_cost' => 'nullable|numeric|min:0',
             'items.*.type' => 'nullable|in:'.implode(',', self::TYPES),
-            // The LPO, the supplier's GRN and the tax invoice: a receipt is
-            // recorded against all three, so all three are required.
-            ...collect(GrnDocument::KINDS)->keys()->mapWithKeys(fn ($kind) => ["{$kind}_document" => self::DOCUMENT_RULE])->all(),
-            // Anything else that came with the delivery. Optional.
-            'other_documents' => 'nullable|array|max:'.GrnDocument::MAX_OTHER,
-            'other_documents.*' => self::FILE_RULE,
-        ], [
-            'other_documents.max' => 'Attach at most '.GrnDocument::MAX_OTHER.' other files.',
-        ], [
-            ...collect(GrnDocument::KINDS)->mapWithKeys(fn ($label, $kind) => ["{$kind}_document" => "{$label} document"])->all(),
-            'other_documents.*' => 'other file',
-        ]);
+            // The LPO, the supplier's GRN and the tax invoice. Any of them may
+            // follow the goods, so a receipt saves without them and says what
+            // it still needs (missing_documents) until they are uploaded.
+            ...$this->documentRules(),
+        ], ...$this->documentMessages());
 
         $po = PurchaseOrder::with(['items', 'purchaseRequest'])->findOrFail($data['purchase_order_id']);
 
@@ -191,23 +186,7 @@ class GoodsReceiptNoteController extends Controller
                     ]);
                 }
 
-                $files = [
-                    ...array_map(fn ($kind) => [$kind, $request->file("{$kind}_document")], array_keys(GrnDocument::KINDS)),
-                    ...array_map(fn ($file) => [GrnDocument::OTHER, $file], $request->file('other_documents', [])),
-                ];
-
-                foreach ($files as [$kind, $file]) {
-                    $stored[] = $path = $file->store("grn-documents/{$grn->id}", GrnDocument::DISK);
-
-                    $grn->documents()->create([
-                        'kind' => $kind,
-                        'path' => $path,
-                        'original_name' => $file->getClientOriginalName(),
-                        'mime_type' => $file->getMimeType(),
-                        'size' => $file->getSize(),
-                        'uploaded_by' => auth()->id(),
-                    ]);
-                }
+                $this->storeFiles($grn, $this->filesFrom($request), $stored);
 
                 return $grn;
             });
@@ -224,6 +203,114 @@ class GoodsReceiptNoteController extends Controller
     }
 
     /**
+     * Adds paperwork to a saved receipt: a missing LPO, GRN or tax invoice
+     * (or a replacement for one), and more "Other" files. Allowed after
+     * confirming too — a tax invoice often arrives after the goods.
+     */
+    public function addDocuments(Request $request, GoodsReceiptNote $grn)
+    {
+        $request->validate($this->documentRules(), ...$this->documentMessages());
+
+        $files = $this->filesFrom($request);
+
+        if ($files === []) {
+            return response()->json([
+                'message' => 'Choose a file to upload.',
+                'errors' => ['documents' => ['Choose a file to upload.']],
+            ], 422);
+        }
+
+        $others = count(array_filter($files, fn ($file) => $file[0] === GrnDocument::OTHER));
+
+        if ($others > 0 && $grn->documents()->where('kind', GrnDocument::OTHER)->count() + $others > GrnDocument::MAX_OTHER) {
+            return response()->json([
+                'message' => 'A receipt holds at most '.GrnDocument::MAX_OTHER.' other files.',
+                'errors' => ['other_documents' => ['A receipt holds at most '.GrnDocument::MAX_OTHER.' other files.']],
+            ], 422);
+        }
+
+        // A named document uploaded again replaces the one before; its old
+        // file goes once the new one is safely recorded.
+        $replaced = $grn->documents()
+            ->whereIn('kind', array_column($files, 0))
+            ->where('kind', '!=', GrnDocument::OTHER)
+            ->get();
+        $stored = [];
+
+        try {
+            DB::transaction(function () use ($grn, $files, $replaced, &$stored) {
+                $replaced->each->delete();
+                $this->storeFiles($grn, $files, $stored);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk(GrnDocument::DISK)->delete($stored);
+
+            throw $e;
+        }
+
+        Storage::disk(GrnDocument::DISK)->delete($replaced->pluck('path')->all());
+
+        event(new GrnSaved($grn));
+
+        return response()->json([
+            'data' => (new GrnResource($grn->fresh([...self::DETAIL, 'receivedBy'])))->resolve(),
+            'message' => 'Documents uploaded.',
+        ]);
+    }
+
+    /** Every file rule, all optional: store and addDocuments share them. */
+    private function documentRules(): array
+    {
+        return [
+            ...collect(GrnDocument::KINDS)->keys()->mapWithKeys(fn ($kind) => ["{$kind}_document" => self::DOCUMENT_RULE])->all(),
+            // Anything else that came with the delivery.
+            'other_documents' => 'nullable|array|max:'.GrnDocument::MAX_OTHER,
+            'other_documents.*' => self::FILE_RULE,
+        ];
+    }
+
+    /** The messages and attribute names for documentRules(), as validate()'s last two arguments. */
+    private function documentMessages(): array
+    {
+        return [
+            ['other_documents.max' => 'Attach at most '.GrnDocument::MAX_OTHER.' other files.'],
+            [
+                ...collect(GrnDocument::KINDS)->mapWithKeys(fn ($label, $kind) => ["{$kind}_document" => "{$label} document"])->all(),
+                'other_documents.*' => 'other file',
+            ],
+        ];
+    }
+
+    /** @return list<array{0: string, 1: UploadedFile}> kind => file, for what was sent */
+    private function filesFrom(Request $request): array
+    {
+        return [
+            ...collect(GrnDocument::KINDS)->keys()
+                ->filter(fn ($kind) => $request->hasFile("{$kind}_document"))
+                ->map(fn ($kind) => [$kind, $request->file("{$kind}_document")])
+                ->values()->all(),
+            ...array_map(fn ($file) => [GrnDocument::OTHER, $file], $request->file('other_documents', [])),
+        ];
+    }
+
+    /** Writes each file to the disk and records it, noting each path in $stored for cleanup. */
+    private function storeFiles(GoodsReceiptNote $grn, array $files, array &$stored): void
+    {
+        foreach ($files as [$kind, $file]) {
+            $stored[] = $path = $file->store("grn-documents/{$grn->id}", GrnDocument::DISK);
+
+            $grn->documents()->create([
+                'kind' => $kind,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'uploaded_by' => auth()->id(),
+            ]);
+        }
+    }
+
+    /**
      * Receives the goods: raises stock, writes the movements, advances the PO's
      * received quantities, and marks the PO received once every line is met.
      * Same logic as the Blade controller — which no page ever linked to, so
@@ -232,6 +319,20 @@ class GoodsReceiptNoteController extends Controller
     public function confirm(GoodsReceiptNote $grn, PurchaseStageService $stages)
     {
         abort_if($grn->status === 'confirmed', 422, 'This GRN is already confirmed.');
+
+        // A receipt may be saved while its paperwork is still coming, but it
+        // is not complete — and does not move stock — until the LPO, the GRN
+        // and the tax invoice are all on it.
+        $missing = collect(GrnDocument::KINDS)
+            ->reject(fn ($label, $kind) => $grn->documents()->where('kind', $kind)->exists())
+            ->values();
+
+        if ($missing->isNotEmpty()) {
+            return response()->json([
+                'message' => 'Upload the '.$missing->join(', ', ' and ').' before confirming this GRN.',
+                'missing_documents' => $missing,
+            ], 422);
+        }
 
         DB::transaction(function () use ($grn) {
             $grn->load('items', 'purchaseOrder.items');

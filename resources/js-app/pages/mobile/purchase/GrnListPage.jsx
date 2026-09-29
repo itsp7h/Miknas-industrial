@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
+import ConfirmGrnButton from '../../../components/purchase/grn/ConfirmGrnButton';
 import GrnModal from '../../../components/purchase/grn/GrnModal';
+import NeedsBadge from '../../../components/purchase/grn/NeedsBadge';
 import useGrnList from '../../../components/purchase/grn/useGrnList';
 import { STATUS_LABELS, badgeClassFor, formatDate } from '../../../components/purchase/grn/grnStyles';
 
@@ -71,6 +73,7 @@ export default function GrnListPage() {
                             {STATUS_LABELS[grn.status] ?? grn.status}
                         </span>
                     </div>
+                    <NeedsBadge grn={grn} style={{ display: 'inline-block', marginTop: 4 }} />
                     <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{grn.supplier_name ?? '—'}</div>
                     <div style={{ fontSize: 12, color: '#94a3b8' }}>
                         <span className="font-mono">{grn.po_number}</span>
@@ -80,7 +83,7 @@ export default function GrnListPage() {
 
                     {grn.status !== 'confirmed' && (
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-                            <button type="button" onClick={() => g.setConfirming(grn)} className="btn-success btn-sm">Confirm</button>
+                            <ConfirmGrnButton grn={grn} onClick={() => g.setConfirming(grn)} className="btn-success btn-sm" />
                             <button type="button" onClick={() => g.setDeleting(grn)} className="btn-danger btn-sm">Delete</button>
                         </div>
                     )}

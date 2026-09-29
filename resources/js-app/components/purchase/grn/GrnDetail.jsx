@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom';
+import NeedsBadge from './NeedsBadge';
 import { STATUS_LABELS, badgeClassFor, formatDate, qty } from './grnStyles';
+
+const ACCEPT = '.pdf,.jpg,.jpeg,.png';
+const MAX_OTHER = 5;
 
 function Row({ label, children }) {
     return (
@@ -17,11 +21,39 @@ function fileSize(bytes) {
 }
 
 /**
- * The LPO, GRN and tax invoice uploaded with the receipt. Each opens in a new
- * tab from a web route (see GrnDocumentController). A receipt recorded before
- * uploads were asked for lists all three as not uploaded.
+ * A small button that opens the file picker and uploads what is chosen. Shown
+ * disabled, with the reason, to someone who may not add paperwork (#14).
  */
-function Documents({ documents, others = [] }) {
+function UploadButton({ field, label, ariaLabel, multiple = false, canUpload, uploading, onUpload }) {
+    const busy = uploading === field;
+    const disabled = !canUpload || !!uploading;
+
+    return (
+        <label
+            className="btn-secondary btn-sm"
+            title={canUpload ? undefined : 'You do not have permission to add documents to goods receipts'}
+            style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, marginLeft: 8, whiteSpace: 'nowrap' }}
+        >
+            {busy ? 'Uploading…' : label}
+            <input
+                type="file" accept={ACCEPT} multiple={multiple} disabled={disabled}
+                aria-label={ariaLabel}
+                style={{ display: 'none' }}
+                onChange={(e) => { onUpload?.(field, e.target.files); e.target.value = ''; }}
+            />
+        </label>
+    );
+}
+
+/**
+ * The LPO, GRN and tax invoice, then any Other files. Each opens in a new tab
+ * from a web route (see GrnDocumentController). A missing one can be uploaded
+ * here — a receipt saves without its paperwork and is completed once all
+ * three are in.
+ */
+function Documents({ documents, others = [], canUpload, uploading, onUpload }) {
+    const upload = { canUpload, uploading, onUpload };
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Documents</h2>
@@ -37,7 +69,10 @@ function Documents({ documents, others = [] }) {
                                     {doc.name}
                                 </a>
                             ) : (
-                                <span className="text-gray-400">Not uploaded</span>
+                                <>
+                                    <span className="text-red-600">Not uploaded</span>
+                                    {onUpload && <UploadButton field={`${doc.kind}_document`} label="Upload" ariaLabel={`Upload ${doc.label}`} {...upload} />}
+                                </>
                             )}
                             {doc.url && doc.size ? <span className="text-gray-400"> · {fileSize(doc.size)}</span> : null}
                         </dd>
@@ -58,6 +93,11 @@ function Documents({ documents, others = [] }) {
                                 {doc.size ? <span className="text-gray-400"> · {fileSize(doc.size)}</span> : null}
                             </div>
                         ))}
+                        {onUpload && others.length < MAX_OTHER && (
+                            <div style={{ marginTop: others.length ? 6 : 0 }}>
+                                <UploadButton field="other_documents" label="Add files" ariaLabel="Add other files" multiple {...upload} />
+                            </div>
+                        )}
                     </dd>
                 </div>
             </dl>
@@ -66,7 +106,7 @@ function Documents({ documents, others = [] }) {
 }
 
 /** The Blade GRN show page: a details card plus the received-items table. */
-export default function GrnDetail({ grn, compact = false }) {
+export default function GrnDetail({ grn, compact = false, canUpload = false, uploading = null, onUpload }) {
     if (!grn) return null;
 
     const items = grn.items ?? [];
@@ -92,6 +132,7 @@ export default function GrnDetail({ grn, compact = false }) {
                             <span className={badgeClassFor(grn.status)}>
                                 {STATUS_LABELS[grn.status] ?? grn.status}
                             </span>
+                            <NeedsBadge grn={grn} style={{ marginLeft: 6 }} />
                         </Row>
                         {grn.received_by_name && <Row label="Received By">{grn.received_by_name}</Row>}
                         {grn.notes && (
@@ -103,7 +144,12 @@ export default function GrnDetail({ grn, compact = false }) {
                     </dl>
                 </div>
 
-                {grn.documents && <Documents documents={grn.documents} others={grn.other_documents ?? []} />}
+                {grn.documents && (
+                    <Documents
+                        documents={grn.documents} others={grn.other_documents ?? []}
+                        canUpload={canUpload} uploading={uploading} onUpload={onUpload}
+                    />
+                )}
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

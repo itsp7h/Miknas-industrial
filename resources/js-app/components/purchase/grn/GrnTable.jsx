@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import ConfirmGrnButton from './ConfirmGrnButton';
+import NeedsBadge from './NeedsBadge';
 import { STATUS_LABELS, badgeClassFor, formatDate } from './grnStyles';
 
 /** The Blade GRN index table, using the same .table-base / .badge-* / .btn-* classes. */
@@ -43,6 +45,7 @@ export default function GrnTable({ grns, onConfirm, onDelete }) {
                                 <span className={badgeClassFor(grn.status)}>
                                     {STATUS_LABELS[grn.status] ?? grn.status}
                                 </span>
+                                <NeedsBadge grn={grn} style={{ marginLeft: 6 }} />
                             </td>
                             <td>
                                 <div className="flex items-center gap-2">
@@ -50,9 +53,7 @@ export default function GrnTable({ grns, onConfirm, onDelete }) {
                                     {/* Confirming is what actually receives the stock. The
                                         Blade pages never offered it. */}
                                     {grn.status !== 'confirmed' && (
-                                        <button type="button" onClick={() => onConfirm(grn)} className="btn-success btn-sm">
-                                            Confirm
-                                        </button>
+                                        <ConfirmGrnButton grn={grn} onClick={() => onConfirm(grn)} className="btn-success btn-sm" />
                                     )}
                                     {grn.status !== 'confirmed' && (
                                         <button type="button" onClick={() => onDelete(grn)} className="btn-danger btn-sm">

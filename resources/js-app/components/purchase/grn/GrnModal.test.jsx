@@ -222,6 +222,25 @@ describe('GrnModal', () => {
         await waitFor(() => expect(screen.getByLabelText(/^Other/)).toHaveAttribute('aria-invalid', 'true'));
     });
 
+    /** Paperwork can follow the goods: the form saves with a document missing. */
+    it('saves with only some of the documents attached', async () => {
+        const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
+        await open({ presetOrderId: 5 });
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
+
+        expect(screen.getByLabelText(/^Tax Invoice/)).not.toBeRequired();
+        expect(screen.getByText(/All three are needed to confirm the GRN/)).toBeInTheDocument();
+        attach(/^LPO/, 'lpo.pdf');
+        // The real button, so the browser's own required check would stop it
+        // if any document were still marked required.
+        fireEvent.click(screen.getByRole('button', { name: 'Save GRN' }));
+
+        await waitFor(() => expect(post).toHaveBeenCalled());
+        const form = post.mock.calls[0][1];
+        expect(form.get('lpo_document').name).toBe('lpo.pdf');
+        expect(form.has('tax_invoice_document')).toBe(false);
+    });
+
     it('turns away a file over 10 MB before uploading it', async () => {
         const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
         await open({ presetOrderId: 5 });

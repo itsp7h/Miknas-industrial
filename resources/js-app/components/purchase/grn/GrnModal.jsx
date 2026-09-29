@@ -144,7 +144,6 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
     function setFile(name, file, input) {
         setMessages([]);
         if (file && file.size > MAX_BYTES) {
-            // Clear the input, so the browser's required check stops it too.
             if (input) input.value = '';
             setFiles((prev) => ({ ...prev, [name]: null }));
             setErrors((prev) => ({ ...prev, [name]: 'This file is larger than 10 MB.' }));
@@ -258,6 +257,9 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                 />
 
                 <FormSection accent={chrome.accent} title="Documents">
+                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
+                        All three are needed to confirm the GRN. Missing one? Save now and upload it later from the GRN&rsquo;s page.
+                    </p>
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: compact ? '1fr' : 'repeat(3,minmax(0,1fr))',
@@ -268,8 +270,10 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                                 key={doc.name} idPrefix="grn" values={values} errors={errors} onChange={setField}
                                 label={doc.label} name={doc.name} required hint="PDF, JPG or PNG, up to 10 MB."
                             >
+                                {/* Marked required, but not enforced here: the receipt can
+                                    be saved without it and completed once it is uploaded. */}
                                 <input
-                                    id={`grn-${doc.name}`} name={doc.name} type="file" accept={ACCEPT} required
+                                    id={`grn-${doc.name}`} name={doc.name} type="file" accept={ACCEPT}
                                     aria-invalid={errors[doc.name] ? true : undefined}
                                     className={`form-input${errors[doc.name] ? ' form-input-error' : ''}`}
                                     onChange={(e) => setFile(doc.name, e.target.files?.[0], e.target)}

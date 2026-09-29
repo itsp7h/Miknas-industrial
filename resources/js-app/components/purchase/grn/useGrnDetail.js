@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiPatch } from '../../../api/client';
+import { apiGet, apiPatch, apiPostForm } from '../../../api/client';
 import { echo } from '../../../echo';
 import { useToast } from '../../ui/Toast';
 
@@ -8,6 +8,7 @@ export default function useGrnDetail(id) {
     const [grn, setGrn] = useState(null);
     const [loading, setLoading] = useState(true);
     const [confirming, setConfirming] = useState(false);
+    const [uploading, setUploading] = useState(null);
     const { showToast } = useToast();
 
     const load = useCallback((quiet = false) => {
@@ -45,5 +46,31 @@ export default function useGrnDetail(id) {
         }
     }
 
-    return { grn, loading, confirming, setConfirming, confirm };
+    /**
+     * Adds paperwork after saving: a missing LPO, GRN or tax invoice (field
+     * e.g. `tax_invoice_document`, one file) or more Other files
+     * (`other_documents`, several).
+     */
+    async function uploadDocuments(field, files) {
+        const list = Array.from(files ?? []);
+        if (!list.length) return;
+
+        const form = new FormData();
+        if (field === 'other_documents') list.forEach((file) => form.append('other_documents[]', file));
+        else form.append(field, list[0]);
+
+        setUploading(field);
+        try {
+            const response = await apiPostForm(`/purchase/grns/${id}/documents`, form);
+            setGrn(response.data);
+            showToast(response.message ?? 'Documents uploaded.', 'success');
+        } catch (err) {
+            const first = Object.values(err?.errors ?? {})[0];
+            showToast((Array.isArray(first) ? first[0] : first) || err?.message || 'The file could not be uploaded.', 'error');
+        } finally {
+            setUploading(null);
+        }
+    }
+
+    return { grn, loading, confirming, setConfirming, confirm, uploading, uploadDocuments };
 }
