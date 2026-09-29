@@ -54,29 +54,43 @@ const inputStyle = {
     fontFamily: 'inherit',
 };
 
-export function LogisticsFields({ compact, meta, setField, disabled, errors = {} }) {
+/**
+ * The supplier's own quotation number, first on the form, under the opening
+ * line: "Ref:" with a small box beside it, as the LPO prints it. Required —
+ * the LPO shows it under the vendor's name.
+ */
+export function ReferenceField({ meta, setField, disabled, errors = {} }) {
     return (
-        <>
-            {/* The supplier's own quotation number. Required: the LPO prints
-                it under the vendor's name as "Ref:". */}
-            <div style={{ marginBottom: 16 }}>
-                <FieldLabel htmlFor="reference">
-                    Ref (Quotation No.) <span style={{ color: '#dc2626' }}>*</span>
-                </FieldLabel>
+        <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <label htmlFor="reference" style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', flexShrink: 0 }}>
+                    Ref:
+                </label>
                 <input
                     id="reference"
                     type="text"
                     required
                     maxLength={100}
-                    placeholder="Your quotation reference number"
+                    placeholder="Quotation no."
                     disabled={disabled}
                     aria-invalid={errors.reference ? true : undefined}
-                    style={errors.reference ? { ...inputStyle, borderColor: '#ef4444' } : inputStyle}
+                    style={{
+                        ...inputStyle,
+                        width: 220, maxWidth: '100%', minWidth: 0, padding: '6px 10px',
+                        ...(errors.reference ? { borderColor: '#ef4444' } : {}),
+                    }}
                     value={meta.reference}
                     onChange={(e) => setField('reference', e.target.value)}
                 />
-                {errors.reference && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.reference}</div>}
             </div>
+            {errors.reference && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.reference}</div>}
+        </div>
+    );
+}
+
+export function LogisticsFields({ compact, meta, setField, disabled }) {
+    return (
+        <>
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: compact ? '1fr' : '1fr 1fr',

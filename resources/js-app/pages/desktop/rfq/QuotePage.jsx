@@ -1,5 +1,5 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, TermsBlock,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, ReferenceField, TermsBlock,
 } from '../../../components/rfq/QuoteFields';
 import useRfqPortal, { money, qty } from '../../../components/rfq/useRfqPortal';
 import { ErrorScreen, ExpiredScreen, LoadingScreen, SubmittedScreen } from '../../../components/rfq/RfqStates';
@@ -61,6 +61,8 @@ export default function QuotePage({ token, load, send }) {
                         and submit. This link is private to your company and can only be
                         submitted once.
                     </p>
+
+                    <ReferenceField meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} />
 
                     <FormError message={f.formError} />
 
@@ -188,7 +190,7 @@ export default function QuotePage({ token, load, send }) {
                             </table>
                         </div>
 
-                        <LogisticsFields compact={false} meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} />
+                        <LogisticsFields compact={false} meta={f.meta} setField={f.setField} disabled={f.submitting} />
 
                         <TermsBlock
                             accepted={f.terms}
