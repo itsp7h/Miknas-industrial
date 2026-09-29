@@ -58,6 +58,7 @@ describe.each([
         mount();
         await screen.findByText('MPR-0042');
 
+        fireEvent.change(screen.getByLabelText(/^Ref/), { target: { value: 'GS/Q/2026/118' } });
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
         fireEvent.change(screen.getByLabelText('Unit price for Angle bar'), { target: { value: '3' } });
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
@@ -120,6 +121,13 @@ describe.each([
 
         const submit = screen.getByRole('button', { name: /Submit/ });
         expect(submit).toBeDisabled();
+        // The Ref goes on the LPO, so it comes first.
+        expect(screen.getByText('Please enter your quotation reference number (Ref).')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText(/^Ref/), { target: { value: '   ' } });
+        expect(screen.getByText('Please enter your quotation reference number (Ref).')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText(/^Ref/), { target: { value: 'Q-118' } });
         expect(screen.getByText(/2 items still need a unit price/)).toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
@@ -140,6 +148,7 @@ describe.each([
         mount();
         await screen.findByText('MPR-0042');
 
+        fireEvent.change(screen.getByLabelText(/^Ref/), { target: { value: 'Q-118' } });
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
         fireEvent.click(screen.getByLabelText('Angle bar is not available'));
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
@@ -156,6 +165,7 @@ describe.each([
         await waitFor(() => expect(send).toHaveBeenCalledWith(`/rfq/${TOKEN}`, {
             terms: true,
             confirm_code: 'AB12C',
+            reference: 'GS/Q/2026/118',
             lead_time_days: null,
             payment_terms: null,
             notes: null,

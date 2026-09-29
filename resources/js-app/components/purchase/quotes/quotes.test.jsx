@@ -55,6 +55,15 @@ describe('QuoteWorkspace', () => {
         expect(screen.getByText('2 suppliers competing')).toBeInTheDocument();
     });
 
+    it('shows each supplier’s Ref beside their offer', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: workspace({
+            items: [{ ...workspace().items[0], rows: [row('Gulf Steel', 10, { reference: 'GS/Q/2026/118' }), row('Zenith', 9)] }],
+        }) });
+        wrap();
+
+        expect(await screen.findByText(/Ref GS\/Q\/2026\/118 · 7 days · 30 days/)).toBeInTheDocument();
+    });
+
     // Three decimals and a BD prefix throughout, as Blade had it.
     it('formats money the way the Blade page did', async () => {
         wrap();

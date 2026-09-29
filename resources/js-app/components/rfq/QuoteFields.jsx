@@ -54,9 +54,29 @@ const inputStyle = {
     fontFamily: 'inherit',
 };
 
-export function LogisticsFields({ compact, meta, setField, disabled }) {
+export function LogisticsFields({ compact, meta, setField, disabled, errors = {} }) {
     return (
         <>
+            {/* The supplier's own quotation number. Required: the LPO prints
+                it under the vendor's name as "Ref:". */}
+            <div style={{ marginBottom: 16 }}>
+                <FieldLabel htmlFor="reference">
+                    Ref (Quotation No.) <span style={{ color: '#dc2626' }}>*</span>
+                </FieldLabel>
+                <input
+                    id="reference"
+                    type="text"
+                    required
+                    maxLength={100}
+                    placeholder="Your quotation reference number"
+                    disabled={disabled}
+                    aria-invalid={errors.reference ? true : undefined}
+                    style={errors.reference ? { ...inputStyle, borderColor: '#ef4444' } : inputStyle}
+                    value={meta.reference}
+                    onChange={(e) => setField('reference', e.target.value)}
+                />
+                {errors.reference && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.reference}</div>}
+            </div>
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: compact ? '1fr' : '1fr 1fr',

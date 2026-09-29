@@ -9,7 +9,7 @@ class PurchaseOrder extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['po_number', 'supplier_id', 'purchase_request_id', 'po_date', 'expected_delivery_date', 'total_amount', 'status', 'sent_at', 'sent_to', 'notes', 'created_by', 'prepared_signature'];
+    protected $fillable = ['po_number', 'supplier_id', 'quote_reference', 'purchase_request_id', 'po_date', 'expected_delivery_date', 'total_amount', 'status', 'sent_at', 'sent_to', 'notes', 'created_by', 'prepared_signature'];
 
     /** Only the documents render it; it is tens of kilobytes. */
     protected $hidden = ['prepared_signature'];
