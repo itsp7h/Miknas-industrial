@@ -233,20 +233,20 @@ class LpoDocumentTest extends TestCase
         $this->assertStringNotContainsString('class="brand-box"', $html);
     }
 
-    public function test_the_companys_stamp_sits_over_approved_by(): void
+    public function test_the_companys_stamp_sits_beside_prepared_by(): void
     {
         $stamp = $this->png(300, 300);
         $html = $this->companyHtml(null, $stamp);
 
         $tag = '<img class="sig-stamp" src="'.$stamp.'" width="90" height="90" alt="Miknas Industrial stamp">';
         $this->assertStringContainsString($tag, $html);
-        // In the Approved By block: after Prepared By's line, before its own.
+        // In the Prepared By block: after the issuer's name, before its line.
         $at = strpos($html, $tag);
-        $this->assertGreaterThan(strpos($html, 'Prepared By</div>'), $at);
-        $this->assertLessThan(strpos($html, 'Approved By</div>'), $at);
+        $this->assertGreaterThan(strpos($html, 'class="sig-name"'), $at);
+        $this->assertLessThan(strpos($html, 'Prepared By</div>'), $at);
     }
 
-    public function test_a_company_without_either_keeps_the_mark_and_an_empty_approved_by(): void
+    public function test_a_company_without_either_keeps_the_mark_and_no_stamp(): void
     {
         $html = $this->companyHtml(null, null);
 
