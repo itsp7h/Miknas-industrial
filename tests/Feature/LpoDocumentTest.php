@@ -137,6 +137,32 @@ class LpoDocumentTest extends TestCase
         $this->assertStringNotContainsString('P: ', $this->shipToHtml('Someone Unlisted'));
     }
 
+    /** The footer's contact is the requester, with the numbers Ship To shows. */
+    public function test_the_enquiries_line_names_the_requester_and_their_numbers(): void
+    {
+        Requester::create(['name' => 'Ali Hassan', 'phones' => ['+973 3312 3456', '17 555 010']]);
+
+        $this->assertStringContainsString(
+            'please contact Ali Hassan on +973 3312 3456 / 17 555 010.',
+            $this->shipToHtml('Ali Hassan'),
+        );
+    }
+
+    public function test_the_enquiries_line_names_a_requester_without_numbers_on_its_own(): void
+    {
+        $this->assertStringContainsString('please contact Someone Unlisted.', $this->shipToHtml('Someone Unlisted'));
+    }
+
+    /** An MPR with no requester keeps the old contact: whoever issued the LPO. */
+    public function test_the_enquiries_line_falls_back_to_the_issuer(): void
+    {
+        $order = $this->order();
+
+        $html = view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
+
+        $this->assertStringContainsString('please contact '.$order->createdBy->name.'.', $html);
+    }
+
     private function locationHtml(array $mpr): string
     {
         $order = $this->order();
