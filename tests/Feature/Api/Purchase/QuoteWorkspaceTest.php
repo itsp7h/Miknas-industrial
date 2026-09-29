@@ -66,6 +66,19 @@ class QuoteWorkspaceTest extends TestCase
         return $quote;
     }
 
+    /** The buyer sees each supplier's Ref beside their offer. */
+    public function test_each_offer_carries_the_suppliers_ref(): void
+    {
+        $this->quote('Gulf Steel', [
+            ['purchase_request_item_id' => $this->itemA->id, 'unit_price' => 10, 'total_price' => 20],
+        ])->update(['reference' => 'GS/Q/2026/118']);
+
+        $this->actingAs($this->officer())
+            ->getJson("/api/v1/purchase/requests/{$this->pr->id}/quotes")
+            ->assertOk()
+            ->assertJsonPath('data.items.0.rows.0.reference', 'GS/Q/2026/118');
+    }
+
     public function test_the_workspace_requires_permission_to_manage_quotes(): void
     {
         $this->getJson("/api/v1/purchase/requests/{$this->pr->id}/quotes")->assertUnauthorized();

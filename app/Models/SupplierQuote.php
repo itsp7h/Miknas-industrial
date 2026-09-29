@@ -10,7 +10,7 @@ class SupplierQuote extends Model
     use HasFactory;
 
     protected $fillable = [
-        'rfq_invitation_id', 'purchase_request_id', 'supplier_id',
+        'rfq_invitation_id', 'purchase_request_id', 'supplier_id', 'reference',
         'submitted_at', 'lead_time_days', 'payment_terms', 'notes',
         'total_amount',
     ];

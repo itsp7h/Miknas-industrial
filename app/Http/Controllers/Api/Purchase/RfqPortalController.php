@@ -63,6 +63,8 @@ class RfqPortalController extends Controller
         $validated = $request->validate([
             'terms' => ['accepted'],
             'confirm_code' => ['required', 'string'],
+            // The supplier's own quotation number, printed on the LPO as "Ref:".
+            'reference' => ['required', 'string', 'max:100'],
             'lead_time_days' => ['nullable', 'integer', 'min:0'],
             'payment_terms' => ['nullable', 'string', 'max:200'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -74,6 +76,7 @@ class RfqPortalController extends Controller
             'items.*.supplier_description' => ['nullable', 'string', 'max:500'],
         ], [
             'terms.accepted' => 'Please accept the terms and conditions before submitting.',
+            'reference.required' => 'Please enter your quotation reference number.',
         ]);
 
         $expected = $request->session()->get($this->sessionKey($token));
@@ -113,6 +116,7 @@ class RfqPortalController extends Controller
                 'rfq_invitation_id' => $invitation->id,
                 'purchase_request_id' => $invitation->purchase_request_id,
                 'supplier_id' => $invitation->supplier_id,
+                'reference' => trim($validated['reference']),
                 'submitted_at' => now(),
                 'lead_time_days' => $validated['lead_time_days'] ?? null,
                 'payment_terms' => $validated['payment_terms'] ?? null,

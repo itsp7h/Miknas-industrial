@@ -188,7 +188,7 @@ export default function QuotePage({ token, load, send }) {
                             </table>
                         </div>
 
-                        <LogisticsFields compact={false} meta={f.meta} setField={f.setField} disabled={f.submitting} />
+                        <LogisticsFields compact={false} meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} />
 
                         <TermsBlock
                             accepted={f.terms}

@@ -52,6 +52,7 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, c
                         {item.rows.map((row, index) => {
                             const line = row.line;
                             const meta = [
+                                row.reference ? `Ref ${row.reference}` : null,
                                 row.lead_time_days !== null && row.lead_time_days !== undefined ? `${row.lead_time_days} days` : null,
                                 row.payment_terms,
                                 row.notes,

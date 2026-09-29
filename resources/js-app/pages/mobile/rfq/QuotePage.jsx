@@ -196,7 +196,7 @@ export default function QuotePage({ token, load, send }) {
 
                     <div style={sectionLabel}>Logistics &amp; Terms</div>
                     <div style={card}>
-                        <LogisticsFields compact meta={f.meta} setField={f.setField} disabled={f.submitting} />
+                        <LogisticsFields compact meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} />
                     </div>
 
                     <div style={sectionLabel}>Agreement</div>

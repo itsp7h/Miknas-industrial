@@ -69,6 +69,7 @@ class NotificationBroadcastTest extends TestCase
         $response = $this->postJson('/api/v1/rfq/'.$invitation->token, [
             'terms' => true,
             'confirm_code' => $confirmCode,
+            'reference' => 'Q-5',
             'lead_time_days' => 5,
             'payment_terms' => 'Net 30',
             'notes' => null,

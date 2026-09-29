@@ -38,7 +38,7 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
     const [rows, setRows] = useState({});
     const [terms, setTerms] = useState(false);
     const [confirmInput, setConfirmInput] = useState('');
-    const [meta, setMeta] = useState({ lead_time_days: '', payment_terms: '', notes: '' });
+    const [meta, setMeta] = useState({ reference: '', lead_time_days: '', payment_terms: '', notes: '' });
     const [editing, setEditing] = useState({ id: null, draft: '' });
     const [errors, setErrors] = useState({});
     const [formError, setFormError] = useState('');
@@ -155,9 +155,13 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
     const codeMatches =
         confirmCode !== '' && confirmInput.trim().toUpperCase() === confirmCode.toUpperCase();
 
-    const canSubmit = terms && codeMatches && unpricedCount === 0 && !submitting;
+    // The supplier's quotation number goes on the LPO, so it cannot be blank.
+    const hasReference = meta.reference.trim() !== '';
+
+    const canSubmit = hasReference && terms && codeMatches && unpricedCount === 0 && !submitting;
 
     const blockedReason = (() => {
+        if (!hasReference) return 'Please enter your quotation reference number (Ref).';
         if (unpricedCount > 0) {
             return unpricedCount === 1
                 ? 'One item still needs a unit price, or mark it as not available.'
@@ -181,6 +185,7 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
             const response = await send(`/rfq/${token}`, {
                 terms: true,
                 confirm_code: confirmInput.trim().toUpperCase(),
+                reference: meta.reference.trim(),
                 lead_time_days: meta.lead_time_days === '' ? null : Number(meta.lead_time_days),
                 payment_terms: meta.payment_terms || null,
                 notes: meta.notes || null,

@@ -145,6 +145,11 @@
         <td class="party">
             <div class="party-title">Vendor</div>
             <div class="party-name">{{ $order->supplier->name ?? '—' }}</div>
+            {{-- The supplier's quotation number, taken from their quote when
+                 the LPO was generated. --}}
+            @if($order->quote_reference)
+                <div class="party-line"><strong>Ref:</strong> {{ $order->quote_reference }}</div>
+            @endif
             {{-- Name, email and phone first: who the LPO is to and how to reach
                  them. Every number the supplier has, in the order the
                  Suppliers list shows them, each once. --}}

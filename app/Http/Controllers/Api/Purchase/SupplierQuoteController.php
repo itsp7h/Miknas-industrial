@@ -215,6 +215,7 @@ class SupplierQuoteController extends Controller
 
                 return [
                     'supplier' => $row['quote']->supplier?->name,
+                    'reference' => $row['quote']->reference,
                     'lead_time_days' => $row['quote']->lead_time_days,
                     'payment_terms' => $row['quote']->payment_terms,
                     'notes' => $row['quote']->notes,

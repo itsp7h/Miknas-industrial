@@ -57,6 +57,10 @@ class LpoGenerationService
         $order = PurchaseOrder::create([
             'po_number' => app(DocumentNumberService::class)->next($purchaseRequest->resolveCompany()),
             'supplier_id' => $supplierId,
+            // The supplier's quotation number(s), frozen with the LPO like its
+            // signature. One quote per supplier is the rule; should a supplier
+            // have won lines on two, both refs are kept.
+            'quote_reference' => $items->pluck('quote.reference')->filter()->unique()->implode(' / ') ?: null,
             'purchase_request_id' => $purchaseRequest->id,
             'po_date' => now()->toDateString(),
             'total_amount' => $items->sum('total_price'),
