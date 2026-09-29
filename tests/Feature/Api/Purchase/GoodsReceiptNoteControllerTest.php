@@ -385,4 +385,74 @@ class GoodsReceiptNoteControllerTest extends TestCase
         $this->assertSame(0, GrnDocument::count());
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
+
+    // ------------------------------------------------------------------
+    // Other — optional extra files beside the three.
+    // ------------------------------------------------------------------
+
+    public function test_other_files_are_optional(): void
+    {
+        $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('data.other_documents', []);
+    }
+
+    public function test_it_stores_several_other_files_and_serves_each(): void
+    {
+        $user = $this->user();
+        $response = $this->actingAs($user)
+            ->postJson('/api/v1/purchase/grns', $this->payload(['other_documents' => [
+                UploadedFile::fake()->create('packing-list.pdf', 40, 'application/pdf'),
+                UploadedFile::fake()->image('damaged-crate.jpg'),
+            ]]))
+            ->assertCreated()
+            ->assertJsonCount(3, 'data.documents')
+            ->assertJsonCount(2, 'data.other_documents')
+            ->assertJsonPath('data.other_documents.0.name', 'packing-list.pdf')
+            ->assertJsonPath('data.other_documents.1.name', 'damaged-crate.jpg');
+
+        $this->assertSame(2, GrnDocument::where('kind', 'other')->count());
+
+        $url = $response->json('data.other_documents.1.url');
+        $this->assertStringContainsString('/documents/other/', $url);
+        $opened = $this->actingAs($user)->get($url)->assertOk();
+        $this->assertStringContainsString('damaged-crate.jpg', $opened->headers->get('Content-Disposition'));
+    }
+
+    public function test_at_most_five_other_files_are_taken(): void
+    {
+        $six = array_map(fn ($i) => UploadedFile::fake()->create("extra-{$i}.pdf", 10, 'application/pdf'), range(1, 6));
+
+        $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $this->payload(['other_documents' => $six]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['other_documents' => 'Attach at most 5 other files.']);
+    }
+
+    public function test_an_other_file_must_be_a_pdf_or_an_image(): void
+    {
+        $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $this->payload(['other_documents' => [
+                UploadedFile::fake()->create('notes.exe', 10, 'application/octet-stream'),
+            ]]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('other_documents.0');
+    }
+
+    /** An Other file is served only under the receipt it belongs to. */
+    public function test_an_other_file_is_not_found_under_another_grn(): void
+    {
+        $user = $this->user();
+        $id = $this->actingAs($user)->postJson('/api/v1/purchase/grns', $this->payload(['other_documents' => [
+            UploadedFile::fake()->create('extra.pdf', 10, 'application/pdf'),
+        ]]))->json('data.id');
+        $document = GrnDocument::where('kind', 'other')->firstOrFail();
+        $stranger = $this->makeGrn();
+
+        $this->actingAs($user)->get("/purchase/grns/{$stranger->id}/documents/other/{$document->id}")->assertNotFound();
+        // Nor is one of the three named documents reachable as an "other".
+        $lpo = GrnDocument::where('goods_receipt_note_id', $id)->where('kind', 'lpo')->firstOrFail();
+        $this->actingAs($user)->get("/purchase/grns/{$id}/documents/other/{$lpo->id}")->assertNotFound();
+    }
 }

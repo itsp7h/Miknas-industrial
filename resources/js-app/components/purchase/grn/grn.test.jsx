@@ -149,6 +149,25 @@ describe('GrnDetail', () => {
         expect(screen.getByText('Not uploaded')).toBeInTheDocument();
     });
 
+    it('lists each Other file, or None', () => {
+        const documents = [{ kind: 'lpo', label: 'LPO', name: null, size: null, url: null }];
+        const { unmount } = renderIn(<GrnDetail grn={{
+            ...GRN, documents,
+            other_documents: [
+                { id: 21, name: 'packing-list.pdf', size: 40 * 1024, url: '/purchase/grns/1/documents/other/21' },
+                { id: 22, name: 'photo.jpg', size: 900 * 1024, url: '/purchase/grns/1/documents/other/22' },
+            ],
+        }} />);
+
+        expect(screen.getByText('Other')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'packing-list.pdf' })).toHaveAttribute('href', '/purchase/grns/1/documents/other/21');
+        expect(screen.getByRole('link', { name: 'photo.jpg' })).toHaveAttribute('target', '_blank');
+        unmount();
+
+        renderIn(<GrnDetail grn={{ ...GRN, documents, other_documents: [] }} />);
+        expect(screen.getByText('None')).toBeInTheDocument();
+    });
+
     it('leaves the documents card out when the payload carries none', () => {
         renderIn(<GrnDetail grn={GRN} />);
         expect(screen.queryByText('Documents')).not.toBeInTheDocument();

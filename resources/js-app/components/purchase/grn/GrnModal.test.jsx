@@ -182,6 +182,46 @@ describe('GrnModal', () => {
         expect(screen.getByLabelText(/^LPO/)).toHaveAttribute('accept', '.pdf,.jpg,.jpeg,.png');
     });
 
+    it('sends the optional Other files as other_documents[]', async () => {
+        const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
+        await open({ presetOrderId: 5 });
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
+        attachAll();
+
+        const other = screen.getByLabelText(/^Other/);
+        expect(other).not.toBeRequired();
+        expect(other).toHaveAttribute('multiple');
+        const a = new File(['a'], 'packing-list.pdf', { type: 'application/pdf' });
+        const b = new File(['b'], 'photo.jpg', { type: 'image/jpeg' });
+        fireEvent.change(other, { target: { files: [a, b] } });
+        save();
+
+        await waitFor(() => expect(post).toHaveBeenCalled());
+        expect(post.mock.calls[0][1].getAll('other_documents[]')).toEqual([a, b]);
+    });
+
+    it('turns away more than five Other files', async () => {
+        await open({ presetOrderId: 5 });
+
+        const six = Array.from({ length: 6 }, (_, i) => new File(['x'], `extra-${i}.pdf`, { type: 'application/pdf' }));
+        fireEvent.change(screen.getByLabelText(/^Other/), { target: { files: six } });
+
+        expect(await screen.findByText('Attach at most 5 other files.')).toBeInTheDocument();
+    });
+
+    it('shows a server error for one Other file under the Other field', async () => {
+        vi.spyOn(client, 'apiPostForm').mockRejectedValue({
+            message: 'The other file field must be a file of type: pdf, jpg, jpeg, png.',
+            errors: { 'other_documents.1': ['The other file field must be a file of type: pdf, jpg, jpeg, png.'] },
+        });
+        await open({ presetOrderId: 5 });
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
+        attachAll();
+        save();
+
+        await waitFor(() => expect(screen.getByLabelText(/^Other/)).toHaveAttribute('aria-invalid', 'true'));
+    });
+
     it('turns away a file over 10 MB before uploading it', async () => {
         const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
         await open({ presetOrderId: 5 });

@@ -25,8 +25,10 @@ class GoodsReceiptNoteController extends Controller
 {
     public const TYPES = ['inventory', 'consumable'];
 
-    /** What each uploaded document may be: a scan or a PDF, up to 10 MB. */
-    private const DOCUMENT_RULE = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
+    /** What each uploaded file may be: a scan or a PDF, up to 10 MB. */
+    private const FILE_RULE = 'file|mimes:pdf,jpg,jpeg,png|max:10240';
+
+    private const DOCUMENT_RULE = 'required|'.self::FILE_RULE;
 
     /** Relations every single-GRN response carries. */
     private const DETAIL = ['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem', 'documents'];
@@ -131,7 +133,15 @@ class GoodsReceiptNoteController extends Controller
             // The LPO, the supplier's GRN and the tax invoice: a receipt is
             // recorded against all three, so all three are required.
             ...collect(GrnDocument::KINDS)->keys()->mapWithKeys(fn ($kind) => ["{$kind}_document" => self::DOCUMENT_RULE])->all(),
-        ], [], collect(GrnDocument::KINDS)->mapWithKeys(fn ($label, $kind) => ["{$kind}_document" => "{$label} document"])->all());
+            // Anything else that came with the delivery. Optional.
+            'other_documents' => 'nullable|array|max:'.GrnDocument::MAX_OTHER,
+            'other_documents.*' => self::FILE_RULE,
+        ], [
+            'other_documents.max' => 'Attach at most '.GrnDocument::MAX_OTHER.' other files.',
+        ], [
+            ...collect(GrnDocument::KINDS)->mapWithKeys(fn ($label, $kind) => ["{$kind}_document" => "{$label} document"])->all(),
+            'other_documents.*' => 'other file',
+        ]);
 
         $po = PurchaseOrder::with(['items', 'purchaseRequest'])->findOrFail($data['purchase_order_id']);
 
@@ -181,8 +191,12 @@ class GoodsReceiptNoteController extends Controller
                     ]);
                 }
 
-                foreach (array_keys(GrnDocument::KINDS) as $kind) {
-                    $file = $request->file("{$kind}_document");
+                $files = [
+                    ...array_map(fn ($kind) => [$kind, $request->file("{$kind}_document")], array_keys(GrnDocument::KINDS)),
+                    ...array_map(fn ($file) => [GrnDocument::OTHER, $file], $request->file('other_documents', [])),
+                ];
+
+                foreach ($files as [$kind, $file]) {
                     $stored[] = $path = $file->store("grn-documents/{$grn->id}", GrnDocument::DISK);
 
                     $grn->documents()->create([
