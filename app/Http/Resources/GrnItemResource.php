@@ -21,6 +21,8 @@ class GrnItemResource extends JsonResource
             'quantity_received' => $this->quantity_received,
             'unit_cost' => $this->unit_cost,
             'type' => $this->type,
+            'project_id' => $this->project_id,
+            'project_name' => $this->whenLoaded('project', fn () => $this->project?->name),
         ];
     }
 }

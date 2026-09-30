@@ -9,15 +9,28 @@ const TYPES = ['inventory', 'consumable'];
  * order — so there is no "+ Add Row"; what is editable is the quantity
  * actually received and whether the line lands in stock or is consumed.
  *
+ * A consumable line is used up on a project rather than stocked, so choosing
+ * Consumable asks which project, from `projects` (the order's company's own,
+ * or every project when the company is not on file).
+ *
  * PO Qty and Unit Cost are shown but read-only: they belong to the order.
  * `unit_cost` still rides along in the payload, as the API accepts it and
  * the stock movement is costed from it.
  */
-export default function GrnItemRows({ lines, accent, compact, errors, hasOrder, onChange }) {
+export default function GrnItemRows({ lines, projects = [], defaultProjectId = '', accent, compact, errors, hasOrder, onChange }) {
     const lineError = (index, field) => errors[`items.${index}.${field}`];
 
     function update(index, field, value) {
         onChange(lines.map((line, i) => (i === index ? { ...line, [field]: value } : line)));
+    }
+
+    // Switching to Consumable starts from the MPR's project, when it names one.
+    function setType(index, kind) {
+        onChange(lines.map((line, i) => (i === index ? {
+            ...line,
+            type: kind,
+            project_id: kind === 'consumable' ? (line.project_id || defaultProjectId) : '',
+        } : line)));
     }
 
     return (
@@ -85,13 +98,27 @@ export default function GrnItemRows({ lines, accent, compact, errors, hasOrder, 
                                                         name={`grn-type-${index}`}
                                                         value={kind}
                                                         checked={line.type === kind}
-                                                        onChange={() => update(index, 'type', kind)}
+                                                        onChange={() => setType(index, kind)}
                                                         style={{ accentColor: kind === 'inventory' ? '#2563eb' : '#d97706' }}
                                                     />
                                                     {kind === 'inventory' ? 'Inventory' : 'Consumable'}
                                                 </label>
                                             ))}
                                         </div>
+                                        {line.type === 'consumable' && (
+                                            <select
+                                                aria-label={`Project for ${line.item_name}`}
+                                                aria-invalid={lineError(index, 'project_id') ? true : undefined}
+                                                required
+                                                className={`form-select${lineError(index, 'project_id') ? ' form-input-error' : ''}`}
+                                                style={{ ...FIELD, marginTop: '0.4rem' }}
+                                                value={line.project_id ?? ''}
+                                                onChange={(e) => update(index, 'project_id', e.target.value)}
+                                            >
+                                                <option value="">— Which project? —</option>
+                                                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -101,7 +128,7 @@ export default function GrnItemRows({ lines, accent, compact, errors, hasOrder, 
             )}
 
             {lines.map((line, index) => (
-                ['quantity_received', 'item_id'].map((field) => (
+                ['quantity_received', 'item_id', 'project_id'].map((field) => (
                     lineError(index, field) ? (
                         <p key={`${index}-${field}`} style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#dc2626' }}>
                             Row {index + 1}: {lineError(index, field)}
