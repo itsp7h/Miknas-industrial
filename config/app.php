@@ -68,6 +68,15 @@ return [
     'timezone' => 'UTC',
 
     /*
+    | The timezone a time is *shown* in, where the server writes it into a
+    | page, a PDF or a payload as text. Stored times stay UTC (above); only
+    | their wording changes. Times the browser formats itself from an ISO
+    | string already show in the viewer's own zone.
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Bahrain'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
