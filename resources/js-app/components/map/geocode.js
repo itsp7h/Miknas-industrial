@@ -19,14 +19,13 @@ const VIEWBOX = '50.30,26.40,50.85,25.53';
 // Nominatim's usage policy: at most one request a second. A search that
 // tries a road, then a block, then a city makes several in a row, so every
 // request waits its turn behind the last.
-// `gapMs` is exported so a test can shorten it rather than wait.
-export const pacing = { gapMs: 1000 };
-let nextSlot = 0;
+// Exported so a test can shorten the gap rather than wait, and reset the slot.
+export const pacing = { gapMs: 1000, nextSlot: 0 };
 
 async function waitTurn() {
     const now = Date.now();
-    const at = Math.max(now, nextSlot);
-    nextSlot = at + pacing.gapMs;
+    const at = Math.max(now, pacing.nextSlot);
+    pacing.nextSlot = at + pacing.gapMs;
     if (at > now) await new Promise((resolve) => setTimeout(resolve, at - now));
 }
 
