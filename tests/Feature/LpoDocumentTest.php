@@ -160,7 +160,9 @@ class LpoDocumentTest extends TestCase
 
         $html = view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
 
-        $this->assertStringContainsString('please contact '.$order->createdBy->name.'.', $html);
+        // Escaped as Blade prints it: a generated name can carry an apostrophe
+        // (O'Hara), which the page holds as &#039;.
+        $this->assertStringContainsString('please contact '.e($order->createdBy->name).'.', $html);
     }
 
     private function locationHtml(array $mpr): string
