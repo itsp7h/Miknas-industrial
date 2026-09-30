@@ -57,6 +57,9 @@ const renderProvider = () => render(
     <ToastProvider><RequestModalProvider><Opener /></RequestModalProvider></ToastProvider>
 );
 
+/** Submitting asks first; this answers yes. */
+const confirmIn = (label) => fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: label }));
+
 describe('UrgencyPicker', () => {
     it('shows a coloured pill for the chosen preset', () => {
         render(<UrgencyPicker value="Urgent" onChange={() => {}} />);
@@ -282,6 +285,12 @@ describe('the new-request modal', () => {
         fireEvent.click(screen.getByText('+ Add Item'));
         fireEvent.submit(screen.getByLabelText('Item 1 description').closest('form'));
 
+        // Nothing is sent until the confirmation is answered.
+        expect(post).not.toHaveBeenCalled();
+        expect(screen.getByText('Submit this request?')).toBeInTheDocument();
+        expect(screen.getByText('It will be sent for approval with 1 item.')).toBeInTheDocument();
+        confirmIn('Submit Request');
+
         await waitFor(() => expect(post).toHaveBeenCalled());
         const [path, payload] = post.mock.calls[0];
         expect(path).toBe('/purchase/requests');
@@ -303,8 +312,10 @@ describe('the new-request modal', () => {
         await waitFor(() => expect(screen.getByLabelText(/^Date/)).toHaveValue('2026-09-01'));
 
         fireEvent.submit(screen.getByLabelText('Item 1 description').closest('form'));
+        confirmIn('Submit Request');
 
         await waitFor(() => expect(screen.getByText('The project name field is required.')).toBeInTheDocument());
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         expect(screen.getByText('New Purchase Request')).toBeInTheDocument();
     });
 });
@@ -349,6 +360,8 @@ describe('the edit-request modal', () => {
 
         fireEvent.change(screen.getByLabelText(/^Requested By/), { target: { value: 'nelson' } });
         fireEvent.submit(screen.getByLabelText('Item 1 description').closest('form'));
+        expect(screen.getByText('Save your changes?')).toBeInTheDocument();
+        confirmIn('Save Changes');
 
         await waitFor(() => expect(put).toHaveBeenCalled());
         expect(put.mock.calls[0][0]).toBe('/purchase/requests/7');
@@ -592,5 +605,95 @@ describe('the project field beside the company', () => {
         // The project belonged to the old company, and Miknas Steel has two,
         // so there is nothing to settle in its place.
         expect(screen.getByLabelText('Project')).toHaveTextContent('Select Project');
+    });
+});
+
+describe('minimizing and confirming the request form', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue(OPTIONS);
+    });
+
+    async function openAndType() {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await waitFor(() => expect(screen.getByLabelText(/^Date/)).toHaveValue('2026-09-01'));
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Steel Plate 10mm' } });
+    }
+
+    it('minimizes to a bar and comes back with what was typed', async () => {
+        await openAndType();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Minimize' }));
+
+        expect(screen.queryByLabelText('Item 1 description')).not.toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'New Purchase Request (minimized)' })).toHaveTextContent('draft · 1 item');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Restore New Purchase Request' }));
+        expect(screen.getByLabelText('Item 1 description')).toHaveValue('Steel Plate 10mm');
+    });
+
+    it('a click on the background minimizes rather than closes', async () => {
+        await openAndType();
+
+        // The backdrop is the dialog panel's parent.
+        fireEvent.click(screen.getByText('New Purchase Request').closest('div[style*="inset"]'));
+
+        expect(screen.getByRole('region', { name: 'New Purchase Request (minimized)' })).toBeInTheDocument();
+    });
+
+    it('opening a new request while one is minimized brings that one back', async () => {
+        await openAndType();
+        fireEvent.click(screen.getByRole('button', { name: 'Minimize' }));
+
+        fireEvent.click(screen.getByText('open new'));
+
+        expect(screen.getByLabelText('Item 1 description')).toHaveValue('Steel Plate 10mm');
+    });
+
+    it('cancelling after typing asks before discarding', async () => {
+        await openAndType();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+        expect(screen.getByText('Discard this request?')).toBeInTheDocument();
+
+        confirmIn('Keep editing');
+        expect(screen.getByLabelText('Item 1 description')).toHaveValue('Steel Plate 10mm');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+        confirmIn('Discard');
+        expect(screen.queryByText('New Purchase Request')).not.toBeInTheDocument();
+    });
+
+    it('cancelling an untouched form closes without asking', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open new'));
+        await waitFor(() => expect(screen.getByLabelText(/^Date/)).toHaveValue('2026-09-01'));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+        expect(screen.queryByText('New Purchase Request')).not.toBeInTheDocument();
+    });
+
+    it('"Review again" sends nothing and keeps the form', async () => {
+        const post = vi.spyOn(client, 'apiPost');
+        await openAndType();
+
+        fireEvent.submit(screen.getByLabelText('Item 1 description').closest('form'));
+        confirmIn('Review again');
+
+        expect(post).not.toHaveBeenCalled();
+        expect(screen.getByLabelText('Item 1 description')).toHaveValue('Steel Plate 10mm');
+    });
+
+    it('discarding from the minimized bar asks too', async () => {
+        await openAndType();
+        fireEvent.click(screen.getByRole('button', { name: 'Minimize' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Discard New Purchase Request' }));
+        confirmIn('Discard');
+
+        expect(screen.queryByRole('region', { name: 'New Purchase Request (minimized)' })).not.toBeInTheDocument();
     });
 });

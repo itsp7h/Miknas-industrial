@@ -39,6 +39,9 @@ export function RequestModalProvider({ children }) {
     // { kind: 'create' } | { kind: 'edit', id, onSaved }
     const [target, setTarget] = useState(null);
     const [editing, setEditing] = useState(null);
+    // A minimized form stays mounted (its state is its own), hidden behind a
+    // bar; the provider is above the router, so it survives navigating away.
+    const [minimized, setMinimized] = useState(false);
     const { showToast } = useToast();
     const { options, error: optionsError } = useRequestFormOptions(!!target);
     // Held in a ref so a caller's callback identity cannot retrigger the effects
@@ -48,18 +51,41 @@ export function RequestModalProvider({ children }) {
     // Takes the same callback openEdit does: submitCreate already hands the
     // saved row back through it, and the board needs that row to appear without
     // waiting for a broadcast it may never hear.
+    // Opening another form while one is minimized would throw its draft away,
+    // so the minimized one comes back instead, and says why.
+    const current = useRef(null);
+    current.current = target;
+    const restoreDraft = useCallback(() => {
+        setMinimized(false);
+        showToast('Finish or discard the request you minimized first.', 'info');
+    }, [showToast]);
+
     const openNew = useCallback((callback) => {
+        if (current.current) {
+            if (current.current.kind === 'create') setMinimized(false);
+            else restoreDraft();
+
+            return;
+        }
         // openNew takes no required argument, so a caller can wire it straight to
         // onClick and hand us a click event. Only a function is a callback.
         onSaved.current = typeof callback === 'function' ? callback : null;
         setTarget({ kind: 'create' });
-    }, []);
+    }, [restoreDraft]);
     const openEdit = useCallback((id, callback) => {
+        if (current.current) {
+            if (current.current.kind === 'edit' && current.current.id === id) setMinimized(false);
+            else restoreDraft();
+
+            return;
+        }
         onSaved.current = callback ?? null;
         setEditing(null);
         setTarget({ kind: 'edit', id });
-    }, []);
-    const close = useCallback(() => { setTarget(null); setEditing(null); }, []);
+    }, [restoreDraft]);
+    const close = useCallback(() => { setTarget(null); setEditing(null); setMinimized(false); }, []);
+    const minimize = useCallback(() => setMinimized(true), []);
+    const restore = useCallback(() => setMinimized(false), []);
 
     // The edit form needs the request's own values; the pipeline detail payload
     // shapes its items for the timeline, so they come from their own endpoint.
@@ -130,6 +156,9 @@ export function RequestModalProvider({ children }) {
                     optionsError={optionsError}
                     onClose={close}
                     onSubmit={submitCreate}
+                    minimized={minimized}
+                    onMinimize={minimize}
+                    onRestore={restore}
                 />
             )}
 
@@ -146,6 +175,9 @@ export function RequestModalProvider({ children }) {
                     optionsError={optionsError}
                     onClose={close}
                     onSubmit={submitEdit}
+                    minimized={minimized}
+                    onMinimize={minimize}
+                    onRestore={restore}
                 />
             )}
         </RequestModalContext.Provider>
