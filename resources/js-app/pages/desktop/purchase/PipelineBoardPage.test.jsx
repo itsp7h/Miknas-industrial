@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { RequestModalProvider } from '../../../components/purchase/requests/RequestModalProvider';
@@ -133,6 +133,8 @@ describe('PipelineBoardPage (desktop)', () => {
 
         fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Steel bar' } });
         fireEvent.submit(screen.getByLabelText('Item 1 description').closest('form'));
+        // Submitting asks first.
+        fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Submit Request' }));
 
         // No handler is fired: nothing reaches the board except the POST's answer.
         await waitFor(() => expect(screen.getByText('MPR26-0013')).toBeInTheDocument());
