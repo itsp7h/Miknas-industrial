@@ -105,19 +105,27 @@ export default function GrnItemRows({ lines, projects = [], defaultProjectId = '
                                                 </label>
                                             ))}
                                         </div>
+                                        {/* A boxed field of its own, not TABLE_FIELD: that one is
+                                            borderless because the cell is its edge, and under the
+                                            radios it read as plain text rather than a choice. */}
                                         {line.type === 'consumable' && (
-                                            <select
-                                                aria-label={`Project for ${line.item_name}`}
-                                                aria-invalid={lineError(index, 'project_id') ? true : undefined}
-                                                required
-                                                className={`form-select${lineError(index, 'project_id') ? ' form-input-error' : ''}`}
-                                                style={{ ...FIELD, marginTop: '0.4rem' }}
-                                                value={line.project_id ?? ''}
-                                                onChange={(e) => update(index, 'project_id', e.target.value)}
-                                            >
-                                                <option value="">— Which project? —</option>
-                                                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                            </select>
+                                            <label style={{ display: 'block', marginTop: '0.5rem' }}>
+                                                <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#92400e', marginBottom: '0.2rem' }}>
+                                                    Project <span style={{ color: '#f87171' }}>*</span>
+                                                </span>
+                                                <select
+                                                    aria-label={`Project for ${line.item_name}`}
+                                                    aria-invalid={lineError(index, 'project_id') ? true : undefined}
+                                                    required
+                                                    className={`form-select${lineError(index, 'project_id') ? ' form-input-error' : ''}`}
+                                                    style={{ width: '100%', fontSize: '0.8rem', padding: '0.3rem 2rem 0.3rem 0.5rem', background: '#fffbeb' }}
+                                                    value={line.project_id ?? ''}
+                                                    onChange={(e) => update(index, 'project_id', e.target.value)}
+                                                >
+                                                    <option value="">— Select project —</option>
+                                                    {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                </select>
+                                            </label>
                                         )}
                                     </td>
                                 </tr>

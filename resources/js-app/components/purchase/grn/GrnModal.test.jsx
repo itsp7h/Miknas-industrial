@@ -173,7 +173,7 @@ describe('GrnModal', () => {
         expect(project).toHaveValue('3');
         expect(project).toBeRequired();
         const names = Array.from(project.options).map((o) => o.textContent);
-        expect(names).toEqual(['— Which project? —', 'Hidd Yard', 'Askar Plant']);
+        expect(names).toEqual(['— Select project —', 'Hidd Yard', 'Askar Plant']);
 
         fireEvent.change(project, { target: { value: '4' } });
         fireEvent.click(screen.getByLabelText('Inventory for Steel rod 12mm', { selector: 'input' }));
