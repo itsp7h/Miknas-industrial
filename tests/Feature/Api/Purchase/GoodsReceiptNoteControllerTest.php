@@ -8,6 +8,7 @@ use App\Models\GoodsReceiptNote;
 use App\Models\GrnDocument;
 use App\Models\Item;
 use App\Models\PurchaseOrder;
+use App\Models\Settings\ProjectSetting;
 use App\Models\StockLevel;
 use App\Models\Supplier;
 use App\Models\User;
@@ -585,5 +586,61 @@ class GoodsReceiptNoteControllerTest extends TestCase
 
         $this->assertSame('draft', $grn->fresh()->status);
         $this->assertSame(0, StockLevel::count());
+    }
+
+    private function consumableLine(array $overrides = []): array
+    {
+        return array_merge([
+            'item_id' => $this->item->id,
+            'purchase_order_item_id' => $this->order->items->first()->id,
+            'quantity_received' => 4,
+            'unit_cost' => 10,
+            'type' => 'consumable',
+        ], $overrides);
+    }
+
+    public function test_a_consumable_line_records_the_project_it_is_for(): void
+    {
+        $project = ProjectSetting::create(['name' => 'Hidd Yard', 'is_active' => true]);
+
+        $id = $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $this->payload(['items' => [$this->consumableLine(['project_id' => $project->id])]]))
+            ->assertCreated()
+            ->assertJsonPath('data.items.0.project_id', $project->id)
+            ->assertJsonPath('data.items.0.project_name', 'Hidd Yard')
+            ->json('data.id');
+
+        $this->assertDatabaseHas('grn_items', ['goods_receipt_note_id' => $id, 'type' => 'consumable', 'project_id' => $project->id]);
+    }
+
+    public function test_a_consumable_line_without_a_project_is_refused(): void
+    {
+        $this->actingAs($this->user())
+            ->postJson('/api/v1/purchase/grns', $this->payload(['items' => [$this->consumableLine()]]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['items.0.project_id' => 'Choose the project this consumable is for.']);
+    }
+
+    public function test_an_inventory_line_keeps_no_project(): void
+    {
+        $project = ProjectSetting::create(['name' => 'Hidd Yard', 'is_active' => true]);
+        $payload = $this->payload();
+        $payload['items'][0]['project_id'] = $project->id;
+
+        $id = $this->actingAs($this->user())->postJson('/api/v1/purchase/grns', $payload)->assertCreated()->json('data.id');
+
+        $this->assertDatabaseHas('grn_items', ['goods_receipt_note_id' => $id, 'type' => 'inventory', 'project_id' => null]);
+    }
+
+    public function test_form_options_offers_the_active_projects(): void
+    {
+        ProjectSetting::create(['name' => 'Hidd Yard', 'is_active' => true]);
+        ProjectSetting::create(['name' => 'Closed Job', 'is_active' => false]);
+
+        $this->actingAs($this->user())
+            ->getJson('/api/v1/purchase/grns/form-options')
+            ->assertOk()
+            ->assertJsonCount(1, 'projects')
+            ->assertJsonPath('projects.0.name', 'Hidd Yard');
     }
 }

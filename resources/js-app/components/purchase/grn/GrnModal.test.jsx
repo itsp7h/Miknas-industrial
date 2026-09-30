@@ -6,8 +6,13 @@ import * as client from '../../../api/client';
 const OPTIONS = {
     warehouses: [{ id: 2, name: 'Sitra Store' }],
     types: ['inventory', 'consumable'],
+    projects: [
+        { id: 3, name: 'Hidd Yard', company_id: 1 },
+        { id: 4, name: 'Askar Plant', company_id: 1 },
+        { id: 8, name: 'Another Company Job', company_id: 2 },
+    ],
     purchase_orders: [{
-        id: 5, po_number: 'PO-00005', supplier_name: 'Gulf Metals',
+        id: 5, po_number: 'PO-00005', supplier_name: 'Gulf Metals', company_id: 1, project_name: 'Hidd Yard',
         items: [
             { purchase_order_item_id: 11, item_id: 7, item_name: 'Steel rod 12mm', quantity: 10, quantity_received: 4, rate: 2 },
             { purchase_order_item_id: 12, item_id: 9, item_name: 'Angle bar', quantity: 6, quantity_received: 0, rate: 5 },
@@ -106,6 +111,7 @@ describe('GrnModal', () => {
             'items[1][quantity_received]': '6',
             'items[1][unit_cost]': '5',
             'items[1][type]': 'consumable',
+            'items[1][project_id]': '3',
             lpo_document: lpo,
             grn_document: grn,
             tax_invoice_document: invoice,
@@ -149,6 +155,29 @@ describe('GrnModal', () => {
         const inventory = screen.getByLabelText('Inventory for Steel rod 12mm', { selector: 'input' });
         expect(inventory).toBeChecked();
         expect(inventory.type).toBe('radio');
+    });
+
+    /**
+     * A consumable is used up on a project, so choosing it asks which one:
+     * the order's company's projects, starting from the MPR's own.
+     */
+    it('asks which project a consumable line is for', async () => {
+        await open({ presetOrderId: 5 });
+        await screen.findByLabelText('Quantity received for Steel rod 12mm');
+
+        expect(screen.queryByLabelText('Project for Steel rod 12mm')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText('Consumable for Steel rod 12mm', { selector: 'input' }));
+
+        const project = screen.getByLabelText('Project for Steel rod 12mm');
+        expect(project).toHaveValue('3');
+        expect(project).toBeRequired();
+        const names = Array.from(project.options).map((o) => o.textContent);
+        expect(names).toEqual(['— Select project —', 'Hidd Yard', 'Askar Plant']);
+
+        fireEvent.change(project, { target: { value: '4' } });
+        fireEvent.click(screen.getByLabelText('Inventory for Steel rod 12mm', { selector: 'input' }));
+        expect(screen.queryByLabelText('Project for Steel rod 12mm')).not.toBeInTheDocument();
     });
 
     it('surfaces a line error keyed items.0.quantity_received', async () => {

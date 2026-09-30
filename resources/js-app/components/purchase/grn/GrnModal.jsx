@@ -55,7 +55,7 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
     const chrome = CREATE_CHROME;
     const compact = useViewport() === 'mobile';
 
-    const [options, setOptions] = useState({ purchase_orders: [], warehouses: [], types: [] });
+    const [options, setOptions] = useState({ purchase_orders: [], warehouses: [], projects: [], types: [] });
     const [values, setValues] = useState(() => ({
         purchase_order_id: presetOrderId ? String(presetOrderId) : '',
         warehouse_id: '',
@@ -89,6 +89,17 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
     // Where this order's goods land, when its company says so in Settings.
     const impliedWarehouseId = selectedOrder?.warehouse_id ?? null;
 
+    // What a consumable line may be charged to: the order's company's
+    // projects, or all of them when the company is not on file. The MPR's
+    // project, when it names one of them, is the default.
+    const projects = useMemo(() => {
+        const all = options.projects ?? [];
+        const own = selectedOrder?.company_id ? all.filter((p) => p.company_id === selectedOrder.company_id) : [];
+
+        return own.length ? own : all;
+    }, [options.projects, selectedOrder]);
+    const defaultProjectId = String(projects.find((p) => p.name === selectedOrder?.project_name)?.id ?? '');
+
     // Load the chosen order's lines, defaulting each to what is still outstanding.
     useEffect(() => {
         if (!selectedOrder) {
@@ -113,6 +124,7 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                 unit_cost: line.rate ?? 0,
                 quantity_received: String(outstanding > 0 ? outstanding : (line.quantity ?? '')),
                 type: 'inventory',
+                project_id: '',
             };
         }));
     }, [selectedOrder, impliedWarehouseId]);
@@ -172,6 +184,7 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                     quantity_received: line.quantity_received,
                     unit_cost: line.unit_cost,
                     type: line.type,
+                    project_id: line.type === 'consumable' ? line.project_id : null,
                 })),
             }, files));
             onSaved(response.data);
@@ -252,7 +265,7 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                 </FormSection>
 
                 <GrnItemRows
-                    lines={lines} accent={chrome.accent} compact={compact} errors={errors}
+                    lines={lines} projects={projects} defaultProjectId={defaultProjectId} accent={chrome.accent} compact={compact} errors={errors}
                     hasOrder={!!values.purchase_order_id} onChange={setLines}
                 />
 

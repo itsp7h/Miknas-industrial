@@ -10,6 +10,8 @@ use App\Models\GoodsReceiptNote;
 use App\Models\GrnDocument;
 use App\Models\GrnItem;
 use App\Models\PurchaseOrder;
+use App\Models\Settings\Company;
+use App\Models\Settings\ProjectSetting;
 use App\Models\StockLevel;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -32,18 +34,34 @@ class GoodsReceiptNoteController extends Controller
     private const DOCUMENT_RULE = 'nullable|'.self::FILE_RULE;
 
     /** Relations every single-GRN response carries. */
-    private const DETAIL = ['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem', 'documents'];
+    private const DETAIL = ['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem', 'items.project', 'documents'];
 
     /**
-     * Company name -> warehouse id, for the life of one request.
+     * Company name -> company, for the life of one request.
      *
      * Open purchase orders are many and the companies behind them are three,
      * so resolving each order separately would ask the same question dozens of
      * times.
      *
-     * @var array<string, int|null>
+     * @var array<string, Company|null>
      */
-    private array $warehouseByCompany = [];
+    private array $companyByName = [];
+
+    /** The company behind this order's request, or null when there is none on file. */
+    private function companyOf(PurchaseOrder $po): ?Company
+    {
+        $name = $po->purchaseRequest?->company_name;
+
+        if (! $name) {
+            return null;
+        }
+
+        if (! array_key_exists($name, $this->companyByName)) {
+            $this->companyByName[$name] = $po->purchaseRequest->resolveCompany();
+        }
+
+        return $this->companyByName[$name];
+    }
 
     /**
      * The warehouse this order's goods belong in, from its company's link.
@@ -55,17 +73,7 @@ class GoodsReceiptNoteController extends Controller
      */
     private function impliedWarehouseId(PurchaseOrder $po): ?int
     {
-        $name = $po->purchaseRequest?->company_name;
-
-        if (! $name) {
-            return null;
-        }
-
-        if (! array_key_exists($name, $this->warehouseByCompany)) {
-            $this->warehouseByCompany[$name] = $po->purchaseRequest->resolveCompany()?->warehouse_id;
-        }
-
-        return $this->warehouseByCompany[$name];
+        return $this->companyOf($po)?->warehouse_id;
     }
 
     public function index()
@@ -104,6 +112,10 @@ class GoodsReceiptNoteController extends Controller
                 // choice open.
                 'warehouse_id' => $this->impliedWarehouseId($po),
                 'company_name' => $po->purchaseRequest?->company_name,
+                // A consumable line asks which project it is for; the MPR's
+                // own project, when it names one, is the default.
+                'company_id' => $this->companyOf($po)?->id,
+                'project_name' => $po->purchaseRequest?->project_name,
                 'items' => $po->items->map(fn ($line) => [
                     'purchase_order_item_id' => $line->id,
                     'item_id' => $line->item_id,
@@ -115,6 +127,7 @@ class GoodsReceiptNoteController extends Controller
                 ])->values(),
             ])->values(),
             'warehouses' => Warehouse::orderBy('name')->get(['id', 'name']),
+            'projects' => ProjectSetting::active()->orderBy('name')->get(['id', 'name', 'company_id']),
             'types' => self::TYPES,
         ]);
     }
@@ -132,11 +145,14 @@ class GoodsReceiptNoteController extends Controller
             'items.*.quantity_received' => 'required|numeric|min:0.01',
             'items.*.unit_cost' => 'nullable|numeric|min:0',
             'items.*.type' => 'nullable|in:'.implode(',', self::TYPES),
+            // A consumable is used up on a project rather than stocked, so it
+            // says which one. Inventory lines carry none.
+            'items.*.project_id' => 'nullable|required_if:items.*.type,consumable|exists:settings_projects,id',
             // The LPO, the supplier's GRN and the tax invoice. Any of them may
             // follow the goods, so a receipt saves without them and says what
             // it still needs (missing_documents) until they are uploaded.
             ...$this->documentRules(),
-        ], ...$this->documentMessages());
+        ], ...$this->storeMessages());
 
         $po = PurchaseOrder::with(['items', 'purchaseRequest'])->findOrFail($data['purchase_order_id']);
 
@@ -175,6 +191,7 @@ class GoodsReceiptNoteController extends Controller
                 foreach ($data['items'] as $line) {
                     $poItemId = $line['purchase_order_item_id']
                         ?? $po->items->firstWhere('item_id', $line['item_id'])?->id;
+                    $type = $line['type'] ?? 'inventory';
 
                     GrnItem::create([
                         'goods_receipt_note_id' => $grn->id,
@@ -182,7 +199,8 @@ class GoodsReceiptNoteController extends Controller
                         'item_id' => $line['item_id'],
                         'quantity_received' => $line['quantity_received'],
                         'unit_cost' => $line['unit_cost'] ?? 0,
-                        'type' => $line['type'] ?? 'inventory',
+                        'type' => $type,
+                        'project_id' => $type === 'consumable' ? ($line['project_id'] ?? null) : null,
                     ]);
                 }
 
@@ -278,6 +296,17 @@ class GoodsReceiptNoteController extends Controller
                 ...collect(GrnDocument::KINDS)->mapWithKeys(fn ($label, $kind) => ["{$kind}_document" => "{$label} document"])->all(),
                 'other_documents.*' => 'other file',
             ],
+        ];
+    }
+
+    /** documentMessages(), plus what a consumable line without a project is told. */
+    private function storeMessages(): array
+    {
+        [$messages, $attributes] = $this->documentMessages();
+
+        return [
+            [...$messages, 'items.*.project_id.required_if' => 'Choose the project this consumable is for.'],
+            [...$attributes, 'items.*.project_id' => 'project'],
         ];
     }
 

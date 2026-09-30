@@ -162,11 +162,12 @@ export default function GrnDetail({ grn, compact = false, canUpload = false, upl
                             <th>Item</th>
                             <th className="text-right">PO Qty</th>
                             <th className="text-right">Qty Received</th>
+                            <th>Type</th>
                         </tr>
                     </thead>
                     <tbody>
                         {items.length === 0 && (
-                            <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-400">No items recorded.</td></tr>
+                            <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">No items recorded.</td></tr>
                         )}
                         {items.map((item) => (
                             <tr key={item.id}>
@@ -175,6 +176,11 @@ export default function GrnDetail({ grn, compact = false, canUpload = false, upl
                                     non-existent column here and always showed 0.00. */}
                                 <td className="text-right text-gray-600">{qty(item.quantity_ordered)}</td>
                                 <td className="text-right font-medium text-gray-800">{qty(item.quantity_received)}</td>
+                                <td className="text-gray-600">
+                                    {item.type === 'consumable'
+                                        ? `Consumable${item.project_name ? ` — ${item.project_name}` : ''}`
+                                        : 'Inventory'}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
