@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import useViewport from '../../../hooks/useViewport';
 import FormModal, { FormSection } from '../../ui/FormModal';
 import ConfirmDialog from '../../ui/ConfirmDialog';
@@ -22,25 +23,26 @@ function requestersFor(requesters, companyId) {
 }
 
 /**
- * The form while minimized: a bar docked bottom-left (toasts take the right)
- * that brings it back as it was left. The form's state lives in RequestModal,
- * which stays mounted underneath, so nothing typed is lost.
+ * The form while minimized: a bar in the provider's dock, bottom-right, that
+ * brings it back as it was left. The form's state lives in RequestModal, which
+ * stays mounted underneath, so nothing typed is lost. `label` says which draft
+ * it is — its company, or its first item — so several can be told apart.
  */
-function MinimizedBar({ title, subtitle, gradient, icon, itemCount, onRestore, onDiscard }) {
+function MinimizedBar({ title, label, gradient, icon, itemCount, onRestore, onDiscard }) {
     return (
         <div
             role="region" aria-label={`${title} (minimized)`}
             style={{
-                position: 'fixed', left: '1rem', bottom: '1rem', zIndex: 9990, display: 'flex',
-                alignItems: 'center', gap: '0.5rem', maxWidth: 'calc(100vw - 2rem)',
+                pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                width: '17rem', maxWidth: '100%',
                 background: gradient, color: '#fff', borderRadius: '0.875rem', padding: '0.5rem 0.5rem 0.5rem 0.875rem',
                 boxShadow: '0 12px 30px -8px rgba(0,0,0,0.35)',
             }}
         >
             <button
-                type="button" onClick={onRestore} aria-label={`Restore ${title}`}
+                type="button" onClick={onRestore} aria-label={`Restore ${title}`} title="Click to continue"
                 style={{
-                    display: 'flex', alignItems: 'center', gap: '0.625rem', background: 'none', border: 'none',
+                    flex: 1, display: 'flex', alignItems: 'center', gap: '0.625rem', background: 'none', border: 'none',
                     color: '#fff', cursor: 'pointer', textAlign: 'left', minWidth: 0, padding: 0,
                 }}
             >
@@ -48,9 +50,11 @@ function MinimizedBar({ title, subtitle, gradient, icon, itemCount, onRestore, o
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
                 </svg>
                 <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{title}</span>
-                    <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.85, whiteSpace: 'nowrap' }}>
-                        {subtitle ? `${subtitle} · ` : ''}draft{itemCount ? ` · ${itemCount} item${itemCount === 1 ? '' : 's'}` : ''} — click to continue
+                    <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {title}
+                    </span>
+                    <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {label || 'draft'}{itemCount ? ` · ${itemCount} item${itemCount === 1 ? '' : 's'}` : ''}
                     </span>
                 </span>
             </button>
@@ -79,7 +83,7 @@ function MinimizedBar({ title, subtitle, gradient, icon, itemCount, onRestore, o
 export default function RequestModal({
     title, subtitle, gradient, accent, icon, submitLabel, initial,
     options, optionsError, onClose, onSubmit,
-    minimized = false, onMinimize, onRestore,
+    minimized = false, onMinimize, onRestore, dock = null,
 }) {
     // `initial` is read once, at mount: the provider mounts a keyed modal per
     // target and unmounts it on close, so reopening always starts from the
@@ -229,12 +233,18 @@ export default function RequestModal({
     );
 
     if (minimized) {
+        const firstItem = values.items.find((row) => (row.description ?? '').trim() !== '')?.description;
+        const bar = (
+            <MinimizedBar
+                title={title} gradient={gradient} icon={icon} itemCount={filledItems}
+                label={[creating ? null : subtitle, values.company_name || firstItem].filter(Boolean).join(' · ')}
+                onRestore={onRestore} onDiscard={requestDiscard}
+            />
+        );
+
         return (
             <>
-                <MinimizedBar
-                    title={title} subtitle={creating ? null : subtitle} gradient={gradient} icon={icon}
-                    itemCount={filledItems} onRestore={onRestore} onDiscard={requestDiscard}
-                />
+                {dock ? createPortal(bar, dock) : bar}
                 {dialogs}
             </>
         );

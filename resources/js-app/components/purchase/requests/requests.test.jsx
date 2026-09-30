@@ -369,6 +369,20 @@ describe('the edit-request modal', () => {
         await waitFor(() => expect(screen.getByText('MPR26-0007 updated successfully.')).toBeInTheDocument());
     });
 
+    it('editing a request that is already minimized brings that form back', async () => {
+        renderProvider();
+        fireEvent.click(screen.getByText('open edit'));
+        await waitFor(() => expect(screen.getByLabelText(/^Requested By/)).toHaveValue('Omar Said'));
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Changed plate' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Minimize' }));
+        expect(screen.getByRole('region', { name: 'Edit Purchase Request (minimized)' })).toHaveTextContent('MPR26-0007');
+
+        fireEvent.click(screen.getByText('open edit'));
+
+        expect(screen.getByLabelText('Item 1 description')).toHaveValue('Changed plate');
+        expect(client.apiGet.mock.calls.filter(([path]) => path.endsWith('/edit'))).toHaveLength(1);
+    });
+
     it('clears the location when the company changes under it', async () => {
         renderProvider();
         fireEvent.click(screen.getByText('open edit'));
@@ -627,7 +641,7 @@ describe('minimizing and confirming the request form', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Minimize' }));
 
         expect(screen.queryByLabelText('Item 1 description')).not.toBeInTheDocument();
-        expect(screen.getByRole('region', { name: 'New Purchase Request (minimized)' })).toHaveTextContent('draft · 1 item');
+        expect(screen.getByRole('region', { name: 'New Purchase Request (minimized)' })).toHaveTextContent('Steel Plate 10mm · 1 item');
 
         fireEvent.click(screen.getByRole('button', { name: 'Restore New Purchase Request' }));
         expect(screen.getByLabelText('Item 1 description')).toHaveValue('Steel Plate 10mm');
@@ -642,13 +656,29 @@ describe('minimizing and confirming the request form', () => {
         expect(screen.getByRole('region', { name: 'New Purchase Request (minimized)' })).toBeInTheDocument();
     });
 
-    it('opening a new request while one is minimized brings that one back', async () => {
+    /** Like mail drafts: several can wait, docked bottom-right, the first furthest right. */
+    it('keeps several minimized forms, stacked from the right', async () => {
         await openAndType();
         fireEvent.click(screen.getByRole('button', { name: 'Minimize' }));
 
+        // A second, blank request alongside the first.
         fireEvent.click(screen.getByText('open new'));
+        expect(screen.getByLabelText('Item 1 description')).toHaveValue('');
+        fireEvent.change(screen.getByLabelText('Item 1 description'), { target: { value: 'Angle bar' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Minimize' }));
 
+        const bars = screen.getAllByRole('region', { name: 'New Purchase Request (minimized)' });
+        expect(bars.map((bar) => bar.textContent)).toEqual([
+            expect.stringContaining('Steel Plate 10mm'),
+            expect.stringContaining('Angle bar'),
+        ]);
+        // The dock lays them out right to left, in the order they were minimized.
+        expect(bars[0].parentElement.style.flexDirection).toBe('row-reverse');
+
+        // Each comes back with its own entries.
+        fireEvent.click(within(bars[0]).getByRole('button', { name: 'Restore New Purchase Request' }));
         expect(screen.getByLabelText('Item 1 description')).toHaveValue('Steel Plate 10mm');
+        expect(screen.getAllByRole('region', { name: 'New Purchase Request (minimized)' })).toHaveLength(1);
     });
 
     it('cancelling after typing asks before discarding', async () => {
