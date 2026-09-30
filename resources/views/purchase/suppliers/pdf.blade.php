@@ -123,7 +123,7 @@
     </div>
     <div class="report-info">
         <div class="report-title">Supplier Directory</div>
-        <div class="report-meta">Generated: {{ now()->format('d M Y, H:i') }}</div>
+        <div class="report-meta">Generated: {{ \App\Support\LocalTime::now()->format('d M Y, H:i') }}</div>
         <div class="report-meta">Total Records: {{ $suppliers->count() }}</div>
     </div>
 </div>

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Services\PurchaseStageService;
 use App\Services\RfqInvitationService;
+use App\Support\LocalTime;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -87,7 +88,7 @@ class PurchaseRequestDetailResource extends JsonResource
                 // the same accounting the award lines carry.
                 'selected_by' => $inv->selectedBy?->name,
                 'sent_by' => $inv->sentBy?->name,
-                'sent_at' => $inv->sent_at?->format('d M Y, H:i'),
+                'sent_at' => LocalTime::format($inv->sent_at),
                 // The supplier's own portal link, which the view-suppliers modal
                 // offers for copying when an invitation cannot be auto-sent.
                 'portal_url' => route('rfq.show', $inv->token),

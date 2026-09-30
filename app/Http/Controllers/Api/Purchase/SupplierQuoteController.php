@@ -8,6 +8,7 @@ use App\Models\PurchaseRequestItem;
 use App\Models\Setting;
 use App\Models\SupplierQuoteItem;
 use App\Services\PurchaseStageService;
+use App\Support\LocalTime;
 use App\Support\SupplierUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -184,7 +185,7 @@ class SupplierQuoteController extends Controller
                 'unit_price' => (float) $line->unit_price,
                 'total_price' => (float) $line->total_price,
                 'reason' => $line->award_reason,
-                'awarded_at' => $line->awarded_at?->format('d M Y, H:i'),
+                'awarded_at' => LocalTime::format($line->awarded_at),
                 'awarded_by' => $line->awardedBy?->name,
             ])->values()->all();
     }
@@ -272,7 +273,7 @@ class SupplierQuoteController extends Controller
                         'supplier_unit_price' => $line->inSupplierUnit() ? $line->supplier_unit_price : null,
                         'is_awarded' => (bool) $line->is_awarded,
                         'award_reason' => $line->award_reason,
-                        'awarded_at' => $line->awarded_at?->format('d M Y, H:i'),
+                        'awarded_at' => LocalTime::format($line->awarded_at),
                         'awarded_by' => $line->awardedBy?->name,
                     ] : null,
                 ];
