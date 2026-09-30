@@ -21,7 +21,29 @@ const blankRow = (item) => ({
     isVatable: false,
     notAvailable: false,
     description: item.description,
+    // The unit they quote in: ours unless they change it, in which case they
+    // say what one of theirs holds in ours (factor) and how many they supply.
+    unit: item.unit ?? '',
+    factor: '',
+    supplierQty: '',
+    supplierQtyTouched: false,
 });
+
+/** Whether a row is quoted in a unit other than the one we asked in. */
+export const inOtherUnit = (item, row) => !!(row?.unit && item.unit && row.unit !== item.unit);
+
+/**
+ * How many units the price multiplies: theirs when they changed the unit
+ * ("4 BAG"), otherwise the quantity we asked for.
+ */
+export const pricedQty = (item, row) => (inOtherUnit(item, row)
+    ? (parseFloat(row.supplierQty) || 0)
+    : item.quantity_required);
+
+/** What a row comes to in our unit: 4 BAG × 25 = 100 PCS. */
+export const ourQty = (item, row) => (inOtherUnit(item, row)
+    ? round3((parseFloat(row.supplierQty) || 0) * (parseFloat(row.factor) || 0))
+    : item.quantity_required);
 
 /**
  * The whole supplier portal — loading the invitation, the quote the supplier
@@ -113,6 +135,34 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         setEditing({ id: null, draft: '' });
     }, [editing.draft, setRow]);
 
+    /** Switching back to our unit forgets the conversion. */
+    const setUnit = useCallback((item, unit) => {
+        setRow(item.id, unit === item.unit
+            ? { unit, factor: '', supplierQty: '', supplierQtyTouched: false }
+            : { unit });
+    }, [setRow]);
+
+    /**
+     * Until they type their own quantity, it follows the conversion: enough of
+     * theirs to cover what we asked for, rounded up (100 PCS at 30 a bag is 4).
+     */
+    const setFactor = useCallback((item, factor) => {
+        setRows((prev) => {
+            const row = prev[item.id];
+            const perUnit = parseFloat(factor);
+            const patch = { factor };
+            if (!row.supplierQtyTouched) {
+                patch.supplierQty = perUnit > 0 ? String(Math.ceil(round3(item.quantity_required / perUnit))) : '';
+            }
+
+            return { ...prev, [item.id]: { ...row, ...patch } };
+        });
+    }, []);
+
+    const setSupplierQty = useCallback((item, supplierQty) => {
+        setRow(item.id, { supplierQty, supplierQtyTouched: true });
+    }, [setRow]);
+
     const setField = useCallback((name, value) => {
         setMeta((prev) => ({ ...prev, [name]: value }));
     }, []);
@@ -121,7 +171,7 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         const row = rows[item.id];
         if (!row || row.notAvailable) return 0;
 
-        return round3((parseFloat(row.unitPrice) || 0) * item.quantity_required);
+        return round3((parseFloat(row.unitPrice) || 0) * pricedQty(item, row));
     }, [rows]);
 
     const totals = useMemo(() => {
@@ -132,7 +182,7 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
             const row = rows[item.id];
             if (!row || row.notAvailable) return;
 
-            const total = round3((parseFloat(row.unitPrice) || 0) * item.quantity_required);
+            const total = round3((parseFloat(row.unitPrice) || 0) * pricedQty(item, row));
             subtotal += total;
 
             if (row.isVatable && vatRate > 0) {
@@ -152,13 +202,21 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         return row && !row.notAvailable && String(row.unitPrice).trim() === '';
     }).length;
 
+    // A changed unit is only usable once it maps back to ours.
+    const unmappedCount = items.filter((item) => {
+        const row = rows[item.id];
+
+        return row && !row.notAvailable && inOtherUnit(item, row)
+            && !(parseFloat(row.factor) > 0 && parseFloat(row.supplierQty) > 0);
+    }).length;
+
     const codeMatches =
         confirmCode !== '' && confirmInput.trim().toUpperCase() === confirmCode.toUpperCase();
 
     // The supplier's quotation number goes on the LPO, so it cannot be blank.
     const hasReference = meta.reference.trim() !== '';
 
-    const canSubmit = hasReference && terms && codeMatches && unpricedCount === 0 && !submitting;
+    const canSubmit = hasReference && terms && codeMatches && unpricedCount === 0 && unmappedCount === 0 && !submitting;
 
     const blockedReason = (() => {
         if (!hasReference) return 'Please enter your quotation reference number (Ref).';
@@ -166,6 +224,11 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
             return unpricedCount === 1
                 ? 'One item still needs a unit price, or mark it as not available.'
                 : `${unpricedCount} items still need a unit price, or mark them as not available.`;
+        }
+        if (unmappedCount > 0) {
+            return unmappedCount === 1
+                ? 'One item is in a different unit: say how much of ours it holds, and your quantity.'
+                : `${unmappedCount} items are in a different unit: say how much of ours each holds, and your quantity.`;
         }
         if (!terms) return 'Please accept the terms and conditions.';
         if (!codeMatches) return 'Enter the confirmation code exactly as shown.';
@@ -201,6 +264,11 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
                         is_vatable: row.isVatable,
                         not_available: row.notAvailable,
                         supplier_description: edited ? row.description.trim() : null,
+                        ...(inOtherUnit(item, row) && !row.notAvailable ? {
+                            supplier_unit: row.unit,
+                            unit_factor: Number(row.factor),
+                            supplier_quantity: Number(row.supplierQty),
+                        } : {}),
                     };
                 }),
             });
@@ -216,7 +284,8 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
                     ])
                 )
             );
-            if (!Object.keys(fieldErrors).length) {
+            // A line-level refusal has no field of its own on the page.
+            if (!Object.keys(fieldErrors).length || fieldErrors.items) {
                 setFormError(err?.message || 'Your quote could not be submitted. Please try again.');
             }
             setSubmitting(false);
@@ -230,8 +299,12 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         items,
         vatRate,
         confirmCode,
+        units: payload?.units ?? [],
         rows,
         setRow,
+        setUnit,
+        setFactor,
+        setSupplierQty,
         setNotAvailable,
         editing,
         beginEdit,

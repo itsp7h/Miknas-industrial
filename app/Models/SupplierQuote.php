@@ -53,4 +53,19 @@ class SupplierQuote extends Model
     {
         return $this->awardedItems()->isNotEmpty();
     }
+
+    /**
+     * The quote's total from its lines, as the portal adds it up on submit:
+     * each line to three decimals, then VAT per vatable line.
+     */
+    public function recalculateTotal(float $vatRate): void
+    {
+        $total = $this->items()->get()->reject->not_available->sum(function ($line) use ($vatRate) {
+            $vat = $line->is_vatable && $vatRate > 0 ? round($line->total_price * $vatRate / 100, 3) : 0;
+
+            return $line->total_price + $vat;
+        });
+
+        $this->update(['total_amount' => round($total, 3)]);
+    }
 }

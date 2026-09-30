@@ -72,6 +72,7 @@
     .summary-table td.value { text-align: right; font-weight: 700; color: #0f172a; }
     .summary-table tr.total td { border-top: 2px solid #1e293b; padding-top: 8px; font-size: 14px; font-weight: 700; color: #0f172a; }
 
+    .unit-note { font-size: 8.5px; color: #b45309; margin-top: 2px; line-height: 1.3; }
     .signatures { width: 100%; border-collapse: collapse; margin-top: 40px; }
     .signatures td { vertical-align: top; padding: 0; }
     /* Both blocks draw the same fixed-height area above their line, content
@@ -214,6 +215,29 @@
     </thead>
     <tbody>
         @forelse($order->items as $item)
+        {{-- Quoted in the supplier's own unit: the order is in theirs (what
+             they deliver and invoice), with ours beside it (what the GRN
+             receives and the stock counts). --}}
+        @if ($item->inSupplierUnit())
+        <tr>
+            <td>{{ $item->item->item_code ?? '—' }}</td>
+            <td>
+                {{ $item->item->item_name ?? '—' }}
+                <div class="unit-note">
+                    Supplier's unit: {{ \App\Support\SupplierUnit::describe($item->supplier_unit, $item->unit_factor, $item->system_unit) }}
+                    &middot; {{ \App\Support\SupplierUnit::number($item->supplier_quantity) }} {{ $item->supplier_unit }}
+                    = {{ \App\Support\SupplierUnit::number((float) $item->quantity) }} {{ $item->system_unit }} in our system
+                </div>
+            </td>
+            <td class="text-right">{{ number_format($item->supplier_quantity, 2) }}</td>
+            <td class="text-right">
+                {{ $item->supplier_unit }}
+                <div class="unit-note">ours: {{ $item->system_unit }}</div>
+            </td>
+            <td class="text-right">{{ number_format($item->supplier_rate, 3) }}</td>
+            <td class="text-right">{{ number_format($item->total_amount, 3) }}</td>
+        </tr>
+        @else
         <tr>
             <td>{{ $item->item->item_code ?? '—' }}</td>
             <td>{{ $item->item->item_name ?? '—' }}</td>
@@ -222,6 +246,7 @@
             <td class="text-right">{{ number_format($item->rate, 3) }}</td>
             <td class="text-right">{{ number_format($item->total_amount, 3) }}</td>
         </tr>
+        @endif
         @empty
         <tr>
             <td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">No items on this order.</td>

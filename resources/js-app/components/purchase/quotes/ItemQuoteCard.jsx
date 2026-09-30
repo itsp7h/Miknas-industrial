@@ -14,7 +14,7 @@ const TAG = {
  * gets a green row and a LOWEST tag; once an item is awarded no other supplier
  * on it can be awarded, so their buttons disappear rather than failing.
  */
-export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, compact = false }) {
+export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, onEditUnit, compact = false }) {
     return (
         <div style={{
             background: '#fff', borderRadius: 14, boxShadow: '0 2px 10px rgba(0,0,0,.05)',
@@ -84,6 +84,47 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, c
                                                 </span>
                                             </div>
                                         )}
+                                        {/* Quoted in the supplier's own unit: what they
+                                            offered, and what it is in ours. */}
+                                        {line?.supplier_unit && !line.not_available && (
+                                            <div style={{
+                                                fontSize: 10, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a',
+                                                borderRadius: 4, padding: '3px 6px', marginTop: 4, fontWeight: 400,
+                                                display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+                                            }}>
+                                                <span>
+                                                    Quoted in <strong>{line.supplier_unit}</strong>: {line.supplier_quantity} {line.supplier_unit}
+                                                    {' '}@ {bd(line.supplier_unit_price)} · 1 {line.supplier_unit} = {line.unit_factor} {item.unit}
+                                                    {' '}= {line.quantity} {item.unit}
+                                                </span>
+                                                {onEditUnit && (() => {
+                                                    const reason = !canAward
+                                                        ? 'You do not have permission to change a quote'
+                                                        : (line.is_awarded ? 'Unaward this line before changing its unit' : undefined);
+
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            disabled={!!reason}
+                                                            title={reason}
+                                                            onClick={() => onEditUnit({
+                                                                lineId: line.id, item: item.description, supplier: row.supplier,
+                                                                unit: item.unit, requested: item.quantity,
+                                                                supplierUnit: line.supplier_unit, factor: line.unit_factor,
+                                                                supplierQty: line.supplier_quantity, supplierPrice: line.supplier_unit_price,
+                                                            })}
+                                                            style={{
+                                                                fontSize: 10, fontWeight: 700, color: '#92400e', background: '#fff',
+                                                                border: '1px solid #fcd34d', borderRadius: 4, padding: '1px 6px',
+                                                                cursor: reason ? 'not-allowed' : 'pointer', opacity: reason ? 0.5 : 1,
+                                                            }}
+                                                        >
+                                                            ✎ Edit
+                                                        </button>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
                                     </td>
 
                                     {!line && (
@@ -115,6 +156,9 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, c
                                                 color: line.is_awarded ? '#15803d' : (row.is_min ? '#2563eb' : '#0f172a'),
                                             }}>
                                                 {bd(line.unit_price)}
+                                                {line.supplier_unit && (
+                                                    <span style={{ fontSize: 10, color: '#92400e', fontWeight: 500 }}> /{item.unit}</span>
+                                                )}
                                                 {line.is_vatable && (
                                                     <span title="VAT applicable" style={{
                                                         fontSize: 9, fontWeight: 700, color: '#0ea5e9', background: '#e0f2fe',
