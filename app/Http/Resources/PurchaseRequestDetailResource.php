@@ -68,6 +68,10 @@ class PurchaseRequestDetailResource extends JsonResource
             'signature' => $this->whenLoaded('signature', fn () => $this->signature ? [
                 'signed_by_name' => $this->signature->signedBy?->name,
                 'signed_at' => $this->signature->signed_at?->toDateString(),
+                // The moment itself, for the signature box: the date alone does
+                // not say when on the day the GM signed. ISO 8601 with its
+                // offset, so the browser shows it in local time.
+                'signed_at_time' => $this->signature->signed_at?->toIso8601String(),
                 // The captured drawing, so "View Signature" can show the thing
                 // itself rather than just who signed.
                 'image' => $this->signature->signature_image,
