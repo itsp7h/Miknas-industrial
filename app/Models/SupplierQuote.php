@@ -10,7 +10,7 @@ class SupplierQuote extends Model
     use HasFactory;
 
     protected $fillable = [
-        'rfq_invitation_id', 'purchase_request_id', 'supplier_id',
+        'rfq_invitation_id', 'purchase_request_id', 'supplier_id', 'reference',
         'submitted_at', 'lead_time_days', 'payment_terms', 'notes',
         'total_amount',
     ];
@@ -52,5 +52,20 @@ class SupplierQuote extends Model
     public function hasAwardedItems(): bool
     {
         return $this->awardedItems()->isNotEmpty();
+    }
+
+    /**
+     * The quote's total from its lines, as the portal adds it up on submit:
+     * each line to three decimals, then VAT per vatable line.
+     */
+    public function recalculateTotal(float $vatRate): void
+    {
+        $total = $this->items()->get()->reject->not_available->sum(function ($line) use ($vatRate) {
+            $vat = $line->is_vatable && $vatRate > 0 ? round($line->total_price * $vatRate / 100, 3) : 0;
+
+            return $line->total_price + $vat;
+        });
+
+        $this->update(['total_amount' => round($total, 3)]);
     }
 }

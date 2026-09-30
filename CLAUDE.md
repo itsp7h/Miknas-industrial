@@ -193,6 +193,14 @@ Purchase/                         ← what has to stay server-rendered
   PurchaseOrderController.php     ← print/pdf only (LPO documents)
   RfqPortalController.php         ← the portal's React host page only; the
                                     invitation and the quote are the API's
+  GrnDocumentController.php       ← a GRN's uploaded LPO / GRN / tax invoice,
+                                    opened in a new tab (a plain navigation
+                                    is not stateful to Sanctum). Files live on
+                                    the private `local` disk under
+                                    storage/app/private/grn-documents/{id} —
+                                    storage/ is shared across releases, but
+                                    the pre-migrate backup copies only the
+                                    database, not these
 ```
 
 ## Models — `app/Models/`
@@ -284,6 +292,8 @@ GET  purchase/pipeline/{purchaseRequest}          request detail
 GET  purchase/requests/{purchaseRequest}/quotes   → redirect to /app/…/quotes
 GET  purchase/requests/{purchaseRequest}/compare  → redirect to the same page
 GET  purchase/orders/{order}/print|pdf            LPO documents (DomPDF)
+GET  purchase/grns/{grn}/documents/{kind}         a GRN's uploaded file (lpo,
+                                                  grn, tax_invoice), inline
 GET  rfq/{token}                                  public portal host page,
                                                   no auth (React mount point;
                                                   the quote posts to the API)

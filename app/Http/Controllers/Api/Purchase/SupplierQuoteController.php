@@ -8,6 +8,7 @@ use App\Models\PurchaseRequestItem;
 use App\Models\Setting;
 use App\Models\SupplierQuoteItem;
 use App\Services\PurchaseStageService;
+use App\Support\SupplierUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -91,6 +92,41 @@ class SupplierQuoteController extends Controller
         return response()->json([
             'data' => $this->payload($purchaseRequest->refresh()),
             'message' => $quoteItem->description.' awarded to '.$quoteItem->quote->supplier->name.'.',
+        ]);
+    }
+
+    /**
+     * Corrects how a line quoted in the supplier's unit maps to ours — what
+     * one of theirs holds, and how many they are supplying — before it is
+     * awarded. Their price per unit stands: it is what they quoted.
+     */
+    public function updateUnit(Request $request, PurchaseRequest $purchaseRequest, SupplierQuoteItem $quoteItem)
+    {
+        $this->authorize('award', $purchaseRequest);
+
+        abort_unless($quoteItem->quote->purchase_request_id === $purchaseRequest->id, 404);
+        abort_unless($quoteItem->inSupplierUnit(), 422, 'This line is quoted in our own unit.');
+        // An awarded line may already be on an LPO; take the award back first.
+        abort_if($quoteItem->is_awarded, 422, 'Unaward this line before changing its unit.');
+
+        $validated = $request->validate([
+            'unit_factor' => ['required', 'numeric', 'gt:0', 'max:1000000'],
+            'supplier_quantity' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $quoteItem->update([
+            'unit_factor' => (float) $validated['unit_factor'],
+            'supplier_quantity' => (float) $validated['supplier_quantity'],
+            ...SupplierUnit::figures(
+                (float) $validated['supplier_quantity'], (float) $validated['unit_factor'], $quoteItem->supplier_unit_price,
+            ),
+        ]);
+
+        $quoteItem->quote->recalculateTotal((float) Setting::get('vat_rate', 0));
+
+        return response()->json([
+            'data' => $this->payload($purchaseRequest->refresh()),
+            'message' => $quoteItem->description.': '.SupplierUnit::describe($quoteItem->supplier_unit, $quoteItem->unit_factor, $quoteItem->unit).'.',
         ]);
     }
 
@@ -215,6 +251,7 @@ class SupplierQuoteController extends Controller
 
                 return [
                     'supplier' => $row['quote']->supplier?->name,
+                    'reference' => $row['quote']->reference,
                     'lead_time_days' => $row['quote']->lead_time_days,
                     'payment_terms' => $row['quote']->payment_terms,
                     'notes' => $row['quote']->notes,
@@ -226,6 +263,13 @@ class SupplierQuoteController extends Controller
                         'not_available' => (bool) $line->not_available,
                         'is_vatable' => (bool) $line->is_vatable,
                         'supplier_description' => $line->supplier_description,
+                        // Quoted in the supplier's own unit: what they offered.
+                        // quantity / unit_price above are the same line in ours.
+                        'quantity' => (float) $line->quantity,
+                        'supplier_unit' => $line->inSupplierUnit() ? $line->supplier_unit : null,
+                        'unit_factor' => $line->inSupplierUnit() ? $line->unit_factor : null,
+                        'supplier_quantity' => $line->inSupplierUnit() ? $line->supplier_quantity : null,
+                        'supplier_unit_price' => $line->inSupplierUnit() ? $line->supplier_unit_price : null,
                         'is_awarded' => (bool) $line->is_awarded,
                         'award_reason' => $line->award_reason,
                         'awarded_at' => $line->awarded_at?->format('d M Y, H:i'),

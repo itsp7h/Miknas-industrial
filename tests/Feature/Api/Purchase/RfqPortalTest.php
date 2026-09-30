@@ -57,6 +57,7 @@ class RfqPortalTest extends TestCase
         return array_merge([
             'terms' => true,
             'confirm_code' => $code,
+            'reference' => 'GS/Q/2026/118',
             'items' => $items,
         ], $overrides);
     }
@@ -168,6 +169,7 @@ class RfqPortalTest extends TestCase
         $this->assertEquals(82, $quote->total_amount);
         $this->assertSame(14, $quote->lead_time_days);
         $this->assertSame('30 days net', $quote->payment_terms);
+        $this->assertSame('GS/Q/2026/118', $quote->reference);
         $this->assertEquals(20, $quote->items()->where('purchase_request_item_id', $first->id)->value('total_price'));
         $this->assertEquals(60, $quote->items()->where('purchase_request_item_id', $second->id)->value('total_price'));
 
@@ -289,5 +291,30 @@ class RfqPortalTest extends TestCase
 
         $this->postJson("/api/v1/rfq/{$invitation->token}", $payload)->assertForbidden();
         $this->assertSame(0, SupplierQuote::count());
+    }
+
+    /** The Ref goes on the LPO, so a quote without one is refused. */
+    public function test_a_quote_needs_the_suppliers_ref(): void
+    {
+        $invitation = $this->invitation();
+
+        foreach ([null, '', '   '] as $blank) {
+            $this->postJson("/api/v1/rfq/{$invitation->token}", $this->quote($invitation, ['reference' => $blank]))
+                ->assertStatus(422)
+                ->assertJsonValidationErrors(['reference' => 'Please enter your quotation reference number.']);
+        }
+
+        $this->assertSame(0, SupplierQuote::count());
+        $this->assertNotSame('submitted', $invitation->refresh()->status);
+    }
+
+    public function test_the_ref_is_kept_without_surrounding_spaces(): void
+    {
+        $invitation = $this->invitation();
+
+        $this->postJson("/api/v1/rfq/{$invitation->token}", $this->quote($invitation, ['reference' => '  Q-118  ']))
+            ->assertCreated();
+
+        $this->assertSame('Q-118', SupplierQuote::firstOrFail()->reference);
     }
 }

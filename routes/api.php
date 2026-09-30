@@ -255,6 +255,7 @@ Route::prefix('v1')->group(function () {
             Route::get('requests/{purchaseRequest}/quotes', [SupplierQuoteController::class, 'index']);
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award', [SupplierQuoteController::class, 'award']);
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unaward']);
+            Route::put('requests/{purchaseRequest}/quotes/items/{quoteItem}/unit', [SupplierQuoteController::class, 'updateUnit']);
             Route::get('suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers.view');
             Route::post('suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');
             Route::post('suppliers/import', [SupplierController::class, 'import'])->middleware('permission:suppliers.import');
@@ -282,6 +283,7 @@ Route::prefix('v1')->group(function () {
             Route::get('grns/{grn}', [GoodsReceiptNoteController::class, 'show'])->middleware('permission:goods-receipts.view');
             Route::post('grns', [GoodsReceiptNoteController::class, 'store'])->middleware('permission:goods-receipts.create');
             Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm'])->middleware('permission:goods-receipts.edit');
+            Route::post('grns/{grn}/documents', [GoodsReceiptNoteController::class, 'addDocuments'])->middleware('permission:goods-receipts.edit');
             Route::delete('grns/{grn}', [GoodsReceiptNoteController::class, 'destroy'])->middleware('permission:goods-receipts.delete');
 
             // `invoices/form-options` must precede `invoices/{supplierInvoice}`.

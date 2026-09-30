@@ -6,13 +6,39 @@ import * as client from '../../../api/client';
 const OPTIONS = {
     warehouses: [{ id: 2, name: 'Sitra Store' }],
     types: ['inventory', 'consumable'],
+    projects: [
+        { id: 3, name: 'Hidd Yard', company_id: 1 },
+        { id: 4, name: 'Askar Plant', company_id: 1 },
+        { id: 8, name: 'Another Company Job', company_id: 2 },
+    ],
     purchase_orders: [{
-        id: 5, po_number: 'PO-00005', supplier_name: 'Gulf Metals',
+        id: 5, po_number: 'PO-00005', supplier_name: 'Gulf Metals', company_id: 1, project_name: 'Hidd Yard',
         items: [
             { purchase_order_item_id: 11, item_id: 7, item_name: 'Steel rod 12mm', quantity: 10, quantity_received: 4, rate: 2 },
             { purchase_order_item_id: 12, item_id: 9, item_name: 'Angle bar', quantity: 6, quantity_received: 0, rate: 5 },
         ],
     }],
+};
+
+/** What a multipart request sent, as a plain object keyed by field name. */
+const sent = (post) => Object.fromEntries(post.mock.calls[0][1].entries());
+
+const attach = (label, name) => {
+    const file = new File(['%PDF-1.4'], name, { type: 'application/pdf' });
+    fireEvent.change(screen.getByLabelText(label), { target: { files: [file] } });
+
+    return file;
+};
+
+// jsdom's constraint check reads its own file list, which a test cannot
+// fill, so a required file input blocks the button for ever. Submitting the
+// form skips that check, which is the browser's job, not the modal's.
+const save = () => fireEvent.submit(document.getElementById('grn-form'));
+
+const attachAll = () => {
+    attach(/^LPO/, 'lpo.pdf');
+    attach(/^GRN/, 'grn.pdf');
+    attach(/^Tax Invoice/, 'invoice.pdf');
 };
 
 describe('GrnModal', () => {
@@ -39,6 +65,7 @@ describe('GrnModal', () => {
 
         expect(screen.getByRole('heading', { name: 'Receipt Details' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Items Received' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Documents' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Save GRN' })).toHaveClass('btn-primary');
     });
@@ -49,7 +76,7 @@ describe('GrnModal', () => {
      * failure mode a redesign risks.
      */
     it('carries every field the API accepts', async () => {
-        const post = vi.spyOn(client, 'apiPost').mockResolvedValue({ data: { id: 1 } });
+        const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
         await open();
 
         expect(screen.getByLabelText(/Purchase Order/)).toBeInTheDocument();
@@ -62,19 +89,33 @@ describe('GrnModal', () => {
         fireEvent.change(screen.getByLabelText(/Received Date/), { target: { value: '2026-09-10' } });
         fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Two pallets' } });
         fireEvent.click(screen.getByLabelText('Consumable for Angle bar', { selector: 'input' }));
+        const lpo = attach(/^LPO/, 'lpo.pdf');
+        const grn = attach(/^GRN/, 'delivery-note.pdf');
+        const invoice = attach(/^Tax Invoice/, 'invoice.pdf');
 
-        fireEvent.click(screen.getByRole('button', { name: 'Save GRN' }));
+        save();
 
-        await waitFor(() => expect(post).toHaveBeenCalledWith('/purchase/grns', {
+        await waitFor(() => expect(post).toHaveBeenCalledWith('/purchase/grns', expect.any(FormData)));
+        expect(sent(post)).toEqual({
             purchase_order_id: '5',
             warehouse_id: '2',
             received_date: '2026-09-10',
             notes: 'Two pallets',
-            items: [
-                { item_id: 7, purchase_order_item_id: 11, quantity_received: '6', unit_cost: 2, type: 'inventory' },
-                { item_id: 9, purchase_order_item_id: 12, quantity_received: '6', unit_cost: 5, type: 'consumable' },
-            ],
-        }));
+            'items[0][item_id]': '7',
+            'items[0][purchase_order_item_id]': '11',
+            'items[0][quantity_received]': '6',
+            'items[0][unit_cost]': '2',
+            'items[0][type]': 'inventory',
+            'items[1][item_id]': '9',
+            'items[1][purchase_order_item_id]': '12',
+            'items[1][quantity_received]': '6',
+            'items[1][unit_cost]': '5',
+            'items[1][type]': 'consumable',
+            'items[1][project_id]': '3',
+            lpo_document: lpo,
+            grn_document: grn,
+            tax_invoice_document: invoice,
+        });
     });
 
     /** Each line defaults to what the order still has outstanding. */
@@ -116,26 +157,139 @@ describe('GrnModal', () => {
         expect(inventory.type).toBe('radio');
     });
 
+    /**
+     * A consumable is used up on a project, so choosing it asks which one:
+     * the order's company's projects, starting from the MPR's own.
+     */
+    it('asks which project a consumable line is for', async () => {
+        await open({ presetOrderId: 5 });
+        await screen.findByLabelText('Quantity received for Steel rod 12mm');
+
+        expect(screen.queryByLabelText('Project for Steel rod 12mm')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText('Consumable for Steel rod 12mm', { selector: 'input' }));
+
+        const project = screen.getByLabelText('Project for Steel rod 12mm');
+        expect(project).toHaveValue('3');
+        expect(project).toBeRequired();
+        const names = Array.from(project.options).map((o) => o.textContent);
+        expect(names).toEqual(['— Select project —', 'Hidd Yard', 'Askar Plant']);
+
+        fireEvent.change(project, { target: { value: '4' } });
+        fireEvent.click(screen.getByLabelText('Inventory for Steel rod 12mm', { selector: 'input' }));
+        expect(screen.queryByLabelText('Project for Steel rod 12mm')).not.toBeInTheDocument();
+    });
+
     it('surfaces a line error keyed items.0.quantity_received', async () => {
-        vi.spyOn(client, 'apiPost').mockRejectedValue({
+        vi.spyOn(client, 'apiPostForm').mockRejectedValue({
             errors: { 'items.0.quantity_received': ['The quantity received must be at least 0.01.'] },
         });
         await open({ presetOrderId: 5 });
         await screen.findByLabelText('Quantity received for Steel rod 12mm');
 
         fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Save GRN' }));
+        attachAll();
+        save();
 
         expect(await screen.findByRole('alert')).toHaveTextContent('must be at least 0.01');
         expect(screen.getByText(/Row 1:/)).toBeInTheDocument();
     });
 
-    it('reports a failure that carries no field errors', async () => {
-        vi.spyOn(client, 'apiPost').mockRejectedValue({ message: 'Server unavailable.' });
+    it('shows a document error under that document', async () => {
+        vi.spyOn(client, 'apiPostForm').mockRejectedValue({
+            message: 'The Tax Invoice document field is required.',
+            errors: { tax_invoice_document: ['The Tax Invoice document field is required.'] },
+        });
+        await open({ presetOrderId: 5 });
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
+        attachAll();
+
+        save();
+
+        await waitFor(() => expect(screen.getByLabelText(/^Tax Invoice/)).toHaveAttribute('aria-invalid', 'true'));
+        expect(screen.getByLabelText(/^LPO/)).not.toHaveAttribute('aria-invalid');
+        expect(screen.getByLabelText(/^LPO/)).toHaveAttribute('accept', '.pdf,.jpg,.jpeg,.png');
+    });
+
+    it('sends the optional Other files as other_documents[]', async () => {
+        const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
+        await open({ presetOrderId: 5 });
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
+        attachAll();
+
+        const other = screen.getByLabelText(/^Other/);
+        expect(other).not.toBeRequired();
+        expect(other).toHaveAttribute('multiple');
+        const a = new File(['a'], 'packing-list.pdf', { type: 'application/pdf' });
+        const b = new File(['b'], 'photo.jpg', { type: 'image/jpeg' });
+        fireEvent.change(other, { target: { files: [a, b] } });
+        save();
+
+        await waitFor(() => expect(post).toHaveBeenCalled());
+        expect(post.mock.calls[0][1].getAll('other_documents[]')).toEqual([a, b]);
+    });
+
+    it('turns away more than five Other files', async () => {
+        await open({ presetOrderId: 5 });
+
+        const six = Array.from({ length: 6 }, (_, i) => new File(['x'], `extra-${i}.pdf`, { type: 'application/pdf' }));
+        fireEvent.change(screen.getByLabelText(/^Other/), { target: { files: six } });
+
+        expect(await screen.findByText('Attach at most 5 other files.')).toBeInTheDocument();
+    });
+
+    it('shows a server error for one Other file under the Other field', async () => {
+        vi.spyOn(client, 'apiPostForm').mockRejectedValue({
+            message: 'The other file field must be a file of type: pdf, jpg, jpeg, png.',
+            errors: { 'other_documents.1': ['The other file field must be a file of type: pdf, jpg, jpeg, png.'] },
+        });
+        await open({ presetOrderId: 5 });
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
+        attachAll();
+        save();
+
+        await waitFor(() => expect(screen.getByLabelText(/^Other/)).toHaveAttribute('aria-invalid', 'true'));
+    });
+
+    /** Paperwork can follow the goods: the form saves with a document missing. */
+    it('saves with only some of the documents attached', async () => {
+        const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
         await open({ presetOrderId: 5 });
         fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
 
+        expect(screen.getByLabelText(/^Tax Invoice/)).not.toBeRequired();
+        expect(screen.getByText(/All three are needed to confirm the GRN/)).toBeInTheDocument();
+        attach(/^LPO/, 'lpo.pdf');
+        // The real button, so the browser's own required check would stop it
+        // if any document were still marked required.
         fireEvent.click(screen.getByRole('button', { name: 'Save GRN' }));
+
+        await waitFor(() => expect(post).toHaveBeenCalled());
+        const form = post.mock.calls[0][1];
+        expect(form.get('lpo_document').name).toBe('lpo.pdf');
+        expect(form.has('tax_invoice_document')).toBe(false);
+    });
+
+    it('turns away a file over 10 MB before uploading it', async () => {
+        const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
+        await open({ presetOrderId: 5 });
+
+        const big = new File(['x'], 'scan.pdf', { type: 'application/pdf' });
+        Object.defineProperty(big, 'size', { value: 11 * 1024 * 1024 });
+        fireEvent.change(screen.getByLabelText(/^GRN/), { target: { files: [big] } });
+
+        expect(await screen.findByText('This file is larger than 10 MB.')).toBeInTheDocument();
+        expect(screen.getByLabelText(/^GRN/)).toHaveAttribute('aria-invalid', 'true');
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it('reports a failure that carries no field errors', async () => {
+        vi.spyOn(client, 'apiPostForm').mockRejectedValue({ message: 'Server unavailable.' });
+        await open({ presetOrderId: 5 });
+        fireEvent.change(screen.getByLabelText(/Warehouse/), { target: { value: '2' } });
+        attachAll();
+
+        save();
 
         expect(await screen.findByRole('alert')).toHaveTextContent('Server unavailable.');
     });
@@ -226,7 +380,7 @@ describe('GrnModal and the company warehouse', () => {
     });
 
     it('sends the company’s warehouse, not whatever was there before', async () => {
-        const post = vi.spyOn(client, 'apiPost').mockResolvedValue({ data: { id: 1 } });
+        const post = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ data: { id: 1 } });
         await open();
 
         // Picked by hand first, then overruled by the order's company.
@@ -235,12 +389,11 @@ describe('GrnModal and the company warehouse', () => {
         fireEvent.change(screen.getByLabelText(/Purchase Order/), { target: { value: '5' } });
 
         await waitFor(() => expect(screen.getByLabelText(/Warehouse/)).toHaveValue('3'));
+        attachAll();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Save GRN' }));
+        save();
 
-        await waitFor(() => expect(post).toHaveBeenCalledWith(
-            '/purchase/grns',
-            expect.objectContaining({ warehouse_id: '3' })
-        ));
+        await waitFor(() => expect(post).toHaveBeenCalled());
+        expect(sent(post).warehouse_id).toBe('3');
     });
 });

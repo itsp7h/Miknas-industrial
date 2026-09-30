@@ -29,7 +29,7 @@ export default function PurchaseOrderDetailPage() {
             {!loading && !order && <p style={{ fontSize: 14, color: '#64748b' }}>That purchase order could not be found.</p>}
 
             <LpoDeliveryStatus order={order} onSent={setOrder} compact />
-            <PurchaseOrderDetail order={order} compact />
+            <PurchaseOrderDetail order={order} />
 
             {/* Full-width, thumb-reachable actions below the sheet rather than a
                 cramped top-right button row. Print/PDF stay server-rendered. */}

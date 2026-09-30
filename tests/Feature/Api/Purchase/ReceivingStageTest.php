@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\Purchase;
 
 use App\Models\GoodsReceiptNote;
+use App\Models\GrnDocument;
 use App\Models\GrnItem;
 use App\Models\Item;
 use App\Models\PurchaseOrder;
@@ -110,6 +111,11 @@ class ReceivingStageTest extends TestCase
             'unit_cost' => 10,
             'type' => 'inventory',
         ]);
+
+        // Confirming needs the LPO, the GRN and the tax invoice on file.
+        foreach (array_keys(GrnDocument::KINDS) as $kind) {
+            $grn->documents()->create(['kind' => $kind, 'path' => "grn-documents/{$grn->id}/{$kind}.pdf", 'original_name' => "{$kind}.pdf"]);
+        }
 
         return $grn;
     }

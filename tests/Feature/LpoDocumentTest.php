@@ -11,6 +11,7 @@ use App\Models\Settings\Requester;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\LpoDeliveryService;
+use App\Support\ImageDataUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -136,6 +137,34 @@ class LpoDocumentTest extends TestCase
         $this->assertStringNotContainsString('P: ', $this->shipToHtml('Someone Unlisted'));
     }
 
+    /** The footer's contact is the requester, with the numbers Ship To shows. */
+    public function test_the_enquiries_line_names_the_requester_and_their_numbers(): void
+    {
+        Requester::create(['name' => 'Ali Hassan', 'phones' => ['+973 3312 3456', '17 555 010']]);
+
+        $this->assertStringContainsString(
+            'please contact Ali Hassan on +973 3312 3456 / 17 555 010.',
+            $this->shipToHtml('Ali Hassan'),
+        );
+    }
+
+    public function test_the_enquiries_line_names_a_requester_without_numbers_on_its_own(): void
+    {
+        $this->assertStringContainsString('please contact Someone Unlisted.', $this->shipToHtml('Someone Unlisted'));
+    }
+
+    /** An MPR with no requester keeps the old contact: whoever issued the LPO. */
+    public function test_the_enquiries_line_falls_back_to_the_issuer(): void
+    {
+        $order = $this->order();
+
+        $html = view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
+
+        // Escaped as Blade prints it: a generated name can carry an apostrophe
+        // (O'Hara), which the page holds as &#039;.
+        $this->assertStringContainsString('please contact '.e($order->createdBy->name).'.', $html);
+    }
+
     private function locationHtml(array $mpr): string
     {
         $order = $this->order();
@@ -199,5 +228,67 @@ class LpoDocumentTest extends TestCase
             $this->locationHtml(['project_name' => 'Other', 'location' => 'Same Name']),
             '<div class="party-line">Same Name</div>',
         ));
+    }
+
+    /** A PNG of the given size, as the browser would upload one. */
+    private function png(int $width, int $height): string
+    {
+        $image = imagecreatetruecolor($width, $height);
+        ob_start();
+        imagepng($image);
+
+        return 'data:image/png;base64,'.base64_encode((string) ob_get_clean());
+    }
+
+    private function companyHtml(?string $logo, ?string $stamp): string
+    {
+        $company = Company::create(['name' => 'Miknas Industrial', 'is_active' => true]);
+        $company->forceFill(['logo_image' => $logo, 'stamp_image' => $stamp])->save();
+        $order = $this->order();
+        $order->update(['purchase_request_id' => PurchaseRequest::factory()->create(['company_name' => 'Miknas Industrial'])->id]);
+
+        return view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order))->render();
+    }
+
+    public function test_the_letterhead_shows_the_companys_logo_in_place_of_the_mark(): void
+    {
+        $logo = $this->png(400, 140);
+        $html = $this->companyHtml($logo, null);
+
+        // 400×140 fitted into 160×56: width-bound, shape kept.
+        $this->assertStringContainsString('<img class="brand-logo" src="'.$logo.'" width="160" height="56" alt="Miknas Industrial">', $html);
+        $this->assertLessThan(strpos($html, 'class="brand-name"'), strpos($html, 'class="brand-logo"'));
+        $this->assertStringNotContainsString('class="brand-box"', $html);
+    }
+
+    public function test_the_companys_stamp_sits_beside_prepared_by(): void
+    {
+        $stamp = $this->png(300, 300);
+        $html = $this->companyHtml(null, $stamp);
+
+        $tag = '<img class="sig-stamp" src="'.$stamp.'" width="90" height="90" alt="Miknas Industrial stamp">';
+        $this->assertStringContainsString($tag, $html);
+        // In the Prepared By block: after the issuer's name, before its line.
+        $at = strpos($html, $tag);
+        $this->assertGreaterThan(strpos($html, 'class="sig-name"'), $at);
+        $this->assertLessThan(strpos($html, 'Prepared By</div>'), $at);
+    }
+
+    public function test_a_company_without_either_keeps_the_mark_and_no_stamp(): void
+    {
+        $html = $this->companyHtml(null, null);
+
+        $this->assertStringContainsString('class="brand-box"', $html);
+        $this->assertStringNotContainsString('class="brand-logo"', $html);
+        $this->assertStringNotContainsString('class="sig-stamp"', $html);
+    }
+
+    public function test_an_image_is_fitted_never_enlarged(): void
+    {
+        $this->assertSame([160, 56], ImageDataUrl::fit($this->png(400, 140), 160, 56));
+        $this->assertSame([56, 56], ImageDataUrl::fit($this->png(300, 300), 160, 56));
+        $this->assertSame([80, 20], ImageDataUrl::fit($this->png(80, 20), 160, 56));
+        $this->assertNull(ImageDataUrl::fit('not an image', 160, 56));
+        $this->assertNull(ImageDataUrl::sized(null, 160, 56));
     }
 }

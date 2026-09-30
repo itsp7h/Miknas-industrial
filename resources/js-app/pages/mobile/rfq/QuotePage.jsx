@@ -1,7 +1,7 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, TermsBlock,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, ReferenceField, TermsBlock, UnitField,
 } from '../../../components/rfq/QuoteFields';
-import useRfqPortal, { money, qty } from '../../../components/rfq/useRfqPortal';
+import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
 import { ErrorScreen, ExpiredScreen, LoadingScreen, SubmittedScreen } from '../../../components/rfq/RfqStates';
 
 const sectionLabel = {
@@ -65,6 +65,10 @@ export default function QuotePage({ token, load, send }) {
                 </p>
 
                 <div style={{ marginTop: 16 }}>
+                    <ReferenceField meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} />
+                </div>
+
+                <div style={{ marginTop: 16 }}>
                     <FormError message={f.formError} />
                 </div>
 
@@ -101,6 +105,16 @@ export default function QuotePage({ token, load, send }) {
                                     onDone={(save) => f.endEdit(item, save)}
                                 />
 
+                                <div style={{ marginTop: 12 }}>
+                                    <UnitField
+                                    item={item} row={row} units={f.units} compact={true}
+                                    disabled={row.notAvailable || f.submitting}
+                                    onUnit={(unit) => f.setUnit(item, unit)}
+                                    onFactor={(factor) => f.setFactor(item, factor)}
+                                    onSupplierQty={(value) => f.setSupplierQty(item, value)}
+                                />
+                                </div>
+
                                 <div style={{ marginTop: 14 }}>
                                     <Toggle
                                         id={`na-${item.id}`}
@@ -133,7 +147,7 @@ export default function QuotePage({ token, load, send }) {
                                         textTransform: 'uppercase', letterSpacing: '.05em', margin: '14px 0 5px',
                                     }}
                                 >
-                                    Unit Price (BD)
+                                    Unit Price (BD){inOtherUnit(item, row) ? ` per ${row.unit}` : ''}
                                 </label>
                                 <input
                                     id={`price-${item.id}`}

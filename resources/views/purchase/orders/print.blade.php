@@ -55,6 +55,13 @@
         .sheet, .print-bar { margin-left: 16px; margin-right: 16px; }
     }
 
+    /* ?embed=1 — the order's page in the app shows this document in a frame,
+       so it is the very sheet the PDF holds rather than a lookalike. The
+       frame is the sheet's width; the app's page supplies the chrome. */
+    body.embed { background: transparent; }
+    body.embed .sheet { margin: 0 auto; }
+    body.embed .print-bar { display: none; }
+
     @page { size: A4; margin: 0; }
     @media print {
         body { background: #fff; }
@@ -63,7 +70,7 @@
     }
 </style>
 </head>
-<body>
+<body @class(['embed' => request()->boolean('embed')])>
 
 <div class="print-bar">
     <button class="print-btn" onclick="window.print()">🖨 Print</button>

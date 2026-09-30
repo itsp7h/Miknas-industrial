@@ -20,6 +20,7 @@ function openPayload(overrides = {}) {
         state: 'open',
         vat_rate: 10,
         confirm_code: 'AB12C',
+        units: ['PCS', 'KG', 'BAG'],
         data: {
             token: TOKEN,
             supplier_name: 'Gulf Steel Co.',
@@ -58,6 +59,7 @@ describe.each([
         mount();
         await screen.findByText('MPR-0042');
 
+        fireEvent.change(screen.getByLabelText(/^Ref/), { target: { value: 'GS/Q/2026/118' } });
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
         fireEvent.change(screen.getByLabelText('Unit price for Angle bar'), { target: { value: '3' } });
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
@@ -74,6 +76,18 @@ describe.each([
         expect(screen.getByText('Steel rod 12mm')).toBeInTheDocument();
         expect(screen.getByText('Angle bar')).toBeInTheDocument();
         expect(screen.getByText('AB12C')).toBeInTheDocument();
+    });
+
+    /** The Ref is asked for first, under the opening line, before any price. */
+    it('asks for the Ref under the opening line, above the items', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const ref = screen.getByLabelText(/^Ref/);
+        const intro = screen.getByText(/Please enter your unit prices/);
+        const firstPrice = screen.getByLabelText('Unit price for Steel rod 12mm');
+        expect(intro.compareDocumentPosition(ref) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(ref.compareDocumentPosition(firstPrice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     it('totals each line and the quote, applying VAT only where it is ticked', async () => {
@@ -120,6 +134,13 @@ describe.each([
 
         const submit = screen.getByRole('button', { name: /Submit/ });
         expect(submit).toBeDisabled();
+        // The Ref goes on the LPO, so it comes first.
+        expect(screen.getByText('Please enter your quotation reference number (Ref).')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText(/^Ref/), { target: { value: '   ' } });
+        expect(screen.getByText('Please enter your quotation reference number (Ref).')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText(/^Ref/), { target: { value: 'Q-118' } });
         expect(screen.getByText(/2 items still need a unit price/)).toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
@@ -140,6 +161,7 @@ describe.each([
         mount();
         await screen.findByText('MPR-0042');
 
+        fireEvent.change(screen.getByLabelText(/^Ref/), { target: { value: 'Q-118' } });
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
         fireEvent.click(screen.getByLabelText('Angle bar is not available'));
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
@@ -156,6 +178,7 @@ describe.each([
         await waitFor(() => expect(send).toHaveBeenCalledWith(`/rfq/${TOKEN}`, {
             terms: true,
             confirm_code: 'AB12C',
+            reference: 'GS/Q/2026/118',
             lead_time_days: null,
             payment_terms: null,
             notes: null,
@@ -167,6 +190,51 @@ describe.each([
 
         expect(await screen.findByText('Quote Received')).toBeInTheDocument();
         expect(screen.getByText('10 Sep 2026, 09:14')).toBeInTheDocument();
+    });
+
+    /**
+     * A supplier who sells in bags picks BAG, says what a bag holds in our
+     * unit, and prices per bag; the quantity follows the conversion (rounded
+     * up) until they type their own.
+     */
+    it('lets the supplier quote in their own unit, mapped to ours', async () => {
+        await fillValidQuote();
+
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
+        expect(screen.getByRole('button', { name: /Submit/ })).toBeDisabled();
+        expect(screen.getByText(/One item is in a different unit/)).toBeInTheDocument();
+
+        // 4 pcs asked for, 3 to a bag: 2 bags, which is 6 pcs.
+        fireEvent.change(screen.getByLabelText('How many pcs one BAG holds, for Angle bar'), { target: { value: '3' } });
+        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toHaveValue(2);
+        expect(screen.getByText('6 pcs')).toBeInTheDocument();
+
+        // Priced per bag: 2 × 3 = 6, beside 10 × 2 = 20 for the rod.
+        expect(screen.getByText('BD 6.000')).toBeInTheDocument();
+        expect(screen.getAllByText('BD 26.000').length).toBeGreaterThan(0);
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        await waitFor(() => expect(send).toHaveBeenCalled());
+        expect(send.mock.calls[0][1].items).toEqual([
+            { id: 7, unit_price: 2, is_vatable: false, not_available: false, supplier_description: null },
+            {
+                id: 9, unit_price: 3, is_vatable: false, not_available: false, supplier_description: null,
+                supplier_unit: 'BAG', unit_factor: 3, supplier_quantity: 2,
+            },
+        ]);
+    });
+
+    it('going back to our unit forgets the conversion', async () => {
+        await fillValidQuote();
+
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
+        fireEvent.change(screen.getByLabelText('How many pcs one BAG holds, for Angle bar'), { target: { value: '3' } });
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'pcs' } });
+
+        expect(screen.queryByLabelText('How many pcs one BAG holds, for Angle bar')).not.toBeInTheDocument();
+        expect(screen.getByText('BD 12.000')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Submit/ })).toBeEnabled();
     });
 
     it('sends the logistics fields the supplier filled in', async () => {

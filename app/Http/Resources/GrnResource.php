@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\GrnDocument;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,6 +26,34 @@ class GrnResource extends JsonResource
             'notes' => $this->notes,
             'received_by_name' => $this->whenLoaded('receivedBy', fn () => $this->receivedBy?->name),
             'items' => GrnItemResource::collection($this->whenLoaded('items')),
+            // The LPO, GRN and tax invoice, in that order. A receipt recorded
+            // before uploads were asked for has none, and the page says so.
+            'documents' => $this->whenLoaded('documents', fn () => collect(GrnDocument::KINDS)
+                ->map(function ($label, $kind) {
+                    $document = $this->documents->firstWhere('kind', $kind);
+
+                    return [
+                        'kind' => $kind,
+                        'label' => $label,
+                        'name' => $document?->original_name,
+                        'size' => $document?->size,
+                        'url' => $document ? route('purchase.grns.documents', [$this->id, $kind], false) : null,
+                    ];
+                })->values()),
+            // What the receipt still needs, by label ("Tax Invoice"), for the
+            // "Needs …" badge. Empty once all three are in.
+            'missing_documents' => $this->whenLoaded('documents', fn () => collect(GrnDocument::KINDS)
+                ->reject(fn ($label, $kind) => $this->documents->contains('kind', $kind))
+                ->values()),
+            // Whatever else came with the delivery, in upload order.
+            'other_documents' => $this->whenLoaded('documents', fn () => $this->documents
+                ->where('kind', GrnDocument::OTHER)->sortBy('id')
+                ->map(fn ($document) => [
+                    'id' => $document->id,
+                    'name' => $document->original_name,
+                    'size' => $document->size,
+                    'url' => route('purchase.grns.documents.other', [$this->id, $document->id], false),
+                ])->values()),
         ];
     }
 }

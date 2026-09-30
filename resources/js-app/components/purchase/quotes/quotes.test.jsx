@@ -55,6 +55,53 @@ describe('QuoteWorkspace', () => {
         expect(screen.getByText('2 suppliers competing')).toBeInTheDocument();
     });
 
+    /** A line quoted in the supplier's unit says so, and can be corrected before awarding. */
+    it('shows a line quoted in the supplier’s unit and corrects its conversion', async () => {
+        const bagged = row('Gulf Steel', 0.48);
+        bagged.line = {
+            ...bagged.line, id: 55, quantity: 100, total_price: 48,
+            supplier_unit: 'BAG', unit_factor: 25, supplier_quantity: 4, supplier_unit_price: 12,
+        };
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: workspace({
+            items: [{ ...workspace().items[0], quantity: 100, rows: [bagged] }],
+        }) });
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({ data: workspace(), message: 'Steel plate: 1 BAG = 20 PCS.' });
+        wrap();
+
+        expect(await screen.findByText(/Quoted in/)).toHaveTextContent('Quoted in BAG: 4 BAG @ BD 12.000 · 1 BAG = 25 PCS = 100 PCS');
+
+        fireEvent.click(screen.getByRole('button', { name: '✎ Edit' }));
+        fireEvent.change(screen.getByLabelText('How many PCS one BAG holds'), { target: { value: '20' } });
+        fireEvent.change(screen.getByLabelText('Quantity in BAG'), { target: { value: '5' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save Conversion' }));
+
+        await waitFor(() => expect(put).toHaveBeenCalledWith(
+            '/purchase/requests/7/quotes/items/55/unit', { unit_factor: 20, supplier_quantity: 5 },
+        ));
+    });
+
+    it('offers the unit correction disabled to someone who may not award', async () => {
+        const bagged = row('Gulf Steel', 0.48);
+        bagged.line = { ...bagged.line, quantity: 100, supplier_unit: 'BAG', unit_factor: 25, supplier_quantity: 4, supplier_unit_price: 12 };
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: workspace({
+            items: [{ ...workspace().items[0], rows: [bagged] }], permissions: { award: false },
+        }) });
+        wrap();
+
+        const edit = await screen.findByRole('button', { name: '✎ Edit' });
+        expect(edit).toBeDisabled();
+        expect(edit).toHaveAttribute('title', 'You do not have permission to change a quote');
+    });
+
+    it('shows each supplier’s Ref beside their offer', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: workspace({
+            items: [{ ...workspace().items[0], rows: [row('Gulf Steel', 10, { reference: 'GS/Q/2026/118' }), row('Zenith', 9)] }],
+        }) });
+        wrap();
+
+        expect(await screen.findByText(/Ref GS\/Q\/2026\/118 · 7 days · 30 days/)).toBeInTheDocument();
+    });
+
     // Three decimals and a BD prefix throughout, as Blade had it.
     it('formats money the way the Blade page did', async () => {
         wrap();

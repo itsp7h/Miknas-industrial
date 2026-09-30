@@ -54,6 +54,40 @@ const inputStyle = {
     fontFamily: 'inherit',
 };
 
+/**
+ * The supplier's own quotation number, first on the form, under the opening
+ * line: "Ref:" with a small box beside it, as the LPO prints it. Required —
+ * the LPO shows it under the vendor's name.
+ */
+export function ReferenceField({ meta, setField, disabled, errors = {} }) {
+    return (
+        <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <label htmlFor="reference" style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', flexShrink: 0 }}>
+                    Ref:
+                </label>
+                <input
+                    id="reference"
+                    type="text"
+                    required
+                    maxLength={100}
+                    placeholder="Quotation no."
+                    disabled={disabled}
+                    aria-invalid={errors.reference ? true : undefined}
+                    style={{
+                        ...inputStyle,
+                        width: 220, maxWidth: '100%', minWidth: 0, padding: '6px 10px',
+                        ...(errors.reference ? { borderColor: '#ef4444' } : {}),
+                    }}
+                    value={meta.reference}
+                    onChange={(e) => setField('reference', e.target.value)}
+                />
+            </div>
+            {errors.reference && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.reference}</div>}
+        </div>
+    );
+}
+
 export function LogisticsFields({ compact, meta, setField, disabled }) {
     return (
         <>
@@ -308,6 +342,79 @@ export function DescriptionEditor({ original, value, onChange, disabled, editing
                 }}>
                     adjusted
                 </span>
+            )}
+        </div>
+    );
+}
+
+/**
+ * The line's unit. It starts on ours; a supplier who sells it another way
+ * (BAG where we asked for PCS) picks their unit and then says what one holds
+ * in ours and how many they are supplying — so the order still lands in
+ * stock in our unit. The unit price is then per theirs.
+ */
+export function UnitField({ item, row, units, disabled, compact, onUnit, onFactor, onSupplierQty }) {
+    const ours = item.unit;
+    if (!ours) return <span style={{ color: '#64748b' }}>—</span>;
+
+    const options = units.includes(ours) ? units : [ours, ...units];
+    const changed = row.unit && row.unit !== ours;
+    const box = {
+        padding: compact ? '8px 10px' : '5px 8px', border: '1.5px solid #e2e8f0', borderRadius: 6,
+        fontSize: compact ? 15 : 13, outline: 'none', background: '#fff', fontFamily: 'inherit',
+    };
+    const mapped = parseFloat(row.factor) > 0 && parseFloat(row.supplierQty) > 0;
+    const inOurs = Math.round((parseFloat(row.supplierQty) || 0) * (parseFloat(row.factor) || 0) * 1000) / 1000;
+
+    return (
+        <div style={{ minWidth: compact ? 0 : 150 }}>
+            <select
+                aria-label={`Unit for ${item.description}`}
+                disabled={disabled}
+                value={row.unit || ours}
+                onChange={(e) => onUnit(e.target.value)}
+                style={{ ...box, width: compact ? '100%' : 'auto', borderColor: changed ? '#f59e0b' : '#e2e8f0' }}
+            >
+                {options.map((unit) => (
+                    <option key={unit} value={unit}>{unit === ours ? `${unit} (as requested)` : unit}</option>
+                ))}
+            </select>
+
+            {changed && (
+                <div style={{
+                    marginTop: 6, padding: '8px 10px', background: '#fffbeb', border: '1px solid #fde68a',
+                    borderRadius: 6, fontSize: 12, color: '#92400e', display: 'flex', flexDirection: 'column', gap: 6,
+                }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span>1 {row.unit} =</span>
+                        <input
+                            type="number" min="0" step="any" inputMode="decimal"
+                            aria-label={`How many ${ours} one ${row.unit} holds, for ${item.description}`}
+                            disabled={disabled}
+                            value={row.factor}
+                            onChange={(e) => onFactor(e.target.value)}
+                            style={{ ...box, width: 80 }}
+                        />
+                        <span>{ours}</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span>Your qty:</span>
+                        <input
+                            type="number" min="0" step="any" inputMode="decimal"
+                            aria-label={`Your quantity in ${row.unit}, for ${item.description}`}
+                            disabled={disabled}
+                            value={row.supplierQty}
+                            onChange={(e) => onSupplierQty(e.target.value)}
+                            style={{ ...box, width: 80 }}
+                        />
+                        <span>{row.unit}</span>
+                    </label>
+                    <div style={{ fontSize: 11 }}>
+                        {mapped
+                            ? <>= <strong>{inOurs} {ours}</strong> · price per {row.unit}</>
+                            : `Say how many ${ours} one ${row.unit} holds.`}
+                    </div>
+                </div>
             )}
         </div>
     );

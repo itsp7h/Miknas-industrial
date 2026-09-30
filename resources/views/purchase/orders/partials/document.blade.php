@@ -12,6 +12,7 @@
         width: 40px; height: 40px; border-radius: 6px;
         background: #16a34a; text-align: center; padding: 10px 0 0;
     }
+    .brand-logo { display: block; }
     .brand-name { font-size: 19px; font-weight: 700; color: #0f172a; }
     .brand-sub  { font-size: 10px; color: #64748b; margin-top: 1px; }
 
@@ -71,17 +72,24 @@
     .summary-table td.value { text-align: right; font-weight: 700; color: #0f172a; }
     .summary-table tr.total td { border-top: 2px solid #1e293b; padding-top: 8px; font-size: 14px; font-weight: 700; color: #0f172a; }
 
+    .unit-note { font-size: 8.5px; color: #b45309; margin-top: 2px; line-height: 1.3; }
     .signatures { width: 100%; border-collapse: collapse; margin-top: 40px; }
     .signatures td { vertical-align: top; padding: 0; }
-    /* Centred over the name, the way the name is centred over the line. The
-       same height is kept in both blocks, signed or not, so the two lines stay
-       level. */
-    .sig-img-wrap { text-align: center; height: 60px; margin-bottom: 4px; }
+    /* Both blocks draw the same fixed-height area above their line, content
+       at its foot — the signature and name in one, the company's stamp in
+       the other — so the two lines stay level, signed or not, stamped or
+       not. A table cell, because DomPDF honours a cell's height and
+       vertical-align where it would not a div's. */
+    .sig-area { width: 100%; border-collapse: collapse; }
+    .sig-area td { height: 100px; padding: 0 0 6px; vertical-align: bottom; text-align: center; }
     .sig-img { max-height: 60px; max-width: 200px; }
+    .sig-stamp { display: inline-block; }
+    .sig-area td.sig-stamp-cell { width: 150px; }
+    .sig-with-stamp .sig-img { max-width: 160px; }
     .sig-block { width: 45%; }
     .sig-gap { width: 10%; }
     .sig-line { border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 10px; color: #64748b; text-align: center; }
-    .sig-name { font-size: 11px; font-weight: 700; color: #0f172a; margin-bottom: 26px; text-align: center; }
+    .sig-name { font-size: 11px; font-weight: 700; color: #0f172a; margin-top: 4px; text-align: center; }
 
     .disclaimer { text-align: center; font-size: 11px; font-weight: 700; margin-top: 24px; text-decoration: underline; }
     .disclaimer-sub { text-align: center; font-size: 9.5px; color: #64748b; margin-top: 2px; }
@@ -94,11 +102,18 @@
         <td>
             <table style="border-collapse:collapse;">
                 <tr>
+                    @if(! empty($logo))
+                    {{-- The company's logo (Settings → Companies), fitted to 160×56. --}}
+                    <td style="padding:0;vertical-align:middle;">
+                        <img class="brand-logo" src="{{ $logo['src'] }}" width="{{ $logo['width'] }}" height="{{ $logo['height'] }}" alt="{{ $company->name }}">
+                    </td>
+                    @else
                     <td style="width:40px;padding:0;">
                         <div class="brand-box">
                             <img src="data:image/svg+xml;base64,{{ base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>') }}" width="20" height="20" alt="">
                         </div>
                     </td>
+                    @endif
                     <td style="padding:0 0 0 10px;vertical-align:middle;">
                         <div class="brand-name">{{ $company->name ?? 'SteelERP' }}</div>
                         <div class="brand-sub">{{ $order->purchaseRequest->company_name ?? 'Manufacturing & Trading' }}</div>
@@ -131,6 +146,11 @@
         <td class="party">
             <div class="party-title">Vendor</div>
             <div class="party-name">{{ $order->supplier->name ?? '—' }}</div>
+            {{-- The supplier's quotation number, taken from their quote when
+                 the LPO was generated. --}}
+            @if($order->quote_reference)
+                <div class="party-line"><strong>Ref:</strong> {{ $order->quote_reference }}</div>
+            @endif
             {{-- Name, email and phone first: who the LPO is to and how to reach
                  them. Every number the supplier has, in the order the
                  Suppliers list shows them, each once. --}}
@@ -195,6 +215,29 @@
     </thead>
     <tbody>
         @forelse($order->items as $item)
+        {{-- Quoted in the supplier's own unit: the order is in theirs (what
+             they deliver and invoice), with ours beside it (what the GRN
+             receives and the stock counts). --}}
+        @if ($item->inSupplierUnit())
+        <tr>
+            <td>{{ $item->item->item_code ?? '—' }}</td>
+            <td>
+                {{ $item->item->item_name ?? '—' }}
+                <div class="unit-note">
+                    Supplier's unit: {{ \App\Support\SupplierUnit::describe($item->supplier_unit, $item->unit_factor, $item->system_unit) }}
+                    &middot; {{ \App\Support\SupplierUnit::number($item->supplier_quantity) }} {{ $item->supplier_unit }}
+                    = {{ \App\Support\SupplierUnit::number((float) $item->quantity) }} {{ $item->system_unit }} in our system
+                </div>
+            </td>
+            <td class="text-right">{{ number_format($item->supplier_quantity, 2) }}</td>
+            <td class="text-right">
+                {{ $item->supplier_unit }}
+                <div class="unit-note">ours: {{ $item->system_unit }}</div>
+            </td>
+            <td class="text-right">{{ number_format($item->supplier_rate, 3) }}</td>
+            <td class="text-right">{{ number_format($item->total_amount, 3) }}</td>
+        </tr>
+        @else
         <tr>
             <td>{{ $item->item->item_code ?? '—' }}</td>
             <td>{{ $item->item->item_name ?? '—' }}</td>
@@ -203,6 +246,7 @@
             <td class="text-right">{{ number_format($item->rate, 3) }}</td>
             <td class="text-right">{{ number_format($item->total_amount, 3) }}</td>
         </tr>
+        @endif
         @empty
         <tr>
             <td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">No items on this order.</td>
@@ -248,19 +292,27 @@
 <table class="signatures">
     <tr>
         <td class="sig-block">
-            {{-- The issuer's signature as it was when the LPO was issued. --}}
-            <div class="sig-img-wrap">
-                @if ($order->prepared_signature)
-                    <img class="sig-img" src="{{ $order->prepared_signature }}" alt="Signature">
+            <table class="sig-area{{ empty($stamp) ? '' : ' sig-with-stamp' }}"><tr>
+                <td>
+                    {{-- The issuer's signature as it was when the LPO was issued. --}}
+                    @if ($order->prepared_signature)
+                        <img class="sig-img" src="{{ $order->prepared_signature }}" alt="Signature">
+                    @endif
+                    <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
+                </td>
+                {{-- The company's stamp (Settings → Companies), fitted to 150×90,
+                     beside the issuer's signature. --}}
+                @if (! empty($stamp))
+                    <td class="sig-stamp-cell">
+                        <img class="sig-stamp" src="{{ $stamp['src'] }}" width="{{ $stamp['width'] }}" height="{{ $stamp['height'] }}" alt="{{ $company->name }} stamp">
+                    </td>
                 @endif
-            </div>
-            <div class="sig-name">{{ $order->createdBy->name ?? '—' }}</div>
+            </tr></table>
             <div class="sig-line">Prepared By</div>
         </td>
         <td class="sig-gap"></td>
         <td class="sig-block">
-            <div class="sig-img-wrap"></div>
-            <div class="sig-name">&nbsp;</div>
+            <table class="sig-area"><tr><td></td></tr></table>
             <div class="sig-line">Approved By</div>
         </td>
     </tr>
@@ -269,6 +321,13 @@
 <div class="disclaimer">This is not a Tax Invoice!</div>
 <div class="disclaimer-sub">FOR {{ strtoupper($company->name ?? 'SteelERP') }}</div>
 
+{{-- The person on System → Requested By who asked for the goods, and their
+     numbers — the same lookup as Ship To. An MPR with no requester falls
+     back to whoever issued the LPO. --}}
 <div class="footer">
-    Should you have any enquiries concerning this purchase order, please contact {{ $order->createdBy->name ?? 'us' }}.
+    @if($order->purchaseRequest?->requested_by_name)
+        Should you have any enquiries concerning this purchase order, please contact {{ $order->purchaseRequest->requested_by_name }}@if(! empty($shipToPhones)) on {{ implode(' / ', $shipToPhones) }}@endif.
+    @else
+        Should you have any enquiries concerning this purchase order, please contact {{ $order->createdBy->name ?? 'us' }}.
+    @endif
 </div>
