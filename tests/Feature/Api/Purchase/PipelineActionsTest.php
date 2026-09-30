@@ -295,6 +295,20 @@ class PipelineActionsTest extends TestCase
         $this->assertSame('rfq', $pr->fresh()->stage);
     }
 
+    /** The signature box shows when the GM signed, not only the day. */
+    public function test_the_signature_carries_the_time_it_was_signed(): void
+    {
+        $this->travelTo(now()->setDateTime(2026, 9, 30, 11, 35, 20));
+        $pr = $this->request('gm_approval');
+
+        $response = $this->actingAs($this->approver())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
+            ->assertOk();
+
+        $this->assertSame('2026-09-30', $response->json('data.signature.signed_at'));
+        $this->assertSame('2026-09-30T11:35:20+00:00', $response->json('data.signature.signed_at_time'));
+    }
+
     public function test_the_signature_is_recorded_with_who_signed_and_advances_the_stage(): void
     {
         $pr = $this->request('gm_approval');
