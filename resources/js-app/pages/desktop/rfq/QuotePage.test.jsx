@@ -20,6 +20,7 @@ function openPayload(overrides = {}) {
         state: 'open',
         vat_rate: 10,
         confirm_code: 'AB12C',
+        units: ['PCS', 'KG', 'BAG'],
         data: {
             token: TOKEN,
             supplier_name: 'Gulf Steel Co.',
@@ -189,6 +190,51 @@ describe.each([
 
         expect(await screen.findByText('Quote Received')).toBeInTheDocument();
         expect(screen.getByText('10 Sep 2026, 09:14')).toBeInTheDocument();
+    });
+
+    /**
+     * A supplier who sells in bags picks BAG, says what a bag holds in our
+     * unit, and prices per bag; the quantity follows the conversion (rounded
+     * up) until they type their own.
+     */
+    it('lets the supplier quote in their own unit, mapped to ours', async () => {
+        await fillValidQuote();
+
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
+        expect(screen.getByRole('button', { name: /Submit/ })).toBeDisabled();
+        expect(screen.getByText(/One item is in a different unit/)).toBeInTheDocument();
+
+        // 4 pcs asked for, 3 to a bag: 2 bags, which is 6 pcs.
+        fireEvent.change(screen.getByLabelText('How many pcs one BAG holds, for Angle bar'), { target: { value: '3' } });
+        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toHaveValue(2);
+        expect(screen.getByText('6 pcs')).toBeInTheDocument();
+
+        // Priced per bag: 2 × 3 = 6, beside 10 × 2 = 20 for the rod.
+        expect(screen.getByText('BD 6.000')).toBeInTheDocument();
+        expect(screen.getAllByText('BD 26.000').length).toBeGreaterThan(0);
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        await waitFor(() => expect(send).toHaveBeenCalled());
+        expect(send.mock.calls[0][1].items).toEqual([
+            { id: 7, unit_price: 2, is_vatable: false, not_available: false, supplier_description: null },
+            {
+                id: 9, unit_price: 3, is_vatable: false, not_available: false, supplier_description: null,
+                supplier_unit: 'BAG', unit_factor: 3, supplier_quantity: 2,
+            },
+        ]);
+    });
+
+    it('going back to our unit forgets the conversion', async () => {
+        await fillValidQuote();
+
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
+        fireEvent.change(screen.getByLabelText('How many pcs one BAG holds, for Angle bar'), { target: { value: '3' } });
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'pcs' } });
+
+        expect(screen.queryByLabelText('How many pcs one BAG holds, for Angle bar')).not.toBeInTheDocument();
+        expect(screen.getByText('BD 12.000')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Submit/ })).toBeEnabled();
     });
 
     it('sends the logistics fields the supplier filled in', async () => {

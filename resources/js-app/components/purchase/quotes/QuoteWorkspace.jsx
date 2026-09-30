@@ -3,6 +3,7 @@ import AwardDetailModal from './AwardDetailModal';
 import AwardModal from './AwardModal';
 import AwardedSuppliers from './AwardedSuppliers';
 import ItemQuoteCard from './ItemQuoteCard';
+import UnitConversionModal from './UnitConversionModal';
 import useQuoteWorkspace from './useQuoteWorkspace';
 import { bd, rate } from './quoteFormat';
 
@@ -112,6 +113,7 @@ export default function QuoteWorkspace({ requestId, compact = false }) {
                                                 canAward={data.permissions.award}
                                                 onAward={w.setAwarding}
                                                 onShowDetail={w.setDetail}
+                                                onEditUnit={w.setConverting}
                                             />
                                         ))}
                                     </div>
@@ -158,6 +160,7 @@ export default function QuoteWorkspace({ requestId, compact = false }) {
                     )}
 
                     <AwardModal target={w.awarding} onClose={() => w.setAwarding(null)} onConfirm={w.award} />
+                    <UnitConversionModal target={w.converting} onClose={() => w.setConverting(null)} onConfirm={w.updateUnit} />
                     <AwardDetailModal
                         detail={w.detail}
                         canAward={data.permissions.award}

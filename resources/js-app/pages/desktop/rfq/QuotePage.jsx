@@ -1,7 +1,7 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, ReferenceField, TermsBlock,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, ReferenceField, TermsBlock, UnitField,
 } from '../../../components/rfq/QuoteFields';
-import useRfqPortal, { money, qty } from '../../../components/rfq/useRfqPortal';
+import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
 import { ErrorScreen, ExpiredScreen, LoadingScreen, SubmittedScreen } from '../../../components/rfq/RfqStates';
 
 const th = {
@@ -105,7 +105,15 @@ export default function QuotePage({ token, load, send }) {
                                                     />
                                                 </td>
                                                 <td style={td}>{qty(item.quantity_required)}</td>
-                                                <td style={{ ...td, color: '#64748b' }}>{item.unit || '—'}</td>
+                                                <td style={td}>
+                                                    <UnitField
+                                                        item={item} row={row} units={f.units} compact={false}
+                                                        disabled={row.notAvailable || f.submitting}
+                                                        onUnit={(unit) => f.setUnit(item, unit)}
+                                                        onFactor={(factor) => f.setFactor(item, factor)}
+                                                        onSupplierQty={(value) => f.setSupplierQty(item, value)}
+                                                    />
+                                                </td>
                                                 <td style={{ ...td, textAlign: 'center' }}>
                                                     <input
                                                         type="checkbox"
@@ -152,6 +160,9 @@ export default function QuotePage({ token, load, send }) {
                                                             opacity: row.notAvailable ? 0.35 : 1,
                                                         }}
                                                     />
+                                                    {inOtherUnit(item, row) && (
+                                                        <div style={{ fontSize: 11, color: '#92400e', marginTop: 4 }}>per {row.unit}</div>
+                                                    )}
                                                 </td>
                                                 <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>
                                                     {row.notAvailable ? (

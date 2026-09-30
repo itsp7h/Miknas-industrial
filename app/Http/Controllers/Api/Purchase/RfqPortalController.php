@@ -12,6 +12,7 @@ use App\Models\SupplierQuoteItem;
 use App\Models\User;
 use App\Notifications\QuoteReceived;
 use App\Services\PurchaseStageService;
+use App\Support\SupplierUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -74,6 +75,11 @@ class RfqPortalController extends Controller
             'items.*.is_vatable' => ['nullable', 'boolean'],
             'items.*.not_available' => ['nullable', 'boolean'],
             'items.*.supplier_description' => ['nullable', 'string', 'max:500'],
+            // Quoting in their own unit: which one, what it holds in ours, and
+            // how many of them. Checked against each line below.
+            'items.*.supplier_unit' => ['nullable', 'string', 'max:50'],
+            'items.*.unit_factor' => ['nullable', 'numeric', 'gt:0', 'max:1000000'],
+            'items.*.supplier_quantity' => ['nullable', 'numeric', 'gt:0'],
         ], [
             'terms.accepted' => 'Please accept the terms and conditions before submitting.',
             'reference.required' => 'Please enter your quotation reference number.',
@@ -88,6 +94,13 @@ class RfqPortalController extends Controller
             ], 422);
         }
 
+        if ($problem = $this->unitProblem($invitation, $validated['items'])) {
+            return response()->json([
+                'message' => $problem,
+                'errors' => ['items' => [$problem]],
+            ], 422);
+        }
+
         $quote = $this->recordQuote($invitation, $validated);
 
         $request->session()->forget($this->sessionKey($token));
@@ -99,6 +112,35 @@ class RfqPortalController extends Controller
             'submitted',
             extra: ['message' => 'Your quote has been submitted. Thank you.'],
         )->response()->setStatusCode(201);
+    }
+
+    /**
+     * A line quoted in another unit must say what one of theirs holds in ours
+     * and how many they are supplying, and the unit must be one we keep —
+     * otherwise it cannot be mapped back, and the stock would come in wrong.
+     */
+    private function unitProblem(RfqInvitation $invitation, array $items): ?string
+    {
+        $posted = collect($items)->keyBy('id');
+
+        foreach ($invitation->quotedItems() as $item) {
+            $row = $posted->get($item->id, []);
+            $unit = $row['supplier_unit'] ?? null;
+
+            if (! empty($row['not_available']) || ! SupplierUnit::differs($unit, $item->unit)) {
+                continue;
+            }
+
+            if (! SupplierUnit::allowed($unit, $item->unit)) {
+                return "\"{$unit}\" is not a unit we can accept for {$item->description}.";
+            }
+
+            if (empty($row['unit_factor']) || empty($row['supplier_quantity'])) {
+                return "Please say how many {$item->unit} one {$unit} holds, and how many {$unit} you are quoting, for {$item->description}.";
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -137,6 +179,24 @@ class RfqPortalController extends Controller
                 $unitPrice = $notAvailable ? 0 : (float) ($row['unit_price'] ?? 0);
                 $qty = (float) $item->quantity_required;
                 $totalPrice = $notAvailable ? 0 : round($unitPrice * $qty, 3);
+
+                // Quoted in their own unit: the price they gave is per theirs,
+                // and the line is kept in ours as well, which is what compares,
+                // orders and stocks.
+                $supplier = null;
+
+                if (! $notAvailable && SupplierUnit::differs($row['supplier_unit'] ?? null, $item->unit)) {
+                    $supplier = [
+                        'supplier_unit' => $row['supplier_unit'],
+                        'unit_factor' => (float) $row['unit_factor'],
+                        'supplier_quantity' => (float) $row['supplier_quantity'],
+                        'supplier_unit_price' => $unitPrice,
+                    ];
+                    ['quantity' => $qty, 'unit_price' => $unitPrice, 'total_price' => $totalPrice] = SupplierUnit::figures(
+                        $supplier['supplier_quantity'], $supplier['unit_factor'], $supplier['supplier_unit_price'],
+                    );
+                }
+
                 $isVatable = ! $notAvailable && ! empty($row['is_vatable']);
 
                 $subtotal += $totalPrice;
@@ -158,6 +218,7 @@ class RfqPortalController extends Controller
                     'total_price' => $totalPrice,
                     'is_vatable' => $isVatable,
                     'not_available' => $notAvailable,
+                    ...($supplier ?? []),
                 ]);
             }
 
@@ -229,6 +290,8 @@ class RfqPortalController extends Controller
             'state' => $state,
             'vat_rate' => $state === 'open' ? $this->vatRate() : null,
             'confirm_code' => $confirmCode,
+            // What a supplier may quote in instead of our unit.
+            'units' => $state === 'open' ? SupplierUnit::units() : null,
         ], fn ($value) => $value !== null), $extra));
     }
 }

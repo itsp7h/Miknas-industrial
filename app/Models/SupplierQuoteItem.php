@@ -11,6 +11,7 @@ class SupplierQuoteItem extends Model
 
     protected $fillable = [
         'supplier_quote_id', 'purchase_request_item_id', 'description', 'supplier_description', 'unit', 'quantity',
+        'supplier_unit', 'unit_factor', 'supplier_quantity', 'supplier_unit_price',
         'unit_price', 'total_price', 'is_vatable', 'not_available',
         'is_awarded', 'award_reason', 'awarded_at', 'awarded_by',
     ];
@@ -20,7 +21,16 @@ class SupplierQuoteItem extends Model
         'not_available' => 'boolean',
         'is_awarded' => 'boolean',
         'awarded_at' => 'datetime',
+        'unit_factor' => 'float',
+        'supplier_quantity' => 'float',
+        'supplier_unit_price' => 'float',
     ];
+
+    /** Whether the supplier quoted this line in a unit other than ours. */
+    public function inSupplierUnit(): bool
+    {
+        return filled($this->supplier_unit) && $this->unit_factor > 0;
+    }
 
     public function quote()
     {

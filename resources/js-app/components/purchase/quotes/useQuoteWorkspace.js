@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiPost } from '../../../api/client';
+import { apiGet, apiPost, apiPut } from '../../../api/client';
 import { useToast } from '../../ui/Toast';
 
 /**
@@ -13,6 +13,7 @@ export default function useQuoteWorkspace(requestId) {
     const [tab, setTab] = useState('comparison');
     const [awarding, setAwarding] = useState(null);
     const [detail, setDetail] = useState(null);
+    const [converting, setConverting] = useState(null);
     const { showToast } = useToast();
 
     const load = useCallback(() => {
@@ -44,8 +45,16 @@ export default function useQuoteWorkspace(requestId) {
         showToast(response.message, 'success');
     }
 
+    /** Corrects how a line quoted in the supplier's unit maps to ours. */
+    async function updateUnit(lineId, conversion) {
+        const response = await apiPut(`/purchase/requests/${requestId}/quotes/items/${lineId}/unit`, conversion);
+        setWorkspace(response.data);
+        showToast(response.message, 'success');
+    }
+
     return {
         workspace, loading, tab, setTab,
+        converting, setConverting, updateUnit,
         awarding, setAwarding, award,
         detail, setDetail, unaward,
     };

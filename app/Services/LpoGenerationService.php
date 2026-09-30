@@ -77,6 +77,16 @@ class LpoGenerationService
                 'quantity' => $quoteItem->quantity,
                 'rate' => $quoteItem->unit_price,
                 'total_amount' => $quoteItem->total_price,
+                // Quoted in the supplier's unit: the LPO orders in theirs and
+                // shows ours beside it, while quantity and rate above stay in
+                // ours for the GRN and the stock.
+                ...($quoteItem->inSupplierUnit() ? [
+                    'system_unit' => $quoteItem->unit,
+                    'supplier_unit' => $quoteItem->supplier_unit,
+                    'unit_factor' => $quoteItem->unit_factor,
+                    'supplier_quantity' => $quoteItem->supplier_quantity,
+                    'supplier_rate' => $quoteItem->supplier_unit_price,
+                ] : []),
             ]);
         }
 
