@@ -225,7 +225,11 @@ class QuoteWorkspaceTest extends TestCase
     }
 
     /** One item, one supplier — awarding twice would double-order it. */
-    public function test_an_item_cannot_be_awarded_to_two_suppliers(): void
+    /**
+     * A supplier invited after the first award can come in cheaper. Awarding
+     * them moves the award; the item still has exactly one winner.
+     */
+    public function test_awarding_another_supplier_moves_the_award_to_them(): void
     {
         $first = $this->quote('Gulf Steel', [
             ['purchase_request_item_id' => $this->itemA->id, 'unit_price' => 10, 'total_price' => 20],
@@ -243,9 +247,38 @@ class QuoteWorkspaceTest extends TestCase
         $this->actingAs($officer)
             ->postJson("/api/v1/purchase/requests/{$this->pr->id}/quotes/items/{$second->items->first()->id}/award", [
                 'award_reason' => 'Actually cheaper',
-            ])->assertStatus(422);
+            ])->assertOk()
+            ->assertJsonPath('message', fn ($m) => str_ends_with($m, ' awarded to Zenith instead of Gulf Steel.'))
+            ->assertJsonPath('data.items.0.awarded_supplier', 'Zenith');
 
-        $this->assertFalse((bool) $second->items->first()->fresh()->is_awarded);
+        $this->assertTrue((bool) $second->items->first()->fresh()->is_awarded);
+        $this->assertSame('Actually cheaper', $second->items->first()->fresh()->award_reason);
+
+        $old = $first->items->first()->fresh();
+        $this->assertFalse((bool) $old->is_awarded);
+        $this->assertNull($old->award_reason);
+        $this->assertNull($old->awarded_by);
+    }
+
+    public function test_moving_the_award_keeps_a_fully_awarded_request_at_the_lpo_stage(): void
+    {
+        $this->pr->update(['stage' => 'lpo']);
+        $first = $this->quote('Gulf Steel', [
+            ['purchase_request_item_id' => $this->itemA->id, 'unit_price' => 10, 'total_price' => 20, 'is_awarded' => true],
+            ['purchase_request_item_id' => $this->itemB->id, 'unit_price' => 5, 'total_price' => 15, 'is_awarded' => true],
+        ]);
+        $late = $this->quote('Zenith', [
+            ['purchase_request_item_id' => $this->itemA->id, 'unit_price' => 9, 'total_price' => 18],
+        ]);
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/requests/{$this->pr->id}/quotes/items/{$late->items->first()->id}/award", [
+                'award_reason' => 'Late quote, cheaper',
+            ])->assertOk();
+
+        $this->assertSame('lpo', $this->pr->fresh()->stage);
+        $this->assertSame(1, SupplierQuoteItem::where('purchase_request_item_id', $this->itemA->id)->where('is_awarded', true)->count());
+        $this->assertTrue((bool) $first->items->firstWhere('purchase_request_item_id', $this->itemB->id)->fresh()->is_awarded);
     }
 
     public function test_a_line_the_supplier_marked_unavailable_cannot_be_awarded(): void

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Purchase;
 
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\RfqInvitation;
@@ -196,6 +197,76 @@ class PipelineActionsTest extends TestCase
         $this->assertSame('quoting', $pr->fresh()->stage);
         $this->assertSame(0, $response->json('data.pending_invitation_count'));
         $this->assertSame(2, $response->json('data.sent_invitation_count'));
+    }
+
+    /** An LPO on the request, in the given status. */
+    private function orderFor(PurchaseRequest $pr, string $status = 'sent'): PurchaseOrder
+    {
+        return PurchaseOrder::create([
+            'po_number' => 'PO-'.random_int(10000, 99999), 'supplier_id' => $this->supplier()->id,
+            'purchase_request_id' => $pr->id, 'po_date' => '2026-10-01', 'total_amount' => 5,
+            'status' => $status, 'created_by' => User::factory()->create()->id,
+        ]);
+    }
+
+    /**
+     * Quotes come back too high, or a supplier never answers: the fix is to ask
+     * someone else, and that stays open until an LPO is issued.
+     */
+    public function test_suppliers_can_be_added_after_quotes_are_in_without_rolling_the_stage_back(): void
+    {
+        foreach (['quoting', 'comparison', 'lpo'] as $stage) {
+            $pr = $this->request($stage);
+            $late = $this->supplier(['name' => 'Late '.$stage]);
+
+            $response = $this->actingAs($this->officer())
+                ->postJson("/api/v1/purchase/pipeline/{$pr->id}/suppliers", [
+                    'mode' => 'global', 'supplier_ids' => [$late->id],
+                ])->assertOk();
+
+            $this->assertSame($stage, $pr->fresh()->stage, "selecting at {$stage} moved the stage");
+            $this->assertSame(1, $response->json('data.pending_invitation_count'));
+        }
+    }
+
+    public function test_sending_a_late_invitation_does_not_roll_the_stage_back(): void
+    {
+        Notification::fake();
+        $this->workingMailAccount();
+        $pr = $this->request('comparison');
+        RfqInvitation::factory()->create([
+            'purchase_request_id' => $pr->id, 'supplier_id' => $this->supplier()->id, 'status' => 'pending',
+        ]);
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/send-invitations")->assertOk();
+
+        $this->assertSame('comparison', $pr->fresh()->stage);
+    }
+
+    public function test_suppliers_cannot_be_added_once_an_lpo_is_issued(): void
+    {
+        $pr = $this->request('lpo');
+        $this->orderFor($pr);
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/suppliers", [
+                'mode' => 'global', 'supplier_ids' => [$this->supplier()->id],
+            ])->assertForbidden();
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/send-invitations")->assertForbidden();
+    }
+
+    public function test_a_cancelled_lpo_does_not_close_supplier_selection(): void
+    {
+        $pr = $this->request('lpo');
+        $this->orderFor($pr, 'cancelled');
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/suppliers", [
+                'mode' => 'global', 'supplier_ids' => [$this->supplier()->id],
+            ])->assertOk();
     }
 
     /**

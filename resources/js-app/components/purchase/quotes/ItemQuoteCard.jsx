@@ -191,19 +191,22 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                                             ✓ AWARDED
                                                         </button>
                                                     )}
-                                                    {!line.is_awarded && !item.has_award && canAward && (
+                                                    {/* Offered on every other line too: awarding one
+                                                        moves the award from whoever holds it. */}
+                                                    {!line.is_awarded && canAward && (
                                                         <button
                                                             type="button"
                                                             onClick={() => onAward({
                                                                 lineId: line.id, item: item.description,
                                                                 supplier: row.supplier, unitPrice: line.unit_price,
+                                                                replaces: item.awarded_supplier,
                                                             })}
                                                             style={{
                                                                 padding: '5px 12px', background: '#f59e0b', color: '#fff', border: 'none',
                                                                 borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
                                                             }}
                                                         >
-                                                            Award →
+                                                            {item.has_award ? 'Award instead →' : 'Award →'}
                                                         </button>
                                                     )}
                                                 </div>

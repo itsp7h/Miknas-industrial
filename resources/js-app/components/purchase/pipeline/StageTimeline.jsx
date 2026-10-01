@@ -97,6 +97,29 @@ function caption(stage, r, current) {
     }
 }
 
+/** Select / add suppliers, send the unsent invitations, see who is on it. */
+function SupplierActions({ r, on }) {
+    return (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
+                {r.rfq_invitations.length ? '+ Add Suppliers' : '🏭 Select Suppliers'}
+            </ActionButton>
+            {r.pending_invitation_count > 0 && (
+                <ActionButton onClick={() => on('send')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
+                    📨 Send ({r.pending_invitation_count})
+                </ActionButton>
+            )}
+            {/* Who is already on the request, without leaving the page.
+                Only once there is someone to look at. */}
+            {r.rfq_invitations.length > 0 && (
+                <ActionButton onClick={() => on('view-suppliers')} style={VIEW}>
+                    <EyeIcon /> View Suppliers ({r.rfq_invitations.length})
+                </ActionButton>
+            )}
+        </div>
+    );
+}
+
 function CurrentActions({ stage, r, on }) {
     const p = r.permissions;
     const signLabel = r.signature ? 'View Signature' : 'Sign';
@@ -115,26 +138,7 @@ function CurrentActions({ stage, r, on }) {
         case 'gm_approval':
             return sign || null;
         case 'rfq':
-            if (!p.manageRfq) return null;
-            return (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
-                        {r.rfq_invitations.length ? '+ Add Suppliers' : '🏭 Select Suppliers'}
-                    </ActionButton>
-                    {r.pending_invitation_count > 0 && (
-                        <ActionButton onClick={() => on('send')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
-                            📨 Send ({r.pending_invitation_count})
-                        </ActionButton>
-                    )}
-                    {/* Who is already on the request, without leaving the page.
-                        Only once there is someone to look at. */}
-                    {r.rfq_invitations.length > 0 && (
-                        <ActionButton onClick={() => on('view-suppliers')} style={VIEW}>
-                            <EyeIcon /> View Suppliers ({r.rfq_invitations.length})
-                        </ActionButton>
-                    )}
-                </div>
-            );
+            return p.manageRfq ? <SupplierActions r={r} on={on} /> : null;
         case 'quoting':
             return p.manageQuotes ? (
                 <Link to={`/app/purchase/requests/${r.id}/quotes`} style={{ ...ACTION, background: '#f59e0b', color: '#fff' }}>
@@ -198,7 +202,12 @@ function DoneActions({ stage, r, on }) {
                 ? <ActionButton onClick={() => on('signature')} style={VIEW}><EyeIcon /> View Signature</ActionButton>
                 : null;
         case 'rfq':
-            return <ActionButton onClick={() => on('view-suppliers')} style={VIEW}><EyeIcon /> View Suppliers</ActionButton>;
+            // Suppliers can still be added until an LPO is issued — a quote
+            // came back too high, or a supplier never answered — so the step
+            // keeps its actions after the request has moved past it.
+            return p.manageRfq
+                ? <SupplierActions r={r} on={on} />
+                : <ActionButton onClick={() => on('view-suppliers')} style={VIEW}><EyeIcon /> View Suppliers</ActionButton>;
         case 'quoting':
             return p.manageQuotes
                 ? <Link to={`/app/purchase/requests/${r.id}/quotes`} style={VIEW}><EyeIcon /> View Quotes ({r.supplier_quotes.length})</Link>

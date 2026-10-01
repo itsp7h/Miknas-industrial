@@ -65,8 +65,14 @@ class PurchaseRequestPolicy
         // Api\Purchase\PurchasePipelineController::selectSuppliers is invoked
         // right after the GM signature advances the request to gm_approval, and
         // it is itself the action that sets stage to 'rfq'.
+        //
+        // It stays open past 'rfq' until an LPO is issued: quotes can come back
+        // too high, or a supplier can fail to answer, and the fix is to invite
+        // another one. Once an order exists the purchase is placed, so adding
+        // suppliers would only ask for quotes nobody can award.
         return $user->can('pipeline.manage-rfq')
-            && in_array($purchaseRequest->stage, ['gm_approval', 'rfq'], true);
+            && in_array($purchaseRequest->stage, ['gm_approval', 'rfq', 'quoting', 'comparison', 'lpo'], true)
+            && ! $purchaseRequest->purchaseOrders()->where('status', '!=', 'cancelled')->exists();
     }
 
     public function manageQuotes(User $user, PurchaseRequest $purchaseRequest): bool
