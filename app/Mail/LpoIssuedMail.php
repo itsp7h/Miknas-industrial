@@ -14,7 +14,13 @@ class LpoIssuedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public PurchaseOrder $order, public string $pdf) {}
+    /** $total is the LPO's VAT-inclusive figure, the one the attached PDF prints. */
+    public function __construct(
+        public PurchaseOrder $order,
+        public string $pdf,
+        public float $total,
+        public float $vatRate = 0,
+    ) {}
 
     public function envelope(): Envelope
     {
