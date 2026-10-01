@@ -65,6 +65,11 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
     const [errors, setErrors] = useState({});
     const [formError, setFormError] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    // Set by the first submit that finds something missing. From then on every
+    // missing required field is outlined in red, and each clears as it is
+    // filled. Not before: a blank form all in red on arrival reads as an error
+    // the supplier has not made yet.
+    const [showMissing, setShowMissing] = useState(false);
 
     // StrictMode mounts effects twice in development, and GET /rfq/{token} is not
     // a plain read — it flips the invitation to 'opened' and issues the session's
@@ -216,7 +221,35 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
     // The supplier's quotation number goes on the LPO, so it cannot be blank.
     const hasReference = meta.reference.trim() !== '';
 
-    const canSubmit = hasReference && terms && codeMatches && unpricedCount === 0 && unmappedCount === 0 && !submitting;
+    const ready = hasReference && terms && codeMatches && unpricedCount === 0 && unmappedCount === 0;
+    const canSubmit = ready && !submitting;
+
+    /**
+     * What is still missing, field by field, once the supplier has tried to
+     * submit — the same rules as `ready`, so a red field and the reason under
+     * the button can never disagree.
+     */
+    const missing = useMemo(() => {
+        const none = { reference: false, terms: false, confirmCode: false, rows: {} };
+        if (!showMissing) return none;
+
+        return {
+            reference: !hasReference,
+            terms: !terms,
+            confirmCode: !codeMatches,
+            rows: Object.fromEntries(items.map((item) => {
+                const row = rows[item.id];
+                const open = row && !row.notAvailable;
+                const other = open && inOtherUnit(item, row);
+
+                return [item.id, {
+                    unitPrice: !!open && String(row.unitPrice).trim() === '',
+                    factor: !!other && !(parseFloat(row.factor) > 0),
+                    supplierQty: !!other && !(parseFloat(row.supplierQty) > 0),
+                }];
+            })),
+        };
+    }, [showMissing, hasReference, terms, codeMatches, items, rows]);
 
     const blockedReason = (() => {
         if (!hasReference) return 'Please enter your quotation reference number (Ref).';
@@ -238,7 +271,18 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
 
     async function submit(event) {
         event?.preventDefault();
-        if (!canSubmit) return;
+        if (submitting) return;
+        if (!ready) {
+            setShowMissing(true);
+            // After the red outlines render, bring the first one into view.
+            setTimeout(() => {
+                const first = document.querySelector('[data-missing="true"]');
+                first?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+                first?.focus?.({ preventScroll: true });
+            }, 0);
+
+            return;
+        }
 
         setSubmitting(true);
         setErrors({});
@@ -322,7 +366,10 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         errors,
         formError,
         submitting,
+        ready,
         canSubmit,
+        missing,
+        showMissing,
         blockedReason,
         submit,
     };

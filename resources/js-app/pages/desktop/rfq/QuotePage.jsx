@@ -1,5 +1,6 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, ReferenceField, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, TermsBlock, UnitField,
+    missingProps,
 } from '../../../components/rfq/QuoteFields';
 import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
 import { ErrorScreen, ExpiredScreen, LoadingScreen, SubmittedScreen } from '../../../components/rfq/RfqStates';
@@ -62,7 +63,7 @@ export default function QuotePage({ token, load, send }) {
                         submitted once.
                     </p>
 
-                    <ReferenceField meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} />
+                    <ReferenceField meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} missing={f.missing.reference} />
 
                     <FormError message={f.formError} />
 
@@ -112,6 +113,7 @@ export default function QuotePage({ token, load, send }) {
                                                         onUnit={(unit) => f.setUnit(item, unit)}
                                                         onFactor={(factor) => f.setFactor(item, factor)}
                                                         onSupplierQty={(value) => f.setSupplierQty(item, value)}
+                                                        missing={f.missing.rows[item.id]}
                                                     />
                                                 </td>
                                                 <td style={{ ...td, textAlign: 'center' }}>
@@ -152,12 +154,14 @@ export default function QuotePage({ token, load, send }) {
                                                         value={row.unitPrice}
                                                         disabled={row.notAvailable || f.submitting}
                                                         onChange={(e) => f.setRow(item.id, { unitPrice: e.target.value })}
+                                                        {...missingProps(f.missing.rows[item.id]?.unitPrice)}
                                                         style={{
                                                             width: 140, textAlign: 'right', padding: '9px 12px',
                                                             border: '1.5px solid #e2e8f0', borderRadius: 8,
                                                             fontSize: 13, outline: 'none', background: '#fff',
                                                             fontFamily: 'inherit',
                                                             opacity: row.notAvailable ? 0.35 : 1,
+                                                            ...(f.missing.rows[item.id]?.unitPrice ? MISSING : {}),
                                                         }}
                                                     />
                                                     {inOtherUnit(item, row) && (
@@ -207,6 +211,7 @@ export default function QuotePage({ token, load, send }) {
                             accepted={f.terms}
                             onChange={f.setTerms}
                             error={f.errors.terms}
+                            missing={f.missing.terms}
                             disabled={f.submitting}
                         />
 
@@ -217,18 +222,25 @@ export default function QuotePage({ token, load, send }) {
                             onChange={f.setConfirmInput}
                             matches={f.codeMatches}
                             error={f.errors.confirm_code}
+                            missing={f.missing.confirmCode}
                             disabled={f.submitting}
                         />
 
+                        {/* Clickable while something is missing: the click is what
+
+                            outlines each missing field in red. Dimmed until ready. */}
+
                         <button
+
                             type="submit"
-                            disabled={!f.canSubmit}
+                            disabled={f.submitting}
+                            aria-disabled={f.ready ? undefined : true}
                             style={{
                                 width: '100%', padding: 15, border: 'none', borderRadius: 10,
                                 background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff',
                                 fontSize: 15, fontWeight: 700,
                                 opacity: f.canSubmit ? 1 : 0.4,
-                                cursor: f.canSubmit ? 'pointer' : 'not-allowed',
+                                cursor: f.submitting ? 'default' : 'pointer',
                             }}
                         >
                             {f.submitting ? 'Submitting…' : 'Submit My Quote →'}
@@ -237,7 +249,7 @@ export default function QuotePage({ token, load, send }) {
                         {/* The Blade form left a disabled button unexplained —
                             the supplier could see it was dead but not why. */}
                         {f.blockedReason && !f.submitting && (
-                            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 10, textAlign: 'center' }}>
+                            <p style={{ fontSize: 12, color: f.showMissing ? '#dc2626' : '#94a3b8', marginTop: 10, textAlign: 'center' }}>
                                 {f.blockedReason}
                             </p>
                         )}
