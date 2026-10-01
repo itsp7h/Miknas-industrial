@@ -6,10 +6,12 @@ use App\Mail\LpoIssuedMail;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
+use App\Models\Setting;
 use App\Models\Supplier;
 use App\Models\SupplierQuote;
 use App\Models\SupplierQuoteItem;
 use App\Models\User;
+use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -105,6 +107,54 @@ class LpoDeliveryTest extends TestCase
                 && str_starts_with($mail->pdf, '%PDF')
                 && collect($mail->attachments())->contains(fn ($a) => $a->as === $order->po_number.'.pdf');
         });
+    }
+
+    /**
+     * The summary box in the email quoted the order's total_amount, which is
+     * the lines before VAT, while the attached PDF adds VAT — so the supplier
+     * was told two different prices for one order.
+     */
+    public function test_the_emails_total_includes_vat_as_the_pdf_does(): void
+    {
+        $this->workingMailAccount();
+        Setting::set('vat_rate', 10);
+
+        $this->issue()->assertOk();
+
+        Mail::assertSent(LpoIssuedMail::class, function ($mail) {
+            $html = $mail->render();
+
+            return $mail->total === 22.0
+                && str_contains($html, 'BD 22.000')
+                && str_contains($html, 'incl. 10% VAT')
+                && ! str_contains($html, 'BD 20.000');
+        });
+    }
+
+    public function test_without_vat_the_emails_total_is_the_lines_and_claims_no_vat(): void
+    {
+        $this->workingMailAccount();
+        Setting::set('vat_rate', 0);
+
+        $this->issue()->assertOk();
+
+        Mail::assertSent(LpoIssuedMail::class, function ($mail) {
+            $html = $mail->render();
+
+            return str_contains($html, 'BD 20.000') && ! str_contains($html, 'VAT)');
+        });
+    }
+
+    public function test_the_whatsapp_heads_up_quotes_the_total_with_vat(): void
+    {
+        $this->workingMailAccount();
+        Setting::set('vat_rate', 10);
+        $this->issue()->assertOk();
+
+        $text = (new PurchaseOrderConfirmedNotification(PurchaseOrder::first()))
+            ->toUltraMessage($this->supplier);
+
+        $this->assertStringContainsString('Total Amount: BD 22.000', json_encode($text->payload, JSON_UNESCAPED_UNICODE));
     }
 
     public function test_it_records_when_and_where_the_lpo_was_sent(): void

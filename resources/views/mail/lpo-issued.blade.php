@@ -49,8 +49,8 @@
         </tr>
         @endif
         <tr>
-          <td style="padding:14px 18px;font-size:12px;color:#64748b;">Total Amount</td>
-          <td style="padding:14px 18px;font-size:15px;color:#15803d;font-weight:700;text-align:right;">BD {{ number_format((float) $order->total_amount, 3) }}</td>
+          <td style="padding:14px 18px;font-size:12px;color:#64748b;">Total Amount{{ $vatRate > 0 ? ' (incl. '.rtrim(rtrim(number_format($vatRate, 2), '0'), '.').'% VAT)' : '' }}</td>
+          <td style="padding:14px 18px;font-size:15px;color:#15803d;font-weight:700;text-align:right;">BD {{ number_format($total, 3) }}</td>
         </tr>
       </table>
 
