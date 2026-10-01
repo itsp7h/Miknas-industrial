@@ -12,6 +12,7 @@ use App\Support\LocalTime;
 use App\Support\SupplierUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The quotes workspace: every request item beside every supplier's offer for it,
@@ -68,31 +69,45 @@ class SupplierQuoteController extends Controller
             'This item cannot be awarded.'
         );
 
-        // One item, one supplier — awarding a second would double-order it.
-        abort_if(
-            SupplierQuoteItem::where('purchase_request_item_id', $quoteItem->purchase_request_item_id)
-                ->where('is_awarded', true)
-                ->where('id', '!=', $quoteItem->id)
-                ->whereHas('quote', fn ($q) => $q->where('purchase_request_id', $purchaseRequest->id))
-                ->exists(),
-            422,
-            'This item has already been awarded to another supplier.'
-        );
+        // One item, one supplier — two awards would double-order it. Awarding
+        // another supplier's line therefore moves the award rather than being
+        // refused: a supplier invited late can come in cheaper, and the buyer
+        // should not have to remove the first award by hand to take it.
+        $previous = SupplierQuoteItem::where('purchase_request_item_id', $quoteItem->purchase_request_item_id)
+            ->where('is_awarded', true)
+            ->where('id', '!=', $quoteItem->id)
+            ->whereHas('quote', fn ($q) => $q->where('purchase_request_id', $purchaseRequest->id))
+            ->with('quote.supplier')
+            ->get();
 
-        $quoteItem->update([
-            'is_awarded' => true,
-            'award_reason' => $validated['award_reason'],
-            'awarded_at' => now(),
-            'awarded_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($previous, $quoteItem, $validated) {
+            $previous->each->update([
+                'is_awarded' => false,
+                'award_reason' => null,
+                'awarded_at' => null,
+                'awarded_by' => null,
+            ]);
+
+            $quoteItem->update([
+                'is_awarded' => true,
+                'award_reason' => $validated['award_reason'],
+                'awarded_at' => now(),
+                'awarded_by' => auth()->id(),
+            ]);
+        });
 
         if ($purchaseRequest->isFullyAwarded()) {
             $stages->setStageIfNotPast($purchaseRequest, 'lpo');
         }
 
+        $message = $quoteItem->description.' awarded to '.$quoteItem->quote->supplier->name;
+        if ($previous->isNotEmpty()) {
+            $message .= ' instead of '.$previous->map(fn ($line) => $line->quote->supplier->name)->implode(', ');
+        }
+
         return response()->json([
             'data' => $this->payload($purchaseRequest->refresh()),
-            'message' => $quoteItem->description.' awarded to '.$quoteItem->quote->supplier->name.'.',
+            'message' => $message.'.',
         ]);
     }
 
@@ -245,6 +260,8 @@ class SupplierQuoteController extends Controller
             'unit' => $item->unit,
             'badge' => $this->badge($awarded, $valid->count()),
             'has_award' => (bool) $awarded,
+            // Who holds it now, so awarding someone else can say whom it replaces.
+            'awarded_supplier' => $awarded ? $awarded['quote']->supplier?->name : null,
             'rows' => $rows->map(function ($row) use ($minPrice, $valid) {
                 $line = $row['line'];
                 $isMin = $line && ! $line->not_available && $minPrice !== null

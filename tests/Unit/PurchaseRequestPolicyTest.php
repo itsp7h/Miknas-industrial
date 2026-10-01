@@ -95,6 +95,19 @@ class PurchaseRequestPolicyTest extends TestCase
         $this->assertFalse($procurement->can('manageRfq', $atDraft));
     }
 
+    public function test_procurement_officer_can_manage_rfq_until_the_request_reaches_receiving(): void
+    {
+        $procurement = User::factory()->create();
+        $procurement->givePermissionTo('pipeline.manage-rfq');
+
+        foreach (['quoting', 'comparison', 'lpo'] as $stage) {
+            $this->assertTrue($procurement->can('manageRfq', PurchaseRequest::factory()->create(['stage' => $stage])), $stage);
+        }
+        foreach (['receiving', 'complete'] as $stage) {
+            $this->assertFalse($procurement->can('manageRfq', PurchaseRequest::factory()->create(['stage' => $stage])), $stage);
+        }
+    }
+
     public function test_procurement_officer_can_manage_quotes_at_quoting_comparison_or_lpo_stage(): void
     {
         // manageQuotes gates the comparison workspace, which also contains the

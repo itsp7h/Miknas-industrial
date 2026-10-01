@@ -138,7 +138,9 @@ class PurchasePipelineController extends Controller
             }
         }
 
-        $stages->setStage($purchaseRequest, 'rfq');
+        // Suppliers added after quotes are in must not roll the request back:
+        // the quotes and any awards already made still stand.
+        $stages->setStageIfNotPast($purchaseRequest, 'rfq');
 
         return $this->fresh($purchaseRequest, $added.' supplier(s) added. Now send them the quote request links.');
     }
@@ -169,7 +171,7 @@ class PurchasePipelineController extends Controller
         // told why, rather than being shown a success it did not get.
         abort_if($sent === 0, 422, 'Could not send any invitation. '.reset($failed));
 
-        $stages->setStage($purchaseRequest, 'quoting');
+        $stages->setStageIfNotPast($purchaseRequest, 'quoting');
 
         return $this->fresh($purchaseRequest, $failed
             ? $sent.' of '.$pending->count().' supplier(s) notified. Could not reach '

@@ -42,6 +42,15 @@ export default function AwardModal({ target, onClose, onConfirm }) {
                     <div style={{ fontSize: 13, color: '#64748b' }}>{target.supplier}</div>
                     <div style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>{bd(target.unitPrice)}</div>
 
+                    {target.replaces && (
+                        <div style={{
+                            fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a',
+                            borderRadius: 8, padding: '8px 10px', marginBottom: 16,
+                        }}>
+                            This item is awarded to <strong>{target.replaces}</strong>. Confirming moves the award to {target.supplier}.
+                        </div>
+                    )}
+
                     <label htmlFor="award-reason" style={{
                         display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b',
                         textTransform: 'uppercase', marginBottom: 6,

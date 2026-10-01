@@ -130,6 +130,23 @@ describe('StageTimeline', () => {
         expect(screen.getByText('Signed by The GM · 30 Aug 2026')).toBeInTheDocument();
     });
 
+    it('keeps Add Suppliers and Send on the supplier step after the request moves past it', () => {
+        const invitation = { id: 1, supplier_id: 4, supplier_name: 'A', status: 'sent', channel: 'email' };
+        renderIn(<StageTimeline request={base({
+            stage: 'comparison', stage_index: 4,
+            rfq_invitations: [invitation], pending_invitation_count: 1,
+            permissions: { ...base().permissions, manageRfq: true },
+        })} />);
+        expect(screen.getByText('+ Add Suppliers')).toBeInTheDocument();
+        expect(screen.getByText('📨 Send (1)')).toBeInTheDocument();
+    });
+
+    it('offers only View Suppliers on a past supplier step once RFQs are closed', () => {
+        renderIn(<StageTimeline request={base({ stage: 'receiving', stage_index: 6 })} />);
+        expect(screen.queryByText('+ Add Suppliers')).not.toBeInTheDocument();
+        expect(screen.getByText('View Suppliers')).toBeInTheDocument();
+    });
+
     it('offers Issue LPO only with the generateLpo permission', () => {
         renderIn(<StageTimeline request={base()} />);
         expect(screen.queryByText('Issue LPO →')).not.toBeInTheDocument();
