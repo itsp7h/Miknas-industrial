@@ -133,7 +133,7 @@ describe.each([
         await screen.findByText('MPR-0042');
 
         const submit = screen.getByRole('button', { name: /Submit/ });
-        expect(submit).toBeDisabled();
+        expect(submit).toHaveAttribute('aria-disabled', 'true');
         // The Ref goes on the LPO, so it comes first.
         expect(screen.getByText('Please enter your quotation reference number (Ref).')).toBeInTheDocument();
 
@@ -151,10 +151,68 @@ describe.each([
         expect(screen.getByText('Enter the confirmation code exactly as shown.')).toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'WRONG' } });
-        expect(submit).toBeDisabled();
+        expect(submit).toHaveAttribute('aria-disabled', 'true');
 
         fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'ab12c' } });
-        expect(submit).toBeEnabled();
+        expect(submit).not.toHaveAttribute('aria-disabled');
+    });
+
+    /**
+     * Pressing Submit with something missing sends nothing and outlines every
+     * missing required field in red; each one clears as it is filled. Until
+     * that first press the blank form is not marked at all.
+     */
+    it('outlines every missing required field once Submit is pressed', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const ref = screen.getByLabelText(/^Ref/);
+        const rodPrice = screen.getByLabelText('Unit price for Steel rod 12mm');
+        const barPrice = screen.getByLabelText('Unit price for Angle bar');
+        const terms = screen.getByLabelText(/I have read and agree to the terms/);
+        const code = screen.getByLabelText('Paste code here');
+
+        expect(ref).not.toHaveAttribute('aria-invalid');
+        expect(rodPrice).not.toHaveAttribute('aria-invalid');
+
+        fireEvent.change(rodPrice, { target: { value: '2' } });
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        expect(send).not.toHaveBeenCalled();
+        for (const field of [ref, barPrice, terms, code]) {
+            expect(field).toHaveAttribute('aria-invalid', 'true');
+        }
+        // The line already priced is not marked.
+        expect(rodPrice).not.toHaveAttribute('aria-invalid');
+        expect(screen.getByText('Please paste the confirmation code.')).toBeInTheDocument();
+
+        fireEvent.change(ref, { target: { value: 'Q-118' } });
+        expect(ref).not.toHaveAttribute('aria-invalid');
+
+        // Unavailable counts as answered, so the red goes with it.
+        fireEvent.click(screen.getByLabelText('Angle bar is not available'));
+        expect(barPrice).not.toHaveAttribute('aria-invalid');
+
+        fireEvent.change(code, { target: { value: 'WRONG' } });
+        expect(code).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByText('The code does not match. Copy it exactly as shown.')).toBeInTheDocument();
+    });
+
+    it('outlines the conversion of a line quoted in another unit until it is filled', async () => {
+        await fillValidQuote();
+
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        expect(send).not.toHaveBeenCalled();
+        const factor = screen.getByLabelText('How many pcs one BAG holds, for Angle bar');
+        expect(factor).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toHaveAttribute('aria-invalid', 'true');
+
+        // The quantity follows the conversion, so filling one clears both.
+        fireEvent.change(factor, { target: { value: '3' } });
+        expect(factor).not.toHaveAttribute('aria-invalid');
+        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).not.toHaveAttribute('aria-invalid');
     });
 
     it('a line marked unavailable counts as answered rather than unpriced', async () => {
@@ -167,7 +225,7 @@ describe.each([
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
         fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'AB12C' } });
 
-        expect(screen.getByRole('button', { name: /Submit/ })).toBeEnabled();
+        expect(screen.getByRole('button', { name: /Submit/ })).not.toHaveAttribute('aria-disabled');
     });
 
     it('posts the quote keyed by item id and then shows the thank-you screen', async () => {
@@ -201,7 +259,7 @@ describe.each([
         await fillValidQuote();
 
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
-        expect(screen.getByRole('button', { name: /Submit/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Submit/ })).toHaveAttribute('aria-disabled', 'true');
         expect(screen.getByText(/One item is in a different unit/)).toBeInTheDocument();
 
         // 4 pcs asked for, 3 to a bag: 2 bags, which is 6 pcs.
@@ -234,7 +292,7 @@ describe.each([
 
         expect(screen.queryByLabelText('How many pcs one BAG holds, for Angle bar')).not.toBeInTheDocument();
         expect(screen.getByText('BD 12.000')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Submit/ })).toBeEnabled();
+        expect(screen.getByRole('button', { name: /Submit/ })).not.toHaveAttribute('aria-disabled');
     });
 
     it('sends the logistics fields the supplier filled in', async () => {
