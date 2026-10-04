@@ -121,7 +121,7 @@ class LpoDeliveryService
      */
     public function documentData(PurchaseOrder $order): array
     {
-        $order->load(['supplier', 'items.item', 'createdBy', 'purchaseRequest']);
+        $order->load(['supplier', 'items.item', 'createdBy', 'approvedBy', 'purchaseRequest']);
 
         $company = $order->purchaseRequest?->resolveCompany();
 

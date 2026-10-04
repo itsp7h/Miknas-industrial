@@ -140,7 +140,7 @@ export default function App({
         >
             {/* So a page can ask what this person may do before offering it —
                 the sidebar had the answer and nothing below it could reach. */}
-            <AccessProvider isAdmin={isAdmin} permissions={permissions}>
+            <AccessProvider isAdmin={isAdmin} permissions={permissions} userId={currentUserId}>
             {/* The MPR create/edit forms live above the routes: the pipeline
                 board opens the new-request form, the detail page opens the edit
                 form, and neither owns it. */}

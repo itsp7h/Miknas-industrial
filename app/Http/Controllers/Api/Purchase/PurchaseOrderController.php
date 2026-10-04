@@ -11,8 +11,8 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseRequest;
 use App\Models\Supplier;
-use App\Notifications\Purchase\PurchaseOrderConfirmedNotification;
 use App\Services\DocumentNumberService;
+use App\Services\LpoApprovalService;
 use App\Services\LpoDeliveryService;
 use App\Support\IssuerSignature;
 use Illuminate\Http\Request;
@@ -33,7 +33,7 @@ class PurchaseOrderController extends Controller
     public function show(PurchaseOrder $purchaseOrder)
     {
         return new PurchaseOrderResource($purchaseOrder->load([
-            'supplier', 'items.item', 'createdBy', 'purchaseRequest', 'goodsReceiptNotes.warehouse',
+            'supplier', 'items.item', 'createdBy', 'approvedBy', 'purchaseRequest', 'goodsReceiptNotes.warehouse',
         ]));
     }
 
@@ -85,9 +85,8 @@ class PurchaseOrderController extends Controller
             return $order;
         });
 
-        if ($order->supplier && $order->supplier->whatsapp_number) {
-            $order->supplier->notify(new PurchaseOrderConfirmedNotification($order));
-        }
+        // Nothing goes to the supplier yet — not even the WhatsApp heads-up
+        // this used to send on creation. Approving the order is what sends it.
 
         event(new PurchaseOrderSaved($order));
 
@@ -163,6 +162,8 @@ class PurchaseOrderController extends Controller
         // stage has no say in it — gating it there would mean a send could
         // never be retried after the very action that sent it.
         abort_unless(auth()->user()?->can('pipeline.generate-lpo'), 403);
+        // Only an approved LPO goes to a supplier, and approving sends it.
+        abort_if($purchaseOrder->awaitingApproval(), 422, 'This LPO has not been approved yet. Approving it sends it to the supplier.');
 
         try {
             $delivery->deliver($purchaseOrder);
@@ -174,6 +175,24 @@ class PurchaseOrderController extends Controller
 
         return (new PurchaseOrderResource($purchaseOrder->load(['supplier', 'items.item'])))
             ->additional(['message' => 'LPO emailed to '.$purchaseOrder->sent_to.'.']);
+    }
+
+    /**
+     * Signs the LPO under Approved By and sends it to the supplier. Who may is
+     * the order's own rule (PurchaseOrder::approvalBlockedFor): the
+     * `pipeline.approve-lpo` square, and not the person who prepared it.
+     */
+    public function approve(PurchaseOrder $purchaseOrder, LpoApprovalService $approval)
+    {
+        $failed = $approval->approve($purchaseOrder, auth()->user());
+
+        $order = $purchaseOrder->fresh()->load([
+            'supplier', 'items.item', 'createdBy', 'approvedBy', 'purchaseRequest', 'goodsReceiptNotes.warehouse',
+        ]);
+
+        return (new PurchaseOrderResource($order))->additional(['message' => $failed
+            ? "{$order->po_number} approved, but not sent. {$failed} Send it from the order once that is fixed."
+            : "{$order->po_number} approved and emailed to {$order->sent_to}."]);
     }
 
     /**

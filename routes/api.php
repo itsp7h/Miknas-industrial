@@ -275,6 +275,7 @@ Route::prefix('v1')->group(function () {
             Route::post('orders', [PurchaseOrderController::class, 'store'])->middleware('permission:purchase-orders.create');
             Route::put('orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->middleware('permission:purchase-orders.edit');
             Route::post('orders/{purchaseOrder}/send', [PurchaseOrderController::class, 'send'])->middleware('permission:purchase-orders.edit');
+            Route::post('orders/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])->middleware('permission:pipeline.approve-lpo');
             Route::delete('orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy'])->middleware('permission:purchase-orders.delete');
 
             // `grns/form-options` must precede `grns/{grn}` or the wildcard eats it.
