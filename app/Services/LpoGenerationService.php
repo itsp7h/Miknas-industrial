@@ -64,7 +64,9 @@ class LpoGenerationService
             'purchase_request_id' => $purchaseRequest->id,
             'po_date' => now()->toDateString(),
             'total_amount' => $items->sum('total_price'),
-            'status' => 'sent',
+            // Not sent yet: it goes to the supplier when it is approved
+            // (LpoApprovalService), and a draft is what GRNs cannot be made against.
+            'status' => 'draft',
             'created_by' => auth()->id(),
             // Frozen here: the LPO keeps the signature it went out with.
             'prepared_signature' => auth()->user()?->signature_image,

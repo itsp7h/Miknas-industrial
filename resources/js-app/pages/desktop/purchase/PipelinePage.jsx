@@ -44,7 +44,7 @@ export default function PipelinePage() {
                 <>
                     <PipelineHeader request={request} onEdit={() => openEdit(id, applyUpdate)} />
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
-                        <StageTimeline request={request} onAction={setDialog} />
+                        <StageTimeline request={request} onAction={setDialog} onChanged={actions.reload} />
                         <PipelineSidebar request={request} />
                     </div>
                     <PipelineDialogs

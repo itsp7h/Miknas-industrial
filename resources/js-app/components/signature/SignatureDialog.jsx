@@ -4,7 +4,7 @@ import SignatureCapture from './SignatureCapture';
 import { apiPut } from '../../api/client';
 
 /**
- * Asked for when issuing an LPO without a saved signature. What is drawn or
+ * Asked for when issuing or approving an LPO without a saved signature. What is drawn or
  * uploaded here is saved to the profile, so it is asked for once; `onSaved`
  * then carries on with whatever was being issued.
  */
@@ -31,8 +31,8 @@ export default function SignatureDialog({ open, onClose, onSaved }) {
     return (
         <Modal open title="Add your signature" onClose={onClose}>
             <p style={{ fontSize: 13.5, color: '#475569', marginTop: 0, marginBottom: 14 }}>
-                Every LPO carries the signature of the person who issues it. Draw or upload yours once:
-                it is saved to your profile and used on every LPO you issue from now on.
+                Every LPO carries the signatures of the people who prepare and approve it. Draw or upload
+                yours once: it is saved to your profile and used on every LPO you sign from now on.
             </p>
             <SignatureCapture onChange={setImage} />
             {error && <p style={{ color: '#dc2626', fontSize: 13, marginTop: 8 }}>{error}</p>}

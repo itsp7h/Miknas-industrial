@@ -141,6 +141,11 @@ class PurchaseRequestDetailResource extends JsonResource
                 'supplier_name' => $po->supplier?->name,
                 'total_amount' => $po->total_amount,
                 'status' => $po->status ?? 'draft',
+                // Issued but not yet signed under Approved By, so not sent.
+                'awaiting_approval' => $po->awaitingApproval(),
+                'prepared_by_id' => $po->created_by,
+                'approved_by_name' => $po->approvedBy?->name,
+                'approved_at' => $po->approved_at?->toIso8601String(),
             ])->values()),
 
             // What has actually been received against those LPOs. Without this
@@ -172,6 +177,7 @@ class PurchaseRequestDetailResource extends JsonResource
                 'manageQuotes' => (bool) $user?->can('manageQuotes', $this->resource),
                 'award' => (bool) $user?->can('award', $this->resource),
                 'generateLpo' => (bool) $user?->can('generateLpo', $this->resource),
+                'approveLpo' => (bool) $user?->can('pipeline.approve-lpo'),
             ],
         ];
     }
