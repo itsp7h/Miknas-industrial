@@ -179,9 +179,9 @@ describe('QuoteWorkspace', () => {
         expect(await screen.findByText(/Ready to issue LPO/)).toBeInTheDocument();
     });
 
-    // Once an item is awarded, no other supplier on it can be — the Blade page
-    // hid their buttons rather than letting the request fail.
-    it('offers no other Award button once an item is awarded', async () => {
+    // A supplier invited late can come in cheaper: the other lines on an
+    // awarded item offer to take the award over, and the dialog says from whom.
+    it('offers to move the award to another supplier once an item is awarded', async () => {
         const awardedRows = [
             { ...row('Gulf Steel', 10), line: { ...row('Gulf Steel', 10).line, is_awarded: true, award_reason: 'Best terms', awarded_by: 'Zoe', awarded_at: '01 Sep 2026, 10:00' } },
             { ...row('Zenith', 9), is_min: true },
@@ -191,7 +191,7 @@ describe('QuoteWorkspace', () => {
                 items: [{
                     id: 11, description: 'Steel plate', quantity: 2, unit: 'PCS',
                     badge: { background: '#dcfce7', colour: '#15803d', label: '✓ Awarded to Gulf Steel' },
-                    has_award: true, rows: awardedRows,
+                    has_award: true, awarded_supplier: 'Gulf Steel', rows: awardedRows,
                 }],
             }),
         });
@@ -199,6 +199,10 @@ describe('QuoteWorkspace', () => {
 
         expect(await screen.findByText('✓ AWARDED')).toBeInTheDocument();
         expect(screen.queryByText('Award →')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Award instead →'));
+        expect(await screen.findByText(/Confirming moves the award to Zenith/)).toBeInTheDocument();
+        expect(screen.getByText('Gulf Steel', { selector: 'strong' })).toBeInTheDocument();
     });
 
     it('shows the award reason and offers to remove it', async () => {

@@ -48,6 +48,14 @@ export function FieldLabel({ children, htmlFor, color = '#64748b' }) {
     );
 }
 
+/** The outline every missing required field takes once a submit has found it. */
+export const MISSING = { borderColor: '#ef4444', background: '#fef2f2', boxShadow: '0 0 0 3px rgba(239,68,68,.15)' };
+
+/** Spread onto a required input: the red outline plus what tells a screen reader. */
+export const missingProps = (missing) => (missing
+    ? { 'aria-invalid': true, 'data-missing': 'true' }
+    : {});
+
 const inputStyle = {
     width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0',
     borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff',
@@ -59,7 +67,9 @@ const inputStyle = {
  * line: "Ref:" with a small box beside it, as the LPO prints it. Required —
  * the LPO shows it under the vendor's name.
  */
-export function ReferenceField({ meta, setField, disabled, errors = {} }) {
+export function ReferenceField({ meta, setField, disabled, errors = {}, missing = false }) {
+    const invalid = !!errors.reference || missing;
+
     return (
         <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -73,17 +83,23 @@ export function ReferenceField({ meta, setField, disabled, errors = {} }) {
                     maxLength={100}
                     placeholder="Quotation no."
                     disabled={disabled}
-                    aria-invalid={errors.reference ? true : undefined}
+                    aria-invalid={invalid ? true : undefined}
+                    data-missing={missing ? 'true' : undefined}
                     style={{
                         ...inputStyle,
                         width: 220, maxWidth: '100%', minWidth: 0, padding: '6px 10px',
                         ...(errors.reference ? { borderColor: '#ef4444' } : {}),
+                        ...(missing ? MISSING : {}),
                     }}
                     value={meta.reference}
                     onChange={(e) => setField('reference', e.target.value)}
                 />
             </div>
-            {errors.reference && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errors.reference}</div>}
+            {(errors.reference || missing) && (
+                <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>
+                    {errors.reference || 'Please enter your quotation reference number.'}
+                </div>
+            )}
         </div>
     );
 }
@@ -138,7 +154,7 @@ export function LogisticsFields({ compact, meta, setField, disabled }) {
     );
 }
 
-export function TermsBlock({ accepted, onChange, error, disabled }) {
+export function TermsBlock({ accepted, onChange, error, disabled, missing = false }) {
     return (
         <div style={{
             background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 10,
@@ -182,6 +198,7 @@ export function TermsBlock({ accepted, onChange, error, disabled }) {
                     display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer',
                     padding: '10px 12px', background: '#fff',
                     border: '1.5px solid #e2e8f0', borderRadius: 8,
+                    ...(missing ? MISSING : {}),
                 }}
             >
                 <input
@@ -189,6 +206,7 @@ export function TermsBlock({ accepted, onChange, error, disabled }) {
                     type="checkbox"
                     checked={accepted}
                     disabled={disabled}
+                    {...missingProps(missing)}
                     onChange={(e) => onChange(e.target.checked)}
                     style={{ width: 16, height: 16, marginTop: 1, accentColor: '#2563eb', flexShrink: 0, cursor: 'pointer' }}
                 />
@@ -197,13 +215,17 @@ export function TermsBlock({ accepted, onChange, error, disabled }) {
                 </span>
             </label>
 
-            {error && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6 }}>{error}</div>}
+            {(error || missing) && (
+                <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6 }}>
+                    {error || 'Please accept the terms and conditions.'}
+                </div>
+            )}
         </div>
     );
 }
 
-export function ConfirmCodeBlock({ compact, code, value, onChange, matches, error, disabled }) {
-    const borderColor = value.length === 0 ? '#fde68a' : (matches ? '#16a34a' : '#ef4444');
+export function ConfirmCodeBlock({ compact, code, value, onChange, matches, error, disabled, missing = false }) {
+    const borderColor = missing ? '#ef4444' : (value.length === 0 ? '#fde68a' : (matches ? '#16a34a' : '#ef4444'));
 
     return (
         <div style={{
@@ -247,8 +269,10 @@ export function ConfirmCodeBlock({ compact, code, value, onChange, matches, erro
                         disabled={disabled}
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
+                        {...missingProps(missing)}
                         style={{
                             ...inputStyle,
+                            ...(missing ? MISSING : {}),
                             padding: '11px 12px', borderColor,
                             fontSize: 16, fontWeight: 700, letterSpacing: '.12em',
                             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -256,7 +280,11 @@ export function ConfirmCodeBlock({ compact, code, value, onChange, matches, erro
                             textAlign: compact ? 'center' : 'left',
                         }}
                     />
-                    {error && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{error}</div>}
+                    {(error || missing) && (
+                        <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>
+                            {error || (value.trim() ? 'The code does not match. Copy it exactly as shown.' : 'Please paste the confirmation code.')}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -353,7 +381,7 @@ export function DescriptionEditor({ original, value, onChange, disabled, editing
  * in ours and how many they are supplying — so the order still lands in
  * stock in our unit. The unit price is then per theirs.
  */
-export function UnitField({ item, row, units, disabled, compact, onUnit, onFactor, onSupplierQty }) {
+export function UnitField({ item, row, units, disabled, compact, onUnit, onFactor, onSupplierQty, missing = {} }) {
     const ours = item.unit;
     if (!ours) return <span style={{ color: '#64748b' }}>—</span>;
 
@@ -393,7 +421,8 @@ export function UnitField({ item, row, units, disabled, compact, onUnit, onFacto
                             disabled={disabled}
                             value={row.factor}
                             onChange={(e) => onFactor(e.target.value)}
-                            style={{ ...box, width: 80 }}
+                            {...missingProps(missing.factor)}
+                            style={{ ...box, width: 80, ...(missing.factor ? MISSING : {}) }}
                         />
                         <span>{ours}</span>
                     </label>
@@ -405,7 +434,8 @@ export function UnitField({ item, row, units, disabled, compact, onUnit, onFacto
                             disabled={disabled}
                             value={row.supplierQty}
                             onChange={(e) => onSupplierQty(e.target.value)}
-                            style={{ ...box, width: 80 }}
+                            {...missingProps(missing.supplierQty)}
+                            style={{ ...box, width: 80, ...(missing.supplierQty ? MISSING : {}) }}
                         />
                         <span>{row.unit}</span>
                     </label>

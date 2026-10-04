@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { formatDate } from './pipelineStyles';
 import { liveOrders, orderLabel } from './purchaseOrders';
 import { goodsReceipts, receiptCaption } from './goodsReceipts';
+import ApproveLpoButton from '../order/ApproveLpoButton';
 
 const ACTION = {
     display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
@@ -83,10 +84,16 @@ function caption(stage, r, current) {
             return `${r.supplier_quotes.length} quote(s) received · ${r.sent_invitation_count} invited`;
         case 'comparison':
             return `${r.supplier_quotes.length} quote(s) ready to compare`;
-        case 'lpo':
-            return r.awarded_supplier_names.length
+        case 'lpo': {
+            const awarded = r.awarded_supplier_names.length
                 ? `Awarded to ${r.awarded_supplier_names.join(', ')}`
                 : '';
+            const waiting = liveOrders(r).filter((po) => po.awaiting_approval).length;
+
+            return current && waiting
+                ? [awarded, `${waiting} LPO(s) awaiting approval`].filter(Boolean).join(' · ')
+                : awarded;
+        }
         case 'receiving': {
             const summary = receiptCaption(r);
             if (summary) return summary;
@@ -97,7 +104,66 @@ function caption(stage, r, current) {
     }
 }
 
-function CurrentActions({ stage, r, on }) {
+/** Select / add suppliers, send the unsent invitations, see who is on it. */
+function SupplierActions({ r, on }) {
+    return (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
+                {r.rfq_invitations.length ? '+ Add Suppliers' : '🏭 Select Suppliers'}
+            </ActionButton>
+            {r.pending_invitation_count > 0 && (
+                <ActionButton onClick={() => on('send')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
+                    📨 Send ({r.pending_invitation_count})
+                </ActionButton>
+            )}
+            {/* Who is already on the request, without leaving the page.
+                Only once there is someone to look at. */}
+            {r.rfq_invitations.length > 0 && (
+                <ActionButton onClick={() => on('view-suppliers')} style={VIEW}>
+                    <EyeIcon /> View Suppliers ({r.rfq_invitations.length})
+                </ActionButton>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Issued LPOs waiting for their Approved By signature. Approving sends each to
+ * its supplier; once every one is approved the request moves to Receiving.
+ */
+function ApprovalActions({ r, on, onChanged }) {
+    const orders = liveOrders(r);
+    const waiting = orders.filter((po) => po.awaiting_approval);
+    const single = orders.length === 1;
+
+    return (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {waiting.map((po) => (
+                <ApproveLpoButton
+                    key={po.id}
+                    order={po}
+                    onApproved={onChanged}
+                    label={single ? '✍ Approve & Sign' : `✍ Approve ${orderLabel(po)}`}
+                    style={{ ...ACTION, background: '#7c3aed', color: '#fff' }}
+                />
+            ))}
+            {single
+                ? <Link to={`/app/purchase/orders/${orders[0].id}`} style={VIEW}><EyeIcon /> View LPO</Link>
+                : orders.map((po) => (
+                    <Link key={po.id} to={`/app/purchase/orders/${po.id}`} style={VIEW}>
+                        <EyeIcon /> {orderLabel(po)}
+                    </Link>
+                ))}
+            {r.permissions.generateLpo && (
+                <ActionButton onClick={() => on('lpo')} style={{ ...ACTION, background: '#fff', color: '#d97706', border: '1.5px solid #fde68a' }}>
+                    ↻ Re-issue LPO
+                </ActionButton>
+            )}
+        </div>
+    );
+}
+
+function CurrentActions({ stage, r, on, onChanged }) {
     const p = r.permissions;
     const signLabel = r.signature ? 'View Signature' : 'Sign';
     const SignIcon = r.signature ? EyeIcon : PenIcon;
@@ -115,26 +181,7 @@ function CurrentActions({ stage, r, on }) {
         case 'gm_approval':
             return sign || null;
         case 'rfq':
-            if (!p.manageRfq) return null;
-            return (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
-                        {r.rfq_invitations.length ? '+ Add Suppliers' : '🏭 Select Suppliers'}
-                    </ActionButton>
-                    {r.pending_invitation_count > 0 && (
-                        <ActionButton onClick={() => on('send')} style={{ ...ACTION, background: '#16a34a', color: '#fff' }}>
-                            📨 Send ({r.pending_invitation_count})
-                        </ActionButton>
-                    )}
-                    {/* Who is already on the request, without leaving the page.
-                        Only once there is someone to look at. */}
-                    {r.rfq_invitations.length > 0 && (
-                        <ActionButton onClick={() => on('view-suppliers')} style={VIEW}>
-                            <EyeIcon /> View Suppliers ({r.rfq_invitations.length})
-                        </ActionButton>
-                    )}
-                </div>
-            );
+            return p.manageRfq ? <SupplierActions r={r} on={on} /> : null;
         case 'quoting':
             return p.manageQuotes ? (
                 <Link to={`/app/purchase/requests/${r.id}/quotes`} style={{ ...ACTION, background: '#f59e0b', color: '#fff' }}>
@@ -150,6 +197,9 @@ function CurrentActions({ stage, r, on }) {
                 </Link>
             ) : null;
         case 'lpo':
+            if (liveOrders(r).some((po) => po.awaiting_approval)) {
+                return <ApprovalActions r={r} on={on} onChanged={onChanged} />;
+            }
             if (liveOrders(r).length) {
                 return <span style={{ ...ACTION, background: '#dcfce7', color: '#15803d' }}>✓ LPO(s) Issued</span>;
             }
@@ -198,7 +248,12 @@ function DoneActions({ stage, r, on }) {
                 ? <ActionButton onClick={() => on('signature')} style={VIEW}><EyeIcon /> View Signature</ActionButton>
                 : null;
         case 'rfq':
-            return <ActionButton onClick={() => on('view-suppliers')} style={VIEW}><EyeIcon /> View Suppliers</ActionButton>;
+            // Suppliers can still be added until an LPO is issued — a quote
+            // came back too high, or a supplier never answered — so the step
+            // keeps its actions after the request has moved past it.
+            return p.manageRfq
+                ? <SupplierActions r={r} on={on} />
+                : <ActionButton onClick={() => on('view-suppliers')} style={VIEW}><EyeIcon /> View Suppliers</ActionButton>;
         case 'quoting':
             return p.manageQuotes
                 ? <Link to={`/app/purchase/requests/${r.id}/quotes`} style={VIEW}><EyeIcon /> View Quotes ({r.supplier_quotes.length})</Link>
@@ -260,8 +315,12 @@ function DoneActions({ stage, r, on }) {
     }
 }
 
-/** `onAction(kind)` opens the matching dialog; the page owns them. */
-export default function StageTimeline({ request, compact = false, onAction = () => {} }) {
+/**
+ * `onAction(kind)` opens the matching dialog; the page owns them. `onChanged`
+ * refetches the request after an action the timeline carries out itself
+ * (approving an LPO).
+ */
+export default function StageTimeline({ request, compact = false, onAction = () => {}, onChanged = () => {} }) {
     const stages = request.stages;
     const index = request.stage_index;
 
@@ -332,7 +391,7 @@ export default function StageTimeline({ request, compact = false, onAction = () 
                                             <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{text}</div>
                                         )}
                                     </div>
-                                    {current && <CurrentActions stage={stage} r={request} on={onAction} />}
+                                    {current && <CurrentActions stage={stage} r={request} on={onAction} onChanged={onChanged} />}
                                     {done && <DoneActions stage={stage} r={request} on={onAction} />}
                                 </div>
                             </div>

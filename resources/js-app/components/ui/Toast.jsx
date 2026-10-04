@@ -26,7 +26,12 @@ export function ToastProvider({ children }) {
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
-            <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
+            {/* Above the minimized request forms docked in this corner, when there
+                are any: the dock publishes its height as --request-dock-height. */}
+            <div
+                className="fixed right-4 flex flex-col gap-2"
+                style={{ bottom: 'calc(1rem + var(--request-dock-height, 0px))', zIndex: 9995 }}
+            >
                 {toasts.map((t) => (
                     <div
                         key={t.id}

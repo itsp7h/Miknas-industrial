@@ -336,6 +336,22 @@ describe('SignatureModal', () => {
         expect(screen.queryByLabelText('Signature pad')).not.toBeInTheDocument();
     });
 
+    it('says when it was signed: the date and the time', () => {
+        const request = base({
+            // No offset, so it reads the same in any test timezone.
+            signature: { ...SIGNED, signed_at: '2026-09-30', signed_at_time: '2026-09-30T14:35:00' },
+        });
+        wrap(<SignatureModal open request={request} onClose={() => {}} onSubmit={() => {}} />);
+
+        expect(screen.getByText(/Signed by/)).toHaveTextContent('Signed by Zoe Admin on 30 Sep 2026, 14:35.');
+    });
+
+    it('falls back to the date alone for a payload without the time', () => {
+        wrap(<SignatureModal open request={base({ signature: SIGNED })} onClose={() => {}} onSubmit={() => {}} />);
+
+        expect(screen.getByText(/Signed by/)).toHaveTextContent('Signed by Zoe Admin on 01 Sep 2026.');
+    });
+
     // Approving and refusing are the same person's decision at the same gate,
     // so refusing lives in this dialog rather than on the timeline.
     it('offers rejection only when the caller supplies the action', () => {

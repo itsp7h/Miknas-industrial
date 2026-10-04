@@ -312,7 +312,18 @@
         </td>
         <td class="sig-gap"></td>
         <td class="sig-block">
-            <table class="sig-area"><tr><td></td></tr></table>
+            <table class="sig-area"><tr>
+                <td>
+                    {{-- The approver's signature as it was when they approved it.
+                         Empty until then — and an unapproved LPO is never sent. --}}
+                    @if ($order->approved_signature)
+                        <img class="sig-img" src="{{ $order->approved_signature }}" alt="Signature">
+                    @endif
+                    @if ($order->approved_at)
+                        <div class="sig-name">{{ $order->approvedBy->name ?? '—' }}</div>
+                    @endif
+                </td>
+            </tr></table>
             <div class="sig-line">Approved By</div>
         </td>
     </tr>

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Services\PurchaseStageService;
 use App\Services\RfqInvitationService;
+use App\Support\LocalTime;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -68,6 +69,10 @@ class PurchaseRequestDetailResource extends JsonResource
             'signature' => $this->whenLoaded('signature', fn () => $this->signature ? [
                 'signed_by_name' => $this->signature->signedBy?->name,
                 'signed_at' => $this->signature->signed_at?->toDateString(),
+                // The moment itself, for the signature box: the date alone does
+                // not say when on the day the GM signed. ISO 8601 with its
+                // offset, so the browser shows it in local time.
+                'signed_at_time' => $this->signature->signed_at?->toIso8601String(),
                 // The captured drawing, so "View Signature" can show the thing
                 // itself rather than just who signed.
                 'image' => $this->signature->signature_image,
@@ -83,7 +88,7 @@ class PurchaseRequestDetailResource extends JsonResource
                 // the same accounting the award lines carry.
                 'selected_by' => $inv->selectedBy?->name,
                 'sent_by' => $inv->sentBy?->name,
-                'sent_at' => $inv->sent_at?->format('d M Y, H:i'),
+                'sent_at' => LocalTime::format($inv->sent_at),
                 // The supplier's own portal link, which the view-suppliers modal
                 // offers for copying when an invitation cannot be auto-sent.
                 'portal_url' => route('rfq.show', $inv->token),
@@ -136,6 +141,11 @@ class PurchaseRequestDetailResource extends JsonResource
                 'supplier_name' => $po->supplier?->name,
                 'total_amount' => $po->total_amount,
                 'status' => $po->status ?? 'draft',
+                // Issued but not yet signed under Approved By, so not sent.
+                'awaiting_approval' => $po->awaitingApproval(),
+                'prepared_by_id' => $po->created_by,
+                'approved_by_name' => $po->approvedBy?->name,
+                'approved_at' => $po->approved_at?->toIso8601String(),
             ])->values()),
 
             // What has actually been received against those LPOs. Without this
@@ -167,6 +177,7 @@ class PurchaseRequestDetailResource extends JsonResource
                 'manageQuotes' => (bool) $user?->can('manageQuotes', $this->resource),
                 'award' => (bool) $user?->can('award', $this->resource),
                 'generateLpo' => (bool) $user?->can('generateLpo', $this->resource),
+                'approveLpo' => (bool) $user?->can('pipeline.approve-lpo'),
             ],
         ];
     }

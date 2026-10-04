@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\LocalTime;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,7 +30,7 @@ class RfqPortalResource extends JsonResource
             'supplier_name' => $this->supplier->name,
             'expires_at' => $this->expires_at?->toIso8601String(),
             'expires_at_text' => $this->expires_at?->format('d M Y'),
-            'submitted_at_text' => $this->quote?->submitted_at?->format('d M Y, H:i'),
+            'submitted_at_text' => LocalTime::format($this->quote?->submitted_at),
 
             'request' => [
                 'request_number' => $purchaseRequest->request_number,

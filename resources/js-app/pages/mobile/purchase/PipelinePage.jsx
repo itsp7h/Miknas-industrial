@@ -36,7 +36,7 @@ export default function PipelinePage() {
                     <PipelineHeader request={request} compact onEdit={() => openEdit(id, applyUpdate)} />
                     {/* Single column: the timeline is already a vertical stepper, and
                         the sidebar cards linearise beneath it in the same order. */}
-                    <StageTimeline request={request} compact onAction={setDialog} />
+                    <StageTimeline request={request} compact onAction={setDialog} onChanged={actions.reload} />
                     <div style={{ marginTop: 16 }}>
                         <PipelineSidebar request={request} />
                     </div>

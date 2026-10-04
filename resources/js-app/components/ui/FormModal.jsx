@@ -152,15 +152,29 @@ export function FormSection({ accent, title, action = null, last = false, childr
     );
 }
 
+const HEADER_BUTTON = {
+    color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%',
+    width: '2rem', height: '2rem', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1,
+};
+
+/**
+ * `onMinimize`, when given, adds a minimize button to the header, and a click on
+ * the backdrop or Escape minimizes instead of closing — a long form is not lost
+ * to a stray click. `onCancel` is what Cancel and × do (a caller that asks
+ * before discarding passes it); both fall back to `onClose`.
+ */
 export default function FormModal({
     title, subtitle, gradient, accent, icon,
     submitLabel, submitting = false, formId,
-    messages = [], onClose, maxWidth = '58rem', children,
+    messages = [], onClose, onMinimize, onCancel, maxWidth = '58rem', children,
 }) {
     const compact = useViewport() === 'mobile';
+    const dismiss = onMinimize ?? onClose;
+    const cancel = onCancel ?? onClose;
 
     useEffect(() => {
-        const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+        const onKey = (event) => { if (event.key === 'Escape') dismiss(); };
         document.addEventListener('keydown', onKey);
         document.body.style.overflow = 'hidden';
 
@@ -168,11 +182,11 @@ export default function FormModal({
             document.removeEventListener('keydown', onKey);
             document.body.style.overflow = '';
         };
-    }, [onClose]);
+    }, [dismiss]);
 
     return (
         <div
-            onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+            onClick={(event) => { if (event.target === event.currentTarget) dismiss(); }}
             style={{
                 display: 'flex', position: 'fixed', inset: 0, zIndex: 9999, alignItems: 'center',
                 justifyContent: 'center', padding: '1rem', background: 'rgba(15,23,42,0.55)',
@@ -204,16 +218,19 @@ export default function FormModal({
                             )}
                         </div>
                     </div>
-                    <button
-                        type="button" onClick={onClose} aria-label="Close"
-                        style={{
-                            color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%',
-                            width: '2rem', height: '2rem', display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1,
-                        }}
-                    >
-                        ×
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {onMinimize && (
+                            <button
+                                type="button" onClick={onMinimize} aria-label="Minimize" title="Minimize — your entries are kept"
+                                style={HEADER_BUTTON}
+                            >
+                                –
+                            </button>
+                        )}
+                        <button type="button" onClick={cancel} aria-label="Close" style={HEADER_BUTTON}>
+                            ×
+                        </button>
+                    </div>
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto', padding: compact ? '1rem' : '1.5rem' }}>
@@ -247,7 +264,7 @@ export default function FormModal({
                         {submitting ? 'Saving…' : submitLabel}
                     </button>
                     <button
-                        type="button" onClick={onClose} className="btn-secondary"
+                        type="button" onClick={cancel} className="btn-secondary"
                         style={compact ? { width: '100%', justifyContent: 'center' } : undefined}
                     >
                         Cancel

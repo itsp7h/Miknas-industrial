@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Purchase;
 
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\RfqInvitation;
@@ -198,6 +199,76 @@ class PipelineActionsTest extends TestCase
         $this->assertSame(2, $response->json('data.sent_invitation_count'));
     }
 
+    /** An LPO on the request, in the given status. */
+    private function orderFor(PurchaseRequest $pr, string $status = 'sent'): PurchaseOrder
+    {
+        return PurchaseOrder::create([
+            'po_number' => 'PO-'.random_int(10000, 99999), 'supplier_id' => $this->supplier()->id,
+            'purchase_request_id' => $pr->id, 'po_date' => '2026-10-01', 'total_amount' => 5,
+            'status' => $status, 'created_by' => User::factory()->create()->id,
+        ]);
+    }
+
+    /**
+     * Quotes come back too high, or a supplier never answers: the fix is to ask
+     * someone else, and that stays open until an LPO is issued.
+     */
+    public function test_suppliers_can_be_added_after_quotes_are_in_without_rolling_the_stage_back(): void
+    {
+        foreach (['quoting', 'comparison', 'lpo'] as $stage) {
+            $pr = $this->request($stage);
+            $late = $this->supplier(['name' => 'Late '.$stage]);
+
+            $response = $this->actingAs($this->officer())
+                ->postJson("/api/v1/purchase/pipeline/{$pr->id}/suppliers", [
+                    'mode' => 'global', 'supplier_ids' => [$late->id],
+                ])->assertOk();
+
+            $this->assertSame($stage, $pr->fresh()->stage, "selecting at {$stage} moved the stage");
+            $this->assertSame(1, $response->json('data.pending_invitation_count'));
+        }
+    }
+
+    public function test_sending_a_late_invitation_does_not_roll_the_stage_back(): void
+    {
+        Notification::fake();
+        $this->workingMailAccount();
+        $pr = $this->request('comparison');
+        RfqInvitation::factory()->create([
+            'purchase_request_id' => $pr->id, 'supplier_id' => $this->supplier()->id, 'status' => 'pending',
+        ]);
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/send-invitations")->assertOk();
+
+        $this->assertSame('comparison', $pr->fresh()->stage);
+    }
+
+    public function test_suppliers_cannot_be_added_once_an_lpo_is_issued(): void
+    {
+        $pr = $this->request('lpo');
+        $this->orderFor($pr);
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/suppliers", [
+                'mode' => 'global', 'supplier_ids' => [$this->supplier()->id],
+            ])->assertForbidden();
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/send-invitations")->assertForbidden();
+    }
+
+    public function test_a_cancelled_lpo_does_not_close_supplier_selection(): void
+    {
+        $pr = $this->request('lpo');
+        $this->orderFor($pr, 'cancelled');
+
+        $this->actingAs($this->officer())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/suppliers", [
+                'mode' => 'global', 'supplier_ids' => [$this->supplier()->id],
+            ])->assertOk();
+    }
+
     /**
      * Choosing who gets asked is a decision, and it carries a name.
      *
@@ -293,6 +364,20 @@ class PipelineActionsTest extends TestCase
             ->postJson("/api/v1/purchase/pipeline/{$pr->id}/send-invitations")->assertStatus(422);
 
         $this->assertSame('rfq', $pr->fresh()->stage);
+    }
+
+    /** The signature box shows when the GM signed, not only the day. */
+    public function test_the_signature_carries_the_time_it_was_signed(): void
+    {
+        $this->travelTo(now()->setDateTime(2026, 9, 30, 11, 35, 20));
+        $pr = $this->request('gm_approval');
+
+        $response = $this->actingAs($this->approver())
+            ->postJson("/api/v1/purchase/pipeline/{$pr->id}/signature", ['signature_image' => 'data:image/png;base64,iVBORw0KGgo='])
+            ->assertOk();
+
+        $this->assertSame('2026-09-30', $response->json('data.signature.signed_at'));
+        $this->assertSame('2026-09-30T11:35:20+00:00', $response->json('data.signature.signed_at_time'));
     }
 
     public function test_the_signature_is_recorded_with_who_signed_and_advances_the_stage(): void

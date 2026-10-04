@@ -55,13 +55,14 @@ class LpoDeliveryService
                 throw new RuntimeException('No enabled mail account is configured.');
             }
 
-            $pdf = Pdf::loadView('purchase.orders.pdf', $this->documentData($order))
+            $data = $this->documentData($order);
+            $pdf = Pdf::loadView('purchase.orders.pdf', $data)
                 ->setPaper('a4', 'portrait')
                 ->output();
 
             Mail::mailer($account->name)
                 ->to($supplier->email)
-                ->send(new LpoIssuedMail($order, $pdf));
+                ->send(new LpoIssuedMail($order, $pdf, $data['total'], $data['vatRate']));
         } catch (\Throwable $e) {
             Log::error('LPO email failed to send', [
                 'purchase_order_id' => $order->id,
@@ -120,15 +121,12 @@ class LpoDeliveryService
      */
     public function documentData(PurchaseOrder $order): array
     {
-        $order->load(['supplier', 'items.item', 'createdBy', 'purchaseRequest']);
+        $order->load(['supplier', 'items.item', 'createdBy', 'approvedBy', 'purchaseRequest']);
 
         $company = $order->purchaseRequest?->resolveCompany();
 
-        $subtotal = (float) $order->items->sum('total_amount');
-        $vatRate = (float) Setting::get('vat_rate', 0);
-        $vatAmount = $vatRate > 0 ? round($subtotal * $vatRate / 100, 3) : 0;
-        $discount = 0;
-        $total = $subtotal + $vatAmount - $discount;
+        ['subtotal' => $subtotal, 'vatRate' => $vatRate, 'vatAmount' => $vatAmount,
+            'discount' => $discount, 'total' => $total] = $this->totals($order);
 
         // Ship To's contact numbers: the MPR keeps only the person's name, so
         // they are looked up on System → Requested By, where names are unique.
@@ -149,6 +147,27 @@ class LpoDeliveryService
             'order', 'company', 'subtotal', 'vatRate', 'vatAmount', 'discount', 'total',
             'shipToPhones', 'shipToAddress', 'logo', 'stamp',
         );
+    }
+
+    /**
+     * What the LPO charges, VAT included. The order's own total_amount is the
+     * lines before VAT, so anything telling the supplier a figure — the PDF,
+     * the email's summary, the WhatsApp heads-up — reads it from here, or the
+     * message and the attached document disagree.
+     *
+     * @return array{subtotal: float, vatRate: float, vatAmount: float, discount: float, total: float}
+     */
+    public function totals(PurchaseOrder $order): array
+    {
+        $subtotal = (float) $order->items()->sum('total_amount');
+        $vatRate = (float) Setting::get('vat_rate', 0);
+        $vatAmount = $vatRate > 0 ? round($subtotal * $vatRate / 100, 3) : 0;
+        $discount = 0;
+
+        return [
+            'subtotal' => $subtotal, 'vatRate' => $vatRate, 'vatAmount' => $vatAmount,
+            'discount' => $discount, 'total' => $subtotal + $vatAmount - $discount,
+        ];
     }
 
     /**

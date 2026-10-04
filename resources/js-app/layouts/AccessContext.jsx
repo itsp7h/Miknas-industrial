@@ -13,14 +13,17 @@ import { createContext, useContext, useMemo } from 'react';
  * Gate::before in AppServiceProvider. The API checks again regardless: this
  * decides what to *offer*, never what to allow.
  */
-const AccessContext = createContext({ isAdmin: false, permissions: [], can: () => false });
+const AccessContext = createContext({ isAdmin: false, permissions: [], userId: null, can: () => false });
 
-export function AccessProvider({ isAdmin = false, permissions = [], children }) {
+// `userId` is for rules about *whose* record it is — an LPO's approver must not
+// be the person who prepared it.
+export function AccessProvider({ isAdmin = false, permissions = [], userId = null, children }) {
     const value = useMemo(() => ({
         isAdmin,
         permissions,
+        userId: userId == null ? null : Number(userId),
         can: (permission) => isAdmin || (!!permission && permissions.includes(permission)),
-    }), [isAdmin, permissions]);
+    }), [isAdmin, permissions, userId]);
 
     return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;
 }

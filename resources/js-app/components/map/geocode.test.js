@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { addressParts, addressOfPoint, findAddress, pacing, searchPlaces } from './geocode';
 
-beforeEach(() => { pacing.gapMs = 0; });
+beforeEach(() => { pacing.gapMs = 0; pacing.nextSlot = 0; });
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -132,19 +132,33 @@ describe('findAddress', () => {
     });
 
     // Nominatim's usage policy: one request a second at most.
+    //
+    // On the fake clock: measured on the real one, a timer that fired a
+    // millisecond early on a busy CI runner failed this (54 ms against 55).
     it('spaces its requests out', async () => {
-        pacing.gapMs = 60;
-        const times = [];
-        vi.stubGlobal('fetch', vi.fn(() => {
-            times.push(Date.now());
+        vi.useFakeTimers();
+        try {
+            pacing.gapMs = 1000;
+            const times = [];
+            vi.stubGlobal('fetch', vi.fn(() => {
+                times.push(Date.now());
 
-            return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-        }));
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+            }));
 
-        await findAddress({ road: 'Road 17', block: '338', city: 'Manama' });
+            const search = findAddress({ road: 'Road 17', block: '338', city: 'Manama' });
+            await vi.runAllTimersAsync();
+            await search;
 
-        expect(times).toHaveLength(3);
-        expect(times[1] - times[0]).toBeGreaterThanOrEqual(55);
-        expect(times[2] - times[1]).toBeGreaterThanOrEqual(55);
+            expect(times).toHaveLength(3);
+            expect(times[1] - times[0]).toBeGreaterThanOrEqual(1000);
+            expect(times[2] - times[1]).toBeGreaterThanOrEqual(1000);
+        } finally {
+            // The slot was set on the fake clock, ahead of the real one; left
+            // there, the next request anywhere in this file would wait for it.
+            pacing.gapMs = 0;
+            pacing.nextSlot = 0;
+            vi.useRealTimers();
+        }
     });
 });

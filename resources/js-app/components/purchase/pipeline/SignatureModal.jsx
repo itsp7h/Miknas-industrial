@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import Modal from '../../ui/Modal';
+import { datetime } from '../requests/RequestSheet';
+import { formatDate } from './pipelineStyles';
+
+/** "30 Sep 2026, 14:35" in local time; just the date for a payload without the time. */
+function signedOn(signature) {
+    // "Sep", as formatDate writes it, whichever spelling the browser's en-GB uses.
+    if (signature.signed_at_time) return datetime(signature.signed_at_time).replace('Sept', 'Sep');
+
+    return signature.signed_at ? formatDate(signature.signed_at) : '';
+}
 
 /**
  * Blade's signature pad, ported: draw with a mouse or a finger, clear, confirm.
@@ -141,7 +151,7 @@ export default function SignatureModal({ open, request, onClose, onSubmit, onRej
                     </div>
                     <p style={{ fontSize: 13, color: '#475569', marginTop: 12 }}>
                         Signed by <strong>{signature.signed_by_name ?? '—'}</strong>
-                        {signature.signed_at ? ` on ${signature.signed_at}` : ''}.
+                        {signedOn(signature) ? <> on <strong>{signedOn(signature)}</strong></> : ''}.
                     </p>
                     <div className="mt-5 flex justify-end">
                         <button type="button" onClick={onClose} className="btn-secondary">Close</button>

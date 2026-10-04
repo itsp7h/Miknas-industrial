@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Purchase;
 
+use App\Events\PurchaseRequestStageChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PurchaseRequestBoardResource;
 use App\Http\Resources\PurchaseRequestDetailResource;
@@ -9,7 +10,6 @@ use App\Models\PurchaseRequest;
 use App\Models\PurchaseSignature;
 use App\Models\Supplier;
 use App\Policies\PurchaseRequestPolicy;
-use App\Services\LpoDeliveryService;
 use App\Services\LpoGenerationService;
 use App\Services\PurchaseStageService;
 use App\Services\RfqInvitationService;
@@ -50,7 +50,7 @@ class PurchasePipelineController extends Controller
             'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
             'rfqInvitations.supplier', 'rfqInvitations.selectedBy', 'rfqInvitations.sentBy',
             'supplierQuotes.supplier', 'supplierQuotes.items',
-            'purchaseOrders.supplier', 'purchaseOrders.goodsReceiptNotes.warehouse',
+            'purchaseOrders.supplier', 'purchaseOrders.approvedBy', 'purchaseOrders.goodsReceiptNotes.warehouse',
         ]);
 
         return new PurchaseRequestDetailResource($purchaseRequest);
@@ -138,7 +138,9 @@ class PurchasePipelineController extends Controller
             }
         }
 
-        $stages->setStage($purchaseRequest, 'rfq');
+        // Suppliers added after quotes are in must not roll the request back:
+        // the quotes and any awards already made still stand.
+        $stages->setStageIfNotPast($purchaseRequest, 'rfq');
 
         return $this->fresh($purchaseRequest, $added.' supplier(s) added. Now send them the quote request links.');
     }
@@ -169,7 +171,7 @@ class PurchasePipelineController extends Controller
         // told why, rather than being shown a success it did not get.
         abort_if($sent === 0, 422, 'Could not send any invitation. '.reset($failed));
 
-        $stages->setStage($purchaseRequest, 'quoting');
+        $stages->setStageIfNotPast($purchaseRequest, 'quoting');
 
         return $this->fresh($purchaseRequest, $failed
             ? $sent.' of '.$pending->count().' supplier(s) notified. Could not reach '
@@ -178,16 +180,13 @@ class PurchasePipelineController extends Controller
     }
 
     /**
-     * Issuing an LPO is not finished until the supplier has it. Generating the
-     * order and emailing it were separate ideas before — the second one written
-     * and never wired up — so an LPO was created with status 'sent' and the
-     * supplier heard nothing.
+     * Issues the LPO(s), signed under Prepared By. They are not sent: an LPO
+     * reaches its supplier only once someone else approves it under Approved
+     * By (PurchaseOrderController::approve).
      */
     public function generateLpo(
         PurchaseRequest $purchaseRequest,
-        LpoGenerationService $service,
-        PurchaseStageService $stages,
-        LpoDeliveryService $delivery
+        LpoGenerationService $service
     ) {
         $this->authorize('generateLpo', $purchaseRequest);
         // Every LPO carries its issuer's signature, so none is issued without one.
@@ -201,17 +200,16 @@ class PurchasePipelineController extends Controller
             abort(422, $e->getMessage());
         }
 
-        $stages->setStage($purchaseRequest, 'receiving');
+        // The request stays at 'lpo' until the LPOs are approved — approving is
+        // what sends them and moves it to Receiving (LpoApprovalService). The
+        // event is the invalidation signal other open screens refetch on.
+        event(new PurchaseRequestStageChanged($purchaseRequest->id, $purchaseRequest->request_number, $purchaseRequest->stage));
 
-        // A send that fails does not undo the LPO — the order is legitimately
-        // issued, and the supplier can be retried from the order itself. But it
-        // is said out loud rather than left in the log.
-        $failed = $delivery->deliverAll($orders);
-        $issued = $orders->count().' LPO(s) generated: '.$orders->pluck('po_number')->implode(', ');
-
-        return $this->fresh($purchaseRequest, $failed
-            ? $issued.'. Could not email '.implode('; ', $failed).' Re-send from the order once that is fixed.'
-            : $issued.', and emailed to the supplier(s).');
+        return $this->fresh(
+            $purchaseRequest,
+            $orders->count().' LPO(s) issued: '.$orders->pluck('po_number')->implode(', ')
+                .'. Each goes to its supplier once it is approved.'
+        );
     }
 
     public function storeSignature(Request $request, PurchaseRequest $purchaseRequest, PurchaseStageService $stages)
@@ -288,7 +286,7 @@ class PurchasePipelineController extends Controller
             'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
             'rfqInvitations.supplier', 'rfqInvitations.selectedBy', 'rfqInvitations.sentBy',
             'supplierQuotes.supplier', 'supplierQuotes.items',
-            'purchaseOrders.supplier', 'purchaseOrders.goodsReceiptNotes.warehouse',
+            'purchaseOrders.supplier', 'purchaseOrders.approvedBy', 'purchaseOrders.goodsReceiptNotes.warehouse',
         ]);
 
         return (new PurchaseRequestDetailResource($purchaseRequest))

@@ -95,8 +95,8 @@ export default function PipelineDialogs({ open, onClose, request, actions }) {
                 open={open === 'lpo'}
                 title={request.purchase_orders.length ? 'Re-issue the LPO?' : 'Issue the LPO?'}
                 body={request.purchase_orders.length
-                    ? 'A new LPO will be generated from the current awards and sent to the supplier(s). The existing one stays on record.'
-                    : 'An LPO will be generated from the awarded items and sent to each awarded supplier.'}
+                    ? 'A new LPO will be generated from the current awards, signed by you under Prepared By. It goes to the supplier(s) once it is approved. The existing one stays on record.'
+                    : 'An LPO will be generated from the awarded items, signed by you under Prepared By. Each goes to its supplier once someone else approves it.'}
                 onConfirm={confirmLpo}
                 onCancel={onClose}
             />

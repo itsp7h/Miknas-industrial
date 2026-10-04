@@ -288,7 +288,7 @@
             @if($purchaseRequest->signature)
                 <img class="sig-img" src="{{ $purchaseRequest->signature->signature_image }}" alt="Signature">
                 <div class="sig-name">{{ $purchaseRequest->signature->signedBy?->name ?? '—' }}</div>
-                <div class="sig-meta">Signed {{ $purchaseRequest->signature->signed_at?->format('d M Y, H:i') }}</div>
+                <div class="sig-meta">Signed {{ \App\Support\LocalTime::format($purchaseRequest->signature->signed_at) }}</div>
             @else
                 <div class="sig-meta" style="margin-top:14px;">Not yet signed</div>
             @endif
@@ -297,7 +297,7 @@
 
     <div class="footer">
         <span>SteelERP — Confidential</span>
-        <span>Printed by: {{ Auth::user()->name ?? '—' }} · {{ now()->format('d M Y, H:i') }}</span>
+        <span>Printed by: {{ Auth::user()->name ?? '—' }} · {{ \App\Support\LocalTime::now()->format('d M Y, H:i') }}</span>
     </div>
 
 </div>

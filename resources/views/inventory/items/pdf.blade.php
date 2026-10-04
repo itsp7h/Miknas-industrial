@@ -71,7 +71,7 @@
     </div>
     <div class="report-info">
         <div class="report-title">Inventory Items List</div>
-        <div class="report-meta">Generated: {{ now()->format('d M Y, H:i') }}</div>
+        <div class="report-meta">Generated: {{ \App\Support\LocalTime::now()->format('d M Y, H:i') }}</div>
         <div class="report-meta">Total Records: {{ $items->count() }}</div>
     </div>
 </div>
