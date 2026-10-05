@@ -131,7 +131,8 @@ return [
             'actions' => ['view', 'create', 'edit', 'delete'],
             // Starting an order and marking it complete move it through the
             // floor, which is not the same as correcting its details — and
-            // completing one posts finished goods into stock.
+            // completing one closes it for good and messages the operations
+            // people on WhatsApp.
             'extra' => [
                 'run' => 'Start and complete orders',
             ],
