@@ -151,6 +151,8 @@ class Item extends Model
         ['bill_of_materials', 'raw_material_id', 'bills of materials'],
         ['sales_order_items', 'item_id', 'sales orders'],
         ['delivery_note_items', 'item_id', 'delivery notes'],
+        ['production_runs', 'item_id', 'production runs'],
+        ['production_run_items', 'item_id', 'production runs'],
         ['bill_of_materials', 'product_id', 'bills of materials'],
         ['stock_movements', 'item_id', 'stock movements'],
     ];
