@@ -153,6 +153,21 @@ class ItemControllerTest extends TestCase
         Event::assertDispatched(ItemSaved::class);
     }
 
+    /** BHD runs to three decimals; a cost price must come back as entered. */
+    public function test_a_cost_price_keeps_its_third_decimal(): void
+    {
+        $id = $this->actingAs($this->actingUser())
+            ->postJson('/api/v1/inventory/items', $this->payload(['cost_price' => 1.588]))
+            ->assertCreated()
+            ->assertJsonPath('data.cost_price', '1.588')
+            ->json('data.id');
+
+        $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/inventory/items')
+            ->assertJsonPath('data.0.cost_price', '1.588');
+        $this->assertSame('1.588', Item::find($id)->cost_price);
+    }
+
     public function test_it_generates_a_sequential_item_code_and_ignores_a_client_supplied_one(): void
     {
         $response = $this->actingAs($this->actingUser())
