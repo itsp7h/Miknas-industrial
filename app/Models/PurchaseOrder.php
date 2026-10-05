@@ -38,7 +38,9 @@ class PurchaseOrder extends Model
     /**
      * Why $user may not approve this LPO, or null when they may. The approver
      * must be someone other than the person who prepared it — two signatures
-     * from one hand are one signature.
+     * from one hand are one signature — unless they are an Admin, who may sign
+     * both: an Admin can grant themselves anything anyway, so refusing them
+     * only meant an LPO they raised could sit unsent.
      */
     public function approvalBlockedFor(?User $user): ?string
     {
@@ -48,7 +50,7 @@ class PurchaseOrder extends Model
         if (! $user?->can('pipeline.approve-lpo')) {
             return 'You do not have permission to approve LPOs';
         }
-        if ($this->created_by && (int) $this->created_by === (int) $user->id) {
+        if ($this->created_by && (int) $this->created_by === (int) $user->id && ! $user->hasRole('Admin')) {
             return 'You prepared this LPO, so someone else must approve it';
         }
 

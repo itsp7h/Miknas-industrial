@@ -22,13 +22,16 @@ export default function EditAccessModal({ user, profiles, grid, onClose, onSave 
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
+    // An Admin passes every check whatever is ticked, so their grid is shown
+    // full and locked rather than as an empty list.
+    const isAdminProfile = profile === 'Admin';
 
     useEffect(() => {
         // Someone assigned two roles under the old form keeps the first; the
         // save then writes back the one profile, which is the point.
         setProfile(user?.roles?.[0] ?? '');
         setSelectedPermissions(user?.permissions ?? []);
-        setAdvancedOpen((user?.permissions ?? []).length > 0);
+        setAdvancedOpen((user?.permissions ?? []).length > 0 || (user?.roles ?? []).includes('Admin'));
         setError('');
     }, [user]);
 
@@ -88,7 +91,9 @@ export default function EditAccessModal({ user, profiles, grid, onClose, onSave 
                     }}
                 >
                     {advancedOpen ? '▾' : '▸'} Tab access
-                    {selectedPermissions.length > 0 && ` (${selectedPermissions.length} granted)`}
+                    {isAdminProfile
+                        ? ' (all — Admin)'
+                        : selectedPermissions.length > 0 && ` (${selectedPermissions.length} granted)`}
                 </button>
 
                 {advancedOpen && (
@@ -98,7 +103,16 @@ export default function EditAccessModal({ user, profiles, grid, onClose, onSave 
                             this, nothing else. The profile above fills it in; every square is
                             yours to change.
                         </p>
-                        <AccessGrid grid={grid} value={selectedPermissions} onChange={setSelectedPermissions} />
+                        {isAdminProfile && (
+                            <p style={{
+                                fontSize: 12, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe',
+                                borderRadius: 8, padding: '8px 10px', marginBottom: 12,
+                            }}>
+                                Admin has all access — every square, including Approve &amp; Sign, is granted
+                                automatically and cannot be taken away while this profile is chosen.
+                            </p>
+                        )}
+                        <AccessGrid grid={grid} value={selectedPermissions} onChange={setSelectedPermissions} locked={isAdminProfile} />
                     </>
                 )}
             </div>

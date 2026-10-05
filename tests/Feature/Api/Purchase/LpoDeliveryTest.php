@@ -339,6 +339,18 @@ class LpoDeliveryTest extends TestCase
         $this->assertNull(PurchaseOrder::first()->approved_at);
     }
 
+    /** An Admin can grant themselves anything, so they may sign both. */
+    public function test_an_admin_may_approve_an_lpo_they_prepared(): void
+    {
+        $admin = User::factory()->withSignature()->create();
+        $admin->assignRole('Admin');
+
+        $this->actingAs($admin)->postJson("/api/v1/purchase/pipeline/{$this->pr->id}/lpo")->assertOk();
+
+        $this->approve(PurchaseOrder::first(), $admin)->assertOk();
+        $this->assertSame($admin->id, PurchaseOrder::first()->approved_by);
+    }
+
     public function test_approving_requires_the_approve_lpo_permission(): void
     {
         $this->issue()->assertOk();
