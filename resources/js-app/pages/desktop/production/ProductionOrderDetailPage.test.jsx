@@ -5,6 +5,7 @@ import ProductionOrderDetailPage from './ProductionOrderDetailPage';
 import MobileProductionOrderDetailPage from '../../mobile/production/ProductionOrderDetailPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { PageTitleProvider } from '../../../layouts/PageTitleContext';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
@@ -28,15 +29,17 @@ const ORDER = {
     outputs: [{ id: 9, item_name: 'Frame', warehouse_name: 'Main', quantity: '4.00', output_date: '2026-08-03' }],
 };
 
-const wrap = (Page) => render(
+const wrap = (Page, access = { isAdmin: true }) => render(
     <MemoryRouter initialEntries={['/app/production/orders/7']}>
-        <PageTitleProvider>
-            <ToastProvider>
-                <Routes>
-                    <Route path="/app/production/orders/:id" element={<Page />} />
-                </Routes>
-            </ToastProvider>
-        </PageTitleProvider>
+        <AccessProvider {...access}>
+            <PageTitleProvider>
+                <ToastProvider>
+                    <Routes>
+                        <Route path="/app/production/orders/:id" element={<Page />} />
+                    </Routes>
+                </ToastProvider>
+            </PageTitleProvider>
+        </AccessProvider>
     </MemoryRouter>
 );
 
@@ -68,6 +71,17 @@ describe('production order detail page', () => {
         expect(await screen.findByText(/cannot be reopened/)).toBeInTheDocument();
         fireEvent.click(screen.getByText('Confirm'));
         await waitFor(() => expect(patch).toHaveBeenCalledWith('/production/orders/7/complete'));
+    });
+
+    // Someone who may look at an order but not move it sees the button greyed,
+    // with the reason, rather than a button that fails on click (CLAUDE.md #14).
+    it('disables Mark Complete, with the reason, for someone who may not run orders', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: ORDER });
+        wrap(ProductionOrderDetailPage, { permissions: ['production-orders.view'] });
+
+        const button = await screen.findByText('Mark Complete');
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('title', 'You do not have permission to complete production orders');
     });
 
     it('offers Start Production only while the order is planned', async () => {

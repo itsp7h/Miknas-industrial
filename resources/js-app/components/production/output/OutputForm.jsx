@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPost } from '../../../api/client';
+import { gate } from '../useProductionAccess';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -11,7 +12,9 @@ const NO_OPTIONS = { production_orders: [], warehouses: [], products: [] };
  * a run usually yields the order's own product, so picking an order preselects
  * it, but it can be changed for a by-product or a different grade.
  */
-export default function OutputForm({ presetOrderId, onSaved }) {
+// `allowed: false` keeps the form on the page, read-only, with the reason on
+// its button (CLAUDE.md #14) — and skips the options, which would only 403.
+export default function OutputForm({ presetOrderId, onSaved, allowed = true }) {
     const [options, setOptions] = useState(NO_OPTIONS);
     const [values, setValues] = useState({
         production_order_id: presetOrderId ?? '',
@@ -25,12 +28,13 @@ export default function OutputForm({ presetOrderId, onSaved }) {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
+        if (!allowed) return;
         // Merged over the empty shape so a partial response cannot leave a list
         // undefined and take the whole form down.
         apiGet('/production/outputs/form-options')
             .then((response) => setOptions({ ...NO_OPTIONS, ...response }))
             .catch(() => {});
-    }, []);
+    }, [allowed]);
 
     const selectedOrder = useMemo(
         () => options.production_orders.find((order) => String(order.id) === String(values.production_order_id)),
@@ -81,7 +85,7 @@ export default function OutputForm({ presetOrderId, onSaved }) {
 
             <div className="card card-body" style={{ maxWidth: 672 }}>
                 <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <fieldset disabled={!allowed} className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div>
                             <label htmlFor="production_order_id" className="form-label">
                                 Production Order <span className="text-red-500">*</span>
@@ -169,10 +173,10 @@ export default function OutputForm({ presetOrderId, onSaved }) {
                                 onChange={(e) => setField('notes', e.target.value)}
                             />
                         </div>
-                    </div>
+                    </fieldset>
 
                     <div className="mt-6">
-                        <button type="submit" className="btn-primary" disabled={saving}>
+                        <button type="submit" className="btn-primary" disabled={saving} {...gate(allowed, 'record production output')}>
                             {saving ? 'Recording…' : 'Record Output'}
                         </button>
                     </div>

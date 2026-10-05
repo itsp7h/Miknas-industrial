@@ -1,3 +1,4 @@
+import { gate } from '../useProductionAccess';
 import { num } from './useBomList';
 
 /**
@@ -5,7 +6,7 @@ import { num } from './useBomList';
  * code, then the lines. Blade's index built exactly this by opening a new card
  * each time the product changed as it walked an ordered list.
  */
-export default function BomProductCard({ group, onEdit, onDelete }) {
+export default function BomProductCard({ group, access, onEdit, onDelete }) {
     return (
         <div className="table-wrapper overflow-hidden mb-4">
             <div className="px-6 py-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
@@ -29,8 +30,8 @@ export default function BomProductCard({ group, onEdit, onDelete }) {
                             <td className="text-gray-500">{line.unit_of_measure}</td>
                             <td>
                                 <div className="flex items-center gap-2">
-                                    <button type="button" onClick={() => onEdit(line)} className="btn-secondary btn-sm">Edit</button>
-                                    <button type="button" onClick={() => onDelete(line)} className="btn-danger btn-sm">Delete</button>
+                                    <button type="button" onClick={() => onEdit(line)} className="btn-secondary btn-sm" {...gate(access.edit, 'edit BOM entries')}>Edit</button>
+                                    <button type="button" onClick={() => onDelete(line)} className="btn-danger btn-sm" {...gate(access.delete, 'delete BOM entries')}>Delete</button>
                                 </div>
                             </td>
                         </tr>

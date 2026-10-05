@@ -2,11 +2,13 @@ import { Link, useParams } from 'react-router-dom';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import ProductionOrderDetail from '../../../components/production/order/ProductionOrderDetail';
 import useProductionOrderDetail from '../../../components/production/order/useProductionOrderDetail';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 
 export default function ProductionOrderDetailPage() {
     const { id } = useParams();
     const p = useProductionOrderDetail(id);
+    const { orders: access } = useProductionAccess();
 
     useSetPageTitle(p.order ? `Production Order — ${p.order.order_number}` : null);
 
@@ -22,10 +24,10 @@ export default function ProductionOrderDetailPage() {
                 </div>
                 <div className="flex gap-2">
                     {p.order?.status === 'planned' && (
-                        <button type="button" onClick={() => p.setStarting(true)} className="btn-primary">Start Production</button>
+                        <button type="button" onClick={() => p.setStarting(true)} className="btn-primary" {...gate(access.run, 'start production orders')}>Start Production</button>
                     )}
                     {p.order?.status === 'in_progress' && (
-                        <button type="button" onClick={() => p.setCompleting(true)} className="btn-success">Mark Complete</button>
+                        <button type="button" onClick={() => p.setCompleting(true)} className="btn-success" {...gate(access.run, 'complete production orders')}>Mark Complete</button>
                     )}
                 </div>
             </div>

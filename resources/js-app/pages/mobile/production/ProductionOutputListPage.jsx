@@ -3,10 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import Modal from '../../../components/ui/Modal';
 import OutputForm from '../../../components/production/output/OutputForm';
 import useOutputList from '../../../components/production/output/useOutputList';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 import { formatDate, num } from '../../../components/production/formatters';
 
 export default function ProductionOutputListPage() {
     const o = useOutputList();
+    const { outputs: access } = useProductionAccess();
     const [params] = useSearchParams();
     const [formOpen, setFormOpen] = useState(false);
 
@@ -26,7 +28,7 @@ export default function ProductionOutputListPage() {
                 long scroll past every entry, so it opens as a sheet instead. */}
             <button
                 type="button" onClick={() => setFormOpen(true)} className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+                {...gate(access.create, 'record production output', { width: '100%', justifyContent: 'center', marginBottom: 14 })}
             >
                 + Record Output
             </button>

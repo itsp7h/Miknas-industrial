@@ -2,11 +2,13 @@ import { Link, useParams } from 'react-router-dom';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import ProductionOrderDetail from '../../../components/production/order/ProductionOrderDetail';
 import useProductionOrderDetail from '../../../components/production/order/useProductionOrderDetail';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 
 export default function ProductionOrderDetailPage() {
     const { id } = useParams();
     const p = useProductionOrderDetail(id);
+    const { orders: access } = useProductionAccess();
 
     useSetPageTitle(p.order ? `Production Order — ${p.order.order_number}` : null);
 
@@ -27,7 +29,7 @@ export default function ProductionOrderDetailPage() {
             {p.order?.status === 'planned' && (
                 <button
                     type="button" onClick={() => p.setStarting(true)} className="btn-primary"
-                    style={{ width: '100%', justifyContent: 'center', marginTop: 16 }}
+                    {...gate(access.run, 'start production orders', { width: '100%', justifyContent: 'center', marginTop: 16 })}
                 >
                     Start Production
                 </button>
@@ -35,7 +37,7 @@ export default function ProductionOrderDetailPage() {
             {p.order?.status === 'in_progress' && (
                 <button
                     type="button" onClick={() => p.setCompleting(true)} className="btn-success"
-                    style={{ width: '100%', justifyContent: 'center', marginTop: 16 }}
+                    {...gate(access.run, 'complete production orders', { width: '100%', justifyContent: 'center', marginTop: 16 })}
                 >
                     Mark Complete
                 </button>

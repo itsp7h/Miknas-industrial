@@ -3,9 +3,11 @@ import ConfirmModal from '../../../components/ui/ConfirmModal';
 import ProductionOrderForm from '../../../components/production/ProductionOrderForm';
 import ProductionOrderTable from '../../../components/production/order/ProductionOrderTable';
 import useProductionOrderList from '../../../components/production/order/useProductionOrderList';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 
 export default function ProductionOrderListPage() {
     const p = useProductionOrderList();
+    const access = useProductionAccess();
 
     return (
         <div>
@@ -14,7 +16,7 @@ export default function ProductionOrderListPage() {
                     <h1 className="page-title">Production Orders</h1>
                     <p className="page-subtitle">Manage manufacturing orders</p>
                 </div>
-                <button type="button" onClick={p.openCreate} className="btn-primary">+ New Order</button>
+                <button type="button" onClick={p.openCreate} className="btn-primary" {...gate(access.orders.create, 'create production orders')}>+ New Order</button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
@@ -42,6 +44,7 @@ export default function ProductionOrderListPage() {
 
             <ProductionOrderTable
                 orders={p.filtered}
+                access={access.orders}
                 onEdit={p.openEdit}
                 onStart={p.setStarting}
                 onComplete={p.setCompleting}

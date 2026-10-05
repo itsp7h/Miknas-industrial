@@ -3,9 +3,11 @@ import ConfirmModal from '../../../components/ui/ConfirmModal';
 import BomForm from '../../../components/production/BomForm';
 import BomProductCard from '../../../components/production/bom/BomProductCard';
 import useBomList from '../../../components/production/bom/useBomList';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 
 export default function BomListPage() {
     const b = useBomList();
+    const { bom: access } = useProductionAccess();
 
     return (
         <div>
@@ -14,7 +16,7 @@ export default function BomListPage() {
                     <h1 className="page-title">Bill of Materials</h1>
                     <p className="page-subtitle">Define material requirements for each product</p>
                 </div>
-                <button type="button" onClick={b.openCreate} className="btn-primary">+ Add BOM Entry</button>
+                <button type="button" onClick={b.openCreate} className="btn-primary" {...gate(access.create, 'add BOM entries')}>+ Add BOM Entry</button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
@@ -41,7 +43,7 @@ export default function BomListPage() {
             </div>
 
             {b.groups.map((group) => (
-                <BomProductCard key={group.key} group={group} onEdit={b.openEdit} onDelete={b.setDeleting} />
+                <BomProductCard key={group.key} group={group} access={access} onEdit={b.openEdit} onDelete={b.setDeleting} />
             ))}
 
             {b.groups.length === 0 && (
@@ -49,7 +51,7 @@ export default function BomListPage() {
                     {b.query ? 'No BOM entries match that search.' : (
                         <>
                             No BOM entries found.{' '}
-                            <button type="button" onClick={b.openCreate} className="text-blue-600 hover:underline">Add the first one</button>.
+                            <button type="button" onClick={b.openCreate} className="text-blue-600 hover:underline" {...gate(access.create, 'add BOM entries')}>Add the first one</button>.
                         </>
                     )}
                 </div>

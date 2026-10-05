@@ -3,10 +3,12 @@ import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import ProductionOrderForm from '../../../components/production/ProductionOrderForm';
 import useProductionOrderList from '../../../components/production/order/useProductionOrderList';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 import { badgeClassFor, formatDate, num, statusLabel } from '../../../components/production/order/orderStyles';
 
 export default function ProductionOrderListPage() {
     const p = useProductionOrderList();
+    const { orders: access } = useProductionAccess();
 
     return (
         <div>
@@ -17,7 +19,7 @@ export default function ProductionOrderListPage() {
 
             <button
                 type="button" onClick={p.openCreate} className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+                {...gate(access.create, 'create production orders', { width: '100%', justifyContent: 'center', marginBottom: 14 })}
             >
                 + New Order
             </button>
@@ -63,16 +65,16 @@ export default function ProductionOrderListPage() {
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                         <Link to={`/app/production/orders/${order.id}`} className="btn-primary btn-sm">View</Link>
                         {order.status === 'planned' && (
-                            <button type="button" onClick={() => p.setStarting(order)} className="btn-primary btn-sm">Start</button>
+                            <button type="button" onClick={() => p.setStarting(order)} className="btn-primary btn-sm" {...gate(access.run, 'start production orders')}>Start</button>
                         )}
                         {order.status === 'in_progress' && (
-                            <button type="button" onClick={() => p.setCompleting(order)} className="btn-success btn-sm">Complete</button>
+                            <button type="button" onClick={() => p.setCompleting(order)} className="btn-success btn-sm" {...gate(access.run, 'complete production orders')}>Complete</button>
                         )}
                         {order.status === 'planned' && (
-                            <button type="button" onClick={() => p.openEdit(order)} className="btn-secondary btn-sm">Edit</button>
+                            <button type="button" onClick={() => p.openEdit(order)} className="btn-secondary btn-sm" {...gate(access.edit, 'edit production orders')}>Edit</button>
                         )}
                         {order.status === 'planned' && (
-                            <button type="button" onClick={() => p.setDeleting(order)} className="btn-danger btn-sm">Delete</button>
+                            <button type="button" onClick={() => p.setDeleting(order)} className="btn-danger btn-sm" {...gate(access.delete, 'delete production orders')}>Delete</button>
                         )}
                     </div>
                 </div>

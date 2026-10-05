@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { gate } from '../useProductionAccess';
 import { badgeClassFor, formatDate, num, statusLabel } from './orderStyles';
 
 /**
@@ -7,7 +8,7 @@ import { badgeClassFor, formatDate, num, statusLabel } from './orderStyles';
  * this page but the endpoint exists and the previous React page offered it, so
  * it stays.
  */
-export default function ProductionOrderTable({ orders, onEdit, onStart, onComplete, onDelete }) {
+export default function ProductionOrderTable({ orders, access, onEdit, onStart, onComplete, onDelete }) {
     return (
         <div className="table-wrapper overflow-x-auto">
             <table className="table-base">
@@ -45,16 +46,16 @@ export default function ProductionOrderTable({ orders, onEdit, onStart, onComple
                                     {/* Blade guarded Start on 'pending', a value the status
                                         enum does not contain — so Start never rendered. */}
                                     {order.status === 'planned' && (
-                                        <button type="button" onClick={() => onStart(order)} className="btn-primary btn-sm">Start</button>
+                                        <button type="button" onClick={() => onStart(order)} className="btn-primary btn-sm" {...gate(access.run, 'start production orders')}>Start</button>
                                     )}
                                     {order.status === 'in_progress' && (
-                                        <button type="button" onClick={() => onComplete(order)} className="btn-success btn-sm">Complete</button>
+                                        <button type="button" onClick={() => onComplete(order)} className="btn-success btn-sm" {...gate(access.run, 'complete production orders')}>Complete</button>
                                     )}
                                     {order.status === 'planned' && (
-                                        <button type="button" onClick={() => onEdit(order)} className="btn-secondary btn-sm">Edit</button>
+                                        <button type="button" onClick={() => onEdit(order)} className="btn-secondary btn-sm" {...gate(access.edit, 'edit production orders')}>Edit</button>
                                     )}
                                     {order.status === 'planned' && (
-                                        <button type="button" onClick={() => onDelete(order)} className="btn-danger btn-sm">Delete</button>
+                                        <button type="button" onClick={() => onDelete(order)} className="btn-danger btn-sm" {...gate(access.delete, 'delete production orders')}>Delete</button>
                                     )}
                                 </div>
                             </td>

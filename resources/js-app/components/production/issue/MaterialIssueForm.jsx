@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPost } from '../../../api/client';
+import { gate } from '../useProductionAccess';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -12,7 +13,9 @@ const NO_OPTIONS = { production_orders: [], warehouses: [], stock: [] };
  * something the warehouse did not hold and get the request refused — this offers
  * only what is actually on hand in the chosen warehouse, and says how much.
  */
-export default function MaterialIssueForm({ presetOrderId, onSaved }) {
+// `allowed: false` keeps the form on the page, read-only, with the reason on
+// its button (CLAUDE.md #14) — and skips the options, which would only 403.
+export default function MaterialIssueForm({ presetOrderId, onSaved, allowed = true }) {
     const [options, setOptions] = useState(NO_OPTIONS);
     const [values, setValues] = useState({
         production_order_id: presetOrderId ?? '',
@@ -26,12 +29,13 @@ export default function MaterialIssueForm({ presetOrderId, onSaved }) {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
+        if (!allowed) return;
         // Merged over the empty shape so a partial response cannot leave a list
         // undefined and take the whole form down.
         apiGet('/production/material-issues/form-options')
             .then((response) => setOptions({ ...NO_OPTIONS, ...response }))
             .catch(() => {});
-    }, []);
+    }, [allowed]);
 
     const issuableStock = useMemo(
         () => (options.stock ?? []).filter((row) =>
@@ -81,7 +85,7 @@ export default function MaterialIssueForm({ presetOrderId, onSaved }) {
 
             <div className="card card-body" style={{ maxWidth: 672 }}>
                 <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <fieldset disabled={!allowed} className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div>
                             <label htmlFor="production_order_id" className="form-label">
                                 Production Order <span className="text-red-500">*</span>
@@ -171,10 +175,10 @@ export default function MaterialIssueForm({ presetOrderId, onSaved }) {
                                 onChange={(e) => setField('notes', e.target.value)}
                             />
                         </div>
-                    </div>
+                    </fieldset>
 
                     <div className="mt-6">
-                        <button type="submit" className="btn-primary" disabled={saving}>
+                        <button type="submit" className="btn-primary" disabled={saving} {...gate(allowed, 'issue materials')}>
                             {saving ? 'Issuing…' : 'Issue Material'}
                         </button>
                     </div>

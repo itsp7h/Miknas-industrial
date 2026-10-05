@@ -17,9 +17,8 @@
 //
 // `hidden: true` keeps routes and page titles but drops the entry from both
 // menus (the desktop sidebar and the mobile drawer/bottom bar). It works on a
-// group or on a single item. Production and Sales are parked that way, and so
-// is Payments: built, reachable by URL, just not in use. Remove the flag to
-// bring one back.
+// group or on a single item. Sales is parked that way, and so is Payments:
+// built, reachable by URL, just not in use. Remove the flag to bring one back.
 
 import { BAG, BOX, BUILDING, CHART, COG, FOLDER, GRID, RECEIPT, USERS } from './navIcons';
 
@@ -57,14 +56,13 @@ export const NAV_GROUPS = [
     },
     {
         label: 'Production',
-        hidden: true,
         color: '#f97316',
         icon: COG,
         items: [
-            { type: 'link', to: '/app/production/orders', label: 'Production Orders' },
-            { type: 'link', to: '/app/production/bom', label: 'Bill of Materials' },
-            { type: 'link', to: '/app/production/material-issues', label: 'Material Issues' },
-            { type: 'link', to: '/app/production/outputs', label: 'Production Output' },
+            { type: 'link', to: '/app/production/orders', label: 'Production Orders', permission: 'production-orders.view' },
+            { type: 'link', to: '/app/production/bom', label: 'Bill of Materials', permission: 'bom.view' },
+            { type: 'link', to: '/app/production/material-issues', label: 'Material Issues', permission: 'material-issues.view' },
+            { type: 'link', to: '/app/production/outputs', label: 'Production Output', permission: 'production-outputs.view' },
         ],
     },
     {

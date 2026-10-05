@@ -6,13 +6,18 @@ import ProductionOutputListPage from './ProductionOutputListPage';
 import BomListPage from './BomListPage';
 import MaterialIssueListPage from './MaterialIssueListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
     echo: { private: () => ({ listen: () => ({ listen: () => {} }), stopListening: () => {} }), channel: () => ({ listen: () => {} }), leave: () => {} },
 }));
 
-const wrap = (ui) => render(<MemoryRouter><ToastProvider>{ui}</ToastProvider></MemoryRouter>);
+// Admin unless a test says otherwise: these are about the pages, and the
+// permission tests below hand out single squares explicitly.
+const wrap = (ui, access = { isAdmin: true }) => render(
+    <MemoryRouter><AccessProvider {...access}><ToastProvider>{ui}</ToastProvider></AccessProvider></MemoryRouter>
+);
 
 const ORDERS = [
     { id: 1, order_number: 'PO-00001', product_name: 'Frame', quantity_to_produce: '10.00', quantity_produced: '4.00', production_date: '2026-08-01', status: 'in_progress' },
@@ -103,4 +108,16 @@ describe('mobile production pages', () => {
         fireEvent.click(screen.getByText('+ Record Output'));
         expect(await screen.findByText('Record Production Output')).toBeInTheDocument();
     });
+
+    it('greys the full-width create button, with the reason, for a view-only account', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<ProductionOutputListPage />, { permissions: ['production-outputs.view'] });
+
+        const button = await screen.findByText('+ Record Output');
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('title', 'You do not have permission to record production output');
+        // Its own layout survives under the disabled look.
+        expect(button).toHaveStyle({ width: '100%', cursor: 'not-allowed' });
+    });
 });
+

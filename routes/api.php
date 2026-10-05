@@ -129,29 +129,32 @@ Route::prefix('v1')->group(function () {
             Route::post('payments', [PaymentReceiptController::class, 'store']);
         });
 
+        // Each tab is its own permission, the way Inventory's are. A form's
+        // options are for whoever may fill that form in, so they follow
+        // create (or edit, where the same form also edits).
         Route::prefix('production')->group(function () {
-            Route::get('orders', [ProductionOrderController::class, 'index']);
-            Route::get('orders/form-options', [ProductionOrderController::class, 'formOptions']);
-            Route::get('orders/{productionOrder}', [ProductionOrderController::class, 'show']);
-            Route::post('orders', [ProductionOrderController::class, 'store']);
-            Route::put('orders/{productionOrder}', [ProductionOrderController::class, 'update']);
-            Route::patch('orders/{productionOrder}/start', [ProductionOrderController::class, 'start']);
-            Route::patch('orders/{productionOrder}/complete', [ProductionOrderController::class, 'complete']);
-            Route::delete('orders/{productionOrder}', [ProductionOrderController::class, 'destroy']);
+            Route::get('orders', [ProductionOrderController::class, 'index'])->middleware('permission:production-orders.view');
+            Route::get('orders/form-options', [ProductionOrderController::class, 'formOptions'])->middleware('permission:production-orders.create|production-orders.edit');
+            Route::get('orders/{productionOrder}', [ProductionOrderController::class, 'show'])->middleware('permission:production-orders.view');
+            Route::post('orders', [ProductionOrderController::class, 'store'])->middleware('permission:production-orders.create');
+            Route::put('orders/{productionOrder}', [ProductionOrderController::class, 'update'])->middleware('permission:production-orders.edit');
+            Route::patch('orders/{productionOrder}/start', [ProductionOrderController::class, 'start'])->middleware('permission:production-orders.run');
+            Route::patch('orders/{productionOrder}/complete', [ProductionOrderController::class, 'complete'])->middleware('permission:production-orders.run');
+            Route::delete('orders/{productionOrder}', [ProductionOrderController::class, 'destroy'])->middleware('permission:production-orders.delete');
 
-            Route::get('bom', [BillOfMaterialController::class, 'index']);
-            Route::get('bom/form-options', [BillOfMaterialController::class, 'formOptions']);
-            Route::post('bom', [BillOfMaterialController::class, 'store']);
-            Route::put('bom/{bom}', [BillOfMaterialController::class, 'update']);
-            Route::delete('bom/{bom}', [BillOfMaterialController::class, 'destroy']);
+            Route::get('bom', [BillOfMaterialController::class, 'index'])->middleware('permission:bom.view');
+            Route::get('bom/form-options', [BillOfMaterialController::class, 'formOptions'])->middleware('permission:bom.create|bom.edit');
+            Route::post('bom', [BillOfMaterialController::class, 'store'])->middleware('permission:bom.create');
+            Route::put('bom/{bom}', [BillOfMaterialController::class, 'update'])->middleware('permission:bom.edit');
+            Route::delete('bom/{bom}', [BillOfMaterialController::class, 'destroy'])->middleware('permission:bom.delete');
 
-            Route::get('material-issues', [MaterialIssueController::class, 'index']);
-            Route::get('material-issues/form-options', [MaterialIssueController::class, 'formOptions']);
-            Route::post('material-issues', [MaterialIssueController::class, 'store']);
+            Route::get('material-issues', [MaterialIssueController::class, 'index'])->middleware('permission:material-issues.view');
+            Route::get('material-issues/form-options', [MaterialIssueController::class, 'formOptions'])->middleware('permission:material-issues.create');
+            Route::post('material-issues', [MaterialIssueController::class, 'store'])->middleware('permission:material-issues.create');
 
-            Route::get('outputs', [ProductionOutputController::class, 'index']);
-            Route::get('outputs/form-options', [ProductionOutputController::class, 'formOptions']);
-            Route::post('outputs', [ProductionOutputController::class, 'store']);
+            Route::get('outputs', [ProductionOutputController::class, 'index'])->middleware('permission:production-outputs.view');
+            Route::get('outputs/form-options', [ProductionOutputController::class, 'formOptions'])->middleware('permission:production-outputs.create');
+            Route::post('outputs', [ProductionOutputController::class, 'store'])->middleware('permission:production-outputs.create');
         });
 
         // Settings are Admin-only, matching the `role:Admin` group the Blade

@@ -2,9 +2,11 @@ import { useSearchParams } from 'react-router-dom';
 import MaterialIssueForm from '../../../components/production/issue/MaterialIssueForm';
 import MaterialIssueTable from '../../../components/production/issue/MaterialIssueTable';
 import useMaterialIssueList from '../../../components/production/issue/useMaterialIssueList';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 
 export default function MaterialIssueListPage() {
     const m = useMaterialIssueList();
+    const { issues: access } = useProductionAccess();
     // The production order detail page links here with the order preselected,
     // the way Blade's create link carried ?production_order_id=.
     const [params] = useSearchParams();
@@ -23,7 +25,7 @@ export default function MaterialIssueListPage() {
                 </div>
                 {/* The form is on the page, so the header button jumps to it
                     rather than opening a modal. */}
-                <button type="button" onClick={focusForm} className="btn-primary">+ Issue Material</button>
+                <button type="button" onClick={focusForm} className="btn-primary" {...gate(access.create, 'issue materials')}>+ Issue Material</button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
@@ -53,7 +55,7 @@ export default function MaterialIssueListPage() {
 
             <div className="mt-8" id="issue-new-material">
                 <h2 className="text-lg font-bold text-gray-800 mb-4">Issue New Material</h2>
-                <MaterialIssueForm presetOrderId={params.get('production_order_id')} onSaved={m.handleSaved} />
+                <MaterialIssueForm presetOrderId={params.get('production_order_id')} onSaved={m.handleSaved} allowed={access.create} />
             </div>
         </div>
     );

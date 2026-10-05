@@ -3,9 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom';
 import Modal from '../../../components/ui/Modal';
 import MaterialIssueForm from '../../../components/production/issue/MaterialIssueForm';
 import useMaterialIssueList, { formatDate, num } from '../../../components/production/issue/useMaterialIssueList';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 
 export default function MaterialIssueListPage() {
     const m = useMaterialIssueList();
+    const { issues: access } = useProductionAccess();
     const [params] = useSearchParams();
     const [formOpen, setFormOpen] = useState(false);
 
@@ -25,7 +27,7 @@ export default function MaterialIssueListPage() {
                 long scroll past every issue, so it opens as a sheet instead. */}
             <button
                 type="button" onClick={() => setFormOpen(true)} className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+                {...gate(access.create, 'issue materials', { width: '100%', justifyContent: 'center', marginBottom: 14 })}
             >
                 + Issue Material
             </button>

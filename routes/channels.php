@@ -20,5 +20,8 @@ Broadcast::channel('sales', function (User $user) {
 });
 
 Broadcast::channel('production', function (User $user) {
-    return true; // any authenticated user, matching the /app/production/* routes (auth+verified only)
+    // Whoever may open any Production tab — the same squares the API checks.
+    return $user->canAny([
+        'production-orders.view', 'bom.view', 'material-issues.view', 'production-outputs.view',
+    ]);
 });

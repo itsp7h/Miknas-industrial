@@ -6,13 +6,18 @@ import BomListPage from './BomListPage';
 import ProductionOutputListPage from './ProductionOutputListPage';
 import MaterialIssueListPage from './MaterialIssueListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
     echo: { private: () => ({ listen: () => ({ listen: () => {} }), stopListening: () => {} }), channel: () => ({ listen: () => {} }), leave: () => {} },
 }));
 
-const wrap = (ui) => render(<MemoryRouter><ToastProvider>{ui}</ToastProvider></MemoryRouter>);
+// Admin unless a test says otherwise: these are about the pages, and the
+// permission tests below hand out single squares explicitly.
+const wrap = (ui, access = { isAdmin: true }) => render(
+    <MemoryRouter><AccessProvider {...access}><ToastProvider>{ui}</ToastProvider></AccessProvider></MemoryRouter>
+);
 
 const ORDERS = [
     { id: 1, order_number: 'PO-00001', product_name: 'Frame', quantity_to_produce: '10.00', quantity_produced: '4.00', outstanding: 6, production_date: '2026-08-01', status: 'in_progress' },
@@ -246,5 +251,61 @@ describe('desktop production pages', () => {
         fireEvent.change(orderSelect, { target: { value: '1' } });
         expect(screen.getByLabelText(/Item \(Finished Good\)/)).toHaveValue('7');
         expect(screen.getByText('4.00 of 10.00 made so far.')).toBeInTheDocument();
+    });
+
+    // A view-only account sees every action, greyed with the reason, rather
+    // than buttons that 403 on click (CLAUDE.md #14).
+    it('disables every order action, with the reason, for a view-only account', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: ORDERS });
+        wrap(<ProductionOrderListPage />, { permissions: ['production-orders.view'] });
+        await screen.findByText('PO-00001');
+
+        const expected = {
+            '+ New Order': 'create production orders',
+            Start: 'start production orders',
+            Complete: 'complete production orders',
+            Edit: 'edit production orders',
+            Delete: 'delete production orders',
+        };
+        Object.entries(expected).forEach(([label, action]) => {
+            const button = screen.getByText(label);
+            expect(button).toBeDisabled();
+            expect(button).toHaveAttribute('title', `You do not have permission to ${action}`);
+        });
+    });
+
+    it('leaves an action live for someone granted it', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: ORDERS });
+        wrap(<ProductionOrderListPage />, { permissions: ['production-orders.view', 'production-orders.run'] });
+        await screen.findByText('PO-00001');
+
+        expect(screen.getByText('Start')).toBeEnabled();
+        expect(screen.getByText('Complete')).toBeEnabled();
+        expect(screen.getByText('Edit')).toBeDisabled();
+    });
+
+    // The issue form is inline on desktop, so it stays — read-only — and does
+    // not ask for options it would only be refused.
+    it('keeps the issue form read-only, without fetching options, for someone who may not issue', async () => {
+        const get = vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
+        wrap(<MaterialIssueListPage />, { permissions: ['material-issues.view'] });
+
+        const submit = await screen.findByRole('button', { name: 'Issue Material' });
+        expect(submit).toBeDisabled();
+        expect(submit).toHaveAttribute('title', 'You do not have permission to issue materials');
+        expect(screen.getByLabelText(/Production Order/)).toBeDisabled();
+        expect(screen.getByText('+ Issue Material')).toBeDisabled();
+        expect(get).not.toHaveBeenCalledWith('/production/material-issues/form-options');
+    });
+
+    it('disables BOM edits, with the reason, for a view-only account', async () => {
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [
+            { id: 1, product_id: 7, product_name: 'Frame', product_code: 'FG-1', raw_material_name: 'Steel Bar', quantity_required: '2.00', unit_of_measure: 'KG' },
+        ] });
+        wrap(<BomListPage />, { permissions: ['bom.view'] });
+
+        expect(await screen.findByText('+ Add BOM Entry')).toBeDisabled();
+        expect(screen.getByText('Edit')).toHaveAttribute('title', 'You do not have permission to edit BOM entries');
+        expect(screen.getByText('Delete')).toBeDisabled();
     });
 });

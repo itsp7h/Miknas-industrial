@@ -124,6 +124,36 @@ return [
             'actions' => ['view'],
         ],
 
+        // ── Production ──────────────────────────────────────────────────────
+        'production-orders' => [
+            'group' => 'Production',
+            'label' => 'Production Orders',
+            'actions' => ['view', 'create', 'edit', 'delete'],
+            // Starting an order and marking it complete move it through the
+            // floor, which is not the same as correcting its details — and
+            // completing one posts finished goods into stock.
+            'extra' => [
+                'run' => 'Start and complete orders',
+            ],
+        ],
+        'bom' => [
+            'group' => 'Production',
+            'label' => 'Bill of Materials',
+            'actions' => ['view', 'create', 'edit', 'delete'],
+        ],
+        // Issues and outputs are stock movements under another name: posted,
+        // never rewritten, so there is nothing to edit or delete.
+        'material-issues' => [
+            'group' => 'Production',
+            'label' => 'Material Issues',
+            'actions' => ['view', 'create'],
+        ],
+        'production-outputs' => [
+            'group' => 'Production',
+            'label' => 'Production Output',
+            'actions' => ['view', 'create'],
+        ],
+
         // ── System ──────────────────────────────────────────────────────────
         'companies' => [
             'group' => 'System',
@@ -236,6 +266,10 @@ return [
                 'movement-report.view',
                 'low-stock.view',
                 'valuation.view',
+                'production-orders.view',
+                'bom.view',
+                'material-issues.view',
+                'production-outputs.view',
             ],
         ],
         'Finance' => [

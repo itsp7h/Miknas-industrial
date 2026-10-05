@@ -2,9 +2,11 @@ import { useSearchParams } from 'react-router-dom';
 import OutputForm from '../../../components/production/output/OutputForm';
 import OutputTable from '../../../components/production/output/OutputTable';
 import useOutputList from '../../../components/production/output/useOutputList';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 
 export default function ProductionOutputListPage() {
     const o = useOutputList();
+    const { outputs: access } = useProductionAccess();
     // The production order detail page links here with the order preselected,
     // the way Blade's create link carried ?production_order_id=.
     const [params] = useSearchParams();
@@ -23,7 +25,7 @@ export default function ProductionOutputListPage() {
                 </div>
                 {/* The form is on the page, so the header button jumps to it
                     rather than opening a modal. */}
-                <button type="button" onClick={focusForm} className="btn-primary">+ Record Output</button>
+                <button type="button" onClick={focusForm} className="btn-primary" {...gate(access.create, 'record production output')}>+ Record Output</button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
@@ -53,7 +55,7 @@ export default function ProductionOutputListPage() {
 
             <div className="mt-8" id="record-production-output">
                 <h2 className="text-lg font-bold text-gray-800 mb-4">Record Production Output</h2>
-                <OutputForm presetOrderId={params.get('production_order_id')} onSaved={o.handleSaved} />
+                <OutputForm presetOrderId={params.get('production_order_id')} onSaved={o.handleSaved} allowed={access.create} />
             </div>
         </div>
     );

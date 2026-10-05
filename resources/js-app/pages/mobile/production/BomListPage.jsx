@@ -2,9 +2,11 @@ import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import BomForm from '../../../components/production/BomForm';
 import useBomList, { num } from '../../../components/production/bom/useBomList';
+import useProductionAccess, { gate } from '../../../components/production/useProductionAccess';
 
 export default function BomListPage() {
     const b = useBomList();
+    const { bom: access } = useProductionAccess();
 
     return (
         <div>
@@ -15,7 +17,7 @@ export default function BomListPage() {
 
             <button
                 type="button" onClick={b.openCreate} className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+                {...gate(access.create, 'add BOM entries', { width: '100%', justifyContent: 'center', marginBottom: 14 })}
             >
                 + Add BOM Entry
             </button>
@@ -67,8 +69,8 @@ export default function BomListPage() {
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-                                <button type="button" onClick={() => b.openEdit(line)} className="btn-secondary btn-sm">Edit</button>
-                                <button type="button" onClick={() => b.setDeleting(line)} className="btn-danger btn-sm">Delete</button>
+                                <button type="button" onClick={() => b.openEdit(line)} className="btn-secondary btn-sm" {...gate(access.edit, 'edit BOM entries')}>Edit</button>
+                                <button type="button" onClick={() => b.setDeleting(line)} className="btn-danger btn-sm" {...gate(access.delete, 'delete BOM entries')}>Delete</button>
                             </div>
                         </div>
                     ))}

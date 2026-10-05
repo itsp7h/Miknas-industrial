@@ -47,6 +47,7 @@ describe('Sidebar', () => {
         const colours = {
             Purchase: 'rgb(245, 158, 11)',
             Inventory: 'rgb(16, 185, 129)',
+            Production: 'rgb(249, 115, 22)',
             System: 'rgb(100, 116, 139)',
         };
         Object.entries(colours).forEach(([label, colour]) => {
@@ -54,14 +55,25 @@ describe('Sidebar', () => {
         });
     });
 
-    // Production and Sales carry `hidden: true` in navItems — the modules are
-    // built and still routable, they are just not in use yet.
+    // Sales carries `hidden: true` in navItems — the module is built and still
+    // routable, it is just not in use yet.
     it('leaves a hidden group and all of its links out of the menu', () => {
         renderSidebar();
-        expect(screen.queryByText('Production')).not.toBeInTheDocument();
         expect(screen.queryByText('Sales')).not.toBeInTheDocument();
-        expect(screen.queryByText('Bill of Materials')).not.toBeInTheDocument();
         expect(screen.queryByText('Customers')).not.toBeInTheDocument();
+    });
+
+    // Production is back, and like every other tab it is one permission each.
+    it('shows Production only as far as the user has been granted it', () => {
+        renderSidebar({
+            isAdmin: false,
+            can: (permission) => permission === 'bom.view',
+        });
+
+        expect(screen.getByText('Production')).toBeInTheDocument();
+        expect(screen.getByText('Bill of Materials')).toBeInTheDocument();
+        expect(screen.queryByText('Production Orders')).not.toBeInTheDocument();
+        expect(screen.queryByText('Material Issues')).not.toBeInTheDocument();
     });
 
     /**
