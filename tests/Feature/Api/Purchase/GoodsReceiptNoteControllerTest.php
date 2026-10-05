@@ -4,6 +4,8 @@ namespace Tests\Feature\Api\Purchase;
 
 use App\Events\GrnDeleted;
 use App\Events\GrnSaved;
+use App\Events\ItemSaved;
+use App\Events\StockMovementRecorded;
 use App\Models\GoodsReceiptNote;
 use App\Models\GrnDocument;
 use App\Models\Item;
@@ -229,6 +231,21 @@ class GoodsReceiptNoteControllerTest extends TestCase
             'reference_type' => 'GoodsReceiptNote',
             'reference_id' => $grn->id,
         ]);
+    }
+
+    /**
+     * An open Raw Materials or Stock Movements page must show the new stock
+     * without a reload — only GrnSaved used to go out.
+     */
+    public function test_confirming_broadcasts_the_stock_it_moved(): void
+    {
+        Event::fake([GrnSaved::class, StockMovementRecorded::class, ItemSaved::class]);
+        $grn = $this->makeGrn();
+
+        $this->actingAs($this->user())->patchJson("/api/v1/purchase/grns/{$grn->id}/confirm")->assertOk();
+
+        Event::assertDispatched(StockMovementRecorded::class, fn ($e) => $e->movement->item_id === $this->item->id);
+        Event::assertDispatched(ItemSaved::class, fn ($e) => $e->item->id === $this->item->id);
     }
 
     public function test_confirming_advances_the_purchase_order_line(): void

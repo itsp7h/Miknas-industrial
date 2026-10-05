@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api\Purchase;
 
 use App\Events\GrnDeleted;
 use App\Events\GrnSaved;
+use App\Events\ItemSaved;
+use App\Events\StockMovementRecorded;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GrnResource;
 use App\Models\GoodsReceiptNote;
 use App\Models\GrnDocument;
 use App\Models\GrnItem;
+use App\Models\Item;
 use App\Models\PurchaseOrder;
 use App\Models\Settings\Company;
 use App\Models\Settings\ProjectSetting;
@@ -363,8 +366,9 @@ class GoodsReceiptNoteController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($grn) {
+        $movements = DB::transaction(function () use ($grn) {
             $grn->load('items', 'purchaseOrder.items');
+            $movements = [];
 
             foreach ($grn->items as $grnItem) {
                 $stockLevel = StockLevel::firstOrCreate(
@@ -373,7 +377,7 @@ class GoodsReceiptNoteController extends Controller
                 );
                 $stockLevel->increment('quantity', $grnItem->quantity_received);
 
-                StockMovement::create([
+                $movements[] = StockMovement::create([
                     'item_id' => $grnItem->item_id,
                     'warehouse_id' => $grn->warehouse_id,
                     'type' => 'in',
@@ -396,6 +400,8 @@ class GoodsReceiptNoteController extends Controller
             if ($allReceived) {
                 $po->update(['status' => 'received']);
             }
+
+            return $movements;
         });
 
         $this->advanceRequestIfFullyReceived($grn, $stages);
@@ -404,6 +410,15 @@ class GoodsReceiptNoteController extends Controller
         Notification::send($operations, new GoodsReceiptConfirmedNotification($grn));
 
         event(new GrnSaved($grn));
+
+        // The stock this put on the shelf, so an open Raw Materials or Stock
+        // Movements page shows it without a reload. Only GrnSaved used to go
+        // out, and the item lists kept their old quantities until refreshed.
+        foreach ($movements as $movement) {
+            event(new StockMovementRecorded($movement));
+        }
+        Item::whereIn('id', collect($movements)->pluck('item_id')->unique())->get()
+            ->each(fn (Item $item) => event(new ItemSaved($item)));
 
         return new GrnResource($grn->fresh(self::DETAIL));
     }
