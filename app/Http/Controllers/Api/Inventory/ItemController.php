@@ -44,9 +44,12 @@ class ItemController extends Controller
             ->selectRaw('purchase_order_items.item_id as item_id, max(purchase_orders.po_date) as last_purchased_at')
             ->pluck('last_purchased_at', 'item_id');
 
+        $actualPrices = Item::actualPrices();
+
         foreach ($items as $item) {
             $date = $lastPurchased[$item->id] ?? null;
             $item->setAttribute('last_purchased_at', $date ? substr((string) $date, 0, 10) : null);
+            $item->setAttribute('actual_price', $actualPrices[$item->id] ?? null);
         }
 
         return ItemResource::collection($items)

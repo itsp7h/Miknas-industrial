@@ -1,7 +1,14 @@
-import { categoryBadgeClass, categoryLabel, isLow, money, num, warehouseBreakdown, warehouseLabel } from './itemStyles';
+import {
+    actualPriceSource, categoryBadgeClass, categoryLabel, isLow, money, num, priceGap, priceLabel,
+    warehouseBreakdown, warehouseLabel,
+} from './itemStyles';
 
 /** The Blade inventory-items table: badged category and status, right-aligned figures. */
-export default function ItemTable({ items, onEdit, onDelete }) {
+export default function ItemTable({ items, onEdit, onDelete, category }) {
+    // Raw materials are bought, so they show what was last paid beside the
+    // standard; finished goods are made, and keep their one cost price.
+    const bought = category === 'raw_material';
+
     return (
         <div className="table-wrapper overflow-x-auto">
             <table className="table-base">
@@ -14,7 +21,8 @@ export default function ItemTable({ items, onEdit, onDelete }) {
                         <th>Warehouse</th>
                         <th className="text-right">Quantity</th>
                         <th className="text-right">Min Stock</th>
-                        <th className="text-right">Cost Price</th>
+                        <th className="text-right">{priceLabel(category)}</th>
+                        {bought && <th className="text-right">Actual Price</th>}
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -22,7 +30,7 @@ export default function ItemTable({ items, onEdit, onDelete }) {
                 <tbody>
                     {items.length === 0 && (
                         <tr>
-                            <td colSpan={10} className="px-4 py-8 text-center text-gray-400">No items found.</td>
+                            <td colSpan={bought ? 11 : 10} className="px-4 py-8 text-center text-gray-400">No items found.</td>
                         </tr>
                     )}
 
@@ -52,6 +60,18 @@ export default function ItemTable({ items, onEdit, onDelete }) {
                             </td>
                             <td className="text-right">{num(item.minimum_stock_level)}</td>
                             <td className="text-right text-gray-800">{money(item.cost_price)}</td>
+                            {bought && (() => {
+                                const gap = priceGap(item);
+
+                                return (
+                                    <td className="text-right" title={actualPriceSource(item)}>
+                                        {item.actual_price
+                                            ? <span className="text-gray-800">{money(item.actual_price.price)}</span>
+                                            : <span className="text-gray-400">—</span>}
+                                        {gap && <div style={{ fontSize: 11, color: gap.colour, marginTop: 2 }}>{gap.text}</div>}
+                                    </td>
+                                );
+                            })()}
                             <td>
                                 <span className={item.is_active ? 'badge-green' : 'badge-gray'}>
                                     {item.is_active ? 'Active' : 'Inactive'}

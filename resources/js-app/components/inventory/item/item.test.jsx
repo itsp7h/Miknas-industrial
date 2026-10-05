@@ -4,7 +4,7 @@ import ItemTable from './ItemTable';
 import ItemToolbar from './ItemToolbar';
 import ItemImportModal from './ItemImportModal';
 import {
-    categoryBadgeClass, categoryLabel, isLow, num,
+    categoryBadgeClass, categoryLabel, isLow, num, priceGap,
     scopeToWarehouse, sectionOptions, warehouseBreakdown, warehouseLabel, warehouseOptions,
 } from './itemStyles';
 
@@ -112,6 +112,21 @@ describe('itemStyles', () => {
     });
 });
 
+describe('priceGap', () => {
+    const item = (standard, actual) => ({ cost_price: standard, actual_price: actual == null ? null : { price: actual } });
+
+    it('is red when it cost more than the standard and green when less', () => {
+        expect(priceGap(item('2.000', 2.5))).toEqual({ text: '+25.0% vs standard', colour: '#dc2626' });
+        expect(priceGap(item('2.000', 1.5))).toEqual({ text: '−25.0% vs standard', colour: '#15803d' });
+        expect(priceGap(item('2.000', 2))?.text).toBe('Same as standard');
+    });
+
+    it('says nothing without both prices', () => {
+        expect(priceGap(item('2.000', null))).toBeNull();
+        expect(priceGap(item('0', 1))).toBeNull();
+    });
+});
+
 describe('ItemTable', () => {
     const renderTable = (rows = ITEMS, handlers = {}) =>
         render(<ItemTable
@@ -125,6 +140,41 @@ describe('ItemTable', () => {
         expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
             'Code', 'Name', 'Category', 'UOM', 'Warehouse', 'Quantity', 'Min Stock', 'Cost Price', 'Status', 'Actions',
         ]);
+    });
+
+    describe('on Raw Materials', () => {
+        const bought = [
+            { ...ITEMS[0], cost_price: '3.000', actual_price: { price: 3.375, date: '2026-10-05', grn_number: 'GRN-00020', supplier: 'Yousif Dhneem' } },
+            { ...ITEMS[0], id: 9, item_code: 'RM-2', item_name: 'Never bought', actual_price: null },
+        ];
+        const renderRaw = () => render(<ItemTable items={bought} onEdit={() => {}} onDelete={() => {}} category="raw_material" />);
+
+        it('calls the cost price Standard Price and adds Actual Price beside it', () => {
+            renderRaw();
+            const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+            expect(headers).toContain('Standard Price');
+            expect(headers).not.toContain('Cost Price');
+            expect(headers.indexOf('Actual Price')).toBe(headers.indexOf('Standard Price') + 1);
+        });
+
+        it('shows what was last paid, how far it is from the standard, and where it came from', () => {
+            renderRaw();
+            const cell = screen.getByText('BD 3.375').closest('td');
+            expect(cell).toHaveAttribute('title', 'Last paid to Yousif Dhneem on 2026-10-05 (GRN-00020)');
+            expect(screen.getByText('+12.5% vs standard')).toHaveStyle({ color: '#dc2626' });
+        });
+
+        it('shows a dash for a material never received', () => {
+            renderRaw();
+            expect(screen.getByTitle('Not received from a supplier yet')).toHaveTextContent('—');
+        });
+    });
+
+    it('keeps one Cost Price on Finished Goods', () => {
+        render(<ItemTable items={[ITEMS[1]]} onEdit={() => {}} onDelete={() => {}} category="finished_good" />);
+        const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+        expect(headers).toContain('Cost Price');
+        expect(headers).not.toContain('Actual Price');
     });
 
     /** Two levels, one cell — the table must not grow an eleventh column. */

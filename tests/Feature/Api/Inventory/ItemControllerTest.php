@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Inventory;
 
 use App\Events\ItemDeleted;
 use App\Events\ItemSaved;
+use App\Models\GoodsReceiptNote;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\PurchaseOrder;
@@ -151,6 +152,53 @@ class ItemControllerTest extends TestCase
 
         $this->assertDatabaseHas('items', ['item_name' => 'Steel Rod 12mm', 'category' => 'raw_material']);
         Event::assertDispatched(ItemSaved::class);
+    }
+
+    /** Receives $item on an LPO at $rate, on a GRN with $status and $date. */
+    private function receive(Item $item, float $rate, string $date, string $status = 'confirmed', float $grnUnitCost = 0): void
+    {
+        $supplier = Supplier::factory()->create(['name' => 'Supplier '.$rate]);
+        $order = PurchaseOrder::create([
+            'po_number' => 'PO-'.uniqid(), 'supplier_id' => $supplier->id, 'po_date' => $date,
+            'total_amount' => $rate, 'status' => 'received',
+        ]);
+        $line = $order->items()->create(['item_id' => $item->id, 'quantity' => 1, 'rate' => $rate, 'total_amount' => $rate, 'quantity_received' => 1]);
+        $grn = GoodsReceiptNote::create([
+            'grn_number' => 'GRN-'.uniqid(), 'purchase_order_id' => $order->id, 'supplier_id' => $supplier->id,
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'WH-A'], ['name' => 'A'])->id,
+            'received_date' => $date, 'status' => $status,
+        ]);
+        $grn->items()->create(['purchase_order_item_id' => $line->id, 'item_id' => $item->id, 'quantity_received' => 1, 'unit_cost' => $grnUnitCost, 'type' => 'inventory']);
+    }
+
+    /**
+     * Actual Price is what was last paid: the LPO rate on the latest confirmed
+     * GRN — to the third decimal, which the GRN's own unit cost loses.
+     */
+    public function test_actual_price_is_the_rate_on_the_latest_confirmed_receipt(): void
+    {
+        $item = Item::create(['item_code' => 'RM-9', 'item_name' => 'Silica Sand', 'category' => 'raw_material', 'unit_of_measure' => 'KG', 'cost_price' => 0.005]);
+        $this->receive($item, 0.004, '2026-09-01');
+        $this->receive($item, 0.006, '2026-10-05', grnUnitCost: 0.01);
+        $this->receive($item, 0.009, '2026-10-06', 'draft');
+
+        $row = collect($this->actingAs($this->actingUser())->getJson('/api/v1/inventory/items')->assertOk()->json('data'))
+            ->firstWhere('id', $item->id);
+
+        $this->assertSame(0.006, $row['actual_price']['price']);
+        $this->assertSame('2026-10-05', $row['actual_price']['date']);
+        $this->assertSame('Supplier 0.006', $row['actual_price']['supplier']);
+        // The single-item path agrees with the list.
+        $this->assertSame(0.006, $item->fresh()->actualPrice()['price']);
+    }
+
+    public function test_an_item_never_received_has_no_actual_price(): void
+    {
+        $item = Item::create(['item_code' => 'RM-8', 'item_name' => 'Unbought', 'category' => 'raw_material', 'unit_of_measure' => 'KG']);
+
+        $row = collect($this->actingAs($this->actingUser())->getJson('/api/v1/inventory/items')->json('data'))->firstWhere('id', $item->id);
+
+        $this->assertNull($row['actual_price']);
     }
 
     /** BHD runs to three decimals; a cost price must come back as entered. */
