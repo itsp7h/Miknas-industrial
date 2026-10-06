@@ -3,6 +3,7 @@ import { formatDate } from './pipelineStyles';
 import { liveOrders, orderLabel } from './purchaseOrders';
 import { goodsReceipts, receiptCaption } from './goodsReceipts';
 import ApproveLpoButton from '../order/ApproveLpoButton';
+import { stageTime } from './stageTimes';
 
 const ACTION = {
     display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
@@ -67,10 +68,14 @@ function Dot({ done, current }) {
  */
 function caption(stage, r, current) {
     switch (stage) {
+        // The date goes when the stage history has the time: the line below
+        // the caption says it, to the minute.
         case 'draft':
+            if (r.stage_history?.draft) return `Created by ${r.requested_by_name ?? '—'}`;
             return `Created by ${r.requested_by_name ?? '—'}${r.created_at ? ` · ${formatDate(r.created_at)}` : ''}`;
         case 'gm_approval':
             if (r.signature) {
+                if (r.stage_history?.gm_approval) return `Signed by ${r.signature.signed_by_name ?? '—'}`;
                 return `Signed by ${r.signature.signed_by_name ?? '—'} · ${formatDate(r.signature.signed_at)}`;
             }
             return current ? 'Awaiting GM signature' : '';
@@ -88,11 +93,12 @@ function caption(stage, r, current) {
             const awarded = r.awarded_supplier_names.length
                 ? `Awarded to ${r.awarded_supplier_names.join(', ')}`
                 : '';
+            const issuers = [...new Set(liveOrders(r).map((po) => po.issued_by_name).filter(Boolean))];
+            const issued = issuers.length ? `Issued by ${issuers.join(', ')}` : '';
             const waiting = liveOrders(r).filter((po) => po.awaiting_approval).length;
 
-            return current && waiting
-                ? [awarded, `${waiting} LPO(s) awaiting approval`].filter(Boolean).join(' · ')
-                : awarded;
+            return [awarded, issued, current && waiting ? `${waiting} LPO(s) awaiting approval` : '']
+                .filter(Boolean).join(' · ');
         }
         case 'receiving': {
             const summary = receiptCaption(r);
@@ -355,6 +361,9 @@ export default function StageTimeline({ request, compact = false, onAction = () 
                     const current = i === cursor;
                     const isLast = i === stages.length - 1;
                     const text = done || current ? caption(stage, request, current) : '';
+                    const time = done || current
+                        ? stageTime(stages, stage, request.stage_history, { done, current })
+                        : '';
 
                     let colour = '#94a3b8';
                     if (done) colour = '#1d4ed8';
@@ -389,6 +398,14 @@ export default function StageTimeline({ request, compact = false, onAction = () 
                                         </div>
                                         {text && (
                                             <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{text}</div>
+                                        )}
+                                        {time && (
+                                            <div
+                                                data-testid={`stage-time-${stage}`}
+                                                style={{ fontSize: 11.5, color: done ? '#64748b' : '#b45309', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}
+                                            >
+                                                <span aria-hidden="true">🕒</span>{time}
+                                            </div>
                                         )}
                                     </div>
                                     {current && <CurrentActions stage={stage} r={request} on={onAction} onChanged={onChanged} />}

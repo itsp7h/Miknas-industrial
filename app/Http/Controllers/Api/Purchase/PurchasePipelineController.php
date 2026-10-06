@@ -47,10 +47,10 @@ class PurchasePipelineController extends Controller
         // The same relation graph the Blade show() loaded, so the sidebar and
         // timeline have every count and name they render without N+1 queries.
         $purchaseRequest->load([
-            'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
+            'requestedBy', 'items', 'signature.signedBy', 'rejectedBy', 'stageEvents',
             'rfqInvitations.supplier', 'rfqInvitations.selectedBy', 'rfqInvitations.sentBy',
             'supplierQuotes.supplier', 'supplierQuotes.items',
-            'purchaseOrders.supplier', 'purchaseOrders.approvedBy', 'purchaseOrders.goodsReceiptNotes.warehouse',
+            'purchaseOrders.supplier', 'purchaseOrders.approvedBy', 'purchaseOrders.createdBy', 'purchaseOrders.goodsReceiptNotes.warehouse',
         ]);
 
         return new PurchaseRequestDetailResource($purchaseRequest);
@@ -283,10 +283,10 @@ class PurchasePipelineController extends Controller
     private function fresh(PurchaseRequest $purchaseRequest, string $message)
     {
         $purchaseRequest->refresh()->load([
-            'requestedBy', 'items', 'signature.signedBy', 'rejectedBy',
+            'requestedBy', 'items', 'signature.signedBy', 'rejectedBy', 'stageEvents',
             'rfqInvitations.supplier', 'rfqInvitations.selectedBy', 'rfqInvitations.sentBy',
             'supplierQuotes.supplier', 'supplierQuotes.items',
-            'purchaseOrders.supplier', 'purchaseOrders.approvedBy', 'purchaseOrders.goodsReceiptNotes.warehouse',
+            'purchaseOrders.supplier', 'purchaseOrders.approvedBy', 'purchaseOrders.createdBy', 'purchaseOrders.goodsReceiptNotes.warehouse',
         ]);
 
         return (new PurchaseRequestDetailResource($purchaseRequest))
