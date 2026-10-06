@@ -255,6 +255,7 @@ Route::prefix('v1')->group(function () {
             Route::get('requests/{purchaseRequest}/quotes', [SupplierQuoteController::class, 'index']);
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award', [SupplierQuoteController::class, 'award']);
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unaward']);
+            Route::post('requests/{purchaseRequest}/quotes/{supplierQuote}/award-all', [SupplierQuoteController::class, 'awardAll']);
             Route::put('requests/{purchaseRequest}/quotes/items/{quoteItem}/unit', [SupplierQuoteController::class, 'updateUnit']);
             Route::get('suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers.view');
             Route::post('suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');

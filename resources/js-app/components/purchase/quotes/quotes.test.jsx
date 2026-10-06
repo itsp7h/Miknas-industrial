@@ -283,6 +283,82 @@ describe('QuoteWorkspace', () => {
     });
 });
 
+const SUPPLIERS = [
+    { quote_id: 41, supplier: 'Yousif Dhneem', quoted: 6, awarded: 0, held_elsewhere: 2, total: 38.346 },
+    { quote_id: 42, supplier: 'Gulf Steel', quoted: 2, awarded: 2, held_elsewhere: 0, total: 20 },
+];
+
+describe('QuoteWorkspace — award all', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        vi.spyOn(client, 'apiGet').mockResolvedValue({ data: workspace({ suppliers: SUPPLIERS }) });
+    });
+
+    it('offers each supplier’s whole quote, with what it would change', async () => {
+        wrap();
+
+        const rows = await screen.findAllByTestId('award-all-row');
+        expect(rows[0]).toHaveTextContent('Yousif Dhneem');
+        expect(rows[0]).toHaveTextContent('6 items quoted · BD 38.346 before VAT');
+        expect(rows[0]).toHaveTextContent('2 awarded to others');
+    });
+
+    it('greys it, with the reason, once everything they quoted is theirs', async () => {
+        wrap();
+
+        const button = (await screen.findAllByTestId('award-all-row'))[1].querySelector('button');
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('title', 'Everything Gulf Steel quoted is already awarded to them');
+    });
+
+    it('greys it for someone who may not award', async () => {
+        client.apiGet.mockResolvedValue({ data: workspace({ suppliers: SUPPLIERS, permissions: { award: false } }) });
+        wrap();
+
+        const button = (await screen.findAllByTestId('award-all-row'))[0].querySelector('button');
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('title', 'You do not have permission to award on this request');
+    });
+
+    it('warns that awards held elsewhere move, and asks for a real reason', async () => {
+        const post = vi.spyOn(client, 'apiPost');
+        wrap();
+
+        fireEvent.click((await screen.findAllByText('Award all'))[0]);
+        expect(await screen.findByText('Award all to Yousif Dhneem')).toBeInTheDocument();
+        expect(screen.getByText(/2 of them are awarded to another supplier/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Award 6 items'));
+        expect(await screen.findByText('Please give a reason of at least 5 characters.')).toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it('awards the whole quote with one reason', async () => {
+        const post = vi.spyOn(client, 'apiPost').mockResolvedValue({
+            data: workspace({ suppliers: SUPPLIERS, fully_awarded: true }),
+            message: '6 items awarded to Yousif Dhneem (2 moved from Gulf Steel).',
+        });
+        wrap();
+
+        fireEvent.click((await screen.findAllByText('Award all'))[0]);
+        fireEvent.change(await screen.findByLabelText(/Reason for selection/), { target: { value: 'Only supplier quoted' } });
+        fireEvent.click(screen.getByText('Award 6 items'));
+
+        await waitFor(() => expect(post).toHaveBeenCalledWith(
+            '/purchase/requests/7/quotes/41/award-all', { award_reason: 'Only supplier quoted' }
+        ));
+        expect(await screen.findByText('6 items awarded to Yousif Dhneem (2 moved from Gulf Steel).')).toBeInTheDocument();
+        expect(screen.queryByText('Award all to Yousif Dhneem')).not.toBeInTheDocument();
+    });
+
+    it('offers just the rest when some of a quote is already theirs', async () => {
+        client.apiGet.mockResolvedValue({ data: workspace({ suppliers: [{ ...SUPPLIERS[0], awarded: 4, held_elsewhere: 0 }] }) });
+        wrap();
+
+        expect(await screen.findByText('Award remaining 2')).toBeEnabled();
+    });
+});
+
 describe('AwardedSuppliers', () => {
     it('groups awards by supplier with each one’s total', () => {
         const awards = [
