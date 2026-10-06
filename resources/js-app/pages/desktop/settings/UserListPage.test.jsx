@@ -103,6 +103,27 @@ describe('settings UserListPage', () => {
         expect(screen.getByLabelText('Stock Movements Create')).toBeInTheDocument();
     });
 
+    // Admin passes every check whatever is ticked; the grid must not show
+    // them as holding nothing, which is what made Approve & Sign look missing.
+    it('shows an Admin every square ticked and locked', async () => {
+        client.apiGet.mockResolvedValue({
+            ...PAYLOAD,
+            data: [{ id: 3, name: 'Admin User', email: 'admin@example.test', roles: ['Admin'], permissions: [] }],
+        });
+        wrap(DesktopUserListPage);
+
+        await screen.findByText('Admin User');
+        fireEvent.click(screen.getByText('Edit Access'));
+
+        expect(await screen.findByText(/Admin has all access/)).toBeInTheDocument();
+        expect(screen.getByText(/all — Admin/)).toBeInTheDocument();
+        expect(screen.getByLabelText('Pipeline Delete')).toBeChecked();
+        expect(screen.getByLabelText('Pipeline Delete')).toBeDisabled();
+        const approve = screen.getByText('Approve / reject (GM signature)').querySelector('input');
+        expect(approve).toBeChecked();
+        expect(approve).toBeDisabled();
+    });
+
     it('saves roles and permissions together', async () => {
         const put = vi.spyOn(client, 'apiPut').mockResolvedValue({
             message: 'Access updated for Alan Operations.', data: PAYLOAD.data[0],

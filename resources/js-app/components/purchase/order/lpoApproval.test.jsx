@@ -21,10 +21,10 @@ const ORDER = {
     supplier: { id: 1, name: 'Gulf Steel', email: 'sales@gulfsteel.test' },
 };
 
-const withAccess = (ui, { permissions = ['pipeline.approve-lpo'], userId = 2 } = {}) => render(
+const withAccess = (ui, { permissions = ['pipeline.approve-lpo'], userId = 2, isAdmin = false } = {}) => render(
     <MemoryRouter>
         <ToastProvider>
-            <AccessProvider permissions={permissions} userId={userId}>{ui}</AccessProvider>
+            <AccessProvider permissions={permissions} userId={userId} isAdmin={isAdmin}>{ui}</AccessProvider>
         </ToastProvider>
     </MemoryRouter>,
 );
@@ -47,6 +47,13 @@ describe('ApproveLpoButton', () => {
         expect(screen.getByText('✍ Approve & Sign')).toHaveAttribute(
             'title', 'You prepared this LPO, so someone else must approve it',
         );
+    });
+
+    it('stays live for an Admin who prepared the LPO', () => {
+        withAccess(<ApproveLpoButton order={ORDER} />, { userId: 1, isAdmin: true, permissions: [] });
+        const button = screen.getByText('✍ Approve & Sign');
+        expect(button).toBeEnabled();
+        expect(button).not.toHaveAttribute('title');
     });
 
     it('asks first, then approves and hands the order back', async () => {

@@ -8,11 +8,12 @@ import { useToast } from '../../ui/Toast';
 /**
  * Why this person may not approve the LPO, or null when they may — the
  * server's PurchaseOrder::approvalBlockedFor, asked here only to decide what to
- * offer. The approver must not be the person who prepared it.
+ * offer. The approver must not be the person who prepared it — unless they
+ * are an Admin.
  */
 export function approvalBlockedReason(order, access) {
     if (!access.can('pipeline.approve-lpo')) return 'You do not have permission to approve LPOs';
-    if (order.prepared_by_id != null && access.userId != null && Number(order.prepared_by_id) === access.userId) {
+    if (!access.isAdmin && order.prepared_by_id != null && access.userId != null && Number(order.prepared_by_id) === access.userId) {
         return 'You prepared this LPO, so someone else must approve it';
     }
 
