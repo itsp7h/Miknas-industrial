@@ -98,7 +98,7 @@ export default function ItemListPage({
                 </div>
             </div>
 
-            <ItemTable items={it.filtered} onEdit={it.openEdit} onDelete={it.setDeleting} />
+            <ItemTable items={it.filtered} onEdit={it.openEdit} onDelete={it.setDeleting} category={category} />
 
             <Modal
                 open={it.modalOpen}

@@ -30,6 +30,41 @@ const num = qty;
 
 export { num, money };
 
+/**
+ * A raw material's cost price is its Standard Price: what users set, to
+ * compare against the Actual Price — what was last paid a supplier. A finished
+ * good keeps "Cost Price"; a production run sets it, nobody buys it.
+ */
+export const priceLabel = (category) => (category === 'raw_material' ? 'Standard Price' : 'Cost Price');
+
+/**
+ * How the last price paid compares with the standard: `{ text, colour }`, or
+ * null when there is nothing to compare (never bought, or no standard set).
+ * Red when it cost more than the standard, green when less.
+ */
+export function priceGap(item) {
+    const actual = item?.actual_price?.price;
+    const standard = Number(item?.cost_price ?? 0);
+    if (actual == null || standard <= 0) return null;
+
+    const pct = ((Number(actual) - standard) / standard) * 100;
+    if (Math.abs(pct) < 0.05) return { text: 'Same as standard', colour: '#64748b' };
+
+    return {
+        text: `${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}% vs standard`,
+        colour: pct > 0 ? '#dc2626' : '#15803d',
+    };
+}
+
+/** Tooltip for the Actual Price: where the figure came from. */
+export const actualPriceSource = (item) => {
+    const a = item?.actual_price;
+
+    return a
+        ? `Last paid${a.supplier ? ` to ${a.supplier}` : ''} on ${a.date}${a.grn_number ? ` (${a.grn_number})` : ''}`
+        : 'Not received from a supplier yet';
+};
+
 // On-hand below the item's own minimum. A minimum of 0 means "no threshold
 // set", so such an item is never low — otherwise every unstocked item would
 // shout.

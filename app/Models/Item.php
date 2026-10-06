@@ -122,6 +122,54 @@ class Item extends Model
         return $date ? substr((string) $date, 0, 10) : null;
     }
 
+    /**
+     * What the company last paid a supplier for this item, or null if it was
+     * never received: the LPO rate on the most recently received GRN.
+     *
+     * The rate, not the GRN line's own unit_cost — that is copied from the
+     * order through a two-decimal cast and loses BHD's third place (0.006
+     * came out 0.010). The rate is in our unit, before VAT.
+     *
+     * The list pre-fills this for every row in one query (see
+     * ItemController::index); this fallback answers for a single item.
+     */
+    public function actualPrice(): ?array
+    {
+        if (array_key_exists('actual_price', $this->attributes)) {
+            return $this->attributes['actual_price'];
+        }
+
+        return self::actualPrices([$this->id])[$this->id] ?? null;
+    }
+
+    /** actualPrice() for many items at once, keyed by item id. */
+    public static function actualPrices(?array $itemIds = null): array
+    {
+        return DB::table('grn_items')
+            ->join('goods_receipt_notes', 'goods_receipt_notes.id', '=', 'grn_items.goods_receipt_note_id')
+            ->leftJoin('purchase_order_items', 'purchase_order_items.id', '=', 'grn_items.purchase_order_item_id')
+            ->leftJoin('suppliers', 'suppliers.id', '=', 'goods_receipt_notes.supplier_id')
+            ->where('goods_receipt_notes.status', 'confirmed')
+            ->when($itemIds !== null, fn ($q) => $q->whereIn('grn_items.item_id', $itemIds))
+            ->orderByDesc('goods_receipt_notes.received_date')
+            ->orderByDesc('goods_receipt_notes.id')
+            ->get([
+                'grn_items.item_id',
+                DB::raw('coalesce(purchase_order_items.rate, grn_items.unit_cost) as price'),
+                'goods_receipt_notes.received_date',
+                'goods_receipt_notes.grn_number',
+                'suppliers.name as supplier',
+            ])
+            ->unique('item_id')
+            ->mapWithKeys(fn ($row) => [$row->item_id => [
+                'price' => round((float) $row->price, 3),
+                'date' => substr((string) $row->received_date, 0, 10),
+                'grn_number' => $row->grn_number,
+                'supplier' => $row->supplier,
+            ]])
+            ->all();
+    }
+
     public function billOfMaterials()
     {
         return $this->hasMany(BillOfMaterial::class, 'product_id');

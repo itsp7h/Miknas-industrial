@@ -28,7 +28,11 @@ class ItemResource extends JsonResource
             'warehouse_id' => count($this->stockByWarehouse()) === 1
                 ? $this->stockByWarehouse()[0]['id']
                 : null,
+            // On a raw material this is its Standard Price — what users set,
+            // to compare against what was actually paid.
             'cost_price' => $this->cost_price,
+            // What was last paid a supplier: price, date, GRN and supplier.
+            'actual_price' => $this->actualPrice(),
             // When this item was last bought, for the "Recently purchased"
             // sort. Null for an item nobody has ordered yet.
             'last_purchased_at' => $this->lastPurchasedAt(),

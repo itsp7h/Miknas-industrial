@@ -147,7 +147,7 @@ export default function ItemForm({ item, categoryOptions, warehouses = [], defau
 
             <FormField label="Unit of Measure" name="unit_of_measure" value={values.unit_of_measure} onChange={setField} error={errors.unit_of_measure} />
             <FormField label="Minimum Stock Level" name="minimum_stock_level" type="number" value={values.minimum_stock_level} onChange={setField} error={errors.minimum_stock_level} />
-            <FormField label="Cost Price" name="cost_price" type="number" value={values.cost_price} onChange={setField} error={errors.cost_price} />
+            <FormField label={values.category === 'raw_material' ? 'Standard Price' : 'Cost Price'} name="cost_price" type="number" value={values.cost_price} onChange={setField} error={errors.cost_price} />
             <FormField label="Description" name="description" type="textarea" value={values.description} onChange={setField} error={errors.description} />
 
             <div className="mb-4">
