@@ -66,6 +66,8 @@ import DesktopCompanyListPage from './pages/desktop/settings/CompanyListPage';
 import MobileCompanyListPage from './pages/mobile/settings/CompanyListPage';
 import DesktopProjectSettingsPage from './pages/desktop/settings/ProjectListPage';
 import MobileProjectSettingsPage from './pages/mobile/settings/ProjectListPage';
+import DesktopProjectCostsPage from './pages/desktop/settings/ProjectCostsPage';
+import MobileProjectCostsPage from './pages/mobile/settings/ProjectCostsPage';
 import DesktopUserListPage from './pages/desktop/settings/UserListPage';
 import MobileUserListPage from './pages/mobile/settings/UserListPage';
 import DesktopIntegrationsPage from './pages/desktop/settings/IntegrationsPage';
@@ -120,6 +122,7 @@ export default function App({
     const ProductionOutputListPage = viewport === 'mobile' ? MobileProductionOutputListPage : DesktopProductionOutputListPage;
     const CompanyListPage = viewport === 'mobile' ? MobileCompanyListPage : DesktopCompanyListPage;
     const ProjectSettingsPage = viewport === 'mobile' ? MobileProjectSettingsPage : DesktopProjectSettingsPage;
+    const ProjectCostsPage = viewport === 'mobile' ? MobileProjectCostsPage : DesktopProjectCostsPage;
     const UserListPage = viewport === 'mobile' ? MobileUserListPage : DesktopUserListPage;
     const IntegrationsPage = viewport === 'mobile' ? MobileIntegrationsPage : DesktopIntegrationsPage;
     const FinancePage = viewport === 'mobile' ? MobileFinancePage : DesktopFinancePage;
@@ -209,6 +212,7 @@ export default function App({
                     <Route path="/app/production/outputs" element={<ProductionOutputListPage />} />
                     <Route path="/app/settings/companies" element={<CompanyListPage />} />
                     <Route path="/app/settings/projects" element={<ProjectSettingsPage />} />
+                    <Route path="/app/settings/projects/:id/costs" element={<ProjectCostsPage />} />
                     <Route path="/app/settings/users" element={<UserListPage />} />
                     <Route path="/app/settings/integrations" element={<IntegrationsPage />} />
                     <Route path="/app/settings/finance" element={<FinancePage />} />

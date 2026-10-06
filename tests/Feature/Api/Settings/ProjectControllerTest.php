@@ -2,10 +2,15 @@
 
 namespace Tests\Feature\Api\Settings;
 
+use App\Models\GoodsReceiptNote;
+use App\Models\Item;
+use App\Models\PurchaseOrder;
 use App\Models\Settings\Company;
 use App\Models\Settings\Location;
 use App\Models\Settings\ProjectSetting;
+use App\Models\Supplier;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -227,5 +232,75 @@ class ProjectControllerTest extends TestCase
         $this->actingAs($this->admin())
             ->postJson('/api/v1/settings/projects/import', [])
             ->assertStatus(422)->assertJsonValidationErrors(['file']);
+    }
+
+    /** A confirmed GRN with one consumable line for $project at $rate on the LPO. */
+    private function chargedGrn(ProjectSetting $project, string $status = 'confirmed', float $rate = 0.006, float $unitCost = 0.01): GoodsReceiptNote
+    {
+        $supplier = Supplier::factory()->create(['name' => 'Gulf Supplies']);
+        $item = Item::create(['item_code' => 'CN-'.uniqid(), 'item_name' => 'Silica Sand', 'category' => 'raw_material', 'unit_of_measure' => 'KG', 'cost_price' => 1]);
+        $warehouse = Warehouse::create(['name' => 'Main Store', 'code' => 'WH-'.uniqid()]);
+        $order = PurchaseOrder::create(['po_number' => 'LPO-'.uniqid(), 'supplier_id' => $supplier->id, 'po_date' => now(), 'total_amount' => 1, 'status' => 'sent']);
+        $line = $order->items()->create(['item_id' => $item->id, 'quantity' => 1000, 'rate' => $rate, 'total_amount' => 6, 'quantity_received' => 0]);
+        $grn = GoodsReceiptNote::create([
+            'grn_number' => 'GRN-'.uniqid(), 'purchase_order_id' => $order->id,
+            'supplier_id' => $supplier->id, 'warehouse_id' => $warehouse->id,
+            'received_date' => '2026-10-06', 'status' => $status,
+        ]);
+        $grn->items()->create([
+            'purchase_order_item_id' => $line->id, 'item_id' => $item->id, 'quantity_received' => 1000,
+            'unit_cost' => $unitCost, 'type' => 'consumable', 'project_id' => $project->id,
+        ]);
+
+        return $grn;
+    }
+
+    public function test_costs_lists_the_consumables_charged_to_a_project_at_the_lpo_rate(): void
+    {
+        $project = $this->project('Hidd Yard');
+        $grn = $this->chargedGrn($project);
+
+        $response = $this->actingAs($this->admin())
+            ->getJson("/api/v1/settings/projects/{$project->id}/costs")
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Hidd Yard')
+            ->assertJsonPath('data.company_name', 'Miknas Industrial')
+            ->assertJsonCount(1, 'lines')
+            ->assertJsonPath('lines.0.grn_number', $grn->grn_number)
+            ->assertJsonPath('lines.0.supplier_name', 'Gulf Supplies')
+            ->assertJsonPath('lines.0.item_name', 'Silica Sand')
+            ->assertJsonPath('lines.0.received_date', '2026-10-06')
+            ->assertJsonPath('meta.line_count', 1)
+            ->assertJsonPath('meta.grn_count', 1);
+
+        // 1000 × 0.006 from the LPO, not 1000 × 0.01 from the two-decimal GRN copy.
+        $this->assertEqualsWithDelta(0.006, $response->json('lines.0.rate'), 0.0000001);
+        $this->assertEqualsWithDelta(6.0, $response->json('lines.0.amount'), 0.0000001);
+        $this->assertEqualsWithDelta(6.0, $response->json('meta.total'), 0.0000001);
+    }
+
+    public function test_costs_leave_out_draft_grns_and_other_projects(): void
+    {
+        $project = $this->project('Hidd Yard');
+        $this->chargedGrn($project, 'draft');
+        $this->chargedGrn($this->project('Sitra Depot'));
+
+        $this->actingAs($this->admin())
+            ->getJson("/api/v1/settings/projects/{$project->id}/costs")
+            ->assertOk()
+            ->assertJsonCount(0, 'lines')
+            ->assertJsonPath('meta.total', 0);
+    }
+
+    public function test_costs_need_the_costs_permission_not_just_view(): void
+    {
+        $project = $this->project('Hidd Yard');
+        $viewer = User::factory()->create();
+        $viewer->givePermissionTo('projects.view');
+
+        $this->actingAs($viewer)->getJson("/api/v1/settings/projects/{$project->id}/costs")->assertForbidden();
+
+        $viewer->givePermissionTo('projects.costs');
+        $this->actingAs($viewer->fresh())->getJson("/api/v1/settings/projects/{$project->id}/costs")->assertOk();
     }
 }

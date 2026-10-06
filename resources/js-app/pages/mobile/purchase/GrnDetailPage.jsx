@@ -40,7 +40,7 @@ export default function GrnDetailPage() {
                 open={g.confirming}
                 title="Confirm this GRN?"
                 body={g.grn
-                    ? `${g.grn.grn_number} will raise stock at ${g.grn.warehouse_name ?? 'the warehouse'} and update the purchase order. This cannot be undone.`
+                    ? `${g.grn.grn_number} will raise stock at ${g.grn.warehouse_name ?? 'the warehouse'} for its inventory lines, charge any consumable lines to their projects, and update the purchase order. This cannot be undone.`
                     : ''}
                 onConfirm={g.confirm}
                 onCancel={() => g.setConfirming(false)}

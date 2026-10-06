@@ -138,6 +138,8 @@ return [
             // nothing that writes a PDF.
             'extra' => [
                 'import' => 'Import from Excel, and download the template',
+                // Money, so not everyone who may see the project list sees it.
+                'costs' => 'See what has been charged to a project (consumables received for it)',
             ],
         ],
         // The people the MPR form's Requested By offers, per company.
