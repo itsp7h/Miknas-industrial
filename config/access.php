@@ -108,6 +108,16 @@ return [
             // correction for a wrong one is an opposing movement.
             'actions' => ['view', 'create'],
         ],
+        // Making a finished good out of raw materials, at cost. A run is
+        // posted like a stock movement and never rewritten.
+        'production' => [
+            'group' => 'Inventory',
+            'label' => 'Production',
+            'actions' => ['view', 'create'],
+            'extra' => [
+                'manage-recipes' => 'Create and edit product recipes',
+            ],
+        ],
         'movement-report' => [
             'group' => 'Inventory',
             'label' => 'Movement Report',
@@ -235,6 +245,7 @@ return [
                 'finished-goods.export',
                 'warehouses.view',
                 'stock-movements.view',
+                'production.view',
                 'movement-report.view',
                 'low-stock.view',
                 'valuation.view',

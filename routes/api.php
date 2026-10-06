@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Inventory\ItemController;
+use App\Http\Controllers\Api\Inventory\ProductionRunController;
 use App\Http\Controllers\Api\Inventory\StockMovementController;
 use App\Http\Controllers\Api\Inventory\StockReportController;
 use App\Http\Controllers\Api\Inventory\WarehouseController;
@@ -89,6 +90,12 @@ Route::prefix('v1')->group(function () {
             Route::get('movements', [StockMovementController::class, 'index'])->middleware('permission:stock-movements.view');
             Route::get('movements/form-options', [StockMovementController::class, 'formOptions'])->middleware('permission:stock-movements.create');
             Route::post('movements', [StockMovementController::class, 'store'])->middleware('permission:stock-movements.create');
+
+            // Production: a finished good made from raw materials, at cost.
+            Route::get('production', [ProductionRunController::class, 'index'])->middleware('permission:production.view');
+            Route::get('production/form-options', [ProductionRunController::class, 'formOptions'])->middleware('permission:production.create|production.manage-recipes');
+            Route::post('production', [ProductionRunController::class, 'store'])->middleware('permission:production.create');
+            Route::put('production/recipes/{item}', [ProductionRunController::class, 'updateRecipe'])->middleware('permission:production.manage-recipes');
 
             Route::get('reports/movement', [StockReportController::class, 'movement'])->middleware('permission:movement-report.view');
             Route::get('reports/low-stock', [StockReportController::class, 'lowStock'])->middleware('permission:low-stock.view');

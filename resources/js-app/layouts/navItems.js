@@ -50,6 +50,7 @@ export const NAV_GROUPS = [
             { type: 'link', to: '/app/inventory/finished-goods', label: 'Finished Goods', permission: 'finished-goods.view' },
             { type: 'link', to: '/app/inventory/warehouses', label: 'Warehouses', permission: 'warehouses.view' },
             { type: 'link', to: '/app/inventory/movements', label: 'Stock Movements', permission: 'stock-movements.view' },
+            { type: 'link', to: '/app/inventory/production', label: 'Production', permission: 'production.view' },
             { type: 'link', to: '/app/inventory/reports/movement', label: 'Movement Report', permission: 'movement-report.view' },
             { type: 'link', to: '/app/inventory/reports/low-stock', label: 'Low Stock Alert', permission: 'low-stock.view' },
             { type: 'link', to: '/app/inventory/reports/valuation', label: 'Valuation', permission: 'valuation.view' },
