@@ -227,7 +227,7 @@ class RfqPortalController extends Controller
 
             // One quote in is enough to start comparing.
             if ($invitation->purchaseRequest->stage === 'quoting') {
-                app(PurchaseStageService::class)->setStage($invitation->purchaseRequest, 'comparison');
+                app(PurchaseStageService::class)->setStage($invitation->purchaseRequest, 'comparison', $invitation->supplier?->name);
             }
 
             return $quote;

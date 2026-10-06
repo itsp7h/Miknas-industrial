@@ -79,6 +79,46 @@ describe('PipelineHeader', () => {
 });
 
 describe('StageTimeline', () => {
+    it('says who issued the LPOs on the LPO step', () => {
+        renderIn(<StageTimeline request={base({
+            stage: 'receiving', stage_index: 6,
+            awarded_supplier_names: ['Yousif Dhneem'],
+            purchase_orders: [
+                { id: 1, po_number: 'MI-LPO-26-0007', supplier_name: 'Yousif Dhneem', status: 'sent', issued_by_name: 'Nelson' },
+                { id: 2, po_number: 'MI-LPO-26-0005', supplier_name: 'Yousif Dhneem', status: 'cancelled', issued_by_name: 'Old Hand' },
+            ],
+            stage_history: {
+                comparison: { reached_at: '2026-09-02T08:10:00Z', by: 'Yousif Dhneem' },
+                lpo: { reached_at: '2026-09-02T09:00:00Z', by: 'Nelson' },
+                receiving: { reached_at: '2026-09-02T09:20:00Z', by: 'Gm' },
+            },
+        })} />);
+
+        expect(screen.getByText('Awarded to Yousif Dhneem · Issued by Nelson')).toBeInTheDocument();
+        expect(screen.getByTestId('stage-time-lpo')).toHaveTextContent(/approved by Gm · took 20m/);
+    });
+
+    it('puts the time, who and how long under each reached stage, and the wait under the current one', () => {
+        renderIn(<StageTimeline request={base({
+            stage_history: {
+                draft: { reached_at: '2026-09-01T06:00:00Z', by: 'Ali' },
+                gm_approval: { reached_at: '2026-09-01T07:30:00Z', by: 'Gm' },
+                rfq: { reached_at: '2026-09-01T08:00:00Z', by: 'Admin User' },
+                quoting: { reached_at: '2026-09-01T08:10:00Z', by: 'Admin User' },
+                comparison: { reached_at: '2026-09-02T08:10:00Z', by: 'Yousif Dhneem' },
+                lpo: { reached_at: '2026-09-02T09:00:00Z', by: 'Admin User' },
+            },
+        })} />);
+
+        expect(screen.getByTestId('stage-time-draft')).toHaveTextContent(/01 Sep 2026.*by Ali/);
+        expect(screen.getByTestId('stage-time-gm_approval')).toHaveTextContent(/by Gm · took 1h 30m/);
+        expect(screen.getByTestId('stage-time-quoting')).toHaveTextContent(/by Yousif Dhneem · took 1d/);
+        expect(screen.getByTestId('stage-time-lpo')).toHaveTextContent(/^🕒Waiting /);
+        expect(screen.queryByTestId('stage-time-receiving')).not.toBeInTheDocument();
+        // The date moved to the time line, so the caption no longer repeats it.
+        expect(screen.getByText('Created by Admin User')).toBeInTheDocument();
+    });
+
     it('renders every stage label', () => {
         renderIn(<StageTimeline request={base()} />);
         Object.values(LABELS).forEach((label) => {

@@ -11,6 +11,24 @@ class PurchaseRequest extends Model
 {
     use HasFactory;
 
+    /**
+     * A request's first stage is reached the moment it exists, whichever path
+     * created it, so it is recorded here rather than in each controller.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (PurchaseRequest $request) {
+            $user = auth()->user();
+
+            $request->stageEvents()->create([
+                'stage' => $request->stage ?? 'draft',
+                'user_id' => $user?->id,
+                'actor_name' => $request->requested_by_name ?: $user?->name,
+                'reached_at' => $request->created_at ?? now(),
+            ]);
+        });
+    }
+
     protected $fillable = [
         'request_number', 'date', 'company_name', 'project_name', 'department',
         'requested_by_name', 'required_date_text', 'location',
@@ -67,6 +85,12 @@ class PurchaseRequest extends Model
     public function purchaseOrders()
     {
         return $this->hasMany(PurchaseOrder::class);
+    }
+
+    /** When each stage was reached and by whom, oldest first. */
+    public function stageEvents()
+    {
+        return $this->hasMany(PurchaseRequestStageEvent::class)->orderBy('reached_at')->orderBy('id');
     }
 
     public function signature()

@@ -37,6 +37,15 @@ class PurchaseRequestDetailResource extends JsonResource
             'is_done' => $this->stage === 'complete',
             'stages' => $all,
             'stage_labels' => collect($all)->mapWithKeys(fn ($s) => [$s => $stages->stageLabel($s)]),
+            // When each stage was reached and by whom — the first time, keyed
+            // by stage. ISO 8601 with its offset, so the browser shows it in
+            // local time. The timeline works out how long each step took.
+            'stage_history' => $this->whenLoaded('stageEvents', fn () => $this->stageEvents
+                ->groupBy('stage')
+                ->map(fn ($events) => [
+                    'reached_at' => $events->first()->reached_at?->toIso8601String(),
+                    'by' => $events->first()->actor_name,
+                ]), collect()),
 
             'status' => $this->status,
             'company_name' => $this->company_name,
@@ -144,6 +153,9 @@ class PurchaseRequestDetailResource extends JsonResource
                 // Issued but not yet signed under Approved By, so not sent.
                 'awaiting_approval' => $po->awaitingApproval(),
                 'prepared_by_id' => $po->created_by,
+                // Who issued it, for the LPO step: the approver alone did not say.
+                'issued_by_name' => $po->createdBy?->name,
+                'issued_at' => $po->created_at?->toIso8601String(),
                 'approved_by_name' => $po->approvedBy?->name,
                 'approved_at' => $po->approved_at?->toIso8601String(),
             ])->values()),
