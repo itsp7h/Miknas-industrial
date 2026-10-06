@@ -643,4 +643,42 @@ class GoodsReceiptNoteControllerTest extends TestCase
             ->assertJsonCount(1, 'projects')
             ->assertJsonPath('projects.0.name', 'Hidd Yard');
     }
+
+    /** A consumable is used up on its project: received against the LPO, never stocked. */
+    public function test_confirming_a_consumable_line_moves_no_stock_but_advances_the_order(): void
+    {
+        Event::fake([GrnSaved::class, StockMovementRecorded::class, ItemSaved::class]);
+        $project = ProjectSetting::create(['name' => 'Hidd Yard', 'is_active' => true]);
+        $grn = $this->makeGrn();
+        $grn->items()->first()->update(['type' => 'consumable', 'project_id' => $project->id]);
+
+        $this->actingAs($this->user())
+            ->patchJson("/api/v1/purchase/grns/{$grn->id}/confirm")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed');
+
+        $this->assertSame(0, StockLevel::count());
+        $this->assertDatabaseMissing('stock_movements', ['reference_type' => 'GoodsReceiptNote', 'reference_id' => $grn->id]);
+        $this->assertSame('4.00', (string) $this->order->items()->first()->quantity_received);
+        Event::assertNotDispatched(StockMovementRecorded::class);
+        Event::assertDispatched(GrnSaved::class);
+    }
+
+    public function test_a_mixed_grn_stocks_only_its_inventory_lines(): void
+    {
+        $project = ProjectSetting::create(['name' => 'Hidd Yard', 'is_active' => true]);
+        $other = Item::create(['item_code' => 'CN-1', 'item_name' => 'Gloves', 'category' => 'raw_material', 'unit_of_measure' => 'PAIR', 'cost_price' => 1]);
+        $line = $this->order->items()->create(['item_id' => $other->id, 'quantity' => 5, 'rate' => 1, 'total_amount' => 5, 'quantity_received' => 0]);
+        $grn = $this->makeGrn();
+        $grn->items()->create([
+            'purchase_order_item_id' => $line->id, 'item_id' => $other->id,
+            'quantity_received' => 5, 'unit_cost' => 1, 'type' => 'consumable', 'project_id' => $project->id,
+        ]);
+
+        $this->actingAs($this->user())->patchJson("/api/v1/purchase/grns/{$grn->id}/confirm")->assertOk();
+
+        $this->assertSame('4.00', (string) StockLevel::where('item_id', $this->item->id)->value('quantity'));
+        $this->assertNull(StockLevel::where('item_id', $other->id)->first());
+        $this->assertSame('5.00', (string) $line->fresh()->quantity_received);
+    }
 }

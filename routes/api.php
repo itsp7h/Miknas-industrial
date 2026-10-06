@@ -176,6 +176,7 @@ Route::prefix('v1')->group(function () {
             Route::post('projects/import', [ProjectController::class, 'import'])->middleware('permission:projects.import');
             Route::get('projects/template', [ProjectController::class, 'downloadTemplate'])->middleware('permission:projects.import');
             Route::post('projects', [ProjectController::class, 'store'])->middleware('permission:projects.create');
+            Route::get('projects/{project}/costs', [ProjectController::class, 'costs'])->middleware('permission:projects.costs');
             Route::put('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:projects.edit');
             Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->middleware('permission:projects.delete');
             Route::post('projects/{project}/locations', [ProjectController::class, 'storeLocation'])->middleware('permission:projects.create');

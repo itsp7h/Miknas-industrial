@@ -342,6 +342,9 @@ class GoodsReceiptNoteController extends Controller
     /**
      * Receives the goods: raises stock, writes the movements, advances the PO's
      * received quantities, and marks the PO received once every line is met.
+     * A consumable line is received against the PO like any other but never
+     * reaches stock: it is used up on its project, which is charged with it
+     * (Settings → Projects → Costs).
      * Same logic as the Blade controller — which no page ever linked to, so
      * confirming was unreachable and stock never actually moved.
      */
@@ -367,6 +370,14 @@ class GoodsReceiptNoteController extends Controller
             $grn->load('items', 'purchaseOrder.items');
 
             foreach ($grn->items as $grnItem) {
+                $grn->purchaseOrder->items()
+                    ->where('item_id', $grnItem->item_id)
+                    ->increment('quantity_received', $grnItem->quantity_received);
+
+                if ($grnItem->type === 'consumable') {
+                    continue;
+                }
+
                 $stockLevel = StockLevel::firstOrCreate(
                     ['item_id' => $grnItem->item_id, 'warehouse_id' => $grn->warehouse_id],
                     ['quantity' => 0]
@@ -382,10 +393,6 @@ class GoodsReceiptNoteController extends Controller
                     'reference_id' => $grn->id,
                     'created_by' => auth()->id(),
                 ]);
-
-                $grn->purchaseOrder->items()
-                    ->where('item_id', $grnItem->item_id)
-                    ->increment('quantity_received', $grnItem->quantity_received);
             }
 
             $grn->update(['status' => 'confirmed']);
