@@ -224,7 +224,9 @@ describe('desktop sales flow pages', () => {
         );
 
         expect(await screen.findByText('Record Customer Receipt')).toBeInTheDocument();
-        expect(screen.getByLabelText(/Invoice/)).toHaveValue('4');
+        // The title renders before the form options arrive; on a loaded CI
+        // runner the select was read while still empty. Wait for the value.
+        await waitFor(() => expect(screen.getByLabelText(/Invoice/)).toHaveValue('4'));
         // Blade named the outstanding figure on each option, and beside Amount.
         expect(screen.getByText('BD 70.000 outstanding on this invoice.')).toBeInTheDocument();
     });
