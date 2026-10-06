@@ -14,7 +14,10 @@ class Item extends Model
 
     protected $casts = [
         'minimum_stock_level' => 'decimal:2',
-        'cost_price' => 'decimal:2',
+        // Three places, not two: the currency is BHD, where a fils is a
+        // thousandth. Two quietly turned a cost of 1.588 into 1.59 — the
+        // database kept 1.588, so only what was read back was wrong.
+        'cost_price' => 'decimal:3',
         'is_active' => 'boolean',
     ];
 
