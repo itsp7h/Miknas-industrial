@@ -5,7 +5,9 @@ import ItemForm from '../../../components/inventory/item/ItemForm';
 import ItemToolbar from '../../../components/inventory/item/ItemToolbar';
 import ItemImportModal from '../../../components/inventory/item/ItemImportModal';
 import useItemList from '../../../components/inventory/item/useItemList';
-import { categoryBadgeClass, categoryLabel, isLow, money, num, warehouseLabel } from '../../../components/inventory/item/itemStyles';
+import {
+    actualPriceSource, categoryBadgeClass, categoryLabel, isLow, money, num, priceGap, priceLabel, warehouseLabel,
+} from '../../../components/inventory/item/itemStyles';
 
 /**
  * One page, two entries: Raw Materials and Finished Goods show the same
@@ -135,9 +137,20 @@ export default function ItemListPage({
                             <div style={{ fontWeight: 600, color: '#1f2937' }}>{num(item.minimum_stock_level)}</div>
                         </div>
                         <div>
-                            <div style={{ color: '#94a3b8' }}>Cost Price</div>
+                            <div style={{ color: '#94a3b8' }}>{priceLabel(category)}</div>
                             <div style={{ fontWeight: 600, color: '#1f2937' }}>{money(item.cost_price)}</div>
                         </div>
+                        {category === 'raw_material' && (
+                            <div title={actualPriceSource(item)}>
+                                <div style={{ color: '#94a3b8' }}>Actual Price</div>
+                                <div style={{ fontWeight: 600, color: item.actual_price ? '#1f2937' : '#94a3b8' }}>
+                                    {item.actual_price ? money(item.actual_price.price) : '—'}
+                                </div>
+                                {priceGap(item) && (
+                                    <div style={{ fontSize: 11, color: priceGap(item).colour }}>{priceGap(item).text}</div>
+                                )}
+                            </div>
+                        )}
                         <div>
                             <div style={{ color: '#94a3b8' }}>Warehouse</div>
                             <div style={{ fontWeight: 600, color: '#1f2937' }}>{warehouseLabel(item)}</div>

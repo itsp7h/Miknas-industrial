@@ -41,6 +41,7 @@ class StockMovementResource extends JsonResource
             'DeliveryNote' => 'Delivery Note',
             'MaterialIssue' => 'Material Issue',
             'ProductionOutput' => 'Production Output',
+            'ProductionRun' => 'Production Run',
             default => $this->reference_type,
         };
 

@@ -36,6 +36,8 @@ import DesktopWarehouseDetailPage from './pages/desktop/inventory/WarehouseDetai
 import MobileWarehouseDetailPage from './pages/mobile/inventory/WarehouseDetailPage';
 import DesktopStockMovementPage from './pages/desktop/inventory/StockMovementPage';
 import MobileStockMovementPage from './pages/mobile/inventory/StockMovementPage';
+import DesktopProductionPage from './pages/desktop/inventory/ProductionPage';
+import MobileProductionPage from './pages/mobile/inventory/ProductionPage';
 import DesktopMovementReportPage from './pages/desktop/inventory/reports/MovementReportPage';
 import MobileMovementReportPage from './pages/mobile/inventory/reports/MovementReportPage';
 import DesktopLowStockPage from './pages/desktop/inventory/reports/LowStockPage';
@@ -66,6 +68,8 @@ import DesktopCompanyListPage from './pages/desktop/settings/CompanyListPage';
 import MobileCompanyListPage from './pages/mobile/settings/CompanyListPage';
 import DesktopProjectSettingsPage from './pages/desktop/settings/ProjectListPage';
 import MobileProjectSettingsPage from './pages/mobile/settings/ProjectListPage';
+import DesktopProjectCostsPage from './pages/desktop/settings/ProjectCostsPage';
+import MobileProjectCostsPage from './pages/mobile/settings/ProjectCostsPage';
 import DesktopUserListPage from './pages/desktop/settings/UserListPage';
 import MobileUserListPage from './pages/mobile/settings/UserListPage';
 import DesktopIntegrationsPage from './pages/desktop/settings/IntegrationsPage';
@@ -104,6 +108,7 @@ export default function App({
     const WarehouseListPage = viewport === 'mobile' ? MobileWarehouseListPage : DesktopWarehouseListPage;
     const WarehouseDetailPage = viewport === 'mobile' ? MobileWarehouseDetailPage : DesktopWarehouseDetailPage;
     const StockMovementPage = viewport === 'mobile' ? MobileStockMovementPage : DesktopStockMovementPage;
+    const ProductionPage = viewport === 'mobile' ? MobileProductionPage : DesktopProductionPage;
     const MovementReportPage = viewport === 'mobile' ? MobileMovementReportPage : DesktopMovementReportPage;
     const LowStockPage = viewport === 'mobile' ? MobileLowStockPage : DesktopLowStockPage;
     const ValuationPage = viewport === 'mobile' ? MobileValuationPage : DesktopValuationPage;
@@ -120,6 +125,7 @@ export default function App({
     const ProductionOutputListPage = viewport === 'mobile' ? MobileProductionOutputListPage : DesktopProductionOutputListPage;
     const CompanyListPage = viewport === 'mobile' ? MobileCompanyListPage : DesktopCompanyListPage;
     const ProjectSettingsPage = viewport === 'mobile' ? MobileProjectSettingsPage : DesktopProjectSettingsPage;
+    const ProjectCostsPage = viewport === 'mobile' ? MobileProjectCostsPage : DesktopProjectCostsPage;
     const UserListPage = viewport === 'mobile' ? MobileUserListPage : DesktopUserListPage;
     const IntegrationsPage = viewport === 'mobile' ? MobileIntegrationsPage : DesktopIntegrationsPage;
     const FinancePage = viewport === 'mobile' ? MobileFinancePage : DesktopFinancePage;
@@ -185,6 +191,7 @@ export default function App({
                     <Route path="/app/inventory/warehouses" element={<WarehouseListPage />} />
                     <Route path="/app/inventory/warehouses/:id" element={<WarehouseDetailPage />} />
                     <Route path="/app/inventory/movements" element={<StockMovementPage />} />
+                    <Route path="/app/inventory/production" element={<ProductionPage />} />
                     {/* The stock summary is gone: the Raw Materials page answers the same
                         question, and its warehouse filter rescopes each row to one
                         warehouse, which is the per-line view this report existed for.
@@ -209,6 +216,7 @@ export default function App({
                     <Route path="/app/production/outputs" element={<ProductionOutputListPage />} />
                     <Route path="/app/settings/companies" element={<CompanyListPage />} />
                     <Route path="/app/settings/projects" element={<ProjectSettingsPage />} />
+                    <Route path="/app/settings/projects/:id/costs" element={<ProjectCostsPage />} />
                     <Route path="/app/settings/users" element={<UserListPage />} />
                     <Route path="/app/settings/integrations" element={<IntegrationsPage />} />
                     <Route path="/app/settings/finance" element={<FinancePage />} />

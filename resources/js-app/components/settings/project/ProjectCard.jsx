@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAccess } from '../../../layouts/AccessContext';
 import { FolderIcon, PinIcon } from './icons';
 
 const INACTIVE_BADGE = {
@@ -95,6 +97,7 @@ function EditStrip({ project, companies, onSave, onCancel }) {
 export default function ProjectCard({ project, companies, onSave, onDelete, onAddLocation, onEditLocation, onDeleteLocation }) {
     const [editing, setEditing] = useState(false);
     const locations = project.locations ?? [];
+    const canSeeCosts = useAccess().can('projects.costs');
 
     return (
         <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', marginBottom: 16, background: '#fff' }}>
@@ -118,6 +121,22 @@ export default function ProjectCard({ project, companies, onSave, onDelete, onAd
                     >
                         + Location
                     </button>
+                    {canSeeCosts ? (
+                        <Link
+                            to={`/app/settings/projects/${project.id}/costs`}
+                            className="btn-secondary btn-sm" style={{ textDecoration: 'none' }}
+                        >
+                            Costs
+                        </Link>
+                    ) : (
+                        <span
+                            aria-disabled="true" className="btn-secondary btn-sm"
+                            title="You do not have permission to see project costs"
+                            style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                        >
+                            Costs
+                        </span>
+                    )}
                     <button type="button" onClick={() => setEditing(true)} className="btn-secondary btn-sm">Edit</button>
                     <button type="button" onClick={() => onDelete(project)} className="btn-danger btn-sm">Delete</button>
                 </div>

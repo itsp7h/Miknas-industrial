@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Purchase;
 
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\RfqInvitation;
@@ -246,5 +247,34 @@ class PurchasePipelineShowTest extends TestCase
             ->getJson("/api/v1/purchase/pipeline/{$atPayment->id}")
             ->assertOk()
             ->assertJsonPath('data.rfq_invitations.0.whatsapp_link', null);
+    }
+
+    public function test_it_says_when_each_stage_was_reached_and_by_whom(): void
+    {
+        $request = PurchaseRequest::factory()->create(['stage' => 'draft', 'requested_by_name' => 'Ali']);
+        $request->stageEvents()->create(['stage' => 'gm_approval', 'actor_name' => 'Gm', 'reached_at' => '2026-10-06 07:30:00']);
+
+        $this->actingAs($this->viewer())
+            ->getJson("/api/v1/purchase/pipeline/{$request->id}")
+            ->assertOk()
+            ->assertJsonPath('data.stage_history.draft.by', 'Ali')
+            ->assertJsonPath('data.stage_history.gm_approval.by', 'Gm')
+            ->assertJsonPath('data.stage_history.gm_approval.reached_at', '2026-10-06T07:30:00+00:00');
+    }
+
+    public function test_each_lpo_says_who_issued_it(): void
+    {
+        $issuer = User::factory()->create(['name' => 'Nelson']);
+        $request = PurchaseRequest::factory()->create(['stage' => 'lpo']);
+        PurchaseOrder::create([
+            'po_number' => 'MI-LPO-26-0099', 'supplier_id' => Supplier::factory()->create()->id,
+            'purchase_request_id' => $request->id, 'po_date' => now(), 'total_amount' => 10,
+            'status' => 'draft', 'created_by' => $issuer->id,
+        ]);
+
+        $this->actingAs($this->viewer())
+            ->getJson("/api/v1/purchase/pipeline/{$request->id}")
+            ->assertOk()
+            ->assertJsonPath('data.purchase_orders.0.issued_by_name', 'Nelson');
     }
 }

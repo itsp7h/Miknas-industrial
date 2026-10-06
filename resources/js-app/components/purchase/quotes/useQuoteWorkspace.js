@@ -12,6 +12,7 @@ export default function useQuoteWorkspace(requestId) {
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState('comparison');
     const [awarding, setAwarding] = useState(null);
+    const [awardingAll, setAwardingAll] = useState(null);
     const [detail, setDetail] = useState(null);
     const [converting, setConverting] = useState(null);
     const { showToast } = useToast();
@@ -39,6 +40,16 @@ export default function useQuoteWorkspace(requestId) {
         showToast(response.message, 'success');
     }
 
+    /** Everything one supplier quoted, with one reason. */
+    async function awardAll(quoteId, reason) {
+        const response = await apiPost(
+            `/purchase/requests/${requestId}/quotes/${quoteId}/award-all`,
+            { award_reason: reason }
+        );
+        setWorkspace(response.data);
+        showToast(response.message, 'success');
+    }
+
     async function unaward(lineId) {
         const response = await apiPost(`/purchase/requests/${requestId}/quotes/items/${lineId}/unaward`);
         setWorkspace(response.data);
@@ -56,6 +67,7 @@ export default function useQuoteWorkspace(requestId) {
         workspace, loading, tab, setTab,
         converting, setConverting, updateUnit,
         awarding, setAwarding, award,
+        awardingAll, setAwardingAll, awardAll,
         detail, setDetail, unaward,
     };
 }

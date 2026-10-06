@@ -213,9 +213,9 @@ class PurchaseRequestController extends Controller
         // Editing is reached from the pipeline detail page, so it answers with
         // that page's whole payload — one response re-renders it.
         $purchaseRequest->load([
-            'requestedBy', 'items', 'signature.signedBy',
+            'requestedBy', 'items', 'signature.signedBy', 'stageEvents',
             'rfqInvitations.supplier', 'supplierQuotes.supplier', 'supplierQuotes.items',
-            'purchaseOrders.supplier',
+            'purchaseOrders.supplier', 'purchaseOrders.createdBy',
         ]);
 
         return response()->json([

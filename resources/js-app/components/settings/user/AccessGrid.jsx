@@ -15,8 +15,12 @@ const CELL = { textAlign: 'center', padding: '6px 4px' };
  *
  * A tab only shows the columns it actually has. A report has nothing to create,
  * and a stock movement is a ledger line that is posted, never rewritten.
+ *
+ * `locked` is for an Admin: every square is theirs whatever is ticked (the
+ * Gate lets an Admin through everything), so the grid says so — all ticked,
+ * none changeable — rather than showing them as holding nothing.
  */
-export default function AccessGrid({ grid, value, onChange }) {
+export default function AccessGrid({ grid, value, onChange, locked = false }) {
     const columns = ['view', 'create', 'edit', 'delete'];
 
     const groups = grid.reduce((acc, tab) => {
@@ -80,7 +84,8 @@ export default function AccessGrid({ grid, value, onChange }) {
                                                             <input
                                                                 type="checkbox"
                                                                 aria-label={`${tab.label} ${action.label}`}
-                                                                checked={value.includes(action.name)}
+                                                                checked={locked || value.includes(action.name)}
+                                                                disabled={locked}
                                                                 onChange={(e) => toggle(action.name, e.target.checked)}
                                                             />
                                                         ) : (
@@ -95,7 +100,8 @@ export default function AccessGrid({ grid, value, onChange }) {
                                                 <input
                                                     type="checkbox"
                                                     aria-label={`${tab.label} all`}
-                                                    checked={allOn}
+                                                    checked={locked || allOn}
+                                                    disabled={locked}
                                                     onChange={(e) => toggleRow(tab, e.target.checked)}
                                                 />
                                             </td>
@@ -117,7 +123,8 @@ export default function AccessGrid({ grid, value, onChange }) {
                                         <label key={action.name} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: '#374151' }}>
                                             <input
                                                 type="checkbox"
-                                                checked={value.includes(action.name)}
+                                                checked={locked || value.includes(action.name)}
+                                                disabled={locked}
                                                 onChange={(e) => toggle(action.name, e.target.checked)}
                                             />
                                             {action.label}

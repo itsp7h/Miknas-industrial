@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api\Purchase;
 
 use App\Events\GrnDeleted;
 use App\Events\GrnSaved;
+use App\Events\ItemSaved;
+use App\Events\StockMovementRecorded;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GrnResource;
 use App\Models\GoodsReceiptNote;
 use App\Models\GrnDocument;
 use App\Models\GrnItem;
+use App\Models\Item;
 use App\Models\PurchaseOrder;
 use App\Models\Settings\Company;
 use App\Models\Settings\ProjectSetting;
@@ -342,6 +345,9 @@ class GoodsReceiptNoteController extends Controller
     /**
      * Receives the goods: raises stock, writes the movements, advances the PO's
      * received quantities, and marks the PO received once every line is met.
+     * A consumable line is received against the PO like any other but never
+     * reaches stock: it is used up on its project, which is charged with it
+     * (Settings → Projects → Costs).
      * Same logic as the Blade controller — which no page ever linked to, so
      * confirming was unreachable and stock never actually moved.
      */
@@ -363,17 +369,26 @@ class GoodsReceiptNoteController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($grn) {
+        $movements = DB::transaction(function () use ($grn) {
             $grn->load('items', 'purchaseOrder.items');
+            $movements = [];
 
             foreach ($grn->items as $grnItem) {
+                $grn->purchaseOrder->items()
+                    ->where('item_id', $grnItem->item_id)
+                    ->increment('quantity_received', $grnItem->quantity_received);
+
+                if ($grnItem->type === 'consumable') {
+                    continue;
+                }
+
                 $stockLevel = StockLevel::firstOrCreate(
                     ['item_id' => $grnItem->item_id, 'warehouse_id' => $grn->warehouse_id],
                     ['quantity' => 0]
                 );
                 $stockLevel->increment('quantity', $grnItem->quantity_received);
 
-                StockMovement::create([
+                $movements[] = StockMovement::create([
                     'item_id' => $grnItem->item_id,
                     'warehouse_id' => $grn->warehouse_id,
                     'type' => 'in',
@@ -382,10 +397,6 @@ class GoodsReceiptNoteController extends Controller
                     'reference_id' => $grn->id,
                     'created_by' => auth()->id(),
                 ]);
-
-                $grn->purchaseOrder->items()
-                    ->where('item_id', $grnItem->item_id)
-                    ->increment('quantity_received', $grnItem->quantity_received);
             }
 
             $grn->update(['status' => 'confirmed']);
@@ -396,6 +407,8 @@ class GoodsReceiptNoteController extends Controller
             if ($allReceived) {
                 $po->update(['status' => 'received']);
             }
+
+            return $movements;
         });
 
         $this->advanceRequestIfFullyReceived($grn, $stages);
@@ -404,6 +417,15 @@ class GoodsReceiptNoteController extends Controller
         Notification::send($operations, new GoodsReceiptConfirmedNotification($grn));
 
         event(new GrnSaved($grn));
+
+        // The stock this put on the shelf, so an open Raw Materials or Stock
+        // Movements page shows it without a reload. Only GrnSaved used to go
+        // out, and the item lists kept their old quantities until refreshed.
+        foreach ($movements as $movement) {
+            event(new StockMovementRecorded($movement));
+        }
+        Item::whereIn('id', collect($movements)->pluck('item_id')->unique())->get()
+            ->each(fn (Item $item) => event(new ItemSaved($item)));
 
         return new GrnResource($grn->fresh(self::DETAIL));
     }

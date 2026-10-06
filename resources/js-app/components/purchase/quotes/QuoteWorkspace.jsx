@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import AwardAllModal from './AwardAllModal';
+import AwardAllPanel from './AwardAllPanel';
 import AwardDetailModal from './AwardDetailModal';
 import AwardModal from './AwardModal';
 import AwardedSuppliers from './AwardedSuppliers';
@@ -98,8 +100,16 @@ export default function QuoteWorkspace({ requestId, compact = false }) {
                                 <>
                                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
                                         Each item is its own decision — award it to whichever supplier offers the best
-                                        terms for that item. Different items can go to different suppliers.
+                                        terms for that item. Different items can go to different suppliers, or one
+                                        supplier can take everything they quoted at once.
                                     </div>
+
+                                    <AwardAllPanel
+                                        suppliers={data.suppliers}
+                                        canAward={data.permissions.award}
+                                        onAwardAll={w.setAwardingAll}
+                                        compact={compact}
+                                    />
 
                                     <div style={{
                                         display: 'grid', gap: 16,
@@ -160,6 +170,7 @@ export default function QuoteWorkspace({ requestId, compact = false }) {
                     )}
 
                     <AwardModal target={w.awarding} onClose={() => w.setAwarding(null)} onConfirm={w.award} />
+                    <AwardAllModal target={w.awardingAll} onClose={() => w.setAwardingAll(null)} onConfirm={w.awardAll} />
                     <UnitConversionModal target={w.converting} onClose={() => w.setConverting(null)} onConfirm={w.updateUnit} />
                     <AwardDetailModal
                         detail={w.detail}

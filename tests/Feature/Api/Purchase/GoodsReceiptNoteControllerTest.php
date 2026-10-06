@@ -4,6 +4,8 @@ namespace Tests\Feature\Api\Purchase;
 
 use App\Events\GrnDeleted;
 use App\Events\GrnSaved;
+use App\Events\ItemSaved;
+use App\Events\StockMovementRecorded;
 use App\Models\GoodsReceiptNote;
 use App\Models\GrnDocument;
 use App\Models\Item;
@@ -229,6 +231,21 @@ class GoodsReceiptNoteControllerTest extends TestCase
             'reference_type' => 'GoodsReceiptNote',
             'reference_id' => $grn->id,
         ]);
+    }
+
+    /**
+     * An open Raw Materials or Stock Movements page must show the new stock
+     * without a reload — only GrnSaved used to go out.
+     */
+    public function test_confirming_broadcasts_the_stock_it_moved(): void
+    {
+        Event::fake([GrnSaved::class, StockMovementRecorded::class, ItemSaved::class]);
+        $grn = $this->makeGrn();
+
+        $this->actingAs($this->user())->patchJson("/api/v1/purchase/grns/{$grn->id}/confirm")->assertOk();
+
+        Event::assertDispatched(StockMovementRecorded::class, fn ($e) => $e->movement->item_id === $this->item->id);
+        Event::assertDispatched(ItemSaved::class, fn ($e) => $e->item->id === $this->item->id);
     }
 
     public function test_confirming_advances_the_purchase_order_line(): void
@@ -642,5 +659,43 @@ class GoodsReceiptNoteControllerTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'projects')
             ->assertJsonPath('projects.0.name', 'Hidd Yard');
+    }
+
+    /** A consumable is used up on its project: received against the LPO, never stocked. */
+    public function test_confirming_a_consumable_line_moves_no_stock_but_advances_the_order(): void
+    {
+        Event::fake([GrnSaved::class, StockMovementRecorded::class, ItemSaved::class]);
+        $project = ProjectSetting::create(['name' => 'Hidd Yard', 'is_active' => true]);
+        $grn = $this->makeGrn();
+        $grn->items()->first()->update(['type' => 'consumable', 'project_id' => $project->id]);
+
+        $this->actingAs($this->user())
+            ->patchJson("/api/v1/purchase/grns/{$grn->id}/confirm")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed');
+
+        $this->assertSame(0, StockLevel::count());
+        $this->assertDatabaseMissing('stock_movements', ['reference_type' => 'GoodsReceiptNote', 'reference_id' => $grn->id]);
+        $this->assertSame('4.00', (string) $this->order->items()->first()->quantity_received);
+        Event::assertNotDispatched(StockMovementRecorded::class);
+        Event::assertDispatched(GrnSaved::class);
+    }
+
+    public function test_a_mixed_grn_stocks_only_its_inventory_lines(): void
+    {
+        $project = ProjectSetting::create(['name' => 'Hidd Yard', 'is_active' => true]);
+        $other = Item::create(['item_code' => 'CN-1', 'item_name' => 'Gloves', 'category' => 'raw_material', 'unit_of_measure' => 'PAIR', 'cost_price' => 1]);
+        $line = $this->order->items()->create(['item_id' => $other->id, 'quantity' => 5, 'rate' => 1, 'total_amount' => 5, 'quantity_received' => 0]);
+        $grn = $this->makeGrn();
+        $grn->items()->create([
+            'purchase_order_item_id' => $line->id, 'item_id' => $other->id,
+            'quantity_received' => 5, 'unit_cost' => 1, 'type' => 'consumable', 'project_id' => $project->id,
+        ]);
+
+        $this->actingAs($this->user())->patchJson("/api/v1/purchase/grns/{$grn->id}/confirm")->assertOk();
+
+        $this->assertSame('4.00', (string) StockLevel::where('item_id', $this->item->id)->value('quantity'));
+        $this->assertNull(StockLevel::where('item_id', $other->id)->first());
+        $this->assertSame('5.00', (string) $line->fresh()->quantity_received);
     }
 }

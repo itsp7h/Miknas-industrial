@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\Setting;
+use App\Models\SupplierQuote;
 use App\Models\SupplierQuoteItem;
 use App\Services\PurchaseStageService;
 use App\Support\LocalTime;
@@ -44,6 +45,8 @@ class SupplierQuoteController extends Controller
             // Flat list of awarded lines, which the Awarded Suppliers tab
             // groups by supplier.
             'awards' => $this->awards($quotes),
+            // One row per quote, for awarding everything a supplier offered.
+            'suppliers' => $this->supplierSummaries($quotes),
             'fully_awarded' => $purchaseRequest->isFullyAwarded(),
             'permissions' => [
                 'award' => (bool) $user?->can('award', $purchaseRequest),
@@ -103,6 +106,73 @@ class SupplierQuoteController extends Controller
         $message = $quoteItem->description.' awarded to '.$quoteItem->quote->supplier->name;
         if ($previous->isNotEmpty()) {
             $message .= ' instead of '.$previous->map(fn ($line) => $line->quote->supplier->name)->implode(', ');
+        }
+
+        return response()->json([
+            'data' => $this->payload($purchaseRequest->refresh()),
+            'message' => $message.'.',
+        ]);
+    }
+
+    /**
+     * Awards every line a supplier quoted, in one go — the same decision as
+     * awarding each one by hand, with one reason on all of them.
+     *
+     * A line they could not supply is skipped. One already awarded to someone
+     * else moves to this supplier, as a single award does (see award()), and
+     * the message says which.
+     */
+    public function awardAll(Request $request, PurchaseRequest $purchaseRequest, SupplierQuote $supplierQuote, PurchaseStageService $stages)
+    {
+        $this->authorize('award', $purchaseRequest);
+
+        abort_unless($supplierQuote->purchase_request_id === $purchaseRequest->id, 404);
+
+        $validated = $request->validate([
+            'award_reason' => ['required', 'string', 'min:5'],
+        ]);
+
+        $supplierName = $supplierQuote->supplier?->name;
+        $lines = $supplierQuote->items()
+            ->where('not_available', false)
+            ->whereNotNull('purchase_request_item_id')
+            ->where('is_awarded', false)
+            ->get();
+
+        abort_if($lines->isEmpty(), 422, "Everything {$supplierName} quoted is already awarded to them.");
+
+        $previous = SupplierQuoteItem::whereIn('purchase_request_item_id', $lines->pluck('purchase_request_item_id'))
+            ->where('is_awarded', true)
+            ->where('supplier_quote_id', '!=', $supplierQuote->id)
+            ->whereHas('quote', fn ($q) => $q->where('purchase_request_id', $purchaseRequest->id))
+            ->with('quote.supplier')
+            ->get();
+
+        DB::transaction(function () use ($previous, $lines, $validated) {
+            $previous->each->update([
+                'is_awarded' => false,
+                'award_reason' => null,
+                'awarded_at' => null,
+                'awarded_by' => null,
+            ]);
+
+            $lines->each->update([
+                'is_awarded' => true,
+                'award_reason' => $validated['award_reason'],
+                'awarded_at' => now(),
+                'awarded_by' => auth()->id(),
+            ]);
+        });
+
+        if ($purchaseRequest->isFullyAwarded()) {
+            $stages->setStageIfNotPast($purchaseRequest, 'lpo');
+        }
+
+        $count = $lines->count();
+        $message = $count.' '.($count === 1 ? 'item' : 'items').' awarded to '.$supplierName;
+        if ($previous->isNotEmpty()) {
+            $message .= ' ('.$previous->count().' moved from '
+                .$previous->map(fn ($line) => $line->quote->supplier?->name)->unique()->implode(', ').')';
         }
 
         return response()->json([
@@ -203,6 +273,32 @@ class SupplierQuoteController extends Controller
                 'awarded_at' => LocalTime::format($line->awarded_at),
                 'awarded_by' => $line->awardedBy?->name,
             ])->values()->all();
+    }
+
+    /**
+     * Per quote: what it could be awarded (every line the supplier could
+     * supply), how much of that is theirs already, and how much is held by
+     * someone else — so "award all" can say what it would change.
+     */
+    private function supplierSummaries(Collection $quotes): array
+    {
+        $awardedTo = $quotes->flatMap(fn ($quote) => $quote->items)
+            ->filter(fn ($line) => $line->is_awarded)
+            ->mapWithKeys(fn ($line) => [$line->purchase_request_item_id => $line->supplier_quote_id]);
+
+        return $quotes->map(function ($quote) use ($awardedTo) {
+            $lines = $quote->items->filter(fn ($line) => ! $line->not_available && $line->purchase_request_item_id);
+            $held = fn ($line) => $awardedTo->get($line->purchase_request_item_id);
+
+            return [
+                'quote_id' => $quote->id,
+                'supplier' => $quote->supplier?->name,
+                'quoted' => $lines->count(),
+                'awarded' => $lines->filter(fn ($line) => $line->is_awarded)->count(),
+                'held_elsewhere' => $lines->filter(fn ($line) => $held($line) && $held($line) !== $quote->id)->count(),
+                'total' => round((float) $lines->sum('total_price'), 3),
+            ];
+        })->values()->all();
     }
 
     /**

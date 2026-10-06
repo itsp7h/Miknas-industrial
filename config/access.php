@@ -108,6 +108,16 @@ return [
             // correction for a wrong one is an opposing movement.
             'actions' => ['view', 'create'],
         ],
+        // Making a finished good out of raw materials, at cost. A run is
+        // posted like a stock movement and never rewritten.
+        'production' => [
+            'group' => 'Inventory',
+            'label' => 'Production',
+            'actions' => ['view', 'create'],
+            'extra' => [
+                'manage-recipes' => 'Create and edit product recipes',
+            ],
+        ],
         'movement-report' => [
             'group' => 'Inventory',
             'label' => 'Movement Report',
@@ -138,6 +148,8 @@ return [
             // nothing that writes a PDF.
             'extra' => [
                 'import' => 'Import from Excel, and download the template',
+                // Money, so not everyone who may see the project list sees it.
+                'costs' => 'See what has been charged to a project (consumables received for it)',
             ],
         ],
         // The people the MPR form's Requested By offers, per company.
@@ -233,6 +245,7 @@ return [
                 'finished-goods.export',
                 'warehouses.view',
                 'stock-movements.view',
+                'production.view',
                 'movement-report.view',
                 'low-stock.view',
                 'valuation.view',

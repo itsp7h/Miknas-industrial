@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Inventory\ItemController;
+use App\Http\Controllers\Api\Inventory\ProductionRunController;
 use App\Http\Controllers\Api\Inventory\StockMovementController;
 use App\Http\Controllers\Api\Inventory\StockReportController;
 use App\Http\Controllers\Api\Inventory\WarehouseController;
@@ -90,6 +91,12 @@ Route::prefix('v1')->group(function () {
             Route::get('movements/form-options', [StockMovementController::class, 'formOptions'])->middleware('permission:stock-movements.create');
             Route::post('movements', [StockMovementController::class, 'store'])->middleware('permission:stock-movements.create');
 
+            // Production: a finished good made from raw materials, at cost.
+            Route::get('production', [ProductionRunController::class, 'index'])->middleware('permission:production.view');
+            Route::get('production/form-options', [ProductionRunController::class, 'formOptions'])->middleware('permission:production.create|production.manage-recipes');
+            Route::post('production', [ProductionRunController::class, 'store'])->middleware('permission:production.create');
+            Route::put('production/recipes/{item}', [ProductionRunController::class, 'updateRecipe'])->middleware('permission:production.manage-recipes');
+
             Route::get('reports/movement', [StockReportController::class, 'movement'])->middleware('permission:movement-report.view');
             Route::get('reports/low-stock', [StockReportController::class, 'lowStock'])->middleware('permission:low-stock.view');
             Route::get('reports/valuation', [StockReportController::class, 'valuation'])->middleware('permission:valuation.view');
@@ -176,6 +183,7 @@ Route::prefix('v1')->group(function () {
             Route::post('projects/import', [ProjectController::class, 'import'])->middleware('permission:projects.import');
             Route::get('projects/template', [ProjectController::class, 'downloadTemplate'])->middleware('permission:projects.import');
             Route::post('projects', [ProjectController::class, 'store'])->middleware('permission:projects.create');
+            Route::get('projects/{project}/costs', [ProjectController::class, 'costs'])->middleware('permission:projects.costs');
             Route::put('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:projects.edit');
             Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->middleware('permission:projects.delete');
             Route::post('projects/{project}/locations', [ProjectController::class, 'storeLocation'])->middleware('permission:projects.create');
@@ -255,6 +263,7 @@ Route::prefix('v1')->group(function () {
             Route::get('requests/{purchaseRequest}/quotes', [SupplierQuoteController::class, 'index']);
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/award', [SupplierQuoteController::class, 'award']);
             Route::post('requests/{purchaseRequest}/quotes/items/{quoteItem}/unaward', [SupplierQuoteController::class, 'unaward']);
+            Route::post('requests/{purchaseRequest}/quotes/{supplierQuote}/award-all', [SupplierQuoteController::class, 'awardAll']);
             Route::put('requests/{purchaseRequest}/quotes/items/{quoteItem}/unit', [SupplierQuoteController::class, 'updateUnit']);
             Route::get('suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers.view');
             Route::post('suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');

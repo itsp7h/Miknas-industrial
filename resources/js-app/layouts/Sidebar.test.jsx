@@ -58,7 +58,10 @@ describe('Sidebar', () => {
     // built and still routable, they are just not in use yet.
     it('leaves a hidden group and all of its links out of the menu', () => {
         renderSidebar();
-        expect(screen.queryByText('Production')).not.toBeInTheDocument();
+        // "Production" is now an Inventory tab, so the parked module's heading
+        // is the one with no Production Orders under it.
+        expect(screen.getAllByText('Production')).toHaveLength(1);
+        expect(screen.queryByText('Production Orders')).not.toBeInTheDocument();
         expect(screen.queryByText('Sales')).not.toBeInTheDocument();
         expect(screen.queryByText('Bill of Materials')).not.toBeInTheDocument();
         expect(screen.queryByText('Customers')).not.toBeInTheDocument();
@@ -211,5 +214,12 @@ describe('a parked entry', () => {
             .not.toContain('/app/purchase/payments');
         expect(visibleGroups({ isAdmin: true }).flatMap((group) => group.items).map((item) => item.to))
             .not.toContain('/app/purchase/payments');
+    });
+
+    it('lists Production under Inventory, for whoever may view it', () => {
+        renderSidebar({ isAdmin: false, can: (permission) => permission === 'production.view' });
+
+        expect(screen.getByText('Inventory')).toBeInTheDocument();
+        expect(screen.getByText('Production').closest('a')).toHaveAttribute('href', '/app/inventory/production');
     });
 });

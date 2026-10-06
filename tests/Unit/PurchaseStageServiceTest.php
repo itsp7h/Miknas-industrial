@@ -4,8 +4,10 @@ namespace Tests\Unit;
 
 use App\Events\PurchaseRequestStageChanged;
 use App\Models\PurchaseRequest;
+use App\Models\User;
 use App\Services\PurchaseStageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
@@ -142,5 +144,64 @@ class PurchaseStageServiceTest extends TestCase
     public function test_stage_label_falls_back_to_a_readable_form_for_unknown_stages(): void
     {
         $this->assertSame('Cancelled', $this->service->stageLabel('cancelled'));
+    }
+
+    public function test_a_new_request_records_its_first_stage(): void
+    {
+        $request = PurchaseRequest::factory()->create(['stage' => 'draft', 'requested_by_name' => 'Ali']);
+
+        $event = $request->stageEvents()->sole();
+        $this->assertSame('draft', $event->stage);
+        $this->assertSame('Ali', $event->actor_name);
+    }
+
+    public function test_moving_stage_records_when_and_who(): void
+    {
+        $user = User::factory()->create(['name' => 'Nelson']);
+        $this->actingAs($user);
+        Carbon::setTestNow('2026-10-06 08:15:00');
+        $request = PurchaseRequest::factory()->create(['stage' => 'rfq']);
+
+        Carbon::setTestNow('2026-10-06 09:45:00');
+        $this->service->advance($request);
+
+        $event = $request->stageEvents()->where('stage', 'quoting')->sole();
+        $this->assertSame($user->id, $event->user_id);
+        $this->assertSame('Nelson', $event->actor_name);
+        $this->assertSame('2026-10-06 09:45:00', $event->reached_at->format('Y-m-d H:i:s'));
+        Carbon::setTestNow();
+    }
+
+    public function test_a_supplier_on_the_portal_is_named_when_nobody_is_signed_in(): void
+    {
+        $request = PurchaseRequest::factory()->create(['stage' => 'quoting']);
+
+        $this->service->setStage($request, 'comparison', 'Yousif Dhneem');
+
+        $event = $request->stageEvents()->where('stage', 'comparison')->sole();
+        $this->assertNull($event->user_id);
+        $this->assertSame('Yousif Dhneem', $event->actor_name);
+    }
+
+    public function test_moving_back_drops_the_later_stages_and_keeps_the_first_arrival(): void
+    {
+        Carbon::setTestNow('2026-10-06 08:00:00');
+        $request = PurchaseRequest::factory()->create(['stage' => 'quoting']);
+        $this->service->setStage($request, 'comparison');
+        Carbon::setTestNow('2026-10-06 09:00:00');
+        $this->service->setStage($request, 'lpo');
+
+        // An award taken back.
+        Carbon::setTestNow('2026-10-06 10:00:00');
+        $this->service->setStage($request, 'comparison');
+
+        $this->assertFalse($request->stageEvents()->where('stage', 'lpo')->exists());
+        $comparison = $request->stageEvents()->where('stage', 'comparison')->sole();
+        $this->assertSame('08:00', $comparison->reached_at->format('H:i'));
+
+        Carbon::setTestNow('2026-10-06 11:00:00');
+        $this->service->setStage($request, 'lpo');
+        $this->assertSame('11:00', $request->stageEvents()->where('stage', 'lpo')->sole()->reached_at->format('H:i'));
+        Carbon::setTestNow();
     }
 }
