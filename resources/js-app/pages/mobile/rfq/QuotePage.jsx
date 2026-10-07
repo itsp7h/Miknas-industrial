@@ -1,8 +1,8 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, QuotationDocumentField, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
-import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
+import useRfqPortal, { DOCUMENT_ACCEPT, inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
 import { ErrorScreen, ExpiredScreen, LoadingScreen, SubmittedScreen } from '../../../components/rfq/RfqStates';
 
 const sectionLabel = {
@@ -220,6 +220,13 @@ export default function QuotePage({ token, load, send }) {
                     <div style={sectionLabel}>Logistics &amp; Terms</div>
                     <div style={card}>
                         <LogisticsFields compact meta={f.meta} setField={f.setField} disabled={f.submitting} />
+                        <QuotationDocumentField
+                            file={f.quoteDocument}
+                            onChange={f.setQuoteDocument}
+                            error={f.errors.document}
+                            disabled={f.submitting}
+                            accept={DOCUMENT_ACCEPT}
+                        />
                     </div>
 
                     <div style={sectionLabel}>Agreement</div>

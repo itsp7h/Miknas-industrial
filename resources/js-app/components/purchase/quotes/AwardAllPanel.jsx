@@ -31,7 +31,19 @@ export default function AwardAllPanel({ suppliers, canAward, onAwardAll, compact
                         flexWrap: compact ? 'wrap' : 'nowrap', padding: '8px 0', borderTop: '1px solid #f1f5f9',
                     }}>
                         <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a' }}>{s.supplier}</div>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a' }}>
+                                {s.supplier}
+                                {/* Their own quotation, as attached in the portal. */}
+                                {s.document && (
+                                    <a
+                                        href={s.document.url} target="_blank" rel="noreferrer"
+                                        title={s.document.name}
+                                        style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: '#2563eb', textDecoration: 'none' }}
+                                    >
+                                        📎 Their quotation
+                                    </a>
+                                )}
+                            </div>
                             <div style={{ fontSize: 12, color: '#64748b' }}>
                                 {s.quoted} {s.quoted === 1 ? 'item' : 'items'} quoted · {bd(s.total)} before VAT
                                 {s.awarded > 0 && <span style={{ color: '#15803d' }}> · {s.awarded} awarded to them</span>}

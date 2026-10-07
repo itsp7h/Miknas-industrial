@@ -352,6 +352,46 @@ describe.each([
         expect(screen.getByRole('button', { name: /Submit/ })).not.toHaveAttribute('aria-disabled');
     });
 
+    it('sends their own quotation with the quote when one is attached', async () => {
+        await fillValidQuote();
+
+        const file = new File(['%PDF-1.4'], 'Gulf Steel Q-118.pdf', { type: 'application/pdf' });
+        fireEvent.change(screen.getByLabelText(/Your Quotation/), { target: { files: [file] } });
+        expect(screen.getByText('Gulf Steel Q-118.pdf')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        await waitFor(() => expect(send).toHaveBeenCalled());
+        expect(send.mock.calls[0][0]).toBe(`/rfq/${TOKEN}`);
+        expect(send.mock.calls[0][1]).toEqual(expect.objectContaining({ reference: 'GS/Q/2026/118' }));
+        expect(send.mock.calls[0][2]).toBe(file);
+    });
+
+    it('lets a wrong attachment be removed, and sends none then', async () => {
+        await fillValidQuote();
+
+        const file = new File(['x'], 'quote.pdf', { type: 'application/pdf' });
+        fireEvent.change(screen.getByLabelText(/Your Quotation/), { target: { files: [file] } });
+        fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+        expect(screen.queryByText('quote.pdf')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        await waitFor(() => expect(send).toHaveBeenCalled());
+        expect(send.mock.calls[0]).toHaveLength(2);
+    });
+
+    it('refuses a file that is not a PDF or an image, before anything is sent', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const file = new File(['x'], 'quote.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        fireEvent.change(screen.getByLabelText(/Your Quotation/), { target: { files: [file] } });
+
+        expect(screen.getByText('Your quotation must be a PDF, JPG or PNG file.')).toBeInTheDocument();
+        expect(screen.queryByText('quote.docx')).not.toBeInTheDocument();
+    });
+
     it('sends the logistics fields the supplier filled in', async () => {
         await fillValidQuote();
 

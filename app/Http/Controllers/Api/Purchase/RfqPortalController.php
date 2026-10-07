@@ -14,7 +14,10 @@ use App\Notifications\QuoteReceived;
 use App\Services\PurchaseStageService;
 use App\Support\SupplierUnit;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * The public quote portal's JSON API — no auth, the token is the credential.
@@ -81,9 +84,14 @@ class RfqPortalController extends Controller
             'items.*.supplier_unit' => ['nullable', 'string', 'max:50'],
             'items.*.unit_factor' => ['nullable', 'numeric', 'gt:0', 'max:1000000'],
             'items.*.supplier_quantity' => ['nullable', 'numeric', 'gt:0'],
+            // Their own quotation document, if they have one to attach.
+            'document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
         ], [
             'terms.accepted' => 'Please accept the terms and conditions before submitting.',
             'reference.required' => 'Please enter your quotation reference number.',
+            'document.mimes' => 'Your quotation must be a PDF, JPG or PNG file.',
+            'document.max' => 'Your quotation must be 10 MB or smaller.',
+            'document.uploaded' => 'Your quotation could not be uploaded. It must be 10 MB or smaller.',
         ]);
 
         $expected = $request->session()->get($this->sessionKey($token));
@@ -102,7 +110,7 @@ class RfqPortalController extends Controller
             ], 422);
         }
 
-        $quote = $this->recordQuote($invitation, $validated);
+        $quote = $this->recordQuote($invitation, $validated, $request->file('document'));
 
         $request->session()->forget($this->sessionKey($token));
 
@@ -150,91 +158,124 @@ class RfqPortalController extends Controller
      * invitation's new status. Half a quote — lines written, invitation still
      * open — would let the supplier submit again over the top of it.
      */
-    private function recordQuote(RfqInvitation $invitation, array $validated): SupplierQuote
+    private function recordQuote(RfqInvitation $invitation, array $validated, ?UploadedFile $document = null): SupplierQuote
     {
         $vatRate = $this->vatRate();
         $posted = collect($validated['items'])->keyBy('id');
 
-        return DB::transaction(function () use ($invitation, $validated, $vatRate, $posted) {
-            $quote = SupplierQuote::create([
-                'rfq_invitation_id' => $invitation->id,
-                'purchase_request_id' => $invitation->purchase_request_id,
-                'supplier_id' => $invitation->supplier_id,
-                'reference' => trim($validated['reference']),
-                'submitted_at' => now(),
-                'lead_time_days' => $validated['lead_time_days'] ?? null,
-                'payment_terms' => $validated['payment_terms'] ?? null,
-                'notes' => $validated['notes'] ?? null,
-                'total_amount' => 0,
+        // The file written, so a failed save leaves nothing behind: the
+        // transaction rolls the rows back, but not the disk.
+        $stored = null;
+
+        try {
+            return DB::transaction(function () use ($invitation, $validated, $vatRate, $posted, $document, &$stored) {
+                $quote = $this->recordLines($invitation, $validated, $vatRate, $posted);
+
+                if ($document) {
+                    $stored = $document->storeAs(
+                        "quote-documents/{$quote->id}",
+                        Str::uuid().'.'.strtolower($document->getClientOriginalExtension()),
+                        SupplierQuote::DISK,
+                    );
+                    $quote->update([
+                        'document_path' => $stored,
+                        'document_name' => Str::limit($document->getClientOriginalName(), 250, ''),
+                        'document_size' => $document->getSize(),
+                    ]);
+                }
+
+                return $quote;
+            });
+        } catch (\Throwable $e) {
+            if ($stored) {
+                Storage::disk(SupplierQuote::DISK)->delete($stored);
+            }
+
+            throw $e;
+        }
+    }
+
+    /** The header and its lines; recordQuote() wraps it with the attachment in one transaction. */
+    private function recordLines(RfqInvitation $invitation, array $validated, float $vatRate, $posted): SupplierQuote
+    {
+        $quote = SupplierQuote::create([
+            'rfq_invitation_id' => $invitation->id,
+            'purchase_request_id' => $invitation->purchase_request_id,
+            'supplier_id' => $invitation->supplier_id,
+            'reference' => trim($validated['reference']),
+            'submitted_at' => now(),
+            'lead_time_days' => $validated['lead_time_days'] ?? null,
+            'payment_terms' => $validated['payment_terms'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+            'total_amount' => 0,
+        ]);
+
+        $subtotal = 0;
+        $vatAmount = 0;
+
+        // The invited items drive the loop, not the payload: a line the
+        // supplier never sent is a line they did not price, and a line
+        // they invented is not part of this invitation.
+        foreach ($invitation->quotedItems() as $item) {
+            $row = $posted->get($item->id, []);
+
+            $notAvailable = ! empty($row['not_available']);
+            $unitPrice = $notAvailable ? 0 : (float) ($row['unit_price'] ?? 0);
+            $qty = (float) $item->quantity_required;
+            $totalPrice = $notAvailable ? 0 : round($unitPrice * $qty, 3);
+
+            // Quoted in their own unit: the price they gave is per theirs,
+            // and the line is kept in ours as well, which is what compares,
+            // orders and stocks.
+            $supplier = null;
+
+            if (! $notAvailable && SupplierUnit::differs($row['supplier_unit'] ?? null, $item->unit)) {
+                $factor = (float) ($row['unit_factor'] ?? 0);
+                $supplier = [
+                    'supplier_unit' => $row['supplier_unit'],
+                    'unit_factor' => $factor > 0 ? $factor : null,
+                    'supplier_quantity' => (float) $row['supplier_quantity'],
+                    'supplier_unit_price' => $unitPrice,
+                ];
+                ['quantity' => $qty, 'unit_price' => $unitPrice, 'total_price' => $totalPrice] = $factor > 0
+                    ? SupplierUnit::figures($supplier['supplier_quantity'], $factor, $supplier['supplier_unit_price'])
+                    : SupplierUnit::pendingFigures($supplier['supplier_quantity'], $supplier['supplier_unit_price'], $qty);
+            }
+
+            $isVatable = ! $notAvailable && ! empty($row['is_vatable']);
+
+            $subtotal += $totalPrice;
+
+            if ($isVatable && $vatRate > 0) {
+                $vatAmount += round($totalPrice * $vatRate / 100, 3);
+            }
+
+            SupplierQuoteItem::create([
+                'supplier_quote_id' => $quote->id,
+                'purchase_request_item_id' => $item->id,
+                'description' => $item->description,
+                'supplier_description' => filled($row['supplier_description'] ?? null)
+                    ? trim($row['supplier_description'])
+                    : null,
+                'unit' => $item->unit ?? '',
+                'quantity' => $qty,
+                'unit_price' => $unitPrice,
+                'total_price' => $totalPrice,
+                'is_vatable' => $isVatable,
+                'not_available' => $notAvailable,
+                ...($supplier ?? []),
             ]);
+        }
 
-            $subtotal = 0;
-            $vatAmount = 0;
+        $quote->update(['total_amount' => round($subtotal + $vatAmount, 3)]);
+        $invitation->update(['status' => 'submitted']);
 
-            // The invited items drive the loop, not the payload: a line the
-            // supplier never sent is a line they did not price, and a line
-            // they invented is not part of this invitation.
-            foreach ($invitation->quotedItems() as $item) {
-                $row = $posted->get($item->id, []);
+        // One quote in is enough to start comparing.
+        if ($invitation->purchaseRequest->stage === 'quoting') {
+            app(PurchaseStageService::class)->setStage($invitation->purchaseRequest, 'comparison', $invitation->supplier?->name);
+        }
 
-                $notAvailable = ! empty($row['not_available']);
-                $unitPrice = $notAvailable ? 0 : (float) ($row['unit_price'] ?? 0);
-                $qty = (float) $item->quantity_required;
-                $totalPrice = $notAvailable ? 0 : round($unitPrice * $qty, 3);
-
-                // Quoted in their own unit: the price they gave is per theirs,
-                // and the line is kept in ours as well, which is what compares,
-                // orders and stocks.
-                $supplier = null;
-
-                if (! $notAvailable && SupplierUnit::differs($row['supplier_unit'] ?? null, $item->unit)) {
-                    $factor = (float) ($row['unit_factor'] ?? 0);
-                    $supplier = [
-                        'supplier_unit' => $row['supplier_unit'],
-                        'unit_factor' => $factor > 0 ? $factor : null,
-                        'supplier_quantity' => (float) $row['supplier_quantity'],
-                        'supplier_unit_price' => $unitPrice,
-                    ];
-                    ['quantity' => $qty, 'unit_price' => $unitPrice, 'total_price' => $totalPrice] = $factor > 0
-                        ? SupplierUnit::figures($supplier['supplier_quantity'], $factor, $supplier['supplier_unit_price'])
-                        : SupplierUnit::pendingFigures($supplier['supplier_quantity'], $supplier['supplier_unit_price'], $qty);
-                }
-
-                $isVatable = ! $notAvailable && ! empty($row['is_vatable']);
-
-                $subtotal += $totalPrice;
-
-                if ($isVatable && $vatRate > 0) {
-                    $vatAmount += round($totalPrice * $vatRate / 100, 3);
-                }
-
-                SupplierQuoteItem::create([
-                    'supplier_quote_id' => $quote->id,
-                    'purchase_request_item_id' => $item->id,
-                    'description' => $item->description,
-                    'supplier_description' => filled($row['supplier_description'] ?? null)
-                        ? trim($row['supplier_description'])
-                        : null,
-                    'unit' => $item->unit ?? '',
-                    'quantity' => $qty,
-                    'unit_price' => $unitPrice,
-                    'total_price' => $totalPrice,
-                    'is_vatable' => $isVatable,
-                    'not_available' => $notAvailable,
-                    ...($supplier ?? []),
-                ]);
-            }
-
-            $quote->update(['total_amount' => round($subtotal + $vatAmount, 3)]);
-            $invitation->update(['status' => 'submitted']);
-
-            // One quote in is enough to start comparing.
-            if ($invitation->purchaseRequest->stage === 'quoting') {
-                app(PurchaseStageService::class)->setStage($invitation->purchaseRequest, 'comparison', $invitation->supplier?->name);
-            }
-
-            return $quote;
-        });
+        return $quote;
     }
 
     /** Tell the buyers, in the bell and live over Reverb. */
