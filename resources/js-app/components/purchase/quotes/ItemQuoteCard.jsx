@@ -94,6 +94,17 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                                 </span>
                                             </div>
                                         )}
+                                        {/* In our unit, but not the quantity we asked for:
+                                            the line total is for what they offer. */}
+                                        {line && !line.not_available && !line.supplier_unit
+                                            && Number(line.quantity) > 0 && Number(line.quantity) !== Number(item.quantity) && (
+                                            <div style={{
+                                                fontSize: 10, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a',
+                                                borderRadius: 4, padding: '3px 6px', marginTop: 4, fontWeight: 600, display: 'inline-block',
+                                            }}>
+                                                Offers {Number(line.quantity)} of {Number(item.quantity)} {item.unit}
+                                            </div>
+                                        )}
                                         {/* Quoted in the supplier's own unit: what they
                                             offered, and what it is in ours. */}
                                         {line?.supplier_unit && !line.not_available && (

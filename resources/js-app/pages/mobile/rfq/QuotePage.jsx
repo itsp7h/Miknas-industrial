@@ -1,5 +1,5 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, QuotationDocumentField, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, QuantityField, QuotationDocumentField, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
 import useRfqPortal, { DOCUMENT_ACCEPT, inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
@@ -94,7 +94,7 @@ export default function QuotePage({ token, load, send }) {
                                         Item #{index + 1}
                                     </span>
                                     <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb' }}>
-                                        {qty(item.quantity_required)} {item.unit || ''}
+                                        Requested: {qty(item.quantity_required)} {item.unit || ''}
                                     </span>
                                 </div>
 
@@ -108,6 +108,26 @@ export default function QuotePage({ token, load, send }) {
                                     onEdit={() => f.beginEdit(item)}
                                     onDone={(save) => f.endEdit(item, save)}
                                 />
+
+                                {/* In our unit, how many they offer. Switched to their
+                                    own unit, the quantity is asked in theirs below. */}
+                                {!inOtherUnit(item, row) && (
+                                    <div style={{ marginTop: 12 }}>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', fontSize: 11, fontWeight: 700, color: '#64748b',
+                                            textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 5,
+                                        }}>
+                                            Your Quantity<RequiredMark />
+                                            <InfoTip text={TIPS.qty} label="your quantity in our unit" />
+                                        </div>
+                                        <QuantityField
+                                            item={item} row={row} compact
+                                            disabled={row.notAvailable || f.submitting}
+                                            onChange={(value) => f.setRow(item.id, { quantity: value })}
+                                            missing={f.missing.rows[item.id]?.quantity}
+                                        />
+                                    </div>
+                                )}
 
                                 <div style={{ marginTop: 12 }}>
                                     <UnitField

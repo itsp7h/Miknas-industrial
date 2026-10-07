@@ -78,6 +78,11 @@ class RfqPortalController extends Controller
             'items.*.is_vatable' => ['nullable', 'boolean'],
             'items.*.not_available' => ['nullable', 'boolean'],
             'items.*.supplier_description' => ['nullable', 'string', 'max:500'],
+            // How many they offer in our unit, when it is not what we asked
+            // for: 8 of the 10, or 12 because it comes by the dozen. Left out,
+            // it is what we asked for. A line quoted in their own unit says
+            // its quantity in theirs instead (supplier_quantity).
+            'items.*.quantity' => ['nullable', 'numeric', 'gt:0', 'max:100000000'],
             // Quoting in their own unit: which one and how many of them,
             // checked against each line below. What one holds in ours is
             // settled on the GRN; a factor is still taken if one is sent.
@@ -222,6 +227,9 @@ class RfqPortalController extends Controller
             $notAvailable = ! empty($row['not_available']);
             $unitPrice = $notAvailable ? 0 : (float) ($row['unit_price'] ?? 0);
             $qty = (float) $item->quantity_required;
+            if (! $notAvailable && ! empty($row['quantity']) && ! SupplierUnit::differs($row['supplier_unit'] ?? null, $item->unit)) {
+                $qty = round((float) $row['quantity'], 3);
+            }
             $totalPrice = $notAvailable ? 0 : round($unitPrice * $qty, 3);
 
             // Quoted in their own unit: the price they gave is per theirs,
