@@ -48,6 +48,13 @@ export function FieldLabel({ children, htmlFor, color = '#64748b' }) {
     );
 }
 
+/** The red asterisk beside every field the portal will not submit without. */
+export function RequiredMark() {
+    return (
+        <span aria-hidden="true" style={{ color: '#dc2626', marginLeft: 3, fontWeight: 700 }}>*</span>
+    );
+}
+
 /** The outline every missing required field takes once a submit has found it. */
 export const MISSING = { borderColor: '#ef4444', background: '#fef2f2', boxShadow: '0 0 0 3px rgba(239,68,68,.15)' };
 
@@ -74,7 +81,7 @@ export function ReferenceField({ meta, setField, disabled, errors = {}, missing 
         <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <label htmlFor="reference" style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', flexShrink: 0 }}>
-                    Ref:
+                    Ref:<RequiredMark />
                 </label>
                 <input
                     id="reference"
@@ -211,7 +218,7 @@ export function TermsBlock({ accepted, onChange, error, disabled, missing = fals
                     style={{ width: 16, height: 16, marginTop: 1, accentColor: '#2563eb', flexShrink: 0, cursor: 'pointer' }}
                 />
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                    I have read and agree to the terms and conditions above
+                    I have read and agree to the terms and conditions above<RequiredMark />
                 </span>
             </label>
 
@@ -257,7 +264,7 @@ export function ConfirmCodeBlock({ compact, code, value, onChange, matches, erro
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <FieldLabel htmlFor="confirm-input" color="#92400e">Paste code here</FieldLabel>
+                    <FieldLabel htmlFor="confirm-input" color="#92400e">Paste code here<RequiredMark /></FieldLabel>
                     <input
                         id="confirm-input"
                         type="text"
@@ -414,7 +421,7 @@ export function UnitField({ item, row, units, disabled, compact, onUnit, onFacto
                     borderRadius: 6, fontSize: 12, color: '#92400e', display: 'flex', flexDirection: 'column', gap: 6,
                 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span>1 {row.unit} =</span>
+                        <span>1 {row.unit} =<RequiredMark /></span>
                         <input
                             type="number" min="0" step="any" inputMode="decimal"
                             aria-label={`How many ${ours} one ${row.unit} holds, for ${item.description}`}
@@ -427,7 +434,7 @@ export function UnitField({ item, row, units, disabled, compact, onUnit, onFacto
                         <span>{ours}</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span>Your qty:</span>
+                        <span>Your qty:<RequiredMark /></span>
                         <input
                             type="number" min="0" step="any" inputMode="decimal"
                             aria-label={`Your quantity in ${row.unit}, for ${item.description}`}

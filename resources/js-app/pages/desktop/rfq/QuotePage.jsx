@@ -1,5 +1,5 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, RequiredMark, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
 import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
@@ -62,6 +62,9 @@ export default function QuotePage({ token, load, send }) {
                         and submit. This link is private to your company and can only be
                         submitted once.
                     </p>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: '-16px 0 20px' }}>
+                        Fields marked <span style={{ color: '#dc2626', fontWeight: 700 }}>*</span> are required.
+                    </p>
 
                     <ReferenceField meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} missing={f.missing.reference} />
 
@@ -81,7 +84,7 @@ export default function QuotePage({ token, load, send }) {
                                         <th style={th}>Unit</th>
                                         <th style={{ ...th, textAlign: 'center' }}>N/A?</th>
                                         <th style={{ ...th, textAlign: 'center' }}>VAT?</th>
-                                        <th style={{ ...th, textAlign: 'right' }}>Unit Price (BD)</th>
+                                        <th style={{ ...th, textAlign: 'right' }}>Unit Price (BD)<RequiredMark /></th>
                                         <th style={{ ...th, textAlign: 'right' }}>Total (BD)</th>
                                     </tr>
                                 </thead>

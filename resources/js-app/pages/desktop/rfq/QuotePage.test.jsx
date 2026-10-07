@@ -54,6 +54,26 @@ describe.each([
 
     const mount = () => render(<Page token={TOKEN} load={load} send={send} />);
 
+    it('stars the fields the quote cannot be submitted without, and only those', async () => {
+        const { container } = mount();
+        await screen.findByText('MPR-0042');
+
+        const starred = (label) => !!label.querySelector('span[aria-hidden="true"]')
+            && label.textContent.includes('*');
+        const labelOf = (id) => container.querySelector(`label[for="${id}"]`);
+
+        expect(starred(labelOf('reference'))).toBe(true);
+        expect(starred(labelOf('terms-cb'))).toBe(true);
+        expect(starred(labelOf('confirm-input'))).toBe(true);
+        expect(screen.getAllByText(/Unit Price \(BD\)/).every(starred)).toBe(true);
+
+        expect(starred(labelOf('lead_time_days'))).toBe(false);
+        expect(starred(labelOf('payment_terms'))).toBe(false);
+        expect(starred(labelOf('notes'))).toBe(false);
+
+        expect(screen.getByText(/are required\./)).toBeInTheDocument();
+    });
+
     /** Every field the supplier fills, so each test can start from a valid quote. */
     async function fillValidQuote() {
         mount();
@@ -63,7 +83,7 @@ describe.each([
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
         fireEvent.change(screen.getByLabelText('Unit price for Angle bar'), { target: { value: '3' } });
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
-        fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'ab12c' } });
+        fireEvent.change(screen.getByLabelText(/Paste code here/), { target: { value: 'ab12c' } });
     }
 
     it('reads the invitation from the API and shows what is being quoted', async () => {
@@ -150,10 +170,10 @@ describe.each([
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
         expect(screen.getByText('Enter the confirmation code exactly as shown.')).toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'WRONG' } });
+        fireEvent.change(screen.getByLabelText(/Paste code here/), { target: { value: 'WRONG' } });
         expect(submit).toHaveAttribute('aria-disabled', 'true');
 
-        fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'ab12c' } });
+        fireEvent.change(screen.getByLabelText(/Paste code here/), { target: { value: 'ab12c' } });
         expect(submit).not.toHaveAttribute('aria-disabled');
     });
 
@@ -170,7 +190,7 @@ describe.each([
         const rodPrice = screen.getByLabelText('Unit price for Steel rod 12mm');
         const barPrice = screen.getByLabelText('Unit price for Angle bar');
         const terms = screen.getByLabelText(/I have read and agree to the terms/);
-        const code = screen.getByLabelText('Paste code here');
+        const code = screen.getByLabelText(/Paste code here/);
 
         expect(ref).not.toHaveAttribute('aria-invalid');
         expect(rodPrice).not.toHaveAttribute('aria-invalid');
@@ -223,7 +243,7 @@ describe.each([
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
         fireEvent.click(screen.getByLabelText('Angle bar is not available'));
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
-        fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'AB12C' } });
+        fireEvent.change(screen.getByLabelText(/Paste code here/), { target: { value: 'AB12C' } });
 
         expect(screen.getByRole('button', { name: /Submit/ })).not.toHaveAttribute('aria-disabled');
     });
