@@ -13,14 +13,17 @@ use App\Models\GrnDocument;
 use App\Models\GrnItem;
 use App\Models\Item;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
 use App\Models\Settings\Company;
 use App\Models\Settings\ProjectSetting;
 use App\Models\StockLevel;
 use App\Models\StockMovement;
+use App\Models\UnitConversion;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\Purchase\GoodsReceiptConfirmedNotification;
 use App\Services\PurchaseStageService;
+use App\Support\SupplierUnit;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +40,7 @@ class GoodsReceiptNoteController extends Controller
     private const DOCUMENT_RULE = 'nullable|'.self::FILE_RULE;
 
     /** Relations every single-GRN response carries. */
-    private const DETAIL = ['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem', 'items.project', 'documents'];
+    private const DETAIL = ['purchaseOrder.supplier', 'warehouse', 'items.item', 'items.purchaseOrderItem', 'items.project', 'items.convertedBy', 'documents'];
 
     /**
      * Company name -> company, for the life of one request.
@@ -82,8 +85,9 @@ class GoodsReceiptNoteController extends Controller
     public function index()
     {
         return GrnResource::collection(
-            // Documents too, so each row can say what paperwork it still needs.
-            GoodsReceiptNote::with(['purchaseOrder.supplier', 'warehouse', 'documents'])->latest()->get()
+            // Documents and lines too, so each row can say what it still needs:
+            // paperwork, or a unit conversion.
+            GoodsReceiptNote::with(['purchaseOrder.supplier', 'warehouse', 'documents', 'items.item'])->latest()->get()
         );
     }
 
@@ -127,6 +131,12 @@ class GoodsReceiptNoteController extends Controller
                     'quantity' => $line->quantity,
                     'quantity_received' => $line->quantity_received,
                     'rate' => $line->rate,
+                    // Ordered in the supplier's unit: the goods are counted in
+                    // theirs here and converted into ours on the GRN.
+                    'supplier_unit' => $line->inSupplierUnit() ? $line->supplier_unit : null,
+                    'supplier_quantity' => $line->inSupplierUnit() ? $line->supplier_quantity : null,
+                    'supplier_quantity_received' => $line->inSupplierUnit() ? $line->supplier_quantity_received : null,
+                    'supplier_rate' => $line->inSupplierUnit() ? $line->supplier_rate : null,
                 ])->values(),
             ])->values(),
             'warehouses' => Warehouse::orderBy('name')->get(['id', 'name']),
@@ -145,7 +155,11 @@ class GoodsReceiptNoteController extends Controller
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.purchase_order_item_id' => 'nullable|exists:purchase_order_items,id',
-            'items.*.quantity_received' => 'required|numeric|min:0.01',
+            // In our unit, or — for a line ordered in the supplier's — in theirs
+            // (supplier_quantity). Which one a line needs is the order's call,
+            // checked line by line below.
+            'items.*.quantity_received' => 'nullable|numeric|min:0.01',
+            'items.*.supplier_quantity' => 'nullable|numeric|min:0.001',
             'items.*.unit_cost' => 'nullable|numeric|min:0',
             'items.*.type' => 'nullable|in:'.implode(',', self::TYPES),
             // A consumable is used up on a project rather than stocked, so it
@@ -158,6 +172,13 @@ class GoodsReceiptNoteController extends Controller
         ], ...$this->storeMessages());
 
         $po = PurchaseOrder::with(['items', 'purchaseRequest'])->findOrFail($data['purchase_order_id']);
+
+        if ($errors = $this->quantityErrors($po, $data['items'])) {
+            return response()->json([
+                'message' => collect($errors)->flatten()->first(),
+                'errors' => $errors,
+            ], 422);
+        }
 
         // The company's link decides the yard. The form does not offer the
         // choice, so a receipt naming a different warehouse did not come from
@@ -192,18 +213,27 @@ class GoodsReceiptNoteController extends Controller
                 ]);
 
                 foreach ($data['items'] as $line) {
-                    $poItemId = $line['purchase_order_item_id']
-                        ?? $po->items->firstWhere('item_id', $line['item_id'])?->id;
+                    $poLine = $this->orderLineFor($po, $line);
                     $type = $line['type'] ?? 'inventory';
 
                     GrnItem::create([
                         'goods_receipt_note_id' => $grn->id,
-                        'purchase_order_item_id' => $poItemId,
+                        'purchase_order_item_id' => $poLine?->id,
                         'item_id' => $line['item_id'],
-                        'quantity_received' => $line['quantity_received'],
-                        'unit_cost' => $line['unit_cost'] ?? 0,
                         'type' => $type,
                         'project_id' => $type === 'consumable' ? ($line['project_id'] ?? null) : null,
+                        // Counted in the supplier's unit, and nothing in ours
+                        // until someone sets the conversion: Confirm waits for it.
+                        ...($poLine?->inSupplierUnit() ? [
+                            'supplier_unit' => $poLine->supplier_unit,
+                            'supplier_quantity' => $line['supplier_quantity'],
+                            'supplier_rate' => $poLine->supplier_rate,
+                            'quantity_received' => 0,
+                            'unit_cost' => 0,
+                        ] : [
+                            'quantity_received' => $line['quantity_received'],
+                            'unit_cost' => $line['unit_cost'] ?? 0,
+                        ]),
                     ]);
                 }
 
@@ -302,6 +332,83 @@ class GoodsReceiptNoteController extends Controller
         ];
     }
 
+    /** The order line a posted GRN line receives against. */
+    private function orderLineFor(PurchaseOrder $po, array $line): ?PurchaseOrderItem
+    {
+        return ! empty($line['purchase_order_item_id'])
+            ? $po->items->firstWhere('id', (int) $line['purchase_order_item_id'])
+            : $po->items->firstWhere('item_id', (int) $line['item_id']);
+    }
+
+    /**
+     * Each line says how much arrived in the unit its order line is in: ours,
+     * or the supplier's for a line ordered in theirs.
+     *
+     * @return array<string, list<string>>
+     */
+    private function quantityErrors(PurchaseOrder $po, array $lines): array
+    {
+        $errors = [];
+
+        foreach ($lines as $index => $line) {
+            $poLine = $this->orderLineFor($po, $line);
+
+            if ($poLine?->inSupplierUnit()) {
+                if (empty($line['supplier_quantity'])) {
+                    $errors["items.{$index}.supplier_quantity"] = ["Enter how many {$poLine->supplier_unit} arrived."];
+                }
+            } elseif (empty($line['quantity_received'])) {
+                $errors["items.{$index}.quantity_received"] = ['Enter the quantity received.'];
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Sets what one of the supplier's units holds in ours for a GRN line
+     * received in theirs — "1 BAG = 25 KG" — which is what turns the 5 BAG
+     * that arrived into 125 KG of stock at the bag price over 25. Remembered
+     * for the item and unit, so the next GRN starts from it. Only before the
+     * GRN is confirmed: after that the stock has moved on these figures.
+     */
+    public function convert(Request $request, GoodsReceiptNote $grn, GrnItem $grnItem)
+    {
+        abort_unless($grnItem->goods_receipt_note_id === $grn->id, 404);
+        abort_if($grn->status === 'confirmed', 422, 'This GRN is confirmed; its stock has already been received.');
+        abort_unless($grnItem->inSupplierUnit(), 422, 'This line was received in our own unit.');
+
+        $data = $request->validate([
+            'unit_factor' => 'required|numeric|gt:0|max:1000000',
+        ], [
+            'unit_factor.required' => 'Enter how many of ours one '.$grnItem->supplier_unit.' holds.',
+            'unit_factor.gt' => 'The conversion must be more than zero.',
+        ]);
+
+        $factor = (float) $data['unit_factor'];
+
+        DB::transaction(function () use ($grnItem, $factor) {
+            $grnItem->update([
+                'unit_factor' => $factor,
+                'quantity_received' => round($grnItem->supplier_quantity * $factor, 3),
+                'unit_cost' => round(((float) $grnItem->supplier_rate) / $factor, 3),
+                'converted_by' => auth()->id(),
+                'converted_at' => now(),
+            ]);
+
+            UnitConversion::remember($grnItem->item_id, $grnItem->supplier_unit, $factor);
+        });
+
+        event(new GrnSaved($grn));
+
+        $grnItem->load('item');
+
+        return (new GrnResource($grn->fresh(self::DETAIL)))->additional([
+            'message' => ($grnItem->item?->item_name ?? 'Item').': '
+                .SupplierUnit::describe($grnItem->supplier_unit, $factor, $grnItem->item?->unit_of_measure).'.',
+        ]);
+    }
+
     /** documentMessages(), plus what a consumable line without a project is told. */
     private function storeMessages(): array
     {
@@ -369,6 +476,19 @@ class GoodsReceiptNoteController extends Controller
             ], 422);
         }
 
+        // A line counted in the supplier's unit has nothing in ours to stock
+        // until someone says what one of theirs holds.
+        $unconverted = $grn->items()->with('item')->get()->filter->conversionPending();
+
+        if ($unconverted->isNotEmpty()) {
+            return response()->json([
+                'message' => 'Set the unit conversion for '
+                    .$unconverted->map(fn ($line) => $line->item?->item_name ?? 'Item #'.$line->item_id)->join(', ', ' and ')
+                    .' before confirming this GRN.',
+                'missing_conversions' => $unconverted->pluck('id')->values(),
+            ], 422);
+        }
+
         $movements = DB::transaction(function () use ($grn) {
             $grn->load('items', 'purchaseOrder.items');
             $movements = [];
@@ -377,6 +497,14 @@ class GoodsReceiptNoteController extends Controller
                 $grn->purchaseOrder->items()
                     ->where('item_id', $grnItem->item_id)
                     ->increment('quantity_received', $grnItem->quantity_received);
+
+                // The order line counts it in the supplier's unit too: that is
+                // what it was ordered in, and what "all received" is measured by.
+                if ($grnItem->inSupplierUnit() && $grnItem->purchase_order_item_id) {
+                    $grn->purchaseOrder->items()
+                        ->whereKey($grnItem->purchase_order_item_id)
+                        ->increment('supplier_quantity_received', $grnItem->supplier_quantity);
+                }
 
                 if ($grnItem->type === 'consumable') {
                     continue;
@@ -402,7 +530,7 @@ class GoodsReceiptNoteController extends Controller
             $grn->update(['status' => 'confirmed']);
 
             $po = $grn->purchaseOrder->fresh(['items']);
-            $allReceived = $po->items->every(fn ($line) => $line->quantity_received >= $line->quantity);
+            $allReceived = $po->items->every(fn ($line) => $line->fullyReceived());
 
             if ($allReceived) {
                 $po->update(['status' => 'received']);

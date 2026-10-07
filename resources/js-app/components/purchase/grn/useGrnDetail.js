@@ -72,5 +72,24 @@ export default function useGrnDetail(id) {
         }
     }
 
-    return { grn, loading, confirming, setConfirming, confirm, uploading, uploadDocuments };
+    /**
+     * Sets what one of the supplier's units holds in ours on a line received
+     * in theirs. Resolves true when saved, so the converter can settle.
+     */
+    async function convert(itemId, unitFactor) {
+        try {
+            const response = await apiPatch(`/purchase/grns/${id}/items/${itemId}/conversion`, { unit_factor: unitFactor });
+            setGrn(response.data);
+            showToast(response.message ?? 'Conversion saved.', 'success');
+
+            return true;
+        } catch (err) {
+            const first = err?.errors?.unit_factor;
+            showToast((Array.isArray(first) ? first[0] : first) || err?.message || 'The conversion could not be saved.', 'error');
+
+            return false;
+        }
+    }
+
+    return { grn, loading, confirming, setConfirming, confirm, uploading, uploadDocuments, convert };
 }

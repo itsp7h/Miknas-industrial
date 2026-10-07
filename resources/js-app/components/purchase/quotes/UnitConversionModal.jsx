@@ -14,7 +14,7 @@ export default function UnitConversionModal({ target, onClose, onConfirm }) {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        setFactor(target ? String(target.factor) : '');
+        setFactor(target?.factor ? String(target.factor) : '');
         setSupplierQty(target ? String(target.supplierQty) : '');
         setError('');
     }, [target]);

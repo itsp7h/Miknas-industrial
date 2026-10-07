@@ -104,13 +104,54 @@ class SupplierQuoteUnitTest extends TestCase
         $this->assertEquals(1200, $line->total_price);
     }
 
-    public function test_another_unit_needs_its_conversion_and_quantity(): void
+    /**
+     * The supplier no longer says what their unit holds in ours: the GRN
+     * does. The line keeps their figures, and ours is their total over what
+     * we asked for, so it still ranks against other suppliers.
+     */
+    public function test_another_unit_is_accepted_without_its_conversion(): void
     {
-        $this->submit(['unit_factor' => null])
+        $this->submit(['unit_factor' => null])->assertCreated();
+
+        $line = SupplierQuoteItem::firstOrFail();
+        $this->assertSame('BAG', $line->supplier_unit);
+        $this->assertNull($line->unit_factor);
+        $this->assertTrue($line->conversionPending());
+        $this->assertEquals(4, $line->supplier_quantity);
+        $this->assertEquals(12, $line->supplier_unit_price);
+        // 4 BAG × 12 = 48, over the 100 PCS asked for.
+        $this->assertEquals(100, $line->quantity);
+        $this->assertEquals(48, $line->total_price);
+        $this->assertEquals(0.48, $line->unit_price);
+    }
+
+    public function test_another_unit_still_needs_how_many(): void
+    {
+        $this->submit(['unit_factor' => null, 'supplier_quantity' => null])
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'Please say how many PCS one BAG holds, and how many BAG you are quoting, for Cement.');
+            ->assertJsonPath('message', 'Please say how many BAG you are quoting for Cement.');
 
         $this->assertDatabaseCount('supplier_quote_items', 0);
+    }
+
+    public function test_an_lpo_with_no_conversion_states_none(): void
+    {
+        $this->submit(['unit_factor' => null])->assertCreated();
+        SupplierQuoteItem::firstOrFail()->update(['is_awarded' => true]);
+        $this->pr->update(['stage' => 'lpo']);
+
+        $this->actingAs($this->officer())->postJson("/api/v1/purchase/pipeline/{$this->pr->id}/lpo")->assertOk();
+
+        $order = PurchaseOrder::with('items')->firstOrFail();
+        $line = $order->items->first();
+        $this->assertSame('BAG', $line->supplier_unit);
+        $this->assertNull($line->unit_factor);
+        $this->assertTrue($line->conversionPending());
+
+        $html = view('purchase.orders.pdf', app(LpoDeliveryService::class)->documentData($order->fresh()))->render();
+        $this->assertStringNotContainsString("Supplier's unit:", $html);
+        $this->assertStringContainsString('ours: PCS', $html);
+        $this->assertStringContainsString('12.000', $html);
     }
 
     public function test_a_unit_we_do_not_keep_is_refused(): void

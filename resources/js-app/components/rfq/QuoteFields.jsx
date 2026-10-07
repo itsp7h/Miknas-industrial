@@ -26,9 +26,8 @@ const TERMS = [
 export const TIPS = {
     reference: 'Your own quotation number. It is printed on our purchase order (LPO) under your company name.',
     qty: 'The quantity we need, in the unit shown.',
-    unit: 'The unit we asked for. If you sell it another way, pick your unit and say how many of ours it holds.',
-    factor: 'How many of our units one of yours holds, e.g. 1 BAG = 25 KG.',
-    supplierQty: 'How many of your units you will supply in total.',
+    unit: 'The unit we asked for. If you sell it another way, pick your unit and give your quantity in it.',
+    supplierQty: 'How many of your units you will supply in total. Your unit price is per one of these.',
     notAvailable: 'Tick if you cannot supply this item. It then needs no price.',
     vat: (rate) => `Tick if VAT applies to this item. ${rate}% is added on top of its total.`,
     unitPrice: 'Your price for one unit, in Bahraini Dinar, before VAT. Up to 3 decimals.',
@@ -493,11 +492,11 @@ export function DescriptionEditor({ original, value, onChange, disabled, editing
 
 /**
  * The line's unit. It starts on ours; a supplier who sells it another way
- * (BAG where we asked for PCS) picks their unit and then says what one holds
- * in ours and how many they are supplying — so the order still lands in
- * stock in our unit. The unit price is then per theirs.
+ * (BAG where we asked for KG) picks their unit and says how many they are
+ * supplying, and the unit price is then per theirs. What one of theirs holds
+ * in ours is not asked here: we set it on the GRN when the goods arrive.
  */
-export function UnitField({ item, row, units, disabled, compact, onUnit, onFactor, onSupplierQty, missing = {} }) {
+export function UnitField({ item, row, units, disabled, compact, onUnit, onSupplierQty, missing = {} }) {
     const ours = item.unit;
     if (!ours) return <span style={{ color: '#64748b' }}>—</span>;
 
@@ -507,8 +506,6 @@ export function UnitField({ item, row, units, disabled, compact, onUnit, onFacto
         padding: compact ? '8px 10px' : '5px 8px', border: '1.5px solid #e2e8f0', borderRadius: 6,
         fontSize: compact ? 15 : 13, outline: 'none', background: '#fff', fontFamily: 'inherit',
     };
-    const mapped = parseFloat(row.factor) > 0 && parseFloat(row.supplierQty) > 0;
-    const inOurs = Math.round((parseFloat(row.supplierQty) || 0) * (parseFloat(row.factor) || 0) * 1000) / 1000;
 
     return (
         <div style={{ minWidth: compact ? 0 : 150 }}>
@@ -534,20 +531,6 @@ export function UnitField({ item, row, units, disabled, compact, onUnit, onFacto
                     borderRadius: 6, fontSize: 12, color: '#92400e', display: 'flex', flexDirection: 'column', gap: 6,
                 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span>1 {row.unit} =<RequiredMark /></span>
-                        <input
-                            type="number" min="0" step="any" inputMode="decimal"
-                            aria-label={`How many ${ours} one ${row.unit} holds, for ${item.description}`}
-                            disabled={disabled}
-                            value={row.factor}
-                            onChange={(e) => onFactor(e.target.value)}
-                            {...missingProps(missing.factor)}
-                            style={{ ...box, width: 80, ...(missing.factor ? MISSING : {}) }}
-                        />
-                        <span>{ours}</span>
-                        <InfoTip text={TIPS.factor} label={`1 ${row.unit}`} />
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span>Your qty:<RequiredMark /></span>
                         <input
                             type="number" min="0" step="any" inputMode="decimal"
@@ -561,11 +544,7 @@ export function UnitField({ item, row, units, disabled, compact, onUnit, onFacto
                         <span>{row.unit}</span>
                         <InfoTip text={TIPS.supplierQty} label="your quantity" />
                     </label>
-                    <div style={{ fontSize: 11 }}>
-                        {mapped
-                            ? <>= <strong>{inOurs} {ours}</strong> · price per {row.unit}</>
-                            : `Say how many ${ours} one ${row.unit} holds.`}
-                    </div>
+                    <div style={{ fontSize: 11 }}>Your unit price is per {row.unit}.</div>
                 </div>
             )}
         </div>

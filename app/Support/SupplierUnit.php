@@ -46,6 +46,25 @@ final class SupplierUnit
         ];
     }
 
+    /**
+     * The line before anyone has said what one of theirs holds in ours, which
+     * is settled on the GRN. It is costed as if what they quote covers what
+     * we asked for: their total over our quantity, so suppliers still rank on
+     * the quotes page. The total is theirs exactly.
+     *
+     * @return array{quantity: float, unit_price: float, total_price: float}
+     */
+    public static function pendingFigures(float $supplierQuantity, float $supplierPrice, float $ourQuantity): array
+    {
+        $total = round($supplierQuantity * $supplierPrice, 3);
+
+        return [
+            'quantity' => $ourQuantity,
+            'unit_price' => $ourQuantity > 0 ? round($total / $ourQuantity, 3) : 0.0,
+            'total_price' => $total,
+        ];
+    }
+
     /** "1 BAG = 25 PCS", with no trailing zeros on the factor. */
     public static function describe(string $unit, float $factor, ?string $ours): string
     {

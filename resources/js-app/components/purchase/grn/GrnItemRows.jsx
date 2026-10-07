@@ -63,19 +63,38 @@ export default function GrnItemRows({ lines, projects = [], defaultProjectId = '
                             {lines.map((line, index) => (
                                 <tr key={line.purchase_order_item_id ?? index} style={{ background: '#fff' }}>
                                     <td style={{ ...CELL, color: '#94a3b8', textAlign: 'center' }}>{index + 1}</td>
-                                    <td style={{ ...CELL, fontWeight: 500, color: '#0f172a' }}>{line.item_name}</td>
-                                    <td style={{ ...CELL, textAlign: 'right', color: '#64748b' }}>{qty(line.quantity)}</td>
-                                    <td style={CELL}>
-                                        <input
-                                            type="number" step="0.01" min="0"
-                                            aria-label={`Quantity received for ${line.item_name}`}
-                                            aria-invalid={lineError(index, 'quantity_received') ? true : undefined}
-                                            style={FIELD}
-                                            value={line.quantity_received}
-                                            onChange={(e) => update(index, 'quantity_received', e.target.value)}
-                                        />
+                                    <td style={{ ...CELL, fontWeight: 500, color: '#0f172a' }}>
+                                        {line.item_name}
+                                        {line.supplier_unit && (
+                                            <div style={{ marginTop: '0.2rem', fontSize: '0.7rem', fontWeight: 400, color: '#92400e' }}>
+                                                Ordered in the supplier&apos;s unit ({line.supplier_unit}). Count it in {line.supplier_unit};
+                                                {' '}it is converted to {line.unit_of_measure || 'our unit'} on the GRN before confirming.
+                                            </div>
+                                        )}
                                     </td>
-                                    <td style={{ ...CELL, textAlign: 'right', color: '#64748b' }}>{qty(line.unit_cost)}</td>
+                                    <td style={{ ...CELL, textAlign: 'right', color: '#64748b' }}>
+                                        {qty(line.quantity)}{line.supplier_unit ? ` ${line.supplier_unit}` : ''}
+                                    </td>
+                                    <td style={CELL}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            <input
+                                                type="number" step="0.001" min="0"
+                                                aria-label={line.supplier_unit
+                                                    ? `${line.supplier_unit} received for ${line.item_name}`
+                                                    : `Quantity received for ${line.item_name}`}
+                                                aria-invalid={lineError(index, line.supplier_unit ? 'supplier_quantity' : 'quantity_received') ? true : undefined}
+                                                style={FIELD}
+                                                value={line.quantity_received}
+                                                onChange={(e) => update(index, 'quantity_received', e.target.value)}
+                                            />
+                                            {line.supplier_unit && (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#92400e' }}>{line.supplier_unit}</span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td style={{ ...CELL, textAlign: 'right', color: '#64748b' }}>
+                                        {qty(line.unit_cost)}{line.supplier_unit ? ` / ${line.supplier_unit}` : ''}
+                                    </td>
                                     <td style={CELL}>
                                         {/* A real radio group, not clickable spans: the
                                             choice decides whether the line raises stock,
@@ -136,7 +155,7 @@ export default function GrnItemRows({ lines, projects = [], defaultProjectId = '
             )}
 
             {lines.map((line, index) => (
-                ['quantity_received', 'item_id', 'project_id'].map((field) => (
+                ['quantity_received', 'supplier_quantity', 'item_id', 'project_id'].map((field) => (
                     lineError(index, field) ? (
                         <p key={`${index}-${field}`} style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#dc2626' }}>
                             Row {index + 1}: {lineError(index, field)}
