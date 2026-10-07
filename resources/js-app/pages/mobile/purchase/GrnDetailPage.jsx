@@ -9,7 +9,9 @@ import { useSetPageTitle } from '../../../layouts/PageTitleContext';
 export default function GrnDetailPage() {
     const { id } = useParams();
     const g = useGrnDetail(id);
-    const canUpload = useAccess().can('goods-receipts.edit');
+    const access = useAccess();
+    const canUpload = access.can('goods-receipts.edit');
+    const canConvert = access.can('goods-receipts.convert-units');
 
     useSetPageTitle(g.grn ? `Goods Receipt Note — ${g.grn.grn_number}` : null);
 
@@ -24,7 +26,8 @@ export default function GrnDetailPage() {
             {g.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
             {!g.loading && !g.grn && <p style={{ fontSize: 14, color: '#64748b' }}>That GRN could not be found.</p>}
 
-            <GrnDetail grn={g.grn} compact canUpload={canUpload} uploading={g.uploading} onUpload={g.uploadDocuments} />
+            <GrnDetail grn={g.grn} compact canUpload={canUpload} uploading={g.uploading} onUpload={g.uploadDocuments}
+                canConvert={canConvert} onConvert={g.convert} />
 
             {/* Full-width, thumb-reachable rather than a top-right button. */}
             {g.grn && g.grn.status !== 'confirmed' && (

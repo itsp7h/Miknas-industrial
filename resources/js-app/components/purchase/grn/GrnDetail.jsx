@@ -1,5 +1,7 @@
+import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import NeedsBadge from './NeedsBadge';
+import UnitConverter from './UnitConverter';
 import { STATUS_LABELS, badgeClassFor, formatDate, qty } from './grnStyles';
 
 const ACCEPT = '.pdf,.jpg,.jpeg,.png';
@@ -106,7 +108,7 @@ function Documents({ documents, others = [], canUpload, uploading, onUpload }) {
 }
 
 /** The Blade GRN show page: a details card plus the received-items table. */
-export default function GrnDetail({ grn, compact = false, canUpload = false, uploading = null, onUpload }) {
+export default function GrnDetail({ grn, compact = false, canUpload = false, uploading = null, onUpload, canConvert = false, onConvert }) {
     if (!grn) return null;
 
     const items = grn.items ?? [];
@@ -170,18 +172,51 @@ export default function GrnDetail({ grn, compact = false, canUpload = false, upl
                             <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">No items recorded.</td></tr>
                         )}
                         {items.map((item) => (
-                            <tr key={item.id}>
-                                <td className="text-gray-800">{item.item_name ?? ''}</td>
-                                {/* Read from the linked PO line; the Blade page printed a
-                                    non-existent column here and always showed 0.00. */}
-                                <td className="text-right text-gray-600">{qty(item.quantity_ordered)}</td>
-                                <td className="text-right font-medium text-gray-800">{qty(item.quantity_received)}</td>
-                                <td className="text-gray-600">
-                                    {item.type === 'consumable'
-                                        ? `Consumable${item.project_name ? ` — ${item.project_name}` : ''}`
-                                        : 'Inventory'}
-                                </td>
-                            </tr>
+                            <Fragment key={item.id}>
+                                <tr>
+                                    <td className="text-gray-800">{item.item_name ?? ''}</td>
+                                    {/* Read from the linked PO line; the Blade page printed a
+                                        non-existent column here and always showed 0.00. A line
+                                        in the supplier's unit was ordered in theirs. */}
+                                    <td className="text-right text-gray-600">
+                                        {item.supplier_unit
+                                            ? `${qty(item.supplier_quantity_ordered)} ${item.supplier_unit}`
+                                            : qty(item.quantity_ordered)}
+                                    </td>
+                                    <td className="text-right font-medium text-gray-800">
+                                        {item.supplier_unit ? (
+                                            <>
+                                                {qty(item.supplier_quantity)} {item.supplier_unit}
+                                                <div className="text-xs" style={{ fontWeight: 400, color: item.conversion_pending ? '#b45309' : '#64748b' }}>
+                                                    {item.conversion_pending
+                                                        ? `→ ${item.unit_of_measure ?? 'our unit'} not set yet`
+                                                        : `= ${qty(item.quantity_received)} ${item.unit_of_measure ?? ''}`}
+                                                </div>
+                                            </>
+                                        ) : qty(item.quantity_received)}
+                                    </td>
+                                    <td className="text-gray-600">
+                                        {item.type === 'consumable'
+                                            ? `Consumable${item.project_name ? ` — ${item.project_name}` : ''}`
+                                            : 'Inventory'}
+                                    </td>
+                                </tr>
+                                {/* Counted in the supplier's unit: the conversion into
+                                    ours, set here before Confirm stocks it. */}
+                                {item.supplier_unit && (
+                                    <tr>
+                                        <td colSpan={4} style={{ paddingTop: 0 }}>
+                                            <UnitConverter
+                                                key={`${item.id}-${item.unit_factor ?? 'none'}`}
+                                                line={item}
+                                                editable={grn.status !== 'confirmed' && !!onConvert}
+                                                canConvert={canConvert}
+                                                onConvert={onConvert}
+                                            />
+                                        </td>
+                                    </tr>
+                                )}
+                            </Fragment>
                         ))}
                     </tbody>
                 </table>

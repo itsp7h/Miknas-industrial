@@ -65,6 +65,16 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                 >
                                     <td style={{ padding: '8px 10px', textAlign: 'left', color: '#0f172a', fontWeight: 500 }}>
                                         {row.supplier}
+                                        {row.document && (
+                                            <a
+                                                href={row.document.url} target="_blank" rel="noreferrer"
+                                                title={`Open ${row.supplier}'s own quotation (${row.document.name})`}
+                                                aria-label={`Open ${row.supplier}'s quotation`}
+                                                style={{ marginLeft: 6, fontSize: 12, textDecoration: 'none' }}
+                                            >
+                                                📎
+                                            </a>
+                                        )}
                                         {meta.length > 0 && (
                                             <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400, marginTop: 2 }}>
                                                 {meta.join(' · ')}
@@ -84,6 +94,17 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                                 </span>
                                             </div>
                                         )}
+                                        {/* In our unit, but not the quantity we asked for:
+                                            the line total is for what they offer. */}
+                                        {line && !line.not_available && !line.supplier_unit
+                                            && Number(line.quantity) > 0 && Number(line.quantity) !== Number(item.quantity) && (
+                                            <div style={{
+                                                fontSize: 10, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a',
+                                                borderRadius: 4, padding: '3px 6px', marginTop: 4, fontWeight: 600, display: 'inline-block',
+                                            }}>
+                                                Offers {Number(line.quantity)} of {Number(item.quantity)} {item.unit}
+                                            </div>
+                                        )}
                                         {/* Quoted in the supplier's own unit: what they
                                             offered, and what it is in ours. */}
                                         {line?.supplier_unit && !line.not_available && (
@@ -94,8 +115,11 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                             }}>
                                                 <span>
                                                     Quoted in <strong>{line.supplier_unit}</strong>: {line.supplier_quantity} {line.supplier_unit}
-                                                    {' '}@ {bd(line.supplier_unit_price)} · 1 {line.supplier_unit} = {line.unit_factor} {item.unit}
-                                                    {' '}= {line.quantity} {item.unit}
+                                                    {' '}@ {bd(line.supplier_unit_price)}
+                                                    {/* No factor: what one holds in ours is set on the GRN. */}
+                                                    {line.unit_factor > 0
+                                                        ? <> · 1 {line.supplier_unit} = {line.unit_factor} {item.unit} = {line.quantity} {item.unit}</>
+                                                        : <> · conversion to {item.unit} set on the GRN</>}
                                                 </span>
                                                 {onEditUnit && (() => {
                                                     const reason = !canAward
@@ -157,7 +181,12 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                             }}>
                                                 {bd(line.unit_price)}
                                                 {line.supplier_unit && (
-                                                    <span style={{ fontSize: 10, color: '#92400e', fontWeight: 500 }}> /{item.unit}</span>
+                                                    <span
+                                                        title={line.unit_factor > 0 ? undefined : `Their total over the ${item.unit} we asked for. The real price per ${item.unit} is set on the GRN.`}
+                                                        style={{ fontSize: 10, color: '#92400e', fontWeight: 500 }}
+                                                    >
+                                                        {' '}/{item.unit}{line.unit_factor > 0 ? '' : ' (est.)'}
+                                                    </span>
                                                 )}
                                                 {line.is_vatable && (
                                                     <span title="VAT applicable" style={{

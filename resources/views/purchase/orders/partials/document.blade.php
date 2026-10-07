@@ -223,11 +223,15 @@
             <td>{{ $item->item->item_code ?? '—' }}</td>
             <td>
                 {{ $item->item->item_name ?? '—' }}
+                {{-- With no factor yet there is nothing to state: what one
+                     holds in ours is set on the GRN when the goods arrive. --}}
+                @unless ($item->conversionPending())
                 <div class="unit-note">
                     Supplier's unit: {{ \App\Support\SupplierUnit::describe($item->supplier_unit, $item->unit_factor, $item->system_unit) }}
                     &middot; {{ \App\Support\SupplierUnit::number($item->supplier_quantity) }} {{ $item->supplier_unit }}
                     = {{ \App\Support\SupplierUnit::number((float) $item->quantity) }} {{ $item->system_unit }} in our system
                 </div>
+                @endunless
             </td>
             <td class="text-right">{{ number_format($item->supplier_quantity, 2) }}</td>
             <td class="text-right">

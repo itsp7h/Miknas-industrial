@@ -45,6 +45,12 @@ class GrnResource extends JsonResource
             'missing_documents' => $this->whenLoaded('documents', fn () => collect(GrnDocument::KINDS)
                 ->reject(fn ($label, $kind) => $this->documents->contains('kind', $kind))
                 ->values()),
+            // Lines counted in the supplier's unit with no conversion set yet,
+            // by item name. Confirm waits on these as it does on documents.
+            'missing_conversions' => $this->whenLoaded('items', fn () => $this->items
+                ->filter->conversionPending()
+                ->map(fn ($line) => $line->item?->item_name ?? 'Item #'.$line->item_id)
+                ->values()),
             // Whatever else came with the delivery, in upload order.
             'other_documents' => $this->whenLoaded('documents', fn () => $this->documents
                 ->where('kind', GrnDocument::OTHER)->sortBy('id')

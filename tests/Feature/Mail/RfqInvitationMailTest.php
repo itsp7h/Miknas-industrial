@@ -12,10 +12,9 @@ use Tests\TestCase;
 
 /**
  * The invitation lasts RfqInvitation::EXPIRY_DAYS, but the email body and the
- * WhatsApp text used to state "7 days" as prose while the footer rendered
- * expires_at — so a 14-day invitation told the supplier it had a week, and the
- * same email contradicted itself two paragraphs later. Both now read the figure
- * off the record; these pin that they agree.
+ * WhatsApp text used to state "7 days" as prose — so a 14-day invitation told
+ * the supplier it had a week. Both now read the figure off the record; these
+ * pin that they quote it.
  */
 class RfqInvitationMailTest extends TestCase
 {
@@ -32,7 +31,7 @@ class RfqInvitationMailTest extends TestCase
         ]);
     }
 
-    public function test_the_email_states_the_same_lifetime_its_footer_renders(): void
+    public function test_the_email_states_the_invitation_lifetime(): void
     {
         $invitation = $this->invitation(RfqInvitation::EXPIRY_DAYS);
 
@@ -42,10 +41,18 @@ class RfqInvitationMailTest extends TestCase
             'expires in '.RfqInvitation::EXPIRY_DAYS.' days',
             $html
         );
-        $this->assertStringContainsString(
-            'expires on <strong>'.$invitation->expires_at->format('d M Y').'</strong>',
-            $html
-        );
+    }
+
+    /** The button is the only way in: no footer repeating the date and the raw URL. */
+    public function test_the_email_has_no_link_footer(): void
+    {
+        $invitation = $this->invitation(RfqInvitation::EXPIRY_DAYS);
+
+        $html = (new RfqInvitationMail($invitation))->render();
+
+        $this->assertStringNotContainsString('can only be submitted once', $html);
+        $this->assertStringNotContainsString('copy this URL', $html);
+        $this->assertSame(1, substr_count($html, route('rfq.show', $invitation->token)));
     }
 
     /** Change the expiry and the prose follows, rather than being left behind. */

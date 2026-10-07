@@ -1,8 +1,8 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, QuantityField, QuotationDocumentField, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
-import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
+import useRfqPortal, { DOCUMENT_ACCEPT, inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
 import { ErrorScreen, ExpiredScreen, LoadingScreen, SubmittedScreen } from '../../../components/rfq/RfqStates';
 
 const th = {
@@ -62,6 +62,9 @@ export default function QuotePage({ token, load, send }) {
                         and submit. This link is private to your company and can only be
                         submitted once.
                     </p>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: '-16px 0 20px' }}>
+                        Fields marked <span style={{ color: '#dc2626', fontWeight: 700 }}>*</span> are required.
+                    </p>
 
                     <ReferenceField meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} missing={f.missing.reference} />
 
@@ -77,11 +80,11 @@ export default function QuotePage({ token, load, send }) {
                                     <tr>
                                         <th style={th}>#</th>
                                         <th style={th}>Description</th>
-                                        <th style={th}>Qty</th>
-                                        <th style={th}>Unit</th>
-                                        <th style={{ ...th, textAlign: 'center' }}>N/A?</th>
-                                        <th style={{ ...th, textAlign: 'center' }}>VAT?</th>
-                                        <th style={{ ...th, textAlign: 'right' }}>Unit Price (BD)</th>
+                                        <th style={th}>Qty<RequiredMark /><InfoTip text={TIPS.qty} label="Qty" placement="bottom" /></th>
+                                        <th style={th}>Unit<InfoTip text={TIPS.unit} label="Unit" placement="bottom" /></th>
+                                        <th style={{ ...th, textAlign: 'center' }}>N/A?<InfoTip text={TIPS.notAvailable} label="N/A" placement="bottom" align="center" /></th>
+                                        <th style={{ ...th, textAlign: 'center' }}>VAT?{vatRate > 0 && <InfoTip text={TIPS.vat(qty(vatRate))} label="VAT" placement="bottom" align="center" />}</th>
+                                        <th style={{ ...th, textAlign: 'right' }}>Unit Price (BD)<RequiredMark /><InfoTip text={TIPS.unitPrice} label="Unit Price" placement="bottom" align="right" /></th>
                                         <th style={{ ...th, textAlign: 'right' }}>Total (BD)</th>
                                     </tr>
                                 </thead>
@@ -105,13 +108,19 @@ export default function QuotePage({ token, load, send }) {
                                                         onDone={(save) => f.endEdit(item, save)}
                                                     />
                                                 </td>
-                                                <td style={td}>{qty(item.quantity_required)}</td>
+                                                <td style={td}>
+                                                    <QuantityField
+                                                        item={item} row={row} compact={false}
+                                                        disabled={row.notAvailable || f.submitting}
+                                                        onChange={(value) => f.setRow(item.id, { quantity: value })}
+                                                        missing={f.missing.rows[item.id]?.quantity}
+                                                    />
+                                                </td>
                                                 <td style={td}>
                                                     <UnitField
                                                         item={item} row={row} units={f.units} compact={false}
                                                         disabled={row.notAvailable || f.submitting}
                                                         onUnit={(unit) => f.setUnit(item, unit)}
-                                                        onFactor={(factor) => f.setFactor(item, factor)}
                                                         onSupplierQty={(value) => f.setSupplierQty(item, value)}
                                                         missing={f.missing.rows[item.id]}
                                                     />
@@ -206,6 +215,20 @@ export default function QuotePage({ token, load, send }) {
                         </div>
 
                         <LogisticsFields compact={false} meta={f.meta} setField={f.setField} disabled={f.submitting} />
+
+                        <QuotationDocumentField
+
+                            file={f.quoteDocument}
+
+                            onChange={f.setQuoteDocument}
+
+                            error={f.errors.document}
+
+                            disabled={f.submitting}
+
+                            accept={DOCUMENT_ACCEPT}
+
+                        />
 
                         <TermsBlock
                             accepted={f.terms}

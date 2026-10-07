@@ -1,8 +1,8 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, QuantityField, QuotationDocumentField, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
-import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
+import useRfqPortal, { DOCUMENT_ACCEPT, inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
 import { ErrorScreen, ExpiredScreen, LoadingScreen, SubmittedScreen } from '../../../components/rfq/RfqStates';
 
 const sectionLabel = {
@@ -64,6 +64,9 @@ export default function QuotePage({ token, load, send }) {
                     Please enter your unit prices below. This link is private to your
                     company and can only be submitted once.
                 </p>
+                <p style={{ fontSize: 12, color: '#64748b', margin: '8px 0 0' }}>
+                    Fields marked <span style={{ color: '#dc2626', fontWeight: 700 }}>*</span> are required.
+                </p>
 
                 <div style={{ marginTop: 16 }}>
                     <ReferenceField meta={f.meta} setField={f.setField} errors={f.errors} disabled={f.submitting} missing={f.missing.reference} />
@@ -91,7 +94,7 @@ export default function QuotePage({ token, load, send }) {
                                         Item #{index + 1}
                                     </span>
                                     <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb' }}>
-                                        {qty(item.quantity_required)} {item.unit || ''}
+                                        Requested: {qty(item.quantity_required)} {item.unit || ''}
                                     </span>
                                 </div>
 
@@ -106,12 +109,31 @@ export default function QuotePage({ token, load, send }) {
                                     onDone={(save) => f.endEdit(item, save)}
                                 />
 
+                                {/* In our unit, how many they offer. Switched to their
+                                    own unit, the quantity is asked in theirs below. */}
+                                {!inOtherUnit(item, row) && (
+                                    <div style={{ marginTop: 12 }}>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', fontSize: 11, fontWeight: 700, color: '#64748b',
+                                            textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 5,
+                                        }}>
+                                            Your Quantity<RequiredMark />
+                                            <InfoTip text={TIPS.qty} label="your quantity in our unit" />
+                                        </div>
+                                        <QuantityField
+                                            item={item} row={row} compact
+                                            disabled={row.notAvailable || f.submitting}
+                                            onChange={(value) => f.setRow(item.id, { quantity: value })}
+                                            missing={f.missing.rows[item.id]?.quantity}
+                                        />
+                                    </div>
+                                )}
+
                                 <div style={{ marginTop: 12 }}>
                                     <UnitField
                                     item={item} row={row} units={f.units} compact={true}
                                     disabled={row.notAvailable || f.submitting}
                                     onUnit={(unit) => f.setUnit(item, unit)}
-                                    onFactor={(factor) => f.setFactor(item, factor)}
                                     onSupplierQty={(value) => f.setSupplierQty(item, value)}
                                     missing={f.missing.rows[item.id]}
                                 />
@@ -121,6 +143,7 @@ export default function QuotePage({ token, load, send }) {
                                     <Toggle
                                         id={`na-${item.id}`}
                                         label="Item not available"
+                                        tip={TIPS.notAvailable}
                                         // Same accessible name as the desktop
                                         // checkbox: one test drives both trees.
                                         ariaLabel={`${item.description} is not available`}
@@ -133,6 +156,7 @@ export default function QuotePage({ token, load, send }) {
                                         <Toggle
                                             id={`vat-${item.id}`}
                                             label={`Apply ${qty(vatRate)}% VAT`}
+                                            tip={TIPS.vat(qty(vatRate))}
                                             ariaLabel={`Apply VAT to ${item.description}`}
                                             checked={row.isVatable}
                                             disabled={row.notAvailable || f.submitting}
@@ -149,7 +173,8 @@ export default function QuotePage({ token, load, send }) {
                                         textTransform: 'uppercase', letterSpacing: '.05em', margin: '14px 0 5px',
                                     }}
                                 >
-                                    Unit Price (BD){inOtherUnit(item, row) ? ` per ${row.unit}` : ''}
+                                    Unit Price (BD){inOtherUnit(item, row) ? ` per ${row.unit}` : ''}<RequiredMark />
+                                    <InfoTip text={TIPS.unitPrice} label="Unit Price" />
                                 </label>
                                 <input
                                     id={`price-${item.id}`}
@@ -215,6 +240,13 @@ export default function QuotePage({ token, load, send }) {
                     <div style={sectionLabel}>Logistics &amp; Terms</div>
                     <div style={card}>
                         <LogisticsFields compact meta={f.meta} setField={f.setField} disabled={f.submitting} />
+                        <QuotationDocumentField
+                            file={f.quoteDocument}
+                            onChange={f.setQuoteDocument}
+                            error={f.errors.document}
+                            disabled={f.submitting}
+                            accept={DOCUMENT_ACCEPT}
+                        />
                     </div>
 
                     <div style={sectionLabel}>Agreement</div>
@@ -292,7 +324,7 @@ function SummaryRow({ label, value, tone }) {
 }
 
 /** A switch, drawn rather than borrowed — see the note at the top of the file. */
-function Toggle({ id, label, ariaLabel, checked, disabled, accent, onChange }) {
+function Toggle({ id, label, tip, ariaLabel, checked, disabled, accent, onChange }) {
     return (
         <label
             htmlFor={id}
@@ -303,7 +335,10 @@ function Toggle({ id, label, ariaLabel, checked, disabled, accent, onChange }) {
                 opacity: disabled ? 0.5 : 1,
             }}
         >
-            <span style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }}>{label}</span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: '#0f172a', display: 'flex', alignItems: 'center' }}>
+                {label}
+                {tip && <InfoTip text={tip} label={label} />}
+            </span>
             <span style={{
                 position: 'relative', flexShrink: 0, width: 46, height: 28, borderRadius: 999,
                 background: checked ? accent : '#cbd5e1', transition: 'background .15s ease',

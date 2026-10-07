@@ -164,7 +164,7 @@ class GoodsReceiptNoteControllerTest extends TestCase
             ->postJson('/api/v1/purchase/grns', $this->payload())
             ->assertCreated()
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.items.0.quantity_received', '4.00');
+            ->assertJsonPath('data.items.0.quantity_received', '4.000');
 
         Event::assertDispatched(GrnSaved::class);
     }
@@ -195,7 +195,7 @@ class GoodsReceiptNoteControllerTest extends TestCase
             ->getJson("/api/v1/purchase/grns/{$grn->id}")
             ->assertOk()
             ->assertJsonPath('data.items.0.quantity_ordered', '10.00')
-            ->assertJsonPath('data.items.0.quantity_received', '4.00');
+            ->assertJsonPath('data.items.0.quantity_received', '4.000');
     }
 
     public function test_it_rejects_a_grn_with_no_lines(): void

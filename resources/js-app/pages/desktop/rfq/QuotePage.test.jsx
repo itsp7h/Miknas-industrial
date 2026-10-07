@@ -54,6 +54,68 @@ describe.each([
 
     const mount = () => render(<Page token={TOKEN} load={load} send={send} />);
 
+    it('stars the fields the quote cannot be submitted without, and only those', async () => {
+        const { container } = mount();
+        await screen.findByText('MPR-0042');
+
+        const starred = (label) => !!label.querySelector('span[aria-hidden="true"]')
+            && label.textContent.includes('*');
+        const labelOf = (id) => container.querySelector(`label[for="${id}"]`);
+
+        expect(starred(labelOf('reference'))).toBe(true);
+        expect(starred(labelOf('terms-cb'))).toBe(true);
+        expect(starred(labelOf('confirm-input'))).toBe(true);
+        expect(screen.getAllByText(/Unit Price \(BD\)/).every(starred)).toBe(true);
+
+        expect(starred(labelOf('lead_time_days'))).toBe(false);
+        expect(starred(labelOf('payment_terms'))).toBe(false);
+        expect(starred(labelOf('notes'))).toBe(false);
+
+        expect(screen.getByText(/are required\./)).toBeInTheDocument();
+    });
+
+    it('explains each field in a tooltip, on hover and on tap', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const ref = screen.getByRole('button', { name: 'What is Ref?' });
+        expect(screen.queryByRole('tooltip')).toBeNull();
+
+        // A mouse hovering shows it, and leaving hides it.
+        fireEvent.pointerEnter(ref.parentElement, { pointerType: 'mouse' });
+        expect(screen.getByRole('tooltip')).toHaveTextContent(/printed on our purchase order/);
+        fireEvent.pointerLeave(ref.parentElement, { pointerType: 'mouse' });
+        expect(screen.queryByRole('tooltip')).toBeNull();
+
+        // A tap pins it; a tap elsewhere closes it.
+        fireEvent.click(ref);
+        expect(screen.getByRole('tooltip')).toHaveTextContent(/printed on our purchase order/);
+        fireEvent.pointerDown(document.body);
+        expect(screen.queryByRole('tooltip')).toBeNull();
+
+        // Escape closes a pinned one too.
+        fireEvent.click(screen.getAllByRole('button', { name: 'What is Unit Price?' })[0]);
+        expect(screen.getByRole('tooltip')).toHaveTextContent(/before VAT/);
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(screen.queryByRole('tooltip')).toBeNull();
+
+        // The optional fields are explained as well.
+        for (const name of ['Delivery Time (days)', 'Payment Terms', 'Notes / Remarks', 'the confirmation code', 'the terms and conditions']) {
+            expect(screen.getByRole('button', { name: `What is ${name}?` })).toBeInTheDocument();
+        }
+    });
+
+    it('a tooltip tap does not tick the checkbox it sits beside', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const tips = screen.getAllByRole('button', { name: /What is (N\/A|Item not available)\?/ });
+        fireEvent.click(tips[0]);
+
+        expect(screen.getByLabelText('Steel rod 12mm is not available')).not.toBeChecked();
+        expect(screen.getByRole('tooltip')).toHaveTextContent(/cannot supply this item/);
+    });
+
     /** Every field the supplier fills, so each test can start from a valid quote. */
     async function fillValidQuote() {
         mount();
@@ -63,7 +125,7 @@ describe.each([
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
         fireEvent.change(screen.getByLabelText('Unit price for Angle bar'), { target: { value: '3' } });
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
-        fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'ab12c' } });
+        fireEvent.change(screen.getByLabelText(/Paste code here/), { target: { value: 'ab12c' } });
     }
 
     it('reads the invitation from the API and shows what is being quoted', async () => {
@@ -150,10 +212,10 @@ describe.each([
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
         expect(screen.getByText('Enter the confirmation code exactly as shown.')).toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'WRONG' } });
+        fireEvent.change(screen.getByLabelText(/Paste code here/), { target: { value: 'WRONG' } });
         expect(submit).toHaveAttribute('aria-disabled', 'true');
 
-        fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'ab12c' } });
+        fireEvent.change(screen.getByLabelText(/Paste code here/), { target: { value: 'ab12c' } });
         expect(submit).not.toHaveAttribute('aria-disabled');
     });
 
@@ -170,7 +232,7 @@ describe.each([
         const rodPrice = screen.getByLabelText('Unit price for Steel rod 12mm');
         const barPrice = screen.getByLabelText('Unit price for Angle bar');
         const terms = screen.getByLabelText(/I have read and agree to the terms/);
-        const code = screen.getByLabelText('Paste code here');
+        const code = screen.getByLabelText(/Paste code here/);
 
         expect(ref).not.toHaveAttribute('aria-invalid');
         expect(rodPrice).not.toHaveAttribute('aria-invalid');
@@ -198,21 +260,18 @@ describe.each([
         expect(screen.getByText('The code does not match. Copy it exactly as shown.')).toBeInTheDocument();
     });
 
-    it('outlines the conversion of a line quoted in another unit until it is filled', async () => {
+    it('outlines the quantity of a line quoted in another unit until it is filled', async () => {
         await fillValidQuote();
 
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
         fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
 
         expect(send).not.toHaveBeenCalled();
-        const factor = screen.getByLabelText('How many pcs one BAG holds, for Angle bar');
-        expect(factor).toHaveAttribute('aria-invalid', 'true');
-        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toHaveAttribute('aria-invalid', 'true');
+        const theirs = screen.getByLabelText('Your quantity in BAG, for Angle bar');
+        expect(theirs).toHaveAttribute('aria-invalid', 'true');
 
-        // The quantity follows the conversion, so filling one clears both.
-        fireEvent.change(factor, { target: { value: '3' } });
-        expect(factor).not.toHaveAttribute('aria-invalid');
-        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).not.toHaveAttribute('aria-invalid');
+        fireEvent.change(theirs, { target: { value: '2' } });
+        expect(theirs).not.toHaveAttribute('aria-invalid');
     });
 
     it('a line marked unavailable counts as answered rather than unpriced', async () => {
@@ -223,7 +282,7 @@ describe.each([
         fireEvent.change(screen.getByLabelText('Unit price for Steel rod 12mm'), { target: { value: '2' } });
         fireEvent.click(screen.getByLabelText('Angle bar is not available'));
         fireEvent.click(screen.getByLabelText(/I have read and agree to the terms/));
-        fireEvent.change(screen.getByLabelText('Paste code here'), { target: { value: 'AB12C' } });
+        fireEvent.change(screen.getByLabelText(/Paste code here/), { target: { value: 'AB12C' } });
 
         expect(screen.getByRole('button', { name: /Submit/ })).not.toHaveAttribute('aria-disabled');
     });
@@ -251,21 +310,19 @@ describe.each([
     });
 
     /**
-     * A supplier who sells in bags picks BAG, says what a bag holds in our
-     * unit, and prices per bag; the quantity follows the conversion (rounded
-     * up) until they type their own.
+     * A supplier who sells in bags picks BAG, says how many bags, and prices
+     * per bag. What a bag holds in our unit is not theirs to say: we set it on
+     * the GRN, so the portal neither asks for it nor sends one.
      */
-    it('lets the supplier quote in their own unit, mapped to ours', async () => {
+    it('lets the supplier quote in their own unit without converting it', async () => {
         await fillValidQuote();
 
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
         expect(screen.getByRole('button', { name: /Submit/ })).toHaveAttribute('aria-disabled', 'true');
         expect(screen.getByText(/One item is in a different unit/)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/holds, for Angle bar/)).not.toBeInTheDocument();
 
-        // 4 pcs asked for, 3 to a bag: 2 bags, which is 6 pcs.
-        fireEvent.change(screen.getByLabelText('How many pcs one BAG holds, for Angle bar'), { target: { value: '3' } });
-        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toHaveValue(2);
-        expect(screen.getByText('6 pcs')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Your quantity in BAG, for Angle bar'), { target: { value: '2' } });
 
         // Priced per bag: 2 × 3 = 6, beside 10 × 2 = 20 for the rod.
         expect(screen.getByText('BD 6.000')).toBeInTheDocument();
@@ -278,21 +335,104 @@ describe.each([
             { id: 7, unit_price: 2, is_vatable: false, not_available: false, supplier_description: null },
             {
                 id: 9, unit_price: 3, is_vatable: false, not_available: false, supplier_description: null,
-                supplier_unit: 'BAG', unit_factor: 3, supplier_quantity: 2,
+                supplier_unit: 'BAG', supplier_quantity: 2,
             },
         ]);
     });
 
-    it('going back to our unit forgets the conversion', async () => {
+    it('going back to our unit forgets their quantity', async () => {
         await fillValidQuote();
 
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
-        fireEvent.change(screen.getByLabelText('How many pcs one BAG holds, for Angle bar'), { target: { value: '3' } });
+        fireEvent.change(screen.getByLabelText('Your quantity in BAG, for Angle bar'), { target: { value: '2' } });
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'pcs' } });
 
-        expect(screen.queryByLabelText('How many pcs one BAG holds, for Angle bar')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Your quantity in BAG, for Angle bar')).not.toBeInTheDocument();
         expect(screen.getByText('BD 12.000')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Submit/ })).not.toHaveAttribute('aria-disabled');
+    });
+
+    it('sends their own quotation with the quote when one is attached', async () => {
+        await fillValidQuote();
+
+        const file = new File(['%PDF-1.4'], 'Gulf Steel Q-118.pdf', { type: 'application/pdf' });
+        fireEvent.change(screen.getByLabelText(/Your Quotation/), { target: { files: [file] } });
+        expect(screen.getByText('Gulf Steel Q-118.pdf')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        await waitFor(() => expect(send).toHaveBeenCalled());
+        expect(send.mock.calls[0][0]).toBe(`/rfq/${TOKEN}`);
+        expect(send.mock.calls[0][1]).toEqual(expect.objectContaining({ reference: 'GS/Q/2026/118' }));
+        expect(send.mock.calls[0][2]).toBe(file);
+    });
+
+    it('lets a wrong attachment be removed, and sends none then', async () => {
+        await fillValidQuote();
+
+        const file = new File(['x'], 'quote.pdf', { type: 'application/pdf' });
+        fireEvent.change(screen.getByLabelText(/Your Quotation/), { target: { files: [file] } });
+        fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+        expect(screen.queryByText('quote.pdf')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        await waitFor(() => expect(send).toHaveBeenCalled());
+        expect(send.mock.calls[0]).toHaveLength(2);
+    });
+
+    it('refuses a file that is not a PDF or an image, before anything is sent', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const file = new File(['x'], 'quote.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        fireEvent.change(screen.getByLabelText(/Your Quotation/), { target: { files: [file] } });
+
+        expect(screen.getByText('Your quotation must be a PDF, JPG or PNG file.')).toBeInTheDocument();
+        expect(screen.queryByText('quote.docx')).not.toBeInTheDocument();
+    });
+
+    /** 4 pcs of Angle bar asked for; they have 3. The total and the payload follow. */
+    it('lets the supplier offer a different quantity in our unit', async () => {
+        await fillValidQuote();
+
+        const field = screen.getByLabelText('Quantity for Angle bar');
+        expect(field).toHaveValue(4);
+        fireEvent.change(field, { target: { value: '3' } });
+
+        expect(screen.getByText('asked 4')).toBeInTheDocument();
+        // 3 × 3 = 9, beside 10 × 2 = 20 for the rod.
+        expect(screen.getByText('BD 9.000')).toBeInTheDocument();
+        expect(screen.getAllByText('BD 29.000').length).toBeGreaterThan(0);
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        await waitFor(() => expect(send).toHaveBeenCalled());
+        expect(send.mock.calls[0][1].items).toEqual([
+            { id: 7, unit_price: 2, is_vatable: false, not_available: false, supplier_description: null },
+            { id: 9, unit_price: 3, is_vatable: false, not_available: false, supplier_description: null, quantity: 3 },
+        ]);
+    });
+
+    it('will not submit a line with no quantity, and outlines it', async () => {
+        await fillValidQuote();
+
+        const field = screen.getByLabelText('Quantity for Angle bar');
+        fireEvent.change(field, { target: { value: '' } });
+        expect(screen.getByText(/One item has no quantity/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+        expect(send).not.toHaveBeenCalled();
+        expect(field).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('asks the quantity in their unit instead, once they switch to it', async () => {
+        await fillValidQuote();
+
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
+
+        expect(screen.queryByLabelText('Quantity for Angle bar')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toBeInTheDocument();
     });
 
     it('sends the logistics fields the supplier filled in', async () => {

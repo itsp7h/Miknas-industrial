@@ -12,8 +12,31 @@ class SupplierQuote extends Model
     protected $fillable = [
         'rfq_invitation_id', 'purchase_request_id', 'supplier_id', 'reference',
         'submitted_at', 'lead_time_days', 'payment_terms', 'notes',
-        'total_amount',
+        'total_amount', 'document_path', 'document_name', 'document_size',
     ];
+
+    /** Where a supplier's own quotation document is kept: private, like a GRN's paperwork. */
+    public const DISK = 'local';
+
+    /**
+     * The supplier's own quotation, as attached in the portal, or null. Opened
+     * from a web route because a new tab carries the session but not what
+     * Sanctum needs for /api.
+     *
+     * @return array{name: string, size: int|null, url: string}|null
+     */
+    public function documentInfo(): ?array
+    {
+        if (! $this->document_path) {
+            return null;
+        }
+
+        return [
+            'name' => $this->document_name,
+            'size' => $this->document_size,
+            'url' => route('purchase.quotes.document', $this->id, false),
+        ];
+    }
 
     protected $casts = [
         'submitted_at' => 'datetime',

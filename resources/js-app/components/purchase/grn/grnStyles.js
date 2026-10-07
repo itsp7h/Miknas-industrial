@@ -27,9 +27,13 @@ const joinLabels = (labels) => (labels.length < 2
     ? labels.join('')
     : `${labels.slice(0, -1).join(', ')} & ${labels[labels.length - 1]}`);
 
-/** "Needs Tax Invoice" while a document is missing, else null. */
+/**
+ * "Needs Tax Invoice" while a document is missing, "Needs conversion" while a
+ * line in the supplier's unit has none, both joined when both — else null.
+ */
 export const needsLabel = (grn) => {
-    const missing = grn?.missing_documents ?? [];
+    const missing = [...(grn?.missing_documents ?? [])];
+    if ((grn?.missing_conversions ?? []).length) missing.push('conversion');
 
     return missing.length ? `Needs ${joinLabels(missing)}` : null;
 };
@@ -41,6 +45,10 @@ export const needsLabel = (grn) => {
  */
 export const confirmBlockedReason = (grn) => {
     const missing = grn?.missing_documents ?? [];
+    if (missing.length) return `Upload the ${joinLabels(missing)} to confirm this GRN.`;
 
-    return missing.length ? `Upload the ${joinLabels(missing)} to confirm this GRN.` : null;
+    // A line counted in the supplier's unit stocks nothing until it is converted.
+    const unconverted = grn?.missing_conversions ?? [];
+
+    return unconverted.length ? `Set the unit conversion for ${joinLabels(unconverted)} to confirm this GRN.` : null;
 };

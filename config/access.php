@@ -65,6 +65,13 @@ return [
             'group' => 'Purchase',
             'label' => 'Goods Receipt (GRN)',
             'actions' => ['view', 'create', 'edit', 'delete'],
+            // A supplier may quote in their own unit (BAG for KG) without
+            // saying what it holds in ours. Whoever has the goods in hand says
+            // so on the GRN, and that figure is what the stock is counted in —
+            // so it is granted on its own, not carried by `edit`.
+            'extra' => [
+                'convert-units' => 'Set unit conversions (supplier unit → ours) before confirming',
+            ],
         ],
         'supplier-invoices' => [
             'group' => 'Purchase',

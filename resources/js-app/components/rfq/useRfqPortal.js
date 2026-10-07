@@ -1,6 +1,6 @@
 import { money as formatMoney } from '../../currency';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { apiGet, apiPost } from '../../api/client';
+import { apiGet, apiPost, apiPostForm } from '../../api/client';
 
 /** Three decimals everywhere, because BD prices are quoted in fils. */
 export const round3 = (value) => Math.round((Number(value) || 0) * 1000) / 1000;
@@ -22,11 +22,13 @@ const blankRow = (item) => ({
     notAvailable: false,
     description: item.description,
     // The unit they quote in: ours unless they change it, in which case they
-    // say what one of theirs holds in ours (factor) and how many they supply.
+    // say how many of theirs they supply. What one holds in ours is not asked
+    // of them; it is set on our GRN when the goods arrive.
     unit: item.unit ?? '',
-    factor: '',
     supplierQty: '',
-    supplierQtyTouched: false,
+    // How many they offer in our unit. Starts on what we asked for; they may
+    // offer fewer (8 of the 10) or more (it comes by the dozen).
+    quantity: String(item.quantity_required ?? ''),
 });
 
 /** Whether a row is quoted in a unit other than the one we asked in. */
@@ -34,16 +36,15 @@ export const inOtherUnit = (item, row) => !!(row?.unit && item.unit && row.unit 
 
 /**
  * How many units the price multiplies: theirs when they changed the unit
- * ("4 BAG"), otherwise the quantity we asked for.
+ * ("4 BAG"), otherwise the quantity they offer in ours.
  */
 export const pricedQty = (item, row) => (inOtherUnit(item, row)
     ? (parseFloat(row.supplierQty) || 0)
-    : item.quantity_required);
+    : (parseFloat(row.quantity) || 0));
 
-/** What a row comes to in our unit: 4 BAG × 25 = 100 PCS. */
-export const ourQty = (item, row) => (inOtherUnit(item, row)
-    ? round3((parseFloat(row.supplierQty) || 0) * (parseFloat(row.factor) || 0))
-    : item.quantity_required);
+/** Whether they offer a quantity other than the one we asked for, in our unit. */
+export const quantityChanged = (item, row) => !inOtherUnit(item, row)
+    && parseFloat(row.quantity) > 0 && parseFloat(row.quantity) !== Number(item.quantity_required);
 
 /**
  * The whole supplier portal — loading the invitation, the quote the supplier
@@ -54,7 +55,30 @@ export const ourQty = (item, row) => (inOtherUnit(item, row)
  * (round each line to three decimals, then VAT per line): the supplier must
  * not see one grand total here and a different one on the comparison sheet.
  */
-export default function useRfqPortal({ token, load = apiGet, send = apiPost } = {}) {
+/** Their own quotation: a scan or a PDF, as a GRN's paperwork is. */
+export const DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png';
+export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+/** The quote as multipart, for when a file rides with it: items[0][id], booleans as 1/0, nulls left out. */
+export function quoteFormData(body, file) {
+    const form = new FormData();
+    const append = (key, value) => {
+        if (value === null || value === undefined) return;
+        if (typeof value === 'boolean') form.append(key, value ? '1' : '0');
+        else if (typeof value === 'object') Object.entries(value).forEach(([k, v]) => append(`${key}[${k}]`, v));
+        else form.append(key, value);
+    };
+    Object.entries(body).forEach(([key, value]) => append(key, value));
+    form.append('document', file);
+
+    return form;
+}
+
+/** JSON as before; multipart only when the supplier attached their quotation. */
+const sendQuote = (path, body, file) => (file ? apiPostForm(path, quoteFormData(body, file)) : apiPost(path, body));
+
+export default function useRfqPortal({ token, load = apiGet, send = sendQuote } = {}) {
     const [payload, setPayload] = useState(null);
     const [loadError, setLoadError] = useState('');
     const [rows, setRows] = useState({});
@@ -63,6 +87,9 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
     const [meta, setMeta] = useState({ reference: '', lead_time_days: '', payment_terms: '', notes: '' });
     const [editing, setEditing] = useState({ id: null, draft: '' });
     const [errors, setErrors] = useState({});
+    // Their own quotation document. Optional; checked here so a wrong file is
+    // refused before the whole quote travels.
+    const [quoteDocument, setQuoteDocumentState] = useState(null);
     const [formError, setFormError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     // Set by the first submit that finds something missing. From then on every
@@ -140,32 +167,13 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         setEditing({ id: null, draft: '' });
     }, [editing.draft, setRow]);
 
-    /** Switching back to our unit forgets the conversion. */
+    /** Switching back to our unit forgets their quantity. */
     const setUnit = useCallback((item, unit) => {
-        setRow(item.id, unit === item.unit
-            ? { unit, factor: '', supplierQty: '', supplierQtyTouched: false }
-            : { unit });
+        setRow(item.id, unit === item.unit ? { unit, supplierQty: '' } : { unit });
     }, [setRow]);
 
-    /**
-     * Until they type their own quantity, it follows the conversion: enough of
-     * theirs to cover what we asked for, rounded up (100 PCS at 30 a bag is 4).
-     */
-    const setFactor = useCallback((item, factor) => {
-        setRows((prev) => {
-            const row = prev[item.id];
-            const perUnit = parseFloat(factor);
-            const patch = { factor };
-            if (!row.supplierQtyTouched) {
-                patch.supplierQty = perUnit > 0 ? String(Math.ceil(round3(item.quantity_required / perUnit))) : '';
-            }
-
-            return { ...prev, [item.id]: { ...row, ...patch } };
-        });
-    }, []);
-
     const setSupplierQty = useCallback((item, supplierQty) => {
-        setRow(item.id, { supplierQty, supplierQtyTouched: true });
+        setRow(item.id, { supplierQty });
     }, [setRow]);
 
     const setField = useCallback((name, value) => {
@@ -207,12 +215,19 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         return row && !row.notAvailable && String(row.unitPrice).trim() === '';
     }).length;
 
-    // A changed unit is only usable once it maps back to ours.
+    // A changed unit needs their quantity, or the line has no total.
     const unmappedCount = items.filter((item) => {
         const row = rows[item.id];
 
-        return row && !row.notAvailable && inOtherUnit(item, row)
-            && !(parseFloat(row.factor) > 0 && parseFloat(row.supplierQty) > 0);
+        return row && !row.notAvailable && inOtherUnit(item, row) && !(parseFloat(row.supplierQty) > 0);
+    }).length;
+
+    // In our unit the quantity starts filled; cleared or zero, it has none.
+    // Offering nothing is what "not available" is for.
+    const noQuantityCount = items.filter((item) => {
+        const row = rows[item.id];
+
+        return row && !row.notAvailable && !inOtherUnit(item, row) && !(parseFloat(row.quantity) > 0);
     }).length;
 
     const codeMatches =
@@ -221,7 +236,7 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
     // The supplier's quotation number goes on the LPO, so it cannot be blank.
     const hasReference = meta.reference.trim() !== '';
 
-    const ready = hasReference && terms && codeMatches && unpricedCount === 0 && unmappedCount === 0;
+    const ready = hasReference && terms && codeMatches && unpricedCount === 0 && unmappedCount === 0 && noQuantityCount === 0;
     const canSubmit = ready && !submitting;
 
     /**
@@ -244,8 +259,8 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
 
                 return [item.id, {
                     unitPrice: !!open && String(row.unitPrice).trim() === '',
-                    factor: !!other && !(parseFloat(row.factor) > 0),
                     supplierQty: !!other && !(parseFloat(row.supplierQty) > 0),
+                    quantity: !!open && !other && !(parseFloat(row.quantity) > 0),
                 }];
             })),
         };
@@ -260,14 +275,41 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         }
         if (unmappedCount > 0) {
             return unmappedCount === 1
-                ? 'One item is in a different unit: say how much of ours it holds, and your quantity.'
-                : `${unmappedCount} items are in a different unit: say how much of ours each holds, and your quantity.`;
+                ? 'One item is in a different unit: enter your quantity in that unit.'
+                : `${unmappedCount} items are in a different unit: enter your quantity in each.`;
+        }
+        if (noQuantityCount > 0) {
+            return noQuantityCount === 1
+                ? 'One item has no quantity: enter how many you can supply, or mark it as not available.'
+                : `${noQuantityCount} items have no quantity: enter how many you can supply, or mark them as not available.`;
         }
         if (!terms) return 'Please accept the terms and conditions.';
         if (!codeMatches) return 'Enter the confirmation code exactly as shown.';
 
         return '';
     })();
+
+    /** Picks (or, with null, clears) their quotation, refusing what the API would. */
+    function setQuoteDocument(file) {
+        setErrors((prev) => ({ ...prev, document: undefined }));
+        if (!file) {
+            setQuoteDocumentState(null);
+
+            return true;
+        }
+        const problem = !DOCUMENT_TYPES.includes(file.type)
+            ? 'Your quotation must be a PDF, JPG or PNG file.'
+            : (file.size > DOCUMENT_MAX_BYTES ? 'Your quotation must be 10 MB or smaller.' : null);
+        if (problem) {
+            setQuoteDocumentState(null);
+            setErrors((prev) => ({ ...prev, document: problem }));
+
+            return false;
+        }
+        setQuoteDocumentState(file);
+
+        return true;
+    }
 
     async function submit(event) {
         event?.preventDefault();
@@ -289,7 +331,7 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         setFormError('');
 
         try {
-            const response = await send(`/rfq/${token}`, {
+            const body = {
                 terms: true,
                 confirm_code: confirmInput.trim().toUpperCase(),
                 reference: meta.reference.trim(),
@@ -308,14 +350,18 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
                         is_vatable: row.isVatable,
                         not_available: row.notAvailable,
                         supplier_description: edited ? row.description.trim() : null,
+                        // Only when it differs: left out, it is what we asked for.
+                        ...(quantityChanged(item, row) && !row.notAvailable ? { quantity: Number(row.quantity) } : {}),
                         ...(inOtherUnit(item, row) && !row.notAvailable ? {
                             supplier_unit: row.unit,
-                            unit_factor: Number(row.factor),
                             supplier_quantity: Number(row.supplierQty),
                         } : {}),
                     };
                 }),
-            });
+            };
+            const response = quoteDocument
+                ? await send(`/rfq/${token}`, body, quoteDocument)
+                : await send(`/rfq/${token}`, body);
 
             setPayload(response);
         } catch (err) {
@@ -347,7 +393,6 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         rows,
         setRow,
         setUnit,
-        setFactor,
         setSupplierQty,
         setNotAvailable,
         editing,
@@ -361,6 +406,8 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         codeMatches,
         meta,
         setField,
+        quoteDocument,
+        setQuoteDocument,
         lineTotal,
         totals,
         errors,

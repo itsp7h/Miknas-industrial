@@ -303,6 +303,41 @@ describe('QuoteWorkspace — award all', () => {
         expect(rows[0]).toHaveTextContent('2 awarded to others');
     });
 
+    it('links each supplier’s own quotation where they attached one', async () => {
+        const doc = { name: 'Yousif Q-77.pdf', size: 1200, url: '/purchase/quotes/5/document' };
+        client.apiGet.mockResolvedValue({ data: workspace({
+            suppliers: [{ ...SUPPLIERS[0], document: doc }, { ...SUPPLIERS[1], document: null }],
+            items: [{ ...workspace().items[0], rows: [row('Gulf Steel', 10, { document: doc }), row('Zenith', 9)] }],
+        }) });
+        wrap();
+
+        const rows = await screen.findAllByTestId('award-all-row');
+        const link = screen.getByRole('link', { name: '📎 Their quotation' });
+        expect(rows[0]).toContainElement(link);
+        expect(link).toHaveAttribute('href', '/purchase/quotes/5/document');
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(rows[1]).not.toHaveTextContent('Their quotation');
+
+        expect(screen.getByRole('link', { name: "Open Gulf Steel's quotation" })).toHaveAttribute('href', '/purchase/quotes/5/document');
+        expect(screen.queryByRole('link', { name: "Open Zenith's quotation" })).not.toBeInTheDocument();
+    });
+
+    it('says when a supplier offers a different quantity from the one asked', async () => {
+        const offering = (supplier, price, quantity) => {
+            const base = row(supplier, price);
+
+            return { ...base, line: { ...base.line, quantity } };
+        };
+        client.apiGet.mockResolvedValue({ data: workspace({
+            suppliers: SUPPLIERS,
+            items: [{ ...workspace().items[0], quantity: '2.00', rows: [offering('Gulf Steel', 10, 1), offering('Zenith', 9, 2)] }],
+        }) });
+        wrap();
+
+        expect(await screen.findByText('Offers 1 of 2 PCS')).toBeInTheDocument();
+        expect(screen.queryByText(/Offers 2 of 2/)).not.toBeInTheDocument();
+    });
+
     it('greys it, with the reason, once everything they quoted is theirs', async () => {
         wrap();
 

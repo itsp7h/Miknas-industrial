@@ -4,6 +4,7 @@ use App\Http\Controllers\Purchase\GrnDocumentController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchaseRequestController;
 use App\Http\Controllers\Purchase\RfqPortalController;
+use App\Http\Controllers\Purchase\SupplierQuoteDocumentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -91,6 +92,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:goods-receipts.view')->name('grns.documents');
         Route::get('grns/{grn}/documents/other/{document}', [GrnDocumentController::class, 'showOther'])
             ->whereNumber('document')->middleware('permission:goods-receipts.view')->name('grns.documents.other');
+        // The quotation a supplier attached in the portal, opened from the
+        // quotes page in a new tab. Whoever may work the request's quotes.
+        Route::get('quotes/{supplierQuote}/document', [SupplierQuoteDocumentController::class, 'show'])
+            ->whereNumber('supplierQuote')->name('quotes.document');
         Route::get('grns/{grn}', fn ($grn) => redirect("/app/purchase/grns/{$grn}"))
             ->whereNumber('grn');
         Route::redirect('invoices', '/app/purchase/invoices');

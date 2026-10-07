@@ -297,6 +297,8 @@ class SupplierQuoteController extends Controller
                 'awarded' => $lines->filter(fn ($line) => $line->is_awarded)->count(),
                 'held_elsewhere' => $lines->filter(fn ($line) => $held($line) && $held($line) !== $quote->id)->count(),
                 'total' => round((float) $lines->sum('total_price'), 3),
+                // Their own quotation, if they attached one in the portal.
+                'document' => $quote->documentInfo(),
             ];
         })->values()->all();
     }
@@ -369,6 +371,7 @@ class SupplierQuoteController extends Controller
                     'lead_time_days' => $row['quote']->lead_time_days,
                     'payment_terms' => $row['quote']->payment_terms,
                     'notes' => $row['quote']->notes,
+                    'document' => $row['quote']->documentInfo(),
                     'is_min' => $isMin,
                     'line' => $line ? [
                         'id' => $line->id,
