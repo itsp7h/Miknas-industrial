@@ -74,6 +74,48 @@ describe.each([
         expect(screen.getByText(/are required\./)).toBeInTheDocument();
     });
 
+    it('explains each field in a tooltip, on hover and on tap', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const ref = screen.getByRole('button', { name: 'What is Ref?' });
+        expect(screen.queryByRole('tooltip')).toBeNull();
+
+        // A mouse hovering shows it, and leaving hides it.
+        fireEvent.pointerEnter(ref.parentElement, { pointerType: 'mouse' });
+        expect(screen.getByRole('tooltip')).toHaveTextContent(/printed on our purchase order/);
+        fireEvent.pointerLeave(ref.parentElement, { pointerType: 'mouse' });
+        expect(screen.queryByRole('tooltip')).toBeNull();
+
+        // A tap pins it; a tap elsewhere closes it.
+        fireEvent.click(ref);
+        expect(screen.getByRole('tooltip')).toHaveTextContent(/printed on our purchase order/);
+        fireEvent.pointerDown(document.body);
+        expect(screen.queryByRole('tooltip')).toBeNull();
+
+        // Escape closes a pinned one too.
+        fireEvent.click(screen.getAllByRole('button', { name: 'What is Unit Price?' })[0]);
+        expect(screen.getByRole('tooltip')).toHaveTextContent(/before VAT/);
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(screen.queryByRole('tooltip')).toBeNull();
+
+        // The optional fields are explained as well.
+        for (const name of ['Delivery Time (days)', 'Payment Terms', 'Notes / Remarks', 'the confirmation code', 'the terms and conditions']) {
+            expect(screen.getByRole('button', { name: `What is ${name}?` })).toBeInTheDocument();
+        }
+    });
+
+    it('a tooltip tap does not tick the checkbox it sits beside', async () => {
+        mount();
+        await screen.findByText('MPR-0042');
+
+        const tips = screen.getAllByRole('button', { name: /What is (N\/A|Item not available)\?/ });
+        fireEvent.click(tips[0]);
+
+        expect(screen.getByLabelText('Steel rod 12mm is not available')).not.toBeChecked();
+        expect(screen.getByRole('tooltip')).toHaveTextContent(/cannot supply this item/);
+    });
+
     /** Every field the supplier fills, so each test can start from a valid quote. */
     async function fillValidQuote() {
         mount();

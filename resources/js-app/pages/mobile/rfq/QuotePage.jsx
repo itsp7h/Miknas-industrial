@@ -1,5 +1,5 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, RequiredMark, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
 import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
@@ -124,6 +124,7 @@ export default function QuotePage({ token, load, send }) {
                                     <Toggle
                                         id={`na-${item.id}`}
                                         label="Item not available"
+                                        tip={TIPS.notAvailable}
                                         // Same accessible name as the desktop
                                         // checkbox: one test drives both trees.
                                         ariaLabel={`${item.description} is not available`}
@@ -136,6 +137,7 @@ export default function QuotePage({ token, load, send }) {
                                         <Toggle
                                             id={`vat-${item.id}`}
                                             label={`Apply ${qty(vatRate)}% VAT`}
+                                            tip={TIPS.vat(qty(vatRate))}
                                             ariaLabel={`Apply VAT to ${item.description}`}
                                             checked={row.isVatable}
                                             disabled={row.notAvailable || f.submitting}
@@ -153,6 +155,7 @@ export default function QuotePage({ token, load, send }) {
                                     }}
                                 >
                                     Unit Price (BD){inOtherUnit(item, row) ? ` per ${row.unit}` : ''}<RequiredMark />
+                                    <InfoTip text={TIPS.unitPrice} label="Unit Price" />
                                 </label>
                                 <input
                                     id={`price-${item.id}`}
@@ -295,7 +298,7 @@ function SummaryRow({ label, value, tone }) {
 }
 
 /** A switch, drawn rather than borrowed — see the note at the top of the file. */
-function Toggle({ id, label, ariaLabel, checked, disabled, accent, onChange }) {
+function Toggle({ id, label, tip, ariaLabel, checked, disabled, accent, onChange }) {
     return (
         <label
             htmlFor={id}
@@ -306,7 +309,10 @@ function Toggle({ id, label, ariaLabel, checked, disabled, accent, onChange }) {
                 opacity: disabled ? 0.5 : 1,
             }}
         >
-            <span style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }}>{label}</span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: '#0f172a', display: 'flex', alignItems: 'center' }}>
+                {label}
+                {tip && <InfoTip text={tip} label={label} />}
+            </span>
             <span style={{
                 position: 'relative', flexShrink: 0, width: 46, height: 28, borderRadius: 999,
                 background: checked ? accent : '#cbd5e1', transition: 'background .15s ease',
