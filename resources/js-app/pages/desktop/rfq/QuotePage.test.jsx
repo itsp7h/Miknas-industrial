@@ -392,6 +392,49 @@ describe.each([
         expect(screen.queryByText('quote.docx')).not.toBeInTheDocument();
     });
 
+    /** 4 pcs of Angle bar asked for; they have 3. The total and the payload follow. */
+    it('lets the supplier offer a different quantity in our unit', async () => {
+        await fillValidQuote();
+
+        const field = screen.getByLabelText('Quantity for Angle bar');
+        expect(field).toHaveValue(4);
+        fireEvent.change(field, { target: { value: '3' } });
+
+        expect(screen.getByText('asked 4')).toBeInTheDocument();
+        // 3 × 3 = 9, beside 10 × 2 = 20 for the rod.
+        expect(screen.getByText('BD 9.000')).toBeInTheDocument();
+        expect(screen.getAllByText('BD 29.000').length).toBeGreaterThan(0);
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+
+        await waitFor(() => expect(send).toHaveBeenCalled());
+        expect(send.mock.calls[0][1].items).toEqual([
+            { id: 7, unit_price: 2, is_vatable: false, not_available: false, supplier_description: null },
+            { id: 9, unit_price: 3, is_vatable: false, not_available: false, supplier_description: null, quantity: 3 },
+        ]);
+    });
+
+    it('will not submit a line with no quantity, and outlines it', async () => {
+        await fillValidQuote();
+
+        const field = screen.getByLabelText('Quantity for Angle bar');
+        fireEvent.change(field, { target: { value: '' } });
+        expect(screen.getByText(/One item has no quantity/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
+        expect(send).not.toHaveBeenCalled();
+        expect(field).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('asks the quantity in their unit instead, once they switch to it', async () => {
+        await fillValidQuote();
+
+        fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
+
+        expect(screen.queryByLabelText('Quantity for Angle bar')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toBeInTheDocument();
+    });
+
     it('sends the logistics fields the supplier filled in', async () => {
         await fillValidQuote();
 

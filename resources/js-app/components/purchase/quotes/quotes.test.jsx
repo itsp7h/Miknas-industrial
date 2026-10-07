@@ -322,6 +322,22 @@ describe('QuoteWorkspace — award all', () => {
         expect(screen.queryByRole('link', { name: "Open Zenith's quotation" })).not.toBeInTheDocument();
     });
 
+    it('says when a supplier offers a different quantity from the one asked', async () => {
+        const offering = (supplier, price, quantity) => {
+            const base = row(supplier, price);
+
+            return { ...base, line: { ...base.line, quantity } };
+        };
+        client.apiGet.mockResolvedValue({ data: workspace({
+            suppliers: SUPPLIERS,
+            items: [{ ...workspace().items[0], quantity: '2.00', rows: [offering('Gulf Steel', 10, 1), offering('Zenith', 9, 2)] }],
+        }) });
+        wrap();
+
+        expect(await screen.findByText('Offers 1 of 2 PCS')).toBeInTheDocument();
+        expect(screen.queryByText(/Offers 2 of 2/)).not.toBeInTheDocument();
+    });
+
     it('greys it, with the reason, once everything they quoted is theirs', async () => {
         wrap();
 

@@ -26,6 +26,9 @@ const blankRow = (item) => ({
     // of them; it is set on our GRN when the goods arrive.
     unit: item.unit ?? '',
     supplierQty: '',
+    // How many they offer in our unit. Starts on what we asked for; they may
+    // offer fewer (8 of the 10) or more (it comes by the dozen).
+    quantity: String(item.quantity_required ?? ''),
 });
 
 /** Whether a row is quoted in a unit other than the one we asked in. */
@@ -33,11 +36,15 @@ export const inOtherUnit = (item, row) => !!(row?.unit && item.unit && row.unit 
 
 /**
  * How many units the price multiplies: theirs when they changed the unit
- * ("4 BAG"), otherwise the quantity we asked for.
+ * ("4 BAG"), otherwise the quantity they offer in ours.
  */
 export const pricedQty = (item, row) => (inOtherUnit(item, row)
     ? (parseFloat(row.supplierQty) || 0)
-    : item.quantity_required);
+    : (parseFloat(row.quantity) || 0));
+
+/** Whether they offer a quantity other than the one we asked for, in our unit. */
+export const quantityChanged = (item, row) => !inOtherUnit(item, row)
+    && parseFloat(row.quantity) > 0 && parseFloat(row.quantity) !== Number(item.quantity_required);
 
 /**
  * The whole supplier portal — loading the invitation, the quote the supplier
@@ -215,13 +222,21 @@ export default function useRfqPortal({ token, load = apiGet, send = sendQuote } 
         return row && !row.notAvailable && inOtherUnit(item, row) && !(parseFloat(row.supplierQty) > 0);
     }).length;
 
+    // In our unit the quantity starts filled; cleared or zero, it has none.
+    // Offering nothing is what "not available" is for.
+    const noQuantityCount = items.filter((item) => {
+        const row = rows[item.id];
+
+        return row && !row.notAvailable && !inOtherUnit(item, row) && !(parseFloat(row.quantity) > 0);
+    }).length;
+
     const codeMatches =
         confirmCode !== '' && confirmInput.trim().toUpperCase() === confirmCode.toUpperCase();
 
     // The supplier's quotation number goes on the LPO, so it cannot be blank.
     const hasReference = meta.reference.trim() !== '';
 
-    const ready = hasReference && terms && codeMatches && unpricedCount === 0 && unmappedCount === 0;
+    const ready = hasReference && terms && codeMatches && unpricedCount === 0 && unmappedCount === 0 && noQuantityCount === 0;
     const canSubmit = ready && !submitting;
 
     /**
@@ -245,6 +260,7 @@ export default function useRfqPortal({ token, load = apiGet, send = sendQuote } 
                 return [item.id, {
                     unitPrice: !!open && String(row.unitPrice).trim() === '',
                     supplierQty: !!other && !(parseFloat(row.supplierQty) > 0),
+                    quantity: !!open && !other && !(parseFloat(row.quantity) > 0),
                 }];
             })),
         };
@@ -261,6 +277,11 @@ export default function useRfqPortal({ token, load = apiGet, send = sendQuote } 
             return unmappedCount === 1
                 ? 'One item is in a different unit: enter your quantity in that unit.'
                 : `${unmappedCount} items are in a different unit: enter your quantity in each.`;
+        }
+        if (noQuantityCount > 0) {
+            return noQuantityCount === 1
+                ? 'One item has no quantity: enter how many you can supply, or mark it as not available.'
+                : `${noQuantityCount} items have no quantity: enter how many you can supply, or mark them as not available.`;
         }
         if (!terms) return 'Please accept the terms and conditions.';
         if (!codeMatches) return 'Enter the confirmation code exactly as shown.';
@@ -329,6 +350,8 @@ export default function useRfqPortal({ token, load = apiGet, send = sendQuote } 
                         is_vatable: row.isVatable,
                         not_available: row.notAvailable,
                         supplier_description: edited ? row.description.trim() : null,
+                        // Only when it differs: left out, it is what we asked for.
+                        ...(quantityChanged(item, row) && !row.notAvailable ? { quantity: Number(row.quantity) } : {}),
                         ...(inOtherUnit(item, row) && !row.notAvailable ? {
                             supplier_unit: row.unit,
                             supplier_quantity: Number(row.supplierQty),

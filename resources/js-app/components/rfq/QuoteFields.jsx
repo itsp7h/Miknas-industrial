@@ -25,7 +25,7 @@ const TERMS = [
  */
 export const TIPS = {
     reference: 'Your own quotation number. It is printed on our purchase order (LPO) under your company name.',
-    qty: 'The quantity we need, in the unit shown.',
+    qty: 'How many you can supply, in the unit shown. It starts on what we asked for; change it if you can supply fewer, or more (for example in full packs).',
     unit: 'The unit we asked for. If you sell it another way, pick your unit and give your quantity in it.',
     supplierQty: 'How many of your units you will supply in total. Your unit price is per one of these.',
     notAvailable: 'Tick if you cannot supply this item. It then needs no price.',
@@ -550,6 +550,52 @@ export function DescriptionEditor({ original, value, onChange, disabled, editing
                 }}>
                     adjusted
                 </span>
+            )}
+        </div>
+    );
+}
+
+/** 10 -> "10", 2.5 -> "2.5", for the "asked 10" note. */
+const plainQty = (value) => String(Math.round(Number(value || 0) * 1000) / 1000);
+
+/**
+ * How many they offer, in our unit. It starts on what we asked for and is
+ * theirs to change; a changed one says what we asked, so neither side misses
+ * it. A line switched to their own unit gives its quantity in theirs (in
+ * UnitField), so here it only shows ours, as asked.
+ */
+export function QuantityField({ item, row, disabled, compact, onChange, missing = false }) {
+    const theirs = row.unit && item.unit && row.unit !== item.unit;
+    if (theirs) {
+        return <span style={{ color: '#64748b' }}>{plainQty(item.quantity_required)}{compact ? ` ${item.unit}` : ''}</span>;
+    }
+
+    const value = parseFloat(row.quantity);
+    const changed = value > 0 && value !== Number(item.quantity_required);
+
+    return (
+        <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                    type="number" min="0" step="any" inputMode="decimal"
+                    aria-label={`Quantity for ${item.description}`}
+                    disabled={disabled}
+                    value={row.quantity}
+                    onChange={(e) => onChange(e.target.value)}
+                    {...missingProps(missing)}
+                    style={{
+                        width: compact ? '100%' : 90, minWidth: 0, padding: compact ? '8px 10px' : '5px 8px',
+                        border: `1.5px solid ${changed ? '#f59e0b' : '#e2e8f0'}`, borderRadius: 6,
+                        fontSize: compact ? 15 : 13, outline: 'none', background: '#fff', fontFamily: 'inherit',
+                        ...(missing ? MISSING : {}),
+                    }}
+                />
+                {compact && item.unit && <span style={{ fontSize: 13, color: '#64748b', flexShrink: 0 }}>{item.unit}</span>}
+            </div>
+            {changed && (
+                <div style={{ fontSize: 11, color: '#92400e', marginTop: 3 }}>
+                    asked {plainQty(item.quantity_required)}
+                </div>
             )}
         </div>
     );

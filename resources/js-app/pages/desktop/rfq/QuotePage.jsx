@@ -1,5 +1,5 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, QuotationDocumentField, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, QuantityField, QuotationDocumentField, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
 import useRfqPortal, { DOCUMENT_ACCEPT, inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
@@ -80,7 +80,7 @@ export default function QuotePage({ token, load, send }) {
                                     <tr>
                                         <th style={th}>#</th>
                                         <th style={th}>Description</th>
-                                        <th style={th}>Qty<InfoTip text={TIPS.qty} label="Qty" placement="bottom" /></th>
+                                        <th style={th}>Qty<RequiredMark /><InfoTip text={TIPS.qty} label="Qty" placement="bottom" /></th>
                                         <th style={th}>Unit<InfoTip text={TIPS.unit} label="Unit" placement="bottom" /></th>
                                         <th style={{ ...th, textAlign: 'center' }}>N/A?<InfoTip text={TIPS.notAvailable} label="N/A" placement="bottom" align="center" /></th>
                                         <th style={{ ...th, textAlign: 'center' }}>VAT?{vatRate > 0 && <InfoTip text={TIPS.vat(qty(vatRate))} label="VAT" placement="bottom" align="center" />}</th>
@@ -108,7 +108,14 @@ export default function QuotePage({ token, load, send }) {
                                                         onDone={(save) => f.endEdit(item, save)}
                                                     />
                                                 </td>
-                                                <td style={td}>{qty(item.quantity_required)}</td>
+                                                <td style={td}>
+                                                    <QuantityField
+                                                        item={item} row={row} compact={false}
+                                                        disabled={row.notAvailable || f.submitting}
+                                                        onChange={(value) => f.setRow(item.id, { quantity: value })}
+                                                        missing={f.missing.rows[item.id]?.quantity}
+                                                    />
+                                                </td>
                                                 <td style={td}>
                                                     <UnitField
                                                         item={item} row={row} units={f.units} compact={false}
