@@ -94,8 +94,11 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                             }}>
                                                 <span>
                                                     Quoted in <strong>{line.supplier_unit}</strong>: {line.supplier_quantity} {line.supplier_unit}
-                                                    {' '}@ {bd(line.supplier_unit_price)} · 1 {line.supplier_unit} = {line.unit_factor} {item.unit}
-                                                    {' '}= {line.quantity} {item.unit}
+                                                    {' '}@ {bd(line.supplier_unit_price)}
+                                                    {/* No factor: what one holds in ours is set on the GRN. */}
+                                                    {line.unit_factor > 0
+                                                        ? <> · 1 {line.supplier_unit} = {line.unit_factor} {item.unit} = {line.quantity} {item.unit}</>
+                                                        : <> · conversion to {item.unit} set on the GRN</>}
                                                 </span>
                                                 {onEditUnit && (() => {
                                                     const reason = !canAward
@@ -157,7 +160,12 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                             }}>
                                                 {bd(line.unit_price)}
                                                 {line.supplier_unit && (
-                                                    <span style={{ fontSize: 10, color: '#92400e', fontWeight: 500 }}> /{item.unit}</span>
+                                                    <span
+                                                        title={line.unit_factor > 0 ? undefined : `Their total over the ${item.unit} we asked for. The real price per ${item.unit} is set on the GRN.`}
+                                                        style={{ fontSize: 10, color: '#92400e', fontWeight: 500 }}
+                                                    >
+                                                        {' '}/{item.unit}{line.unit_factor > 0 ? '' : ' (est.)'}
+                                                    </span>
                                                 )}
                                                 {line.is_vatable && (
                                                     <span title="VAT applicable" style={{

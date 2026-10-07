@@ -114,15 +114,22 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
             setValues((prev) => ({ ...prev, warehouse_id: String(impliedWarehouseId) }));
         }
         setLines(selectedOrder.items.map((line) => {
-            const outstanding = Math.max(Number(line.quantity ?? 0) - Number(line.quantity_received ?? 0), 0);
+            // Ordered in the supplier's unit: counted in theirs (5 BAG), and
+            // converted into ours on the GRN before it is confirmed.
+            const theirs = !!line.supplier_unit;
+            const ordered = Number((theirs ? line.supplier_quantity : line.quantity) ?? 0);
+            const received = Number((theirs ? line.supplier_quantity_received : line.quantity_received) ?? 0);
+            const outstanding = Math.max(ordered - received, 0);
 
             return {
                 purchase_order_item_id: line.purchase_order_item_id,
                 item_id: line.item_id,
                 item_name: line.item_name,
-                quantity: line.quantity,
-                unit_cost: line.rate ?? 0,
-                quantity_received: String(outstanding > 0 ? outstanding : (line.quantity ?? '')),
+                unit_of_measure: line.unit_of_measure,
+                quantity: ordered,
+                unit_cost: (theirs ? line.supplier_rate : line.rate) ?? 0,
+                supplier_unit: line.supplier_unit ?? null,
+                quantity_received: String(outstanding > 0 ? outstanding : (ordered || '')),
                 type: 'inventory',
                 project_id: '',
             };
@@ -181,8 +188,11 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                 items: lines.map((line) => ({
                     item_id: line.item_id,
                     purchase_order_item_id: line.purchase_order_item_id,
-                    quantity_received: line.quantity_received,
-                    unit_cost: line.unit_cost,
+                    // A line in the supplier's unit says how many of theirs
+                    // arrived; the API costs it once it is converted.
+                    ...(line.supplier_unit
+                        ? { supplier_quantity: line.quantity_received }
+                        : { quantity_received: line.quantity_received, unit_cost: line.unit_cost }),
                     type: line.type,
                     project_id: line.type === 'consumable' ? line.project_id : null,
                 })),

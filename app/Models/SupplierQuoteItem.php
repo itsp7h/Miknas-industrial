@@ -29,7 +29,16 @@ class SupplierQuoteItem extends Model
     /** Whether the supplier quoted this line in a unit other than ours. */
     public function inSupplierUnit(): bool
     {
-        return filled($this->supplier_unit) && $this->unit_factor > 0;
+        return filled($this->supplier_unit);
+    }
+
+    /**
+     * Quoted in their unit with no factor: what one holds in ours is settled
+     * on the GRN, when the goods are in hand.
+     */
+    public function conversionPending(): bool
+    {
+        return $this->inSupplierUnit() && ! ($this->unit_factor > 0);
     }
 
     public function quote()

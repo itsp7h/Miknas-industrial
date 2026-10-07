@@ -75,8 +75,9 @@ class RfqPortalController extends Controller
             'items.*.is_vatable' => ['nullable', 'boolean'],
             'items.*.not_available' => ['nullable', 'boolean'],
             'items.*.supplier_description' => ['nullable', 'string', 'max:500'],
-            // Quoting in their own unit: which one, what it holds in ours, and
-            // how many of them. Checked against each line below.
+            // Quoting in their own unit: which one and how many of them,
+            // checked against each line below. What one holds in ours is
+            // settled on the GRN; a factor is still taken if one is sent.
             'items.*.supplier_unit' => ['nullable', 'string', 'max:50'],
             'items.*.unit_factor' => ['nullable', 'numeric', 'gt:0', 'max:1000000'],
             'items.*.supplier_quantity' => ['nullable', 'numeric', 'gt:0'],
@@ -115,9 +116,10 @@ class RfqPortalController extends Controller
     }
 
     /**
-     * A line quoted in another unit must say what one of theirs holds in ours
-     * and how many they are supplying, and the unit must be one we keep —
-     * otherwise it cannot be mapped back, and the stock would come in wrong.
+     * A line quoted in another unit must say how many of theirs they are
+     * supplying, or it has no total, and the unit must be one we keep. What
+     * one holds in ours is not asked: whoever receives the goods sets it on
+     * the GRN, before any stock moves.
      */
     private function unitProblem(RfqInvitation $invitation, array $items): ?string
     {
@@ -135,8 +137,8 @@ class RfqPortalController extends Controller
                 return "\"{$unit}\" is not a unit we can accept for {$item->description}.";
             }
 
-            if (empty($row['unit_factor']) || empty($row['supplier_quantity'])) {
-                return "Please say how many {$item->unit} one {$unit} holds, and how many {$unit} you are quoting, for {$item->description}.";
+            if (empty($row['supplier_quantity'])) {
+                return "Please say how many {$unit} you are quoting for {$item->description}.";
             }
         }
 
@@ -186,15 +188,16 @@ class RfqPortalController extends Controller
                 $supplier = null;
 
                 if (! $notAvailable && SupplierUnit::differs($row['supplier_unit'] ?? null, $item->unit)) {
+                    $factor = (float) ($row['unit_factor'] ?? 0);
                     $supplier = [
                         'supplier_unit' => $row['supplier_unit'],
-                        'unit_factor' => (float) $row['unit_factor'],
+                        'unit_factor' => $factor > 0 ? $factor : null,
                         'supplier_quantity' => (float) $row['supplier_quantity'],
                         'supplier_unit_price' => $unitPrice,
                     ];
-                    ['quantity' => $qty, 'unit_price' => $unitPrice, 'total_price' => $totalPrice] = SupplierUnit::figures(
-                        $supplier['supplier_quantity'], $supplier['unit_factor'], $supplier['supplier_unit_price'],
-                    );
+                    ['quantity' => $qty, 'unit_price' => $unitPrice, 'total_price' => $totalPrice] = $factor > 0
+                        ? SupplierUnit::figures($supplier['supplier_quantity'], $factor, $supplier['supplier_unit_price'])
+                        : SupplierUnit::pendingFigures($supplier['supplier_quantity'], $supplier['supplier_unit_price'], $qty);
                 }
 
                 $isVatable = ! $notAvailable && ! empty($row['is_vatable']);

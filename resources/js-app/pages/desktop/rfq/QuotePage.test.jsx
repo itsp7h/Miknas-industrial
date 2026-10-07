@@ -260,21 +260,18 @@ describe.each([
         expect(screen.getByText('The code does not match. Copy it exactly as shown.')).toBeInTheDocument();
     });
 
-    it('outlines the conversion of a line quoted in another unit until it is filled', async () => {
+    it('outlines the quantity of a line quoted in another unit until it is filled', async () => {
         await fillValidQuote();
 
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
         fireEvent.click(screen.getByRole('button', { name: /Submit/ }));
 
         expect(send).not.toHaveBeenCalled();
-        const factor = screen.getByLabelText('How many pcs one BAG holds, for Angle bar');
-        expect(factor).toHaveAttribute('aria-invalid', 'true');
-        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toHaveAttribute('aria-invalid', 'true');
+        const theirs = screen.getByLabelText('Your quantity in BAG, for Angle bar');
+        expect(theirs).toHaveAttribute('aria-invalid', 'true');
 
-        // The quantity follows the conversion, so filling one clears both.
-        fireEvent.change(factor, { target: { value: '3' } });
-        expect(factor).not.toHaveAttribute('aria-invalid');
-        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).not.toHaveAttribute('aria-invalid');
+        fireEvent.change(theirs, { target: { value: '2' } });
+        expect(theirs).not.toHaveAttribute('aria-invalid');
     });
 
     it('a line marked unavailable counts as answered rather than unpriced', async () => {
@@ -313,21 +310,19 @@ describe.each([
     });
 
     /**
-     * A supplier who sells in bags picks BAG, says what a bag holds in our
-     * unit, and prices per bag; the quantity follows the conversion (rounded
-     * up) until they type their own.
+     * A supplier who sells in bags picks BAG, says how many bags, and prices
+     * per bag. What a bag holds in our unit is not theirs to say: we set it on
+     * the GRN, so the portal neither asks for it nor sends one.
      */
-    it('lets the supplier quote in their own unit, mapped to ours', async () => {
+    it('lets the supplier quote in their own unit without converting it', async () => {
         await fillValidQuote();
 
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
         expect(screen.getByRole('button', { name: /Submit/ })).toHaveAttribute('aria-disabled', 'true');
         expect(screen.getByText(/One item is in a different unit/)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/holds, for Angle bar/)).not.toBeInTheDocument();
 
-        // 4 pcs asked for, 3 to a bag: 2 bags, which is 6 pcs.
-        fireEvent.change(screen.getByLabelText('How many pcs one BAG holds, for Angle bar'), { target: { value: '3' } });
-        expect(screen.getByLabelText('Your quantity in BAG, for Angle bar')).toHaveValue(2);
-        expect(screen.getByText('6 pcs')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Your quantity in BAG, for Angle bar'), { target: { value: '2' } });
 
         // Priced per bag: 2 × 3 = 6, beside 10 × 2 = 20 for the rod.
         expect(screen.getByText('BD 6.000')).toBeInTheDocument();
@@ -340,19 +335,19 @@ describe.each([
             { id: 7, unit_price: 2, is_vatable: false, not_available: false, supplier_description: null },
             {
                 id: 9, unit_price: 3, is_vatable: false, not_available: false, supplier_description: null,
-                supplier_unit: 'BAG', unit_factor: 3, supplier_quantity: 2,
+                supplier_unit: 'BAG', supplier_quantity: 2,
             },
         ]);
     });
 
-    it('going back to our unit forgets the conversion', async () => {
+    it('going back to our unit forgets their quantity', async () => {
         await fillValidQuote();
 
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'BAG' } });
-        fireEvent.change(screen.getByLabelText('How many pcs one BAG holds, for Angle bar'), { target: { value: '3' } });
+        fireEvent.change(screen.getByLabelText('Your quantity in BAG, for Angle bar'), { target: { value: '2' } });
         fireEvent.change(screen.getByLabelText('Unit for Angle bar'), { target: { value: 'pcs' } });
 
-        expect(screen.queryByLabelText('How many pcs one BAG holds, for Angle bar')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Your quantity in BAG, for Angle bar')).not.toBeInTheDocument();
         expect(screen.getByText('BD 12.000')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Submit/ })).not.toHaveAttribute('aria-disabled');
     });

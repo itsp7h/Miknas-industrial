@@ -114,7 +114,6 @@ export default function QuotePage({ token, load, send }) {
                                                         item={item} row={row} units={f.units} compact={false}
                                                         disabled={row.notAvailable || f.submitting}
                                                         onUnit={(unit) => f.setUnit(item, unit)}
-                                                        onFactor={(factor) => f.setFactor(item, factor)}
                                                         onSupplierQty={(value) => f.setSupplierQty(item, value)}
                                                         missing={f.missing.rows[item.id]}
                                                     />

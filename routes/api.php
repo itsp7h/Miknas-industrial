@@ -293,6 +293,8 @@ Route::prefix('v1')->group(function () {
             Route::get('grns/{grn}', [GoodsReceiptNoteController::class, 'show'])->middleware('permission:goods-receipts.view');
             Route::post('grns', [GoodsReceiptNoteController::class, 'store'])->middleware('permission:goods-receipts.create');
             Route::patch('grns/{grn}/confirm', [GoodsReceiptNoteController::class, 'confirm'])->middleware('permission:goods-receipts.edit');
+            // A line received in the supplier's unit gets its conversion into ours here, before Confirm.
+            Route::patch('grns/{grn}/items/{grnItem}/conversion', [GoodsReceiptNoteController::class, 'convert'])->middleware('permission:goods-receipts.convert-units');
             Route::post('grns/{grn}/documents', [GoodsReceiptNoteController::class, 'addDocuments'])->middleware('permission:goods-receipts.edit');
             Route::delete('grns/{grn}', [GoodsReceiptNoteController::class, 'destroy'])->middleware('permission:goods-receipts.delete');
 

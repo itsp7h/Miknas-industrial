@@ -22,11 +22,10 @@ const blankRow = (item) => ({
     notAvailable: false,
     description: item.description,
     // The unit they quote in: ours unless they change it, in which case they
-    // say what one of theirs holds in ours (factor) and how many they supply.
+    // say how many of theirs they supply. What one holds in ours is not asked
+    // of them; it is set on our GRN when the goods arrive.
     unit: item.unit ?? '',
-    factor: '',
     supplierQty: '',
-    supplierQtyTouched: false,
 });
 
 /** Whether a row is quoted in a unit other than the one we asked in. */
@@ -38,11 +37,6 @@ export const inOtherUnit = (item, row) => !!(row?.unit && item.unit && row.unit 
  */
 export const pricedQty = (item, row) => (inOtherUnit(item, row)
     ? (parseFloat(row.supplierQty) || 0)
-    : item.quantity_required);
-
-/** What a row comes to in our unit: 4 BAG × 25 = 100 PCS. */
-export const ourQty = (item, row) => (inOtherUnit(item, row)
-    ? round3((parseFloat(row.supplierQty) || 0) * (parseFloat(row.factor) || 0))
     : item.quantity_required);
 
 /**
@@ -140,32 +134,13 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         setEditing({ id: null, draft: '' });
     }, [editing.draft, setRow]);
 
-    /** Switching back to our unit forgets the conversion. */
+    /** Switching back to our unit forgets their quantity. */
     const setUnit = useCallback((item, unit) => {
-        setRow(item.id, unit === item.unit
-            ? { unit, factor: '', supplierQty: '', supplierQtyTouched: false }
-            : { unit });
+        setRow(item.id, unit === item.unit ? { unit, supplierQty: '' } : { unit });
     }, [setRow]);
 
-    /**
-     * Until they type their own quantity, it follows the conversion: enough of
-     * theirs to cover what we asked for, rounded up (100 PCS at 30 a bag is 4).
-     */
-    const setFactor = useCallback((item, factor) => {
-        setRows((prev) => {
-            const row = prev[item.id];
-            const perUnit = parseFloat(factor);
-            const patch = { factor };
-            if (!row.supplierQtyTouched) {
-                patch.supplierQty = perUnit > 0 ? String(Math.ceil(round3(item.quantity_required / perUnit))) : '';
-            }
-
-            return { ...prev, [item.id]: { ...row, ...patch } };
-        });
-    }, []);
-
     const setSupplierQty = useCallback((item, supplierQty) => {
-        setRow(item.id, { supplierQty, supplierQtyTouched: true });
+        setRow(item.id, { supplierQty });
     }, [setRow]);
 
     const setField = useCallback((name, value) => {
@@ -207,12 +182,11 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         return row && !row.notAvailable && String(row.unitPrice).trim() === '';
     }).length;
 
-    // A changed unit is only usable once it maps back to ours.
+    // A changed unit needs their quantity, or the line has no total.
     const unmappedCount = items.filter((item) => {
         const row = rows[item.id];
 
-        return row && !row.notAvailable && inOtherUnit(item, row)
-            && !(parseFloat(row.factor) > 0 && parseFloat(row.supplierQty) > 0);
+        return row && !row.notAvailable && inOtherUnit(item, row) && !(parseFloat(row.supplierQty) > 0);
     }).length;
 
     const codeMatches =
@@ -244,7 +218,6 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
 
                 return [item.id, {
                     unitPrice: !!open && String(row.unitPrice).trim() === '',
-                    factor: !!other && !(parseFloat(row.factor) > 0),
                     supplierQty: !!other && !(parseFloat(row.supplierQty) > 0),
                 }];
             })),
@@ -260,8 +233,8 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         }
         if (unmappedCount > 0) {
             return unmappedCount === 1
-                ? 'One item is in a different unit: say how much of ours it holds, and your quantity.'
-                : `${unmappedCount} items are in a different unit: say how much of ours each holds, and your quantity.`;
+                ? 'One item is in a different unit: enter your quantity in that unit.'
+                : `${unmappedCount} items are in a different unit: enter your quantity in each.`;
         }
         if (!terms) return 'Please accept the terms and conditions.';
         if (!codeMatches) return 'Enter the confirmation code exactly as shown.';
@@ -310,7 +283,6 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
                         supplier_description: edited ? row.description.trim() : null,
                         ...(inOtherUnit(item, row) && !row.notAvailable ? {
                             supplier_unit: row.unit,
-                            unit_factor: Number(row.factor),
                             supplier_quantity: Number(row.supplierQty),
                         } : {}),
                     };
@@ -347,7 +319,6 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         rows,
         setRow,
         setUnit,
-        setFactor,
         setSupplierQty,
         setNotAvailable,
         editing,
