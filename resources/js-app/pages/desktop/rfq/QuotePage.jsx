@@ -1,5 +1,5 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, RequiredMark, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, InfoTip, MISSING, ReferenceField, RequiredMark, TIPS, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
 import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
@@ -80,11 +80,11 @@ export default function QuotePage({ token, load, send }) {
                                     <tr>
                                         <th style={th}>#</th>
                                         <th style={th}>Description</th>
-                                        <th style={th}>Qty</th>
-                                        <th style={th}>Unit</th>
-                                        <th style={{ ...th, textAlign: 'center' }}>N/A?</th>
-                                        <th style={{ ...th, textAlign: 'center' }}>VAT?</th>
-                                        <th style={{ ...th, textAlign: 'right' }}>Unit Price (BD)<RequiredMark /></th>
+                                        <th style={th}>Qty<InfoTip text={TIPS.qty} label="Qty" placement="bottom" /></th>
+                                        <th style={th}>Unit<InfoTip text={TIPS.unit} label="Unit" placement="bottom" /></th>
+                                        <th style={{ ...th, textAlign: 'center' }}>N/A?<InfoTip text={TIPS.notAvailable} label="N/A" placement="bottom" align="center" /></th>
+                                        <th style={{ ...th, textAlign: 'center' }}>VAT?{vatRate > 0 && <InfoTip text={TIPS.vat(qty(vatRate))} label="VAT" placement="bottom" align="center" />}</th>
+                                        <th style={{ ...th, textAlign: 'right' }}>Unit Price (BD)<RequiredMark /><InfoTip text={TIPS.unitPrice} label="Unit Price" placement="bottom" align="right" /></th>
                                         <th style={{ ...th, textAlign: 'right' }}>Total (BD)</th>
                                     </tr>
                                 </thead>
