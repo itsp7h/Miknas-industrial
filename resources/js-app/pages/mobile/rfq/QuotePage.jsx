@@ -1,5 +1,5 @@
 import {
-    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, TermsBlock, UnitField,
+    ConfirmCodeBlock, DescriptionEditor, FormError, LogisticsFields, MISSING, ReferenceField, RequiredMark, TermsBlock, UnitField,
     missingProps,
 } from '../../../components/rfq/QuoteFields';
 import useRfqPortal, { inOtherUnit, money, qty } from '../../../components/rfq/useRfqPortal';
@@ -63,6 +63,9 @@ export default function QuotePage({ token, load, send }) {
                 <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6, margin: 0 }}>
                     Please enter your unit prices below. This link is private to your
                     company and can only be submitted once.
+                </p>
+                <p style={{ fontSize: 12, color: '#64748b', margin: '8px 0 0' }}>
+                    Fields marked <span style={{ color: '#dc2626', fontWeight: 700 }}>*</span> are required.
                 </p>
 
                 <div style={{ marginTop: 16 }}>
@@ -149,7 +152,7 @@ export default function QuotePage({ token, load, send }) {
                                         textTransform: 'uppercase', letterSpacing: '.05em', margin: '14px 0 5px',
                                     }}
                                 >
-                                    Unit Price (BD){inOtherUnit(item, row) ? ` per ${row.unit}` : ''}
+                                    Unit Price (BD){inOtherUnit(item, row) ? ` per ${row.unit}` : ''}<RequiredMark />
                                 </label>
                                 <input
                                     id={`price-${item.id}`}
