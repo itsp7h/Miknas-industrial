@@ -65,6 +65,16 @@ export default function ItemQuoteCard({ item, canAward, onAward, onShowDetail, o
                                 >
                                     <td style={{ padding: '8px 10px', textAlign: 'left', color: '#0f172a', fontWeight: 500 }}>
                                         {row.supplier}
+                                        {row.document && (
+                                            <a
+                                                href={row.document.url} target="_blank" rel="noreferrer"
+                                                title={`Open ${row.supplier}'s own quotation (${row.document.name})`}
+                                                aria-label={`Open ${row.supplier}'s quotation`}
+                                                style={{ marginLeft: 6, fontSize: 12, textDecoration: 'none' }}
+                                            >
+                                                📎
+                                            </a>
+                                        )}
                                         {meta.length > 0 && (
                                             <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400, marginTop: 2 }}>
                                                 {meta.join(' · ')}

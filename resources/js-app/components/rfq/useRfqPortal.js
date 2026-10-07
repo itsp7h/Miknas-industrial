@@ -1,6 +1,6 @@
 import { money as formatMoney } from '../../currency';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { apiGet, apiPost } from '../../api/client';
+import { apiGet, apiPost, apiPostForm } from '../../api/client';
 
 /** Three decimals everywhere, because BD prices are quoted in fils. */
 export const round3 = (value) => Math.round((Number(value) || 0) * 1000) / 1000;
@@ -48,7 +48,30 @@ export const pricedQty = (item, row) => (inOtherUnit(item, row)
  * (round each line to three decimals, then VAT per line): the supplier must
  * not see one grand total here and a different one on the comparison sheet.
  */
-export default function useRfqPortal({ token, load = apiGet, send = apiPost } = {}) {
+/** Their own quotation: a scan or a PDF, as a GRN's paperwork is. */
+export const DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png';
+export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+/** The quote as multipart, for when a file rides with it: items[0][id], booleans as 1/0, nulls left out. */
+export function quoteFormData(body, file) {
+    const form = new FormData();
+    const append = (key, value) => {
+        if (value === null || value === undefined) return;
+        if (typeof value === 'boolean') form.append(key, value ? '1' : '0');
+        else if (typeof value === 'object') Object.entries(value).forEach(([k, v]) => append(`${key}[${k}]`, v));
+        else form.append(key, value);
+    };
+    Object.entries(body).forEach(([key, value]) => append(key, value));
+    form.append('document', file);
+
+    return form;
+}
+
+/** JSON as before; multipart only when the supplier attached their quotation. */
+const sendQuote = (path, body, file) => (file ? apiPostForm(path, quoteFormData(body, file)) : apiPost(path, body));
+
+export default function useRfqPortal({ token, load = apiGet, send = sendQuote } = {}) {
     const [payload, setPayload] = useState(null);
     const [loadError, setLoadError] = useState('');
     const [rows, setRows] = useState({});
@@ -57,6 +80,9 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
     const [meta, setMeta] = useState({ reference: '', lead_time_days: '', payment_terms: '', notes: '' });
     const [editing, setEditing] = useState({ id: null, draft: '' });
     const [errors, setErrors] = useState({});
+    // Their own quotation document. Optional; checked here so a wrong file is
+    // refused before the whole quote travels.
+    const [quoteDocument, setQuoteDocumentState] = useState(null);
     const [formError, setFormError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     // Set by the first submit that finds something missing. From then on every
@@ -242,6 +268,28 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         return '';
     })();
 
+    /** Picks (or, with null, clears) their quotation, refusing what the API would. */
+    function setQuoteDocument(file) {
+        setErrors((prev) => ({ ...prev, document: undefined }));
+        if (!file) {
+            setQuoteDocumentState(null);
+
+            return true;
+        }
+        const problem = !DOCUMENT_TYPES.includes(file.type)
+            ? 'Your quotation must be a PDF, JPG or PNG file.'
+            : (file.size > DOCUMENT_MAX_BYTES ? 'Your quotation must be 10 MB or smaller.' : null);
+        if (problem) {
+            setQuoteDocumentState(null);
+            setErrors((prev) => ({ ...prev, document: problem }));
+
+            return false;
+        }
+        setQuoteDocumentState(file);
+
+        return true;
+    }
+
     async function submit(event) {
         event?.preventDefault();
         if (submitting) return;
@@ -262,7 +310,7 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         setFormError('');
 
         try {
-            const response = await send(`/rfq/${token}`, {
+            const body = {
                 terms: true,
                 confirm_code: confirmInput.trim().toUpperCase(),
                 reference: meta.reference.trim(),
@@ -287,7 +335,10 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
                         } : {}),
                     };
                 }),
-            });
+            };
+            const response = quoteDocument
+                ? await send(`/rfq/${token}`, body, quoteDocument)
+                : await send(`/rfq/${token}`, body);
 
             setPayload(response);
         } catch (err) {
@@ -332,6 +383,8 @@ export default function useRfqPortal({ token, load = apiGet, send = apiPost } = 
         codeMatches,
         meta,
         setField,
+        quoteDocument,
+        setQuoteDocument,
         lineTotal,
         totals,
         errors,

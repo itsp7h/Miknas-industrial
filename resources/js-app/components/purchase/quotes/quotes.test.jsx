@@ -303,6 +303,25 @@ describe('QuoteWorkspace — award all', () => {
         expect(rows[0]).toHaveTextContent('2 awarded to others');
     });
 
+    it('links each supplier’s own quotation where they attached one', async () => {
+        const doc = { name: 'Yousif Q-77.pdf', size: 1200, url: '/purchase/quotes/5/document' };
+        client.apiGet.mockResolvedValue({ data: workspace({
+            suppliers: [{ ...SUPPLIERS[0], document: doc }, { ...SUPPLIERS[1], document: null }],
+            items: [{ ...workspace().items[0], rows: [row('Gulf Steel', 10, { document: doc }), row('Zenith', 9)] }],
+        }) });
+        wrap();
+
+        const rows = await screen.findAllByTestId('award-all-row');
+        const link = screen.getByRole('link', { name: '📎 Their quotation' });
+        expect(rows[0]).toContainElement(link);
+        expect(link).toHaveAttribute('href', '/purchase/quotes/5/document');
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(rows[1]).not.toHaveTextContent('Their quotation');
+
+        expect(screen.getByRole('link', { name: "Open Gulf Steel's quotation" })).toHaveAttribute('href', '/purchase/quotes/5/document');
+        expect(screen.queryByRole('link', { name: "Open Zenith's quotation" })).not.toBeInTheDocument();
+    });
+
     it('greys it, with the reason, once everything they quoted is theirs', async () => {
         wrap();
 

@@ -34,6 +34,7 @@ export const TIPS = {
     leadTime: 'How many days after receiving our purchase order you can deliver.',
     paymentTerms: 'When and how you expect to be paid, e.g. 30 days net or cash on delivery.',
     notes: 'Anything else we should know: brand, origin, warranty, conditions.',
+    document: 'Optional. Your own quotation on your letterhead, if you have one: PDF, JPG or PNG, up to 10 MB. The prices you enter above are what we compare.',
     terms: 'You must accept these terms before the quote can be submitted.',
     confirmCode: 'Copy the code shown here into the box. It confirms a person is submitting this quote.',
 };
@@ -265,6 +266,70 @@ export function LogisticsFields({ compact, meta, setField, disabled }) {
                 />
             </div>
         </>
+    );
+}
+
+/** "1.2 MB", "340 KB": enough to tell a scan from a one-page PDF. */
+const fileSize = (bytes) => (bytes >= 1024 * 1024
+    ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`);
+
+/**
+ * Their own quotation document, optional: one PDF or image beside the
+ * figures typed above. A chosen file shows with a Remove, so a wrong pick is
+ * undone without reloading the form.
+ */
+export function QuotationDocumentField({ file, onChange, error, disabled, accept }) {
+    return (
+        <div style={{ marginBottom: 20 }}>
+            <FieldLabel htmlFor="quote-document" tip={TIPS.document} tipLabel="Your quotation">
+                Your Quotation (optional)
+            </FieldLabel>
+
+            {file ? (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
+                    border: '1.5px solid #bbf7d0', background: '#f0fdf4', borderRadius: 8, fontSize: 13,
+                }}>
+                    <span aria-hidden="true">📎</span>
+                    <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', color: '#0f172a', fontWeight: 600 }}>
+                        {file.name}
+                        <span style={{ color: '#64748b', fontWeight: 400 }}> · {fileSize(file.size)}</span>
+                    </span>
+                    <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => onChange(null)}
+                        style={{
+                            flexShrink: 0, background: '#fff', color: '#64748b', border: '1px solid #e2e8f0',
+                            borderRadius: 6, padding: '3px 10px', fontSize: 12, cursor: disabled ? 'not-allowed' : 'pointer',
+                        }}
+                    >
+                        Remove
+                    </button>
+                </div>
+            ) : (
+                <input
+                    id="quote-document"
+                    type="file"
+                    accept={accept}
+                    disabled={disabled}
+                    aria-invalid={error ? true : undefined}
+                    onChange={(e) => {
+                        const chosen = e.target.files?.[0] ?? null;
+                        if (!onChange(chosen)) e.target.value = '';
+                    }}
+                    style={{
+                        ...inputStyle, padding: '7px 10px',
+                        ...(error ? { borderColor: '#ef4444' } : {}),
+                    }}
+                />
+            )}
+
+            <div style={{ fontSize: 11, color: error ? '#dc2626' : '#94a3b8', marginTop: 4 }}>
+                {error || 'PDF, JPG or PNG, up to 10 MB.'}
+            </div>
+        </div>
     );
 }
 
