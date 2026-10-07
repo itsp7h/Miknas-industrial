@@ -28,12 +28,6 @@
          style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:13px 32px;border-radius:9px;font-size:14px;font-weight:700;letter-spacing:.02em;">
         Submit My Quote →
       </a>
-
-      <p style="font-size:12px;color:#94a3b8;margin:28px 0 0;">
-        This link can only be submitted once and expires on <strong>{{ $invitation->expires_at->format('d M Y') }}</strong>.
-        If the button doesn't work, copy this URL into your browser:<br>
-        <span style="color:#2563eb;word-break:break-all;">{{ route('rfq.show', $invitation->token) }}</span>
-      </p>
     </div>
   </div>
 </body>
