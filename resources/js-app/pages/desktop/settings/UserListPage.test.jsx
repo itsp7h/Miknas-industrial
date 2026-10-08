@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DesktopUserListPage from './UserListPage';
 import MobileUserListPage from '../../mobile/settings/UserListPage';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 import * as client from '../../../api/client';
 
@@ -42,7 +43,7 @@ const PAYLOAD = {
     ],
 };
 
-const wrap = (Page) => render(<ToastProvider><Page /></ToastProvider>);
+const wrap = (Page) => render(<ToastProvider><MemoryRouter><Page /></MemoryRouter></ToastProvider>);
 
 describe('settings UserListPage', () => {
     beforeEach(() => {
@@ -360,8 +361,9 @@ describe('settings UserListPage', () => {
         });
         wrap(DesktopUserListPage);
 
-        await screen.findByText('Zoe Nobody');
-        fireEvent.click(screen.getByLabelText('Delete Zoe Nobody'));
+        // A row opens the user's sheet; delete is in it.
+        fireEvent.click(await screen.findByText('Zoe Nobody'));
+        fireEvent.click(screen.getByRole('button', { name: 'Delete Zoe Nobody' }));
         fireEvent.click(await screen.findByText('Confirm'));
 
         expect(await screen.findByText(/cannot be deleted: they raised 3 purchase requests/)).toBeInTheDocument();
@@ -373,19 +375,19 @@ describe('settings UserListPage', () => {
             .mockResolvedValue({ deleted: true, id: 2, message: 'Zoe Nobody deleted.' });
         wrap(MobileUserListPage);
 
-        await screen.findByText('Zoe Nobody');
-        fireEvent.click(screen.getByLabelText('Delete Zoe Nobody'));
+        // A row opens the user's sheet; delete is in it.
+        fireEvent.click(await screen.findByText('Zoe Nobody'));
+        fireEvent.click(screen.getByRole('button', { name: 'Delete Zoe Nobody' }));
         fireEvent.click(await screen.findByText('Confirm'));
 
         await waitFor(() => expect(del).toHaveBeenCalledWith('/settings/users/2'));
     });
 
-    it('mobile lists users as cards with a full-width add button', async () => {
+    it('mobile lists users with their profile, behind a New user button', async () => {
         wrap(MobileUserListPage);
 
-        const add = await screen.findByText('+ New User');
-        expect(add).toHaveStyle({ width: '100%' });
-        expect(screen.getByText('Alan Operations')).toBeInTheDocument();
+        expect(await screen.findByText('Alan Operations')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'New user' })).toBeInTheDocument();
         // The toggles live behind the modal, so the card reports the count.
         expect(screen.getByText('1 individual permission')).toBeInTheDocument();
     });

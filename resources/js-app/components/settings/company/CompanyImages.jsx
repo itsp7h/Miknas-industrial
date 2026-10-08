@@ -19,14 +19,15 @@ const SLOTS = [
  * companies.edit, Upload and Remove are disabled with the reason
  * (CLAUDE.md #14) — viewing needs nothing more than the page.
  */
-export default function CompanyImages({ company, canEdit, onUpload, onRemove }) {
+export default function CompanyImages({ company, canEdit, onUpload, onRemove, pills = false }) {
     const [viewing, setViewing] = useState(null);
     const slot = SLOTS.find((s) => s.kind === viewing);
 
     return (
         <>
-            {SLOTS.map((s) => (
-                <UploadAndView key={s.kind} slot={s} company={company} canEdit={canEdit} onUpload={onUpload} onView={setViewing} />
+            {SLOTS.map((s) => (pills
+                ? <ImagePill key={s.kind} slot={s} company={company} canEdit={canEdit} onUpload={onUpload} onView={setViewing} />
+                : <UploadAndView key={s.kind} slot={s} company={company} canEdit={canEdit} onUpload={onUpload} onView={setViewing} />
             ))}
 
             <Modal
@@ -46,12 +47,11 @@ export default function CompanyImages({ company, canEdit, onUpload, onRemove }) 
     );
 }
 
-function UploadAndView({ slot, company, canEdit, onUpload, onView }) {
+/** Choosing and uploading one slot's image, shared by both looks. */
+function useImagePick(slot, company, onUpload) {
     const input = useRef(null);
     const [busy, setBusy] = useState(false);
     const { showToast } = useToast();
-    const image = company[slot.kind];
-    const noun = slot.label.toLowerCase();
 
     async function pick(event) {
         const file = event.target.files?.[0];
@@ -66,6 +66,50 @@ function UploadAndView({ slot, company, canEdit, onUpload, onView }) {
             setBusy(false);
         }
     }
+
+    return { input, busy, pick };
+}
+
+/**
+ * The phone's look (SteelERP-Mobile-Designs-V2): one pill per image. With
+ * an image it opens the viewer, which can remove it; without one it picks a
+ * file — or, for someone who may not change it, is disabled with the reason.
+ */
+function ImagePill({ slot, company, canEdit, onUpload, onView }) {
+    const { input, busy, pick } = useImagePick(slot, company, onUpload);
+    const image = company[slot.kind];
+    const noun = slot.label.toLowerCase();
+    const usable = !!image || canEdit;
+
+    return (
+        <>
+            <input
+                ref={input} type="file" accept="image/png,image/jpeg" hidden
+                aria-label={`${slot.label} image for ${company.name}`}
+                onChange={pick}
+            />
+            <button
+                type="button"
+                disabled={!usable || busy}
+                title={usable ? (image ? `View the ${noun}` : `Upload a ${noun}`) : `You do not have permission to change a company's ${noun}`}
+                onClick={() => (image ? onView(slot.kind) : input.current?.click())}
+                style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10,
+                    border: 0, background: image ? '#EDE9FE' : '#F1F5F9', color: image ? '#5B21B6' : '#334155',
+                    font: 'inherit', fontSize: 14, fontWeight: 500, cursor: usable ? 'pointer' : 'not-allowed',
+                    opacity: usable ? 1 : 0.5,
+                }}
+            >
+                {busy ? 'Saving…' : `${image ? '✓ ' : '+ '}${slot.label}`}
+            </button>
+        </>
+    );
+}
+
+function UploadAndView({ slot, company, canEdit, onUpload, onView }) {
+    const { input, busy, pick } = useImagePick(slot, company, onUpload);
+    const image = company[slot.kind];
+    const noun = slot.label.toLowerCase();
 
     return (
         <>
