@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import DesktopGeneralSettingsPage from './GeneralSettingsPage';
 import MobileGeneralSettingsPage from '../../mobile/settings/GeneralSettingsPage';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { NAV_GROUPS, visibleGroups } from '../../../layouts/navItems';
 import { previewFor, shortYear } from '../../../components/settings/documentNumbering/useDocumentNumbering';
@@ -40,7 +41,7 @@ const getFor = (overrides = {}) => (url) => {
 const numberingCard = () => screen.getByText('Document Numbering').closest('div');
 
 const renderPage = (Page = DesktopGeneralSettingsPage) =>
-    render(<ToastProvider><Page /></ToastProvider>);
+    render(<ToastProvider><MemoryRouter><Page /></MemoryRouter></ToastProvider>);
 
 describe('the Settings tab', () => {
     beforeEach(() => {
@@ -151,7 +152,7 @@ describe('the Settings tab', () => {
     it('renders on mobile too, since every page is a pair', async () => {
         renderPage(MobileGeneralSettingsPage);
 
-        expect(await screen.findByText('Document Numbering')).toBeInTheDocument();
+        expect(await screen.findByText('Document numbering')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
     });
 });
@@ -226,7 +227,7 @@ describe('the Company Warehouses card', () => {
     it('renders on mobile too, since every page is a pair', async () => {
         renderPage(MobileGeneralSettingsPage);
 
-        expect(await screen.findByText('Company Warehouses')).toBeInTheDocument();
+        expect(await screen.findByText('Receiving warehouse')).toBeInTheDocument();
     });
 });
 
