@@ -156,3 +156,6 @@
 .m-ui .m-section-action { min-height: 34px; border-radius: 10px; font-size: 14px; padding: 0 14px; }
 .m-ui input[type="number"]::-webkit-inner-spin-button,
 .m-ui input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* The older phone lists' plain search boxes, in the design's field. */
+.m-ui input[type="search"].border { height: 44px; border-radius: 12px; border-color: #E2E8F0; background: #FFFFFF;
+                                    font-size: 16px; padding: 0 14px; }

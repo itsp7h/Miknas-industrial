@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import useWarehouseDetail from '../../../components/inventory/warehouse/useWarehouseDetail';
 import { TONES } from '../../../components/inventory/warehouse/WarehouseStockTable';
 import { money, qty } from '../../../currency';
+import { EmptyState, Hero, Loading, MobilePage } from '../../../components/mobile/ui';
 
 const isLow = (line) => line.minimum_stock_level > 0 && line.quantity < line.minimum_stock_level;
 
@@ -59,12 +60,21 @@ function Section({ title, lines, emptyMessage, tone }) {
 export default function WarehouseDetailPage() {
     const w = useWarehouseDetail();
 
-    if (w.loading) return <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>;
-    if (!w.warehouse) return <p style={{ fontSize: 14, color: '#64748b' }}>Warehouse not found.</p>;
+    const back = { to: '/app/inventory/warehouses', label: 'Warehouses' };
+
+    if (!w.warehouse) {
+        return (
+            <MobilePage>
+                <Hero zone="inventory" back={back} title={w.loading ? 'Loading…' : 'Not found'} />
+                {w.loading ? <Loading /> : <EmptyState icon="warehouse" title="Warehouse not found." />}
+            </MobilePage>
+        );
+    }
 
     return (
-        <div>
-            <Link to="/app/inventory/warehouses" className="text-blue-600" style={{ fontSize: 12.5 }}>← Warehouses</Link>
+        <MobilePage>
+            <Hero zone="inventory" back={back} title={w.warehouse.name} subtitle={w.warehouse.location || undefined} />
+            <div>
 
             <div style={{
                 background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
@@ -128,6 +138,7 @@ export default function WarehouseDetailPage() {
                 emptyMessage={w.query ? 'No finished goods match that search.' : 'No finished goods here.'}
             />
             {w.other.length > 0 && <Section title="Work In Progress" tone={TONES.wip} lines={w.other} emptyMessage="" />}
-        </div>
+            </div>
+        </MobilePage>
     );
 }

@@ -10,6 +10,7 @@ export default function MovementReportPage() {
 
     return (
         <MobileReport
+            back={{ to: '/app/inventory/movements', label: 'Movements' }}
             title="Movement Report"
             subtitle="View stock movements within a date range"
             summary={[{ label: 'Movements', value: rows.length }]}

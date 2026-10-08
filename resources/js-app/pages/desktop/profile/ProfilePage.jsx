@@ -14,10 +14,13 @@ export default function ProfilePage({ compact = false }) {
 
     return (
         <div style={{ maxWidth: compact ? '100%' : 896 }}>
-            <div className="mb-5">
-                <h1 className="page-title">Profile</h1>
-                <p className="page-subtitle">Your account details, password, signature and account removal.</p>
-            </div>
+            {/* On a phone the page's header says this. */}
+            {!compact && (
+                <div className="mb-5">
+                    <h1 className="page-title">Profile</h1>
+                    <p className="page-subtitle">Your account details, password, signature and account removal.</p>
+                </div>
+            )}
 
             {p.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
 

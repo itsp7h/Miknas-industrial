@@ -26,17 +26,20 @@ export default function QuoteWorkspace({ requestId, compact = false }) {
 
     return (
         <div>
-            <div style={{ marginBottom: 16 }}>
-                <Link
-                    to={data ? `/app/purchase/pipeline/${data.id}` : '/app/purchase/pipeline'}
-                    style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                >
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back to Pipeline
-                </Link>
-            </div>
+            {/* On a phone the page's back bar leads there. */}
+            {!compact && (
+                <div style={{ marginBottom: 16 }}>
+                    <Link
+                        to={data ? `/app/purchase/pipeline/${data.id}` : '/app/purchase/pipeline'}
+                        style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                    >
+                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Back to Pipeline
+                    </Link>
+                </div>
+            )}
 
             {w.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
             {!w.loading && !data && (
