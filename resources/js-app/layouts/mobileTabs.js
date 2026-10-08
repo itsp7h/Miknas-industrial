@@ -31,7 +31,9 @@ export function mobileTabs({ isAdmin = false, can = () => false } = {}) {
         },
         {
             key: 'inventory', label: 'Inventory', icon: 'box', to: first(INVENTORY_PATHS),
-            match: (p) => under(p, INVENTORY_PATHS),
+            // Movements is reached from the Inventory tab's own header, and
+            // its back bar leads there.
+            match: (p) => under(p, [...INVENTORY_PATHS, '/app/inventory/movements']),
         },
         { key: 'more', label: 'More', icon: 'grid', to: '/app/more', match: () => false },
     ].filter((tab) => tab.to);

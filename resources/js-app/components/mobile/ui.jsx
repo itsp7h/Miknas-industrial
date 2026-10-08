@@ -431,8 +431,8 @@ export function Segmented({ options, value, onChange, ariaLabel }) {
     );
 }
 
-export function SearchField({ value, onChange, placeholder = 'Search', trailing }) {
-    return (
+export function SearchField({ value, onChange, placeholder = 'Search', trailing, onFilter, filterActive = false }) {
+    const field = (
         <label style={{
             flexShrink: 0, boxSizing: 'border-box', height: 44, borderRadius: 12, background: C.card,
             border: `1px solid ${C.line}`, display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
@@ -453,6 +453,25 @@ export function SearchField({ value, onChange, placeholder = 'Search', trailing 
             />
             {trailing}
         </label>
+    );
+
+    if (!onFilter) return field;
+
+    // The square filter button beside the field (Inventory's sort/filter).
+    return (
+        <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>{field}</div>
+            <button
+                type="button" aria-label="Sort and filter" onClick={onFilter}
+                style={{
+                    width: 44, height: 44, flexShrink: 0, borderRadius: 12, cursor: 'pointer',
+                    border: `1px solid ${filterActive ? C.accent : C.line}`, background: filterActive ? '#EFF6FF' : C.card,
+                    color: filterActive ? C.accent : C.text, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+            >
+                <Icon name="sort" size={20} />
+            </button>
+        </div>
     );
 }
 
