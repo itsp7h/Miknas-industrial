@@ -9,11 +9,13 @@ use App\Http\Resources\PurchaseRequestDetailResource;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseSignature;
 use App\Models\Supplier;
+use App\Models\User;
 use App\Policies\PurchaseRequestPolicy;
 use App\Services\LpoGenerationService;
 use App\Services\PurchaseStageService;
 use App\Services\RfqInvitationService;
 use App\Support\IssuerSignature;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,20 +25,29 @@ class PurchasePipelineController extends Controller
 {
     public function index()
     {
-        $query = PurchaseRequest::with('requestedBy');
-        $user = auth()->user();
-
-        if (! $user->can('pipeline.view-all')) {
-            if ($user->can('pipeline.view-active-pipeline')) {
-                $query->whereIn('stage', PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES);
-            } elseif ($user->can('pipeline.view-own')) {
-                $query->where('requested_by', $user->id);
-            } else {
-                $query->whereRaw('1 = 0');
-            }
-        }
+        $query = self::visibleTo(PurchaseRequest::with('requestedBy'), auth()->user());
 
         return PurchaseRequestBoardResource::collection($query->latest()->get());
+    }
+
+    /**
+     * The requests this person may see on the board. Shared with the mobile
+     * Home's stage counts, so the two can never disagree about how many
+     * requests there are.
+     */
+    public static function visibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->can('pipeline.view-all')) {
+            return $query;
+        }
+        if ($user->can('pipeline.view-active-pipeline')) {
+            return $query->whereIn('stage', PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES);
+        }
+        if ($user->can('pipeline.view-own')) {
+            return $query->where('requested_by', $user->id);
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
     /** Backs the React pipeline detail page. */

@@ -8,7 +8,7 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="alternate icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|jetbrains-mono:500&display=swap" rel="stylesheet"/>
     {{-- Must precede @vite: @vitejs/plugin-react needs its refresh preamble in the
          document before any JSX module loads, or every component throws
          "can't detect preamble" under `npm run dev` and the SPA never mounts.
@@ -23,6 +23,7 @@
         data-user-id="{{ auth()->id() }}"
         data-user-name="{{ auth()->user()->name ?? 'User' }}"
         data-user-email="{{ auth()->user()->email ?? '' }}"
+        data-user-role="{{ auth()->user()?->getRoleNames()->first() ?? '' }}"
         data-is-admin="{{ auth()->user() && auth()->user()->hasRole('Admin') ? '1' : '0' }}"
         data-can-view-all-purchase-requests="{{ auth()->user() && auth()->user()->can('pipeline.view-all') ? '1' : '0' }}"
         data-can-view-active-pipeline="{{ auth()->user() && auth()->user()->can('pipeline.view-active-pipeline') ? '1' : '0' }}"
