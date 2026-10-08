@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Icon from '../components/mobile/icons';
-import { Hero, HeroSlotContext } from '../components/mobile/ui';
+import { Hero, HeroSlotContext, TabBarSlotContext } from '../components/mobile/ui';
 import { C } from '../components/mobile/theme';
 import usePageTitle from './usePageTitle';
 import { usePageTitleOverride } from './PageTitleContext';
@@ -24,6 +24,14 @@ export default function MobileShell({ children, isAdmin, permissions = [] }) {
     const { pathname } = useLocation();
     const active = activeTabKey(tabs, pathname);
 
+    // A page with its own bottom bar hides the tabs while it is mounted.
+    const [barClaims, setBarClaims] = useState(0);
+    const claimBar = useCallback(() => {
+        setBarClaims((n) => n + 1);
+
+        return () => setBarClaims((n) => n - 1);
+    }, []);
+
     const [claims, setClaims] = useState(0);
     const claim = useCallback(() => {
         setClaims((n) => n + 1);
@@ -33,44 +41,48 @@ export default function MobileShell({ children, isAdmin, permissions = [] }) {
 
     return (
         <div data-testid="mobile-shell" className="m-ui" style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
+            <TabBarSlotContext.Provider value={claimBar}>
             <HeroSlotContext.Provider value={claim}>
-                <main style={{ paddingBottom: 'calc(86px + env(safe-area-inset-bottom, 0px))' }}>
+                <main style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
                     {claims === 0 && <FallbackHero pathname={pathname} />}
                     <div style={claims === 0 ? { padding: 16 } : undefined}>{children}</div>
                 </main>
             </HeroSlotContext.Provider>
+            </TabBarSlotContext.Provider>
 
-            <nav
-                aria-label="Main"
-                data-testid="bottom-tab-bar"
-                style={{
-                    position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45,
-                    display: 'grid', gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
-                    padding: '6px 4px calc(6px + env(safe-area-inset-bottom, 0px))',
-                    background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(18px)',
-                    WebkitBackdropFilter: 'blur(18px)', borderTop: `1px solid ${C.line}`,
-                }}
-            >
-                {tabs.map((tab) => {
-                    const on = tab.key === active;
+            {barClaims === 0 && (
+                <nav
+                    aria-label="Main"
+                    data-testid="bottom-tab-bar"
+                    style={{
+                        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45,
+                        display: 'grid', gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
+                        padding: '6px 4px calc(6px + env(safe-area-inset-bottom, 0px))',
+                        background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(18px)',
+                        WebkitBackdropFilter: 'blur(18px)', borderTop: `1px solid ${C.line}`,
+                    }}
+                >
+                    {tabs.map((tab) => {
+                        const on = tab.key === active;
 
-                    return (
-                        <Link
-                            key={tab.key}
-                            to={tab.to}
-                            aria-current={on ? 'page' : undefined}
-                            style={{
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                gap: 4, height: 52, textDecoration: 'none', fontSize: 11,
-                                fontWeight: on ? 600 : 500, color: on ? C.accent : C.faint,
-                            }}
-                        >
-                            <Icon name={tab.icon} size={24} strokeWidth={on ? 2 : 1.8} />
-                            {tab.label}
-                        </Link>
-                    );
-                })}
-            </nav>
+                        return (
+                            <Link
+                                key={tab.key}
+                                to={tab.to}
+                                aria-current={on ? 'page' : undefined}
+                                style={{
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                    gap: 4, height: 52, textDecoration: 'none', fontSize: 11,
+                                    fontWeight: on ? 600 : 500, color: on ? C.accent : C.faint,
+                                }}
+                            >
+                                <Icon name={tab.icon} size={24} strokeWidth={on ? 2 : 1.8} />
+                                {tab.label}
+                            </Link>
+                        );
+                    })}
+                </nav>
+            )}
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect } from 'react';
+import { createContext, useContext, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Icon from './icons';
 import { C, MONO, TONES, ZONES, avatarTone, initials } from './theme';
@@ -18,6 +18,13 @@ import { C, MONO, TONES, ZONES, avatarTone, initials } from './theme';
  * plain effect, so the fallback never paints for a frame first.
  */
 export const HeroSlotContext = createContext(() => () => {});
+
+/**
+ * Lets a page take the bottom of the screen for its own action bar, as the
+ * design's detail and form screens do. The tab bar steps aside while the page
+ * is mounted and comes back when it leaves.
+ */
+export const TabBarSlotContext = createContext(() => () => {});
 
 function useClaimHero() {
     const claim = useContext(HeroSlotContext);
@@ -54,9 +61,12 @@ export function Hero({
                 data-testid="mobile-hero"
                 style={{
                     margin: '0 -20px',
+                    // A sub page's hero tucks up under its back bar: the page's
+                    // block gap would otherwise open a stripe between the two.
+                    ...(root ? {} : { marginTop: -30 }),
                     padding: root
                         ? 'calc(env(safe-area-inset-top, 0px) + 36px) 20px 24px'
-                        : '6px 20px 26px',
+                        : '36px 20px 26px',
                     background: root ? z.gradient : z.solid,
                     borderRadius: '0 0 28px 28px',
                     position: 'relative', zIndex: 0, isolation: 'isolate', overflow: 'hidden',
@@ -189,6 +199,42 @@ export function MobilePage({ children, gap = 16 }) {
             padding: '0 20px 24px', display: 'flex', flexDirection: 'column', gap,
             minHeight: '100%', boxSizing: 'border-box',
         }}>
+            {children}
+        </div>
+    );
+}
+
+/**
+ * A page's own bar along the bottom (Add suppliers · View quotes). Replaces
+ * the tab bar while it shows anything. Whether it does is read from what
+ * actually rendered, not from the children passed: a child component may
+ * decide it has nothing for this person to do, and an empty bar must give the
+ * tabs back rather than sit there blank.
+ */
+export function BottomBar({ children }) {
+    const ref = useRef(null);
+    const [filled, setFilled] = useState(false);
+    const claim = useContext(TabBarSlotContext);
+
+    useLayoutEffect(() => {
+        const next = !!ref.current && ref.current.textContent.trim() !== '';
+        if (next !== filled) setFilled(next);
+    });
+    useLayoutEffect(() => (filled ? claim() : undefined), [claim, filled]);
+
+    return (
+        <div
+            ref={ref}
+            className="m-bottom-bar"
+            data-testid="mobile-bottom-bar"
+            style={{
+                display: filled ? 'flex' : 'none',
+                position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 46,
+                padding: '12px 20px calc(12px + env(safe-area-inset-bottom, 0px))',
+                background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+                borderTop: `1px solid ${C.line}`, gap: 10, flexWrap: 'wrap',
+            }}
+        >
             {children}
         </div>
     );
@@ -500,5 +546,75 @@ export function PrimaryButton({ children, onClick, type = 'button', disabled = f
         >
             {children}
         </button>
+    );
+}
+
+/**
+ * The sheet a "⋯" button opens: a short list of further actions rising from
+ * the bottom. Each option is a router link (`to`), a real navigation
+ * (`href` — a PDF, a print view) or a button (`onClick`).
+ */
+export function ActionSheet({ open, onClose, title, options }) {
+    if (!open) return null;
+
+    const rowStyle = (danger, last) => ({
+        display: 'flex', alignItems: 'center', minHeight: 54, padding: '0 18px', width: '100%',
+        fontSize: 16, color: danger ? C.danger : C.text, textDecoration: 'none', background: 'none',
+        border: 0, borderBottom: last ? 0 : `1px solid ${C.hairline}`, font: 'inherit', textAlign: 'left',
+        cursor: 'pointer', boxSizing: 'border-box',
+    });
+
+    return (
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title ?? 'Options'}
+            onClick={onClose}
+            style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'flex-end' }}
+        >
+            <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    width: '100%', padding: '0 12px calc(12px + env(safe-area-inset-bottom, 0px))',
+                    display: 'flex', flexDirection: 'column', gap: 8, boxSizing: 'border-box',
+                }}
+            >
+                <div style={{ background: C.card, borderRadius: 18, overflow: 'hidden' }}>
+                    {title && (
+                        <div style={{ padding: '12px 18px', fontSize: 13, color: C.faint, textAlign: 'center', borderBottom: `1px solid ${C.hairline}` }}>
+                            {title}
+                        </div>
+                    )}
+                    {options.map((o, i) => {
+                        const last = i === options.length - 1;
+                        if (o.to) return <Link key={o.label} to={o.to} style={rowStyle(o.danger, last)} onClick={onClose}>{o.label}</Link>;
+                        if (o.href) return <a key={o.label} href={o.href} target={o.newTab ? '_blank' : undefined} rel="noreferrer" style={rowStyle(o.danger, last)} onClick={onClose}>{o.label}</a>;
+
+                        return (
+                            <button
+                                key={o.label}
+                                type="button"
+                                disabled={o.disabled}
+                                title={o.disabledReason}
+                                style={{ ...rowStyle(o.danger, last), ...(o.disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}
+                                onClick={() => { onClose(); o.onClick(); }}
+                            >
+                                {o.label}
+                            </button>
+                        );
+                    })}
+                </div>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    style={{
+                        minHeight: 54, borderRadius: 18, border: 0, background: C.card, color: C.accent,
+                        font: 'inherit', fontSize: 16, fontWeight: 600, cursor: 'pointer',
+                    }}
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
     );
 }
