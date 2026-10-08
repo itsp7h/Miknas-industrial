@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import ItemListPage from './ItemListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
@@ -41,8 +43,17 @@ const ITEMS = [
 ];
 
 function renderPage() {
-    return render(<ToastProvider><ItemListPage /></ToastProvider>);
+    return render(
+        <ToastProvider>
+            <AccessProvider isAdmin>
+                <MemoryRouter><ItemListPage /></MemoryRouter>
+            </AccessProvider>
+        </ToastProvider>
+    );
 }
+
+// Sort, warehouse and section live in the filter sheet.
+const openFilters = () => fireEvent.click(screen.getByRole('button', { name: 'Sort and filter' }));
 
 describe('mobile ItemListPage', () => {
     beforeEach(() => {
@@ -60,11 +71,11 @@ describe('mobile ItemListPage', () => {
     it('filters client-side and reports a live count', async () => {
         renderPage();
         await screen.findByText('Silica Sand');
-        expect(screen.getByText('2 items')).toBeInTheDocument();
+        expect(screen.getByText(/^2 items · Name/)).toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText('Search items'), { target: { value: 'pentaproof' } });
 
-        expect(screen.getByText('1 of 2 items')).toBeInTheDocument();
+        expect(screen.getByText(/^1 of 2 items/)).toBeInTheDocument();
         expect(screen.queryByText('Silica Sand')).not.toBeInTheDocument();
         expect(screen.getByText('Pentaproof 20 P')).toBeInTheDocument();
     });
@@ -81,7 +92,7 @@ describe('mobile ItemListPage', () => {
         renderPage();
         await screen.findByText('Silica Sand');
         fireEvent.change(screen.getByLabelText('Search items'), { target: { value: 'zzzz' } });
-        expect(screen.getByText('No items match that search.')).toBeInTheDocument();
+        expect(screen.getByText('No items match that search')).toBeInTheDocument();
     });
 
     it('does not refetch while searching', async () => {
@@ -92,26 +103,34 @@ describe('mobile ItemListPage', () => {
         expect(client.apiGet.mock.calls.length).toBe(callsBefore);
     });
 
-    it('puts import and export behind an Actions sheet to keep the header clean', async () => {
+    it('puts import, template and PDF behind a tools sheet to keep the header clean', async () => {
         renderPage();
         await screen.findByText('Silica Sand');
-        // Labels now match the Blade toolbar: Export PDF / Template / Import Excel.
-        expect(screen.queryByText('Template')).not.toBeInTheDocument();
-        fireEvent.click(screen.getByText('Actions'));
-        expect(await screen.findByText('Template')).toBeInTheDocument();
-        expect(screen.getByText('Export PDF')).toBeInTheDocument();
-        expect(screen.getByText('Import Excel')).toBeInTheDocument();
+        expect(screen.queryByText('Download import template')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByText(/Import, template/));
+        expect(screen.getByText('Download import template').closest('a')).toHaveAttribute('href', '/api/v1/inventory/items/template');
+        expect(screen.getByText('Export as PDF').closest('a')).toHaveAttribute('href', '/api/v1/inventory/items/export-pdf');
+        expect(screen.getByRole('button', { name: 'Import from Excel' })).toBeEnabled();
+    });
+
+    it('opens an item to edit or delete it', async () => {
+        renderPage();
+        fireEvent.click(await screen.findByText('Silica Sand'));
+        expect(screen.getByRole('button', { name: 'Edit item' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Delete item' })).toBeEnabled();
     });
 
     it('narrows the cards to one warehouse and rescopes the quantity to it', async () => {
         renderPage();
         await screen.findByText('Silica Sand');
 
+        openFilters();
         fireEvent.change(screen.getByLabelText('Filter by warehouse'), { target: { value: '2' } });
 
         expect(screen.queryByText('Pentaproof 20 P')).not.toBeInTheDocument();
         expect(screen.getByText('6.00')).toBeInTheDocument();
-        expect(screen.getByText('1 items in Yard')).toBeInTheDocument();
+        // The header names the warehouse in view.
+        expect(screen.getByTestId('mobile-hero')).toHaveTextContent('Yard');
     });
 
     it('shows only raw materials and filters by section', async () => {
@@ -119,6 +138,7 @@ describe('mobile ItemListPage', () => {
         expect(await screen.findByText('Silica Sand')).toBeInTheDocument();
         expect(screen.queryByText('SUPERBOND F5 White')).not.toBeInTheDocument();
 
+        openFilters();
         fireEvent.change(screen.getByLabelText('Filter by section'), { target: { value: '1' } });
 
         expect(screen.getByText('Pentaproof 20 P')).toBeInTheDocument();
@@ -171,6 +191,7 @@ describe('mobile ItemListPage sorting', () => {
 
         expect(namesOnScreen()).toEqual(['Alpha Cement', 'Mid Sand', 'Zinc Oxide']);
 
+        openFilters();
         fireEvent.change(screen.getByLabelText('Sort items by'), { target: { value: 'code' } });
         expect(namesOnScreen()).toEqual(['Zinc Oxide', 'Mid Sand', 'Alpha Cement']);
 

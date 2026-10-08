@@ -4,16 +4,15 @@ import ConfirmModal from '../../../components/ui/ConfirmModal';
 import WarehouseForm from '../../../components/inventory/warehouse/WarehouseForm';
 import useWarehouseList from '../../../components/inventory/warehouse/useWarehouseList';
 import mapLink from '../../../components/map/mapLink';
+import { Hero, MobilePage } from '../../../components/mobile/ui';
 
 export default function WarehouseListPage() {
     const w = useWarehouseList();
 
     return (
-        <div>
-            <div style={{ marginBottom: 12 }}>
-                <h1 className="page-title">Warehouses</h1>
-                <p className="page-subtitle">Manage storage locations</p>
-            </div>
+        <MobilePage>
+            <Hero zone="inventory" back={{ to: '/app/more', label: 'More' }} title="Warehouses" subtitle="Where stock is kept" />
+            <div>
 
             <button
                 type="button" onClick={w.openCreate} className="btn-primary"
@@ -102,6 +101,7 @@ export default function WarehouseListPage() {
                 onConfirm={w.handleDeleteConfirmed}
                 onCancel={() => w.setDeleting(null)}
             />
-        </div>
+            </div>
+        </MobilePage>
     );
 }

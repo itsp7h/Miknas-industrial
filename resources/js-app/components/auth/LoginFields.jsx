@@ -9,9 +9,17 @@
  * pages that already import it from this module keep working.
  */
 
+import { useState } from 'react';
+
 export { FormError } from './AuthFields';
 
-export function LoginFields({ values, errors, onChange, disabled, autoFocus = true }) {
+/**
+ * `revealable` adds the phone design's eye button to the password field: on a
+ * touch keyboard a mistyped password is far likelier, and far harder to see.
+ */
+export function LoginFields({ values, errors, onChange, disabled, autoFocus = true, revealable = false }) {
+    const [shown, setShown] = useState(false);
+
     return (
         <>
             <div style={{ marginBottom: 16 }}>
@@ -36,18 +44,38 @@ export function LoginFields({ values, errors, onChange, disabled, autoFocus = tr
 
             <div style={{ marginBottom: 16 }}>
                 <label className="form-label" htmlFor="password">Password</label>
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    disabled={disabled}
-                    className={`form-input${errors.password ? ' form-input-error' : ''}`}
-                    style={{ width: '100%' }}
-                    value={values.password}
-                    onChange={(e) => onChange('password', e.target.value)}
-                />
+                <div style={{ position: 'relative' }}>
+                    <input
+                        id="password"
+                        name="password"
+                        type={revealable && shown ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        required
+                        disabled={disabled}
+                        className={`form-input${errors.password ? ' form-input-error' : ''}`}
+                        style={{ width: '100%', ...(revealable ? { paddingRight: 52 } : {}) }}
+                        value={values.password}
+                        onChange={(e) => onChange('password', e.target.value)}
+                    />
+                    {revealable && (
+                        <button
+                            type="button"
+                            aria-label={shown ? 'Hide password' : 'Show password'}
+                            aria-pressed={shown}
+                            onClick={() => setShown((v) => !v)}
+                            style={{
+                                position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)',
+                                width: 44, height: 44, border: 0, background: 'transparent', color: '#475569',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                            }}
+                        >
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+                                {shown && <path d="M4 4l16 16" />}
+                            </svg>
+                        </button>
+                    )}
+                </div>
                 {errors.password && (
                     <p style={{ marginTop: 6, fontSize: 13, color: '#dc2626' }}>{errors.password}</p>
                 )}

@@ -1,74 +1,68 @@
-import ConfirmModal from '../../../components/ui/ConfirmModal';
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PurchaseOrderModal from '../../../components/purchase/order/PurchaseOrderModal';
-import { STATUS_LABELS, badgeClassFor, formatDate, money } from '../../../components/purchase/order/statuses';
+import { STATUS_LABELS, money } from '../../../components/purchase/order/statuses';
 import usePurchaseOrderList from '../../../components/purchase/order/usePurchaseOrderList';
+import { DocRow, PurchasingHeader } from '../../../components/purchase/mobile/Purchasing';
+import { Card, CountLine, EmptyState, MobilePage, SearchField } from '../../../components/mobile/ui';
+import { longDate } from '../../../components/mobile/format';
+import { useAccess } from '../../../layouts/AccessContext';
 
+const TONE = { draft: 'slate', sent: 'blue', received: 'green', cancelled: 'red' };
+
+// Purchasing → Orders (SteelERP-Mobile-Designs-V2). A row opens the order;
+// editing and deleting are on the order's own page.
 export default function PurchaseOrderListPage() {
     const o = usePurchaseOrderList();
+    const canCreate = useAccess().can('purchase-orders.create');
+    const [params, setParams] = useSearchParams();
+
+    // ?new=1 is Home's "New LPO" quick action.
+    useEffect(() => {
+        if (params.get('new') !== '1') return;
+        if (canCreate) o.openCreate();
+        params.delete('new');
+        setParams(params, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [params]);
 
     return (
-        <div>
-            <div style={{ marginBottom: 12 }}>
-                <h1 className="page-title">Purchase Orders</h1>
-                <p className="page-subtitle">Manage all purchase orders</p>
-            </div>
+        <MobilePage gap={14}>
+            <PurchasingHeader
+                tab="orders"
+                action={{
+                    label: 'New purchase order', short: 'LPO', onClick: o.openCreate, allowed: canCreate,
+                    denied: 'You do not have permission to create purchase orders',
+                }}
+            />
 
-            <button type="button" onClick={o.openCreate} className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}>
-                + New PO
-            </button>
+            <SearchField value={o.query} onChange={o.setQuery} placeholder="Search orders" />
+            <CountLine>
+                {o.query
+                    ? `${o.filtered.length} of ${o.orders.length} purchase orders`
+                    : `${o.orders.length} purchase order${o.orders.length === 1 ? '' : 's'}`}
+            </CountLine>
 
-            <div style={{ marginBottom: 12 }}>
-                <input
-                    type="search"
-                    value={o.query}
-                    onChange={(e) => o.setQuery(e.target.value)}
-                    placeholder="Search PO number, supplier, status…"
-                    aria-label="Search purchase orders"
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
-                />
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    {o.query ? `${o.filtered.length} of ${o.orders.length} orders` : `${o.orders.length} orders`}
-                </div>
-            </div>
-
-            {o.filtered.length === 0 && (
-                <p style={{ fontSize: 14, color: '#64748b' }}>
-                    {o.query ? 'No purchase orders match that search.' : 'No purchase orders found.'}
-                </p>
+            {o.filtered.length === 0 ? (
+                <EmptyState icon="clipboard" title={o.query ? 'No purchase orders match that search' : 'No purchase orders yet'} />
+            ) : (
+                <Card>
+                    {o.filtered.map((order, i) => (
+                        <DocRow
+                            key={order.id}
+                            to={`/app/purchase/orders/${order.id}`}
+                            number={order.po_number}
+                            title={order.supplier_name ?? '—'}
+                            sub={`${longDate(order.po_date)} · ${order.expected_delivery_date ? `delivery ${longDate(order.expected_delivery_date)}` : 'delivery not set'}`}
+                            amount={money(order.total_amount)}
+                            status={STATUS_LABELS[order.status] ?? order.status}
+                            statusTone={TONE[order.status] ?? 'slate'}
+                            last={i === o.filtered.length - 1}
+                        />
+                    ))}
+                </Card>
             )}
 
-            {/* A seven-column table does not fit a phone, so each order is a card
-                carrying the same fields. */}
-            {o.filtered.map((order) => (
-                <div key={order.id} style={{
-                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                    padding: 12, marginBottom: 8,
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                        <a href={`/app/purchase/orders/${order.id}`} className="font-mono" style={{ fontWeight: 600, color: '#2563eb', textDecoration: 'none' }}>
-                            {order.po_number}
-                        </a>
-                        <span style={{ fontWeight: 700, color: '#1f2937' }}>{money(order.total_amount)}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{order.supplier_name ?? '—'}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                        {formatDate(order.po_date)}
-                        {order.expected_delivery_date && ` · expected ${formatDate(order.expected_delivery_date)}`}
-                    </div>
-                    <div style={{ marginTop: 6 }}>
-                        <span className={badgeClassFor(order.status)}>
-                            {STATUS_LABELS[order.status] ?? order.status}
-                        </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-                        <button type="button" onClick={() => o.openEdit(order)} className="btn-secondary btn-sm">Edit</button>
-                        <button type="button" onClick={() => o.setDeleting(order)} className="btn-danger btn-sm">Delete</button>
-                    </div>
-                </div>
-            ))}
-
-            {/* Its own dialog on the shared shell, as the MPR and supplier
-                forms use — not the small generic ui/Modal. */}
             {o.modalOpen && (
                 <PurchaseOrderModal
                     order={o.editing}
@@ -76,13 +70,6 @@ export default function PurchaseOrderListPage() {
                     onCancel={() => o.setModalOpen(false)}
                 />
             )}
-            <ConfirmModal
-                open={!!o.deleting}
-                title="Delete this purchase order?"
-                body={o.deleting ? `${o.deleting.po_number} will be permanently removed.` : ''}
-                onConfirm={o.handleDeleteConfirmed}
-                onCancel={() => o.setDeleting(null)}
-            />
-        </div>
+        </MobilePage>
     );
 }

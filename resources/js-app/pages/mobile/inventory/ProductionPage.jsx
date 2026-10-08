@@ -3,6 +3,7 @@ import useProductionRunList from '../../../components/inventory/production/usePr
 import { formatDate } from '../../../components/inventory/movement/movementStyles';
 import { useAccess } from '../../../layouts/AccessContext';
 import { money, qty } from '../../../currency';
+import { Hero, MobilePage } from '../../../components/mobile/ui';
 
 const DISABLED = { opacity: 0.5, cursor: 'not-allowed' };
 const FULL = { width: '100%', justifyContent: 'center' };
@@ -14,11 +15,9 @@ export default function ProductionPage() {
     const canRecipes = can('production.manage-recipes');
 
     return (
-        <div>
-            <div style={{ marginBottom: 12 }}>
-                <h1 className="page-title">Production</h1>
-                <p className="page-subtitle">Make finished goods from raw materials, at cost</p>
-            </div>
+        <MobilePage>
+            <Hero zone="inventory" back={{ to: '/app/more', label: 'More' }} title="Production" subtitle="Make finished goods from raw materials, at cost" />
+            <div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginBottom: 14 }}>
                 <button
@@ -82,6 +81,7 @@ export default function ProductionPage() {
             ))}
 
             <ProductionDialogs p={p} compact />
-        </div>
+            </div>
+        </MobilePage>
     );
 }

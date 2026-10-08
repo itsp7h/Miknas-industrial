@@ -1,133 +1,182 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import { useAccess } from '../../../layouts/AccessContext';
 import SupplierModal from '../../../components/purchase/supplier/SupplierModal';
-import SupplierStatCards from '../../../components/purchase/supplier/SupplierStatCards';
-import SupplierToolbar from '../../../components/purchase/supplier/SupplierToolbar';
-import SupplierSearch from '../../../components/purchase/supplier/SupplierSearch';
 import useSupplierList from '../../../components/purchase/supplier/useSupplierList';
-import { matchesQuery } from '../../../components/purchase/supplier/supplierStats';
+import { deriveStats, matchesQuery } from '../../../components/purchase/supplier/supplierStats';
+import {
+    ActionSheet, Avatar, BarButton, Card, Chip, ChipRow, EmptyState, Hero, ListRow, MobilePage, Pill,
+    SearchField, SectionLabel, StatStrip,
+} from '../../../components/mobile/ui';
+
+// Suppliers (SteelERP-Mobile-Designs-V2): the directory A–Z with its figures
+// on top. Tapping a supplier offers its contact routes and edit / delete;
+// import, export and delete-all sit behind the bar's upload button.
+
+const deny = (what) => `You do not have permission to ${what}`;
 
 export default function SupplierListPage() {
     const { can } = useAccess();
     const s = useSupplierList();
+    const [status, setStatus] = useState('all');
+    const [category, setCategory] = useState(null);
+    const [picked, setPicked] = useState(null);
+    const [sheet, setSheet] = useState(null); // 'tools' | 'category'
 
-    const filtered = useMemo(
-        () => s.suppliers.filter((supplier) => matchesQuery(supplier, s.query)),
-        [s.suppliers, s.query]
+    const stats = useMemo(() => deriveStats(s.suppliers), [s.suppliers]);
+    const categories = useMemo(
+        () => [...new Set(s.suppliers.map((x) => x.category).filter((c) => c && String(c).trim()))].sort(),
+        [s.suppliers]
     );
 
+    const filtered = useMemo(() => s.suppliers
+        .filter((x) => matchesQuery(x, s.query))
+        .filter((x) => (status === 'all' ? true : (status === 'active' ? x.is_active : !x.is_active)))
+        .filter((x) => !category || x.category === category)
+        .sort((a, b) => String(a.name).localeCompare(String(b.name))),
+    [s.suppliers, s.query, status, category]);
+
+    // A–Z sections, as the design groups the directory.
+    const sections = useMemo(() => {
+        const out = [];
+        filtered.forEach((x) => {
+            const letter = /[a-z]/i.test(x.name?.[0] ?? '') ? x.name[0].toUpperCase() : '#';
+            if (!out.length || out[out.length - 1].letter !== letter) out.push({ letter, rows: [] });
+            out[out.length - 1].rows.push(x);
+        });
+
+        return out;
+    }, [filtered]);
+
+    const nothingToDelete = s.suppliers.length === 0;
+
     return (
-        <div>
-            <div style={{ marginBottom: 12 }}>
-                <h1 className="page-title">Suppliers</h1>
-                <p className="page-subtitle">Manage your supplier directory</p>
-            </div>
-
-            {/* The four toolbar actions go two-up rather than in one cramped row. */}
-            <div style={{ marginBottom: 16 }}>
-                <SupplierToolbar
-                    fileInputRef={s.fileInputRef}
-                    onImport={s.handleImport}
-                    onCreate={s.openCreate}
-                    onDeleteAll={() => s.setDeleteAllOpen(true)}
-                    canDeleteAll={can('suppliers.delete-all')}
-                    supplierCount={s.suppliers.length}
-                    compact
-                />
-            </div>
-
-            <SupplierStatCards suppliers={s.suppliers} compact />
-
-            <SupplierSearch
-                query={s.query}
-                onChange={s.setQuery}
-                shown={filtered.length}
-                total={s.suppliers.length}
-                fullWidth
+        <MobilePage gap={14}>
+            <Hero
+                zone="purchase"
+                back={{ to: '/app/more', label: 'More' }}
+                title="Suppliers"
+                subtitle="Your supplier directory"
+                actions={(
+                    <>
+                        <BarButton icon="upload" label="Import or export" onClick={() => setSheet('tools')} />
+                        <BarButton
+                            icon="plus" label="Add supplier" onClick={s.openCreate}
+                            disabled={!can('suppliers.create')}
+                            title={can('suppliers.create') ? 'Add supplier' : deny('add suppliers')}
+                        />
+                    </>
+                )}
             />
 
-            {filtered.length === 0 && (
-                <p style={{ fontSize: 14, color: '#64748b' }}>
-                    {s.query ? 'No suppliers match that search.' : 'No suppliers found.'}
-                </p>
+            <StatStrip items={[
+                { label: 'Total', value: stats.total.toLocaleString() },
+                { label: 'Active', value: stats.active.toLocaleString(), color: '#15803D' },
+                { label: 'Inactive', value: stats.inactive.toLocaleString(), color: '#B91C1C' },
+                { label: 'Categories', value: stats.categories.toLocaleString(), color: '#B45309' },
+            ]} />
+
+            <SearchField value={s.query} onChange={s.setQuery} placeholder="Search suppliers" />
+
+            <ChipRow>
+                <Chip active={status === 'all'} onClick={() => setStatus('all')}>All</Chip>
+                <Chip active={status === 'active'} onClick={() => setStatus('active')}>Active</Chip>
+                <Chip active={status === 'inactive'} onClick={() => setStatus('inactive')}>Inactive</Chip>
+                {categories.length > 0 && (
+                    <Chip active={!!category} dropdown onClick={() => setSheet('category')}>
+                        {category ?? 'Category'}
+                    </Chip>
+                )}
+            </ChipRow>
+
+            {(s.query || status !== 'all' || category) && (
+                <span style={{ fontSize: 13, color: '#475569', padding: '0 4px' }}>
+                    {filtered.length} of {s.suppliers.length} suppliers
+                </span>
             )}
 
-            {/* An eight-column table is unreadable on a phone, so each supplier
-                becomes a card carrying the same facts. */}
-            {filtered.map((supplier) => (
-                <div key={supplier.id} style={{
-                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                    padding: 12, marginBottom: 8,
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                        <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14 }}>{supplier.name}</div>
-                            {supplier.supplier_code && (
-                                <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>
-                                    {supplier.supplier_code}
-                                </div>
-                            )}
-                        </div>
-                        <span className={supplier.is_active ? 'badge-green' : 'badge-red'} style={{ flexShrink: 0 }}>
-                            {supplier.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                    </div>
-
-                    {supplier.category && (
-                        <span style={{
-                            display: 'inline-block', marginTop: 6, padding: '2px 9px', borderRadius: 20,
-                            fontSize: 11, fontWeight: 600, background: '#f1f5f9', color: '#475569',
-                        }}>
-                            {supplier.category}
-                        </span>
-                    )}
-
-                    <div style={{ fontSize: 12.5, color: '#334155', marginTop: 8 }}>
-                        {supplier.contact_person && <div>{supplier.contact_person}</div>}
-                        {supplier.email && (
-                            <a href={`mailto:${supplier.email}`} style={{ color: '#2563eb', textDecoration: 'none', display: 'block' }}>
-                                {supplier.email}
-                            </a>
-                        )}
-                        {supplier.phone && (
-                            <a href={`tel:${supplier.phone}`} style={{ color: '#334155', textDecoration: 'none', display: 'block' }}>
-                                {supplier.phone}
-                            </a>
-                        )}
-                        {supplier.whatsapp && (
-                            <a
-                                href={`https://wa.me/${String(supplier.whatsapp).replace(/^\+/, '')}`}
-                                target="_blank" rel="noreferrer"
-                                style={{ color: '#16a34a', textDecoration: 'none', display: 'block', fontWeight: 600 }}
-                            >
-                                WhatsApp {supplier.whatsapp}
-                            </a>
-                        )}
-                        {supplier.address && (
-                            <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{supplier.address}</div>
-                        )}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
-                        <button
-                            type="button" onClick={() => s.openEdit(supplier)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontSize: 13, fontWeight: 600, padding: 0 }}
-                        >
-                            Edit
-                        </button>
-                        <button
-                            type="button" onClick={() => s.setDeleting(supplier)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 13, fontWeight: 600, padding: 0 }}
-                        >
-                            Delete
-                        </button>
-                    </div>
+            {filtered.length === 0 ? (
+                <EmptyState icon="building" title={s.suppliers.length ? 'No suppliers match' : 'No suppliers yet'} />
+            ) : sections.map((section) => (
+                <div key={section.letter} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <SectionLabel zone="purchase">{section.letter}</SectionLabel>
+                    <Card>
+                        {section.rows.map((x, i) => (
+                            <ListRow
+                                key={x.id}
+                                onClick={() => setPicked(x)}
+                                chevron={false}
+                                leading={<Avatar name={x.name} />}
+                                title={x.name}
+                                subtitle={x.category || x.contact_person || x.supplier_code}
+                                trailing={!x.is_active && <Pill tone="red">Inactive</Pill>}
+                                last={i === section.rows.length - 1}
+                            />
+                        ))}
+                    </Card>
                 </div>
             ))}
 
-            {/* Its own dialog, on the same shell as the MPR modal — not the
-                small generic ui/Modal a sixteen-field form was cramped into. */}
+            {/* The import's file picker, opened from the tools sheet. */}
+            <input
+                ref={s.fileInputRef} type="file" accept=".xlsx,.xls" aria-label="Import Excel"
+                style={{ display: 'none' }} onChange={s.handleImport}
+            />
+
+            <ActionSheet
+                open={sheet === 'tools'}
+                onClose={() => setSheet(null)}
+                title="Suppliers"
+                options={[
+                    can('suppliers.import')
+                        ? { label: 'Import from Excel', onClick: () => s.fileInputRef.current?.click() }
+                        : { label: 'Import from Excel', disabled: true, disabledReason: deny('import suppliers'), onClick: () => {} },
+                    { label: 'Download import template', href: '/api/v1/purchase/suppliers/template' },
+                    can('suppliers.export')
+                        ? { label: 'Export as PDF', href: '/api/v1/purchase/suppliers/export-pdf' }
+                        : { label: 'Export as PDF', disabled: true, disabledReason: deny('export suppliers'), onClick: () => {} },
+                    {
+                        label: 'Delete every supplier', danger: true, onClick: () => s.setDeleteAllOpen(true),
+                        disabled: !can('suppliers.delete-all') || nothingToDelete,
+                        disabledReason: !can('suppliers.delete-all')
+                            ? 'You do not have permission to delete every supplier. Ask an Admin.'
+                            : 'There are no suppliers to delete.',
+                    },
+                ]}
+            />
+
+            <ActionSheet
+                open={sheet === 'category'}
+                onClose={() => setSheet(null)}
+                title="Category"
+                options={[
+                    { label: 'All categories', onClick: () => setCategory(null) },
+                    ...categories.map((c) => ({ label: c, onClick: () => setCategory(c) })),
+                ]}
+            />
+
+            <ActionSheet
+                open={!!picked}
+                onClose={() => setPicked(null)}
+                title={picked ? [picked.name, picked.contact_person].filter(Boolean).join(' · ') : ''}
+                options={picked ? [
+                    picked.phone && { label: `Call ${picked.phone}`, href: `tel:${picked.phone}` },
+                    picked.whatsapp && {
+                        label: `WhatsApp ${picked.whatsapp}`,
+                        href: `https://wa.me/${String(picked.whatsapp).replace(/[^\d]/g, '')}`, newTab: true,
+                    },
+                    picked.email && { label: `Email ${picked.email}`, href: `mailto:${picked.email}` },
+                    {
+                        label: 'Edit supplier', onClick: () => s.openEdit(picked),
+                        disabled: !can('suppliers.edit'), disabledReason: deny('edit suppliers'),
+                    },
+                    {
+                        label: 'Delete supplier', danger: true, onClick: () => s.setDeleting(picked),
+                        disabled: !can('suppliers.delete'), disabledReason: deny('delete suppliers'),
+                    },
+                ].filter(Boolean) : []}
+            />
+
             {s.modalOpen && (
                 <SupplierModal
                     supplier={s.editing}
@@ -150,6 +199,6 @@ export default function SupplierListPage() {
                 onConfirm={s.confirmDeleteAll}
                 onCancel={() => s.setDeleteAllOpen(false)}
             />
-        </div>
+        </MobilePage>
     );
 }

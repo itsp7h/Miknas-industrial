@@ -26,7 +26,7 @@ function firstError(err) {
 const coord = (value) => Number(value).toFixed(6);
 
 /** Blade's inline edit strip: name, company, Active. */
-function EditStrip({ project, companies, onSave, onCancel }) {
+export function EditStrip({ project, companies, onSave, onCancel }) {
     const [name, setName] = useState(project.name);
     const [companyId, setCompanyId] = useState(project.company_id ?? '');
     const [isActive, setIsActive] = useState(project.is_active);

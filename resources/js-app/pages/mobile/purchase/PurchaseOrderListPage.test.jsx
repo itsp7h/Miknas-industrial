@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PurchaseOrderListPage from './PurchaseOrderListPage';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
@@ -14,10 +15,12 @@ const ORDERS = [
     { id: 2, po_number: 'PO-00002', supplier_name: 'Zenith Supply', po_date: '2026-08-02', total_amount: '250.50', status: 'sent' },
 ];
 
-const renderPage = () =>
+const renderPage = ({ permissions = null } = {}) =>
     render(
         <ToastProvider>
-            <MemoryRouter><PurchaseOrderListPage /></MemoryRouter>
+            <AccessProvider isAdmin={permissions === null} permissions={permissions ?? []}>
+                <MemoryRouter><PurchaseOrderListPage /></MemoryRouter>
+            </AccessProvider>
         </ToastProvider>
     );
 
@@ -42,11 +45,11 @@ describe('mobile PurchaseOrderListPage', () => {
     it('filters client-side and shows a live count', async () => {
         renderPage();
         await screen.findByText('PO-00001');
-        expect(screen.getByText('2 orders')).toBeInTheDocument();
+        expect(screen.getByText('2 purchase orders')).toBeInTheDocument();
 
-        fireEvent.change(screen.getByLabelText('Search purchase orders'), { target: { value: 'zenith' } });
+        fireEvent.change(screen.getByLabelText('Search orders'), { target: { value: 'zenith' } });
 
-        expect(screen.getByText('1 of 2 orders')).toBeInTheDocument();
+        expect(screen.getByText('1 of 2 purchase orders')).toBeInTheDocument();
         expect(screen.queryByText('PO-00001')).not.toBeInTheDocument();
         expect(screen.getByText('PO-00002')).toBeInTheDocument();
     });
@@ -54,17 +57,22 @@ describe('mobile PurchaseOrderListPage', () => {
     it('says so when a search matches nothing', async () => {
         renderPage();
         await screen.findByText('PO-00001');
-        fireEvent.change(screen.getByLabelText('Search purchase orders'), { target: { value: 'nope' } });
-        expect(screen.getByText('No purchase orders match that search.')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Search orders'), { target: { value: 'nope' } });
+        expect(screen.getByText('No purchase orders match that search')).toBeInTheDocument();
     });
 
-    it('deletes through the API after confirming', async () => {
-        const del = vi.spyOn(client, 'apiDelete').mockResolvedValue({ deleted: true });
+    // Editing and deleting moved to the order's own page; a row opens it.
+    it('links each order to its page', async () => {
         renderPage();
-        await screen.findByText('PO-00001');
-        fireEvent.click(screen.getAllByText('Delete')[0]);
-        fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+        expect((await screen.findByText('PO-00001')).closest('a')).toHaveAttribute('href', '/app/purchase/orders/1');
+    });
 
-        await waitFor(() => expect(del).toHaveBeenCalledWith('/purchase/orders/1'));
+    // CLAUDE.md #14: disabled with the reason, not hidden.
+    it('offers New LPO disabled without purchase-orders.create', async () => {
+        renderPage({ permissions: ['purchase-orders.view'] });
+        await screen.findByText('PO-00001');
+        const button = screen.getByRole('button', { name: 'New purchase order' });
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('title', 'You do not have permission to create purchase orders');
     });
 });

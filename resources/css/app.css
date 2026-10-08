@@ -116,3 +116,46 @@
     .mpr-proj-opt:hover    { background:#eff6ff; border-left-color:#2563eb !important; }
     .mpr-urgency-opt:hover { background:#f8fafc; }
 }
+
+/* ── Mobile design (SteelERP-Mobile-Designs-V2) ──
+   Inside `.m-ui` — every redesigned phone screen — the shared form classes
+   take the design's touch sizes: 52px fields, 16px text (anything smaller
+   makes iOS zoom on focus) and rounder corners. Scoped rather than new class
+   names so the shared form components the desktop pages also use need no
+   phone-only copy. */
+.m-ui .form-label   { font-size: 14px; font-weight: 500; color: #334155; margin-bottom: 8px; }
+.m-ui .form-input,
+.m-ui .form-select  { min-height: 52px; border-radius: 14px; border-color: #CBD5E1; background-color: #F8FAFC;
+                      padding: 0 16px; font-size: 16px; color: #0F172A; }
+.m-ui .form-textarea { border-radius: 14px; border-color: #CBD5E1; background-color: #F8FAFC;
+                       padding: 12px 16px; font-size: 16px; color: #0F172A; }
+.m-ui .btn-primary  { min-height: 54px; border-radius: 16px; font-size: 17px; font-weight: 600; }
+.m-ui .btn-secondary { min-height: 52px; border-radius: 16px; font-size: 16px; }
+.m-ui input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
+/* A page's bottom bar (components/mobile/ui.jsx → BottomBar): whatever a
+   child component wraps its buttons in stretches to the bar, so the buttons
+   share the row however deeply they are nested. */
+.m-bottom-bar > *     { flex: 1 1 auto; }
+.m-bottom-bar > div,
+.m-bottom-bar > span  { display: flex; gap: 10px; flex-wrap: wrap; width: 100%; }
+/* The phone timeline's done-step links: DoneActions wraps several in its own
+   flex row, which should flow with the rest rather than nest a second row. */
+.m-timeline-links > div { display: contents; }
+/* The MPR form's own picker buttons (company, project, urgency) carry inline
+   desktop sizes; on a phone they match the other fields. */
+.m-ui .mpr-trigger { min-height: 52px !important; border-radius: 14px !important; font-size: 16px !important;
+                     background: #F8FAFC !important; padding-left: 16px !important; border-color: #CBD5E1 !important; }
+.m-ui .mpr-trigger span { font-size: 16px !important; }
+/* File inputs: the browser's grey button reads as broken next to the design's fields. */
+.m-ui input[type="file"] { padding: 10px 12px; font-size: 14px; color: #475569; min-height: 52px; }
+.m-ui input[type="file"]::file-selector-button {
+    border: 0; background: #E0E7FF; color: #3730A3; border-radius: 10px; padding: 8px 14px;
+    margin-right: 12px; font: inherit; font-weight: 600; cursor: pointer;
+}
+/* A section's own small action ("+ Add") stays small beside its title. */
+.m-ui .m-section-action { min-height: 34px; border-radius: 10px; font-size: 14px; padding: 0 14px; }
+.m-ui input[type="number"]::-webkit-inner-spin-button,
+.m-ui input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* The older phone lists' plain search boxes, in the design's field. */
+.m-ui input[type="search"].border { height: 44px; border-radius: 12px; border-color: #E2E8F0; background: #FFFFFF;
+                                    font-size: 16px; padding: 0 14px; }

@@ -4,11 +4,14 @@ import useLiveList from '../../../hooks/useLiveList';
 import { echo } from '../../../echo';
 import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
 import { useAccess } from '../../../layouts/AccessContext';
+import {
+    Chip, ChipRow, DocNo, EmptyState, Hero, HeroButton, MobilePage, Pill, SearchField, Segmented,
+} from '../../../components/mobile/ui';
+import { C } from '../../../components/mobile/theme';
+import { STAGE_META, stageMeta } from '../../../components/mobile/stages';
+import { shortDate } from '../../../components/mobile/format';
 
-const STAGE_LABELS = {
-    draft: 'Draft', gm_approval: 'GM Approval', rfq: 'RFQ', quoting: 'Quoting',
-    comparison: 'Comparison', lpo: 'LPO', receiving: 'Receiving', payment: 'Payment', complete: 'Complete',
-};
+const STAGE_ORDER = Object.keys(STAGE_META);
 
 // Mirrors App\Policies\PurchaseRequestPolicy::ACTIVE_PIPELINE_STAGES exactly — kept
 // in sync by hand since the frontend can't import PHP constants.
@@ -95,158 +98,131 @@ export default function PipelineBoardPage({
     }, [setItems]);
 
     const [tab, setTab] = useState('active');
+    const [stage, setStage] = useState('all');
     const [query, setQuery] = useState('');
 
     const active = items.filter((r) => r.stage !== 'complete');
     const completed = items.filter((r) => r.stage === 'complete');
     const rows = tab === 'active' ? active : completed;
 
+    // The stage chips: every stage the open tab has a request in, in pipeline
+    // order, with its count. Switching tab clears a stage filter the other
+    // tab could not satisfy.
+    const stageCounts = useMemo(() => STAGE_ORDER
+        .map((key) => ({ key, count: rows.filter((r) => r.stage === key).length }))
+        .filter((s) => s.count > 0), [rows]);
+    const byStage = stage === 'all' ? rows : rows.filter((r) => r.stage === stage);
+
     const filteredRows = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return rows;
-        return rows.filter((row) => (
-            [row.request_number, row.company_name, row.department, row.requested_by_name]
+        if (!q) return byStage;
+        return byStage.filter((row) => (
+            [row.request_number, row.company_name, row.project_name, row.department, row.requested_by_name]
                 .filter(Boolean)
                 .some((field) => field.toLowerCase().includes(q))
         ));
-    }, [rows, query]);
+    }, [byStage, query]);
+
+    function pickTab(next) {
+        setTab(next);
+        setStage('all');
+    }
 
     return (
-        <div style={{ minHeight: '100%', boxSizing: 'border-box', width: '100%' }}>
-            {/* Hero header */}
-            <div style={{
-                boxSizing: 'border-box', width: '100%', padding: '20px 18px', color: '#fff', position: 'relative',
-                overflow: 'hidden', borderRadius: 18,
-                background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
-            }}>
-                <div style={{
-                    position: 'absolute', top: -32, right: -32, width: 144, height: 144,
-                    borderRadius: '9999px', background: 'rgba(255,255,255,0.1)',
-                }} />
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', margin: 0 }}>
-                            Purchase
-                        </p>
-                        <h1 style={{ fontSize: 22, fontWeight: 800, margin: '2px 0 0', lineHeight: 1.2 }}>Pipeline Board</h1>
-                        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: '4px 0 0' }}>
-                            Track requests through every approval stage
-                        </p>
-                    </div>
-                    <button
-                        type="button"
+        <MobilePage gap={14}>
+            <Hero
+                zone="purchase"
+                variant="root"
+                eyebrow="Material purchase requests"
+                title="Pipeline"
+                action={(
+                    // Disabled, not hidden, for anyone who may view but not create.
+                    <HeroButton
+                        zone="purchase"
+                        label="New purchase request"
+                        title={canCreate ? 'New purchase request' : 'You do not have permission to create purchase requests'}
                         onClick={() => openNew(acceptRow)}
                         disabled={!canCreate}
-                        title={canCreate ? undefined : 'You do not have permission to create purchase requests'}
-                        style={{
-                            flexShrink: 0, background: '#fff', color: '#2563eb', border: 0, borderRadius: 12,
-                            padding: '10px 14px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
-                            ...(canCreate ? {} : { opacity: 0.5, cursor: 'not-allowed' }),
-                        }}
-                    >
-                        + New Request
-                    </button>
-                </div>
-            </div>
-
-            {/* Sticky search + tabs */}
-            <div style={{
-                boxSizing: 'border-box', width: '100%', position: 'sticky', top: 0, zIndex: 5,
-                padding: '12px 0', background: '#f8fafc',
-            }}>
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #e2e8f0',
-                    borderRadius: 14, padding: '8px 12px', marginBottom: 10,
-                }}>
-                    <span style={{ color: '#94a3b8', fontSize: 14 }}>⌕</span>
-                    <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search requests…"
-                        aria-label="Search requests"
-                        style={{ flex: 1, minWidth: 0, border: 0, outline: 'none', fontSize: 14, background: 'transparent' }}
                     />
-                </div>
-
-                <div style={{ display: 'flex', gap: 6, background: '#e2e8f0', borderRadius: 12, padding: 4 }}>
-                    <button
-                        onClick={() => setTab('active')}
-                        style={{
-                            flex: 1, border: 0, borderRadius: 9, padding: '8px 0', fontSize: 13, fontWeight: 700,
-                            background: tab === 'active' ? '#fff' : 'transparent',
-                            color: tab === 'active' ? '#1e293b' : '#64748b',
-                            boxShadow: tab === 'active' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
-                        }}
-                    >
-                        Active ({active.length})
-                    </button>
-                    <button
-                        onClick={() => setTab('completed')}
-                        style={{
-                            flex: 1, border: 0, borderRadius: 9, padding: '8px 0', fontSize: 13, fontWeight: 700,
-                            background: tab === 'completed' ? '#fff' : 'transparent',
-                            color: tab === 'completed' ? '#1e293b' : '#64748b',
-                            boxShadow: tab === 'completed' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
-                        }}
-                    >
-                        Completed ({completed.length})
-                    </button>
-                </div>
-
-                {query.trim() !== '' && (
-                    <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 2px 0' }}>
-                        {filteredRows.length} of {rows.length}
-                    </p>
                 )}
-            </div>
+            />
 
-            {/* Cards */}
-            <div style={{ padding: '12px 0 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {filteredRows.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>
-                        <p style={{ fontSize: 28, margin: 0 }}>📋</p>
-                        <p style={{ fontSize: 13, margin: '8px 0 0' }}>
-                            {query.trim() !== '' ? 'No matching requests.' : 'No requests.'}
-                        </p>
-                    </div>
-                ) : (
-                    filteredRows.map((row) => (
-                        <Link
-                            key={row.id}
-                            to={`/app/purchase/pipeline/${row.id}`}
-                            style={{
-                                display: 'block', background: '#fff', border: '1px solid #f1f5f9', borderRadius: 16,
-                                padding: 14, textDecoration: 'none', color: 'inherit',
-                                boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{row.request_number}</div>
-                                    <div style={{ fontSize: 13, color: '#334155', marginTop: 2 }}>{row.company_name || '—'}</div>
-                                </div>
-                                <span style={{
-                                    flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                                    background: row.stage === 'complete' ? '#dcfce7' : '#fffbeb',
-                                    color: row.stage === 'complete' ? '#15803d' : '#92400e',
-                                }}>
-                                    {STAGE_LABELS[row.stage] ?? row.stage}
-                                </span>
-                            </div>
-                            <div style={{
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                marginTop: 10, paddingTop: 10, borderTop: '1px solid #f1f5f9',
-                            }}>
-                                <div style={{ fontSize: 12, color: '#64748b', minWidth: 0 }}>
-                                    {row.department || '—'} · {row.requested_by_name || '—'}
-                                </div>
-                                <div style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{row.date}</div>
-                            </div>
-                        </Link>
-                    ))
-                )}
-            </div>
-        </div>
+            <Segmented
+                ariaLabel="Requests"
+                value={tab}
+                onChange={pickTab}
+                options={[
+                    { key: 'active', label: `Active · ${active.length}` },
+                    { key: 'completed', label: `Completed · ${completed.length}` },
+                ]}
+            />
+
+            <SearchField value={query} onChange={setQuery} placeholder="Search requests" />
+
+            {stageCounts.length > 1 && (
+                <ChipRow>
+                    <Chip active={stage === 'all'} onClick={() => setStage('all')}>All {rows.length}</Chip>
+                    {stageCounts.map((s) => (
+                        <Chip key={s.key} active={stage === s.key} onClick={() => setStage(s.key)}>
+                            {stageMeta(s.key).label} {s.count}
+                        </Chip>
+                    ))}
+                </ChipRow>
+            )}
+
+            {query.trim() !== '' && (
+                <span style={{ fontSize: 13, color: C.muted, padding: '0 4px' }}>
+                    {filteredRows.length} of {byStage.length}
+                </span>
+            )}
+
+            {filteredRows.length === 0 ? (
+                <EmptyState icon="pipeline" title={query.trim() !== '' ? 'No matching requests' : 'No requests'} />
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {filteredRows.map((row) => <RequestCard key={row.id} row={row} />)}
+                </div>
+            )}
+        </MobilePage>
+    );
+}
+
+function RequestCard({ row }) {
+    const meta = stageMeta(row.stage);
+    const by = row.requested_by_name || '—';
+
+    return (
+        <Link
+            to={`/app/purchase/pipeline/${row.id}`}
+            style={{
+                background: C.card, borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column',
+                gap: 10, textDecoration: 'none', color: C.text,
+            }}
+        >
+            <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <DocNo color={C.text} size={14}>{row.request_number}</DocNo>
+                <Pill tone={meta.tone}>{meta.label}</Pill>
+            </span>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                <span style={{ fontSize: 16, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {row.department || row.company_name || '—'}
+                </span>
+                <span style={{ fontSize: 14, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {[row.company_name, row.project_name].filter(Boolean).join(' · ') || '—'}
+                </span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                <span style={{
+                    width: 22, height: 22, borderRadius: 11, background: C.hairline, color: C.text2,
+                    fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                    {by.charAt(0).toUpperCase()}
+                </span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {by}
+                </span>
+                <span style={{ fontSize: 14, color: C.muted, flexShrink: 0 }}>{shortDate(row.date)}</span>
+            </span>
+        </Link>
     );
 }

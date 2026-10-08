@@ -86,6 +86,133 @@ export default function ItemRows({ items, units, catalogue = [], accent, today, 
         onChange(items.filter((_, i) => i !== index));
     }
 
+    // One step of the phone stepper. Whole units: a fractional quantity is
+    // still typed, the buttons are for the common case.
+    function step(index, by) {
+        const current = Number(items[index]?.quantity_required) || 0;
+        update(index, 'quantity_required', String(Math.max(0, current + by)));
+    }
+
+    const datalist = (
+        // One list for every row: the browser completes from it as you type,
+        // so "ste" offers Steel Plate without a dropdown of our own to keep in
+        // step with the layout.
+        <datalist id="mpr-item-names">
+            {catalogue.map((item) => (
+                <option key={item.id} value={item.name}>
+                    {item.unit ? `${item.name} · ${item.unit}` : item.name}
+                </option>
+            ))}
+        </datalist>
+    );
+
+    // On a phone, each line is its own block (SteelERP-Mobile-Designs-V2's
+    // "Materials" card) rather than a table scrolled sideways: description,
+    // then quantity with a stepper beside the unit, then purpose and date.
+    // Same fields, same handlers, same required rule.
+    if (compact) {
+        const stepper = {
+            width: 44, height: 50, border: 0, background: 'transparent', color: '#2563EB', fontSize: 24,
+            lineHeight: 1, cursor: 'pointer', flexShrink: 0,
+        };
+
+        return (
+            <FormSection
+                accent={accent}
+                title={`Materials (${items.length})`}
+                action={<button type="button" onClick={add} className="btn-primary btn-sm m-section-action">+ Add</button>}
+            >
+                {items.map((row, index) => (
+                    <div
+                        key={index}
+                        style={{
+                            display: 'flex', flexDirection: 'column', gap: 14,
+                            ...(index > 0 ? { borderTop: '1px solid #F1F5F9', marginTop: 18, paddingTop: 18 } : {}),
+                        }}
+                    >
+                        {items.length > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: '#64748B' }}>Item {index + 1}</span>
+                                <button
+                                    type="button" onClick={() => remove(index)} aria-label={`Remove item ${index + 1}`}
+                                    style={{ background: 'none', border: 0, color: '#B91C1C', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        )}
+                        <div>
+                            <label className="form-label" htmlFor={`mpr-item-${index}-description`}>Description</label>
+                            <input
+                                id={`mpr-item-${index}-description`} type="text" required={mandatory(row)}
+                                className="form-input" placeholder="Material description"
+                                list="mpr-item-names" autoComplete="off"
+                                aria-label={`Item ${index + 1} description`}
+                                value={row.description ?? ''}
+                                onChange={(e) => describe(index, e.target.value)}
+                            />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 12 }}>
+                            <div>
+                                <label className="form-label" htmlFor={`mpr-item-${index}-qty`}>Quantity</label>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', border: '1px solid #CBD5E1', borderRadius: 14,
+                                    background: '#F8FAFC', overflow: 'hidden',
+                                }}>
+                                    <button type="button" aria-label={`Decrease item ${index + 1} quantity`} onClick={() => step(index, -1)} style={stepper}>−</button>
+                                    <input
+                                        id={`mpr-item-${index}-qty`}
+                                        type="number" inputMode="decimal" required={mandatory(row)} min="0.01" step="0.01" placeholder="0"
+                                        aria-label={`Item ${index + 1} quantity`}
+                                        value={row.quantity_required ?? ''}
+                                        onChange={(e) => update(index, 'quantity_required', e.target.value)}
+                                        style={{
+                                            flex: 1, minWidth: 0, height: 50, border: 0, background: 'transparent', textAlign: 'center',
+                                            fontSize: 17, fontWeight: 600, outline: 'none', MozAppearance: 'textfield',
+                                        }}
+                                    />
+                                    <button type="button" aria-label={`Increase item ${index + 1} quantity`} onClick={() => step(index, 1)} style={stepper}>+</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="form-label" htmlFor={`mpr-item-${index}-unit`}>Unit</label>
+                                <select
+                                    id={`mpr-item-${index}-unit`} className="form-select"
+                                    aria-label={`Item ${index + 1} unit`}
+                                    value={row.unit ?? ''}
+                                    onChange={(e) => update(index, 'unit', e.target.value)}
+                                >
+                                    <option value="">—</option>
+                                    {row.unit && !units.includes(row.unit) && <option value={row.unit}>{row.unit}</option>}
+                                    {units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="form-label" htmlFor={`mpr-item-${index}-purpose`}>Purpose</label>
+                            <input
+                                id={`mpr-item-${index}-purpose`} type="text" className="form-input" placeholder="What it is for"
+                                aria-label={`Item ${index + 1} purpose`}
+                                value={row.purpose_use ?? ''}
+                                onChange={(e) => update(index, 'purpose_use', e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="form-label" htmlFor={`mpr-item-${index}-date`}>Required date</label>
+                            <input
+                                id={`mpr-item-${index}-date`} type="date" className="form-input"
+                                aria-label={`Item ${index + 1} required date`}
+                                value={row.required_date ?? ''}
+                                onChange={(e) => update(index, 'required_date', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                ))}
+                {datalist}
+            </FormSection>
+        );
+    }
+
     return (
         <FormSection
             accent={accent}
@@ -93,11 +220,9 @@ export default function ItemRows({ items, units, catalogue = [], accent, today, 
             action={<button type="button" onClick={add} className="btn-primary btn-sm">+ Add Item</button>}
         >
 
-            {/* The table keeps its columns on a phone and scrolls sideways
-                instead — a purchase line only makes sense read across. */}
             <div style={{ overflowX: 'auto' }}>
                 <table style={{
-                    width: '100%', minWidth: compact ? 620 : undefined,
+                    width: '100%',
                     borderCollapse: 'collapse', fontSize: '0.8rem',
                 }}>
                     <thead>
@@ -196,16 +321,7 @@ export default function ItemRows({ items, units, catalogue = [], accent, today, 
                     </tbody>
                 </table>
 
-                {/* One list for every row: the browser completes from it as you
-                    type, so "ste" offers Steel Plate without a dropdown of our
-                    own to keep in step with the table's layout. */}
-                <datalist id="mpr-item-names">
-                    {catalogue.map((item) => (
-                        <option key={item.id} value={item.name}>
-                            {item.unit ? `${item.name} · ${item.unit}` : item.name}
-                        </option>
-                    ))}
-                </datalist>
+                {datalist}
             </div>
         </FormSection>
     );

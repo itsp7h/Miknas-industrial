@@ -189,4 +189,21 @@ class StockMovementControllerTest extends TestCase
         // used to be offered and failed on a CHECK constraint.
         $this->assertSame(['in', 'out'], $response->json('types'));
     }
+
+    public function test_form_options_carries_what_each_item_holds_per_warehouse(): void
+    {
+        $item = Item::create(['item_code' => 'ITEM-9', 'item_name' => 'Shoes', 'category' => 'raw_material', 'unit_of_measure' => 'PCS']);
+        $warehouse = Warehouse::create(['code' => 'WH-9', 'name' => 'Askar']);
+        StockLevel::create(['item_id' => $item->id, 'warehouse_id' => $warehouse->id, 'quantity' => 20]);
+
+        $levels = $this->actingAs($this->actingUser())
+            ->getJson('/api/v1/inventory/movements/form-options')
+            ->assertOk()
+            ->json('levels');
+
+        $this->assertCount(1, $levels);
+        $this->assertSame($item->id, $levels[0]['item_id']);
+        $this->assertSame($warehouse->id, $levels[0]['warehouse_id']);
+        $this->assertEquals(20, $levels[0]['quantity']);
+    }
 }

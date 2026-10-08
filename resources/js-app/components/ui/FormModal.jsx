@@ -135,6 +135,32 @@ export function SectionTitle({ accent, children }) {
 
 /** A titled card. `action` sits opposite the title — e.g. "+ Add Row". */
 export function FormSection({ accent, title, action = null, last = false, children }) {
+    const compact = useViewport() === 'mobile';
+
+    // On a phone, the mobile design's grouping: a coloured caps label above a
+    // white card on the sheet's grey, rather than a bordered grey box.
+    if (compact) {
+        return (
+            <section style={{ marginBottom: last ? 0 : 22 }}>
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '0 4px', marginBottom: 8, minHeight: 24,
+                }}>
+                    <h3 style={{
+                        margin: 0, fontSize: 13, fontWeight: 600, textTransform: 'uppercase',
+                        letterSpacing: '0.06em', color: accent,
+                    }}>
+                        {title}
+                    </h3>
+                    {action}
+                </div>
+                <div style={{ background: '#FFFFFF', borderRadius: 18, padding: 16 }}>
+                    {children}
+                </div>
+            </section>
+        );
+    }
+
     return (
         <section style={{
             background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.875rem',
@@ -183,6 +209,18 @@ export default function FormModal({
             document.body.style.overflow = '';
         };
     }, [dismiss]);
+
+    if (compact) {
+        return (
+            <PhoneSheet
+                title={title} subtitle={subtitle} gradient={gradient} submitLabel={submitLabel}
+                submitting={submitting} formId={formId} messages={messages}
+                onMinimize={onMinimize} cancel={cancel}
+            >
+                {typeof children === 'function' ? children({ compact }) : children}
+            </PhoneSheet>
+        );
+    }
 
     return (
         <div
@@ -269,6 +307,87 @@ export default function FormModal({
                     >
                         Cancel
                     </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * The phone layout (SteelERP-Mobile-Designs-V2's form sheets): the form
+ * fills the screen under a coloured bar holding Cancel, the title and the
+ * primary action, so the action is always in reach without scrolling to the
+ * end of a long form. `m-ui` gives the fields the design's touch sizes.
+ */
+function PhoneSheet({ title, subtitle, gradient, submitLabel, submitting, formId, messages, onMinimize, cancel, children }) {
+    const barButton = {
+        background: 'none', border: 0, color: '#FFFFFF', font: 'inherit', fontSize: 17,
+        padding: '10px 4px', cursor: 'pointer', whiteSpace: 'nowrap', minWidth: 64,
+    };
+    // "Submit Request" fits a desktop footer; the bar has room for a word.
+    const short = /^save/i.test(submitLabel ?? '') ? 'Save' : (/^submit/i.test(submitLabel ?? '') ? 'Submit' : submitLabel);
+
+    return (
+        <div
+            className="m-ui"
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            style={{
+                position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15,23,42,0.55)',
+                display: 'flex', flexDirection: 'column', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+            }}
+        >
+            <div style={{
+                flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#F1F5F9',
+                borderRadius: '22px 22px 0 0', overflow: 'hidden', fontFamily: "'Inter', system-ui, sans-serif",
+            }}>
+                <div style={{ flexShrink: 0, background: gradient, color: '#FFFFFF', padding: '8px 12px 6px' }}>
+                    <div aria-hidden="true" style={{ width: 36, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.45)', margin: '0 auto 2px' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <button type="button" onClick={cancel} style={{ ...barButton, textAlign: 'left' }}>Cancel</button>
+                        <div style={{ minWidth: 0, textAlign: 'center' }}>
+                            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {title}
+                            </h2>
+                        </div>
+                        <button
+                            type="submit" form={formId} disabled={submitting}
+                            style={{ ...barButton, fontWeight: 600, textAlign: 'right', opacity: submitting ? 0.6 : 1 }}
+                        >
+                            {submitting ? 'Saving…' : short}
+                        </button>
+                    </div>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px calc(32px + env(safe-area-inset-bottom, 0px))', WebkitOverflowScrolling: 'touch' }}>
+                    {(subtitle || onMinimize) && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '0 4px', marginBottom: 18 }}>
+                            <span style={{ fontSize: 14, color: '#475569', lineHeight: 1.4 }}>{subtitle}</span>
+                            {onMinimize && (
+                                <button
+                                    type="button" onClick={onMinimize}
+                                    style={{ background: 'none', border: 0, color: '#2563EB', font: 'inherit', fontSize: 14, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}
+                                >
+                                    Minimize
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {messages.length > 0 && (
+                        <div role="alert" style={{
+                            marginBottom: 18, padding: '12px 14px', background: '#FEF2F2',
+                            borderRadius: 14, fontSize: 14, color: '#B91C1C',
+                        }}>
+                            <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Please fix the following:</p>
+                            <ul style={{ listStyle: 'disc', paddingLeft: '1.25rem', lineHeight: 1.7, margin: 0 }}>
+                                {messages.map((message) => <li key={message}>{message}</li>)}
+                            </ul>
+                        </div>
+                    )}
+
+                    {children}
                 </div>
             </div>
         </div>

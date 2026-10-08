@@ -24,7 +24,7 @@ function firstError(err) {
 }
 
 /** Inline name + Active editor, used for both the company and its departments. */
-function InlineEditor({ value, active, onSave, onCancel, placeholder, compact = false }) {
+export function InlineEditor({ value, active, onSave, onCancel, placeholder, compact = false }) {
     const [name, setName] = useState(value ?? '');
     const [isActive, setIsActive] = useState(active ?? true);
     const [error, setError] = useState('');

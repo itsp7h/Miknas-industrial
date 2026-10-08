@@ -24,7 +24,7 @@ describe.each([
         expect(screen.getByLabelText('Password')).toBeInTheDocument();
         expect(screen.getByLabelText('Remember me')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Log in' })).toBeInTheDocument();
-        expect(screen.getByText('Forgot your password?').closest('a'))
+        expect(screen.getByText(/^Forgot (your )?password\?$/).closest('a'))
             .toHaveAttribute('href', '/forgot-password');
     });
 
@@ -130,5 +130,18 @@ describe.each([
         const button = await screen.findByRole('button', { name: 'Signing in…' });
         expect(button).toBeDisabled();
         release({});
+    });
+});
+
+describe('LoginPage (mobile) password field', () => {
+    it('shows and hides the password from the eye button', () => {
+        render(<MobileLoginPage navigate={vi.fn()} />);
+        const field = screen.getByLabelText('Password');
+
+        expect(field).toHaveAttribute('type', 'password');
+        fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+        expect(field).toHaveAttribute('type', 'text');
+        fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+        expect(field).toHaveAttribute('type', 'password');
     });
 });

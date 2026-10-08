@@ -112,7 +112,7 @@ export default function useItemList(onlyCategory = null) {
     const filtered = sortItems(matched, sort);
 
     return {
-        items, filtered, inScope,
+        items, allItems, filtered, inScope,
         categoryOptions: meta.category_options ?? [],
         allWarehouses: meta.warehouses ?? [],
         query, setQuery,
