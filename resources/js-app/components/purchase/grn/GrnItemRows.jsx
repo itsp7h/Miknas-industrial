@@ -33,6 +33,44 @@ export default function GrnItemRows({ lines, projects = [], defaultProjectId = '
         } : line)));
     }
 
+    const rowErrors = lines.map((line, index) => (
+        ['quantity_received', 'supplier_quantity', 'item_id', 'project_id'].map((field) => (
+            lineError(index, field) ? (
+                <p key={`${index}-${field}`} style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#dc2626' }}>
+                    Row {index + 1}: {lineError(index, field)}
+                </p>
+            ) : null
+        ))
+    ));
+
+    // On a phone each line is a block (SteelERP-Mobile-Designs-V2's "Items
+    // received"): what was ordered, a stepper for what arrived, and the
+    // Inventory / Consumable choice as a segmented control. Same fields and
+    // handlers as the table.
+    if (compact) {
+        return (
+            <FormSection accent={accent} title={lines.length ? `Items received (${lines.length})` : 'Items received'}>
+                {errors.items && <p style={{ margin: '0 0 8px', fontSize: 13, color: '#dc2626' }}>{errors.items}</p>}
+                {lines.length === 0 && (
+                    <p style={{ padding: '8px 0', textAlign: 'center', color: '#94A3B8', fontSize: 14, margin: 0 }}>
+                        {hasOrder ? 'No items on this purchase order.' : 'Select a purchase order to load its items.'}
+                    </p>
+                )}
+                {lines.map((line, index) => (
+                    <GrnLineCard
+                        key={line.purchase_order_item_id ?? index}
+                        line={line} index={index} projects={projects}
+                        error={(field) => lineError(index, field)}
+                        onQuantity={(value) => update(index, 'quantity_received', value)}
+                        onType={(kind) => setType(index, kind)}
+                        onProject={(value) => update(index, 'project_id', value)}
+                    />
+                ))}
+                {rowErrors}
+            </FormSection>
+        );
+    }
+
     return (
         <FormSection accent={accent} title="Items Received">
             {errors.items && (
@@ -154,15 +192,106 @@ export default function GrnItemRows({ lines, projects = [], defaultProjectId = '
                 </div>
             )}
 
-            {lines.map((line, index) => (
-                ['quantity_received', 'supplier_quantity', 'item_id', 'project_id'].map((field) => (
-                    lineError(index, field) ? (
-                        <p key={`${index}-${field}`} style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#dc2626' }}>
-                            Row {index + 1}: {lineError(index, field)}
-                        </p>
-                    ) : null
-                ))
-            ))}
+            {rowErrors}
         </FormSection>
+    );
+}
+
+function GrnLineCard({ line, index, projects, error, onQuantity, onType, onProject }) {
+    const unit = line.supplier_unit || line.unit_of_measure || '';
+    const step = (by) => onQuantity(String(Math.max(0, Math.round(((Number(line.quantity_received) || 0) + by) * 1000) / 1000)));
+    const stepper = {
+        width: 44, height: 48, border: 0, background: 'transparent', color: '#2563EB', fontSize: 24, cursor: 'pointer', flexShrink: 0,
+    };
+
+    return (
+        <div style={{
+            display: 'flex', flexDirection: 'column', gap: 14,
+            ...(index > 0 ? { borderTop: '1px solid #F1F5F9', marginTop: 18, paddingTop: 18 } : {}),
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 17, fontWeight: 600, color: '#0F172A' }}>{line.item_name}</div>
+                    <div style={{ fontSize: 14, color: '#475569', marginTop: 2 }}>
+                        PO qty {qty(line.quantity)}{unit ? ` ${unit}` : ''} · {qty(line.unit_cost)}{unit ? ` / ${unit}` : ''}
+                    </div>
+                </div>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#475569', flexShrink: 0 }}>#{index + 1}</span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ fontSize: 16, color: '#0F172A' }}>Received</span>
+                <div style={{
+                    display: 'flex', alignItems: 'center', border: `1px solid ${error(line.supplier_unit ? 'supplier_quantity' : 'quantity_received') ? '#F87171' : '#CBD5E1'}`,
+                    borderRadius: 14, background: '#FFFFFF', width: 200, maxWidth: '62%',
+                }}>
+                    <button type="button" aria-label={`Fewer received for ${line.item_name}`} onClick={() => step(-1)} style={stepper}>−</button>
+                    <input
+                        type="number" inputMode="decimal" step="0.001" min="0"
+                        aria-label={line.supplier_unit
+                            ? `${line.supplier_unit} received for ${line.item_name}`
+                            : `Quantity received for ${line.item_name}`}
+                        value={line.quantity_received}
+                        onChange={(e) => onQuantity(e.target.value)}
+                        style={{ flex: 1, minWidth: 0, height: 48, border: 0, background: 'transparent', textAlign: 'center', fontSize: 17, fontWeight: 600, outline: 'none' }}
+                    />
+                    {unit && <span style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{unit}</span>}
+                    <button type="button" aria-label={`More received for ${line.item_name}`} onClick={() => step(1)} style={stepper}>+</button>
+                </div>
+            </div>
+
+            <div role="radiogroup" aria-label={`Type for ${line.item_name}`} style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#E2E8F0', borderRadius: 12, padding: 3, gap: 3,
+            }}>
+                {TYPES.map((kind) => {
+                    const on = line.type === kind;
+
+                    return (
+                        <button
+                            key={kind} type="button" role="radio" aria-checked={on}
+                            aria-label={`${kind === 'inventory' ? 'Inventory' : 'Consumable'} for ${line.item_name}`}
+                            onClick={() => onType(kind)}
+                            style={{
+                                height: 40, border: 0, borderRadius: 9, font: 'inherit', fontSize: 15, cursor: 'pointer',
+                                fontWeight: on ? 600 : 500, background: on ? '#FFFFFF' : 'transparent',
+                                color: on ? (kind === 'inventory' ? '#2563EB' : '#B45309') : '#334155',
+                                boxShadow: on ? '0 1px 3px rgba(15,23,42,0.12)' : 'none',
+                            }}
+                        >
+                            {kind === 'inventory' ? 'Inventory' : 'Consumable'}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {line.type === 'consumable' && (
+                <div>
+                    <label className="form-label" htmlFor={`grn-line-${index}-project`}>Project <span style={{ color: '#f87171' }}>*</span></label>
+                    <select
+                        id={`grn-line-${index}-project`} required
+                        aria-label={`Project for ${line.item_name}`}
+                        className={`form-select${error('project_id') ? ' form-input-error' : ''}`}
+                        value={line.project_id ?? ''}
+                        onChange={(e) => onProject(e.target.value)}
+                    >
+                        <option value="">— Select project —</option>
+                        {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                </div>
+            )}
+
+            {line.supplier_unit && (
+                <div style={{
+                    display: 'flex', gap: 10, padding: '12px 14px', borderRadius: 14, background: '#FFF7ED',
+                    color: '#9A3412', fontSize: 14, lineHeight: 1.45,
+                }}>
+                    <span aria-hidden="true" style={{ flexShrink: 0 }}>ⓘ</span>
+                    <span>
+                        Ordered in the supplier&apos;s unit ({line.supplier_unit}). Count it in {line.supplier_unit} — it is
+                        converted to {line.unit_of_measure || 'our unit'} on the GRN before confirming.
+                    </span>
+                </div>
+            )}
+        </div>
     );
 }

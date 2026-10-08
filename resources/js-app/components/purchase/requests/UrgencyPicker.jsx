@@ -83,7 +83,7 @@ export default function UrgencyPicker({ value, onChange }) {
         <div style={{ position: 'relative' }} ref={wrapper}>
             <label className="form-label" htmlFor="mpr-urgency">Required Date / Urgency</label>
             <button
-                type="button" id="mpr-urgency" onClick={() => setOpen((o) => !o)}
+                type="button" id="mpr-urgency" className="mpr-trigger" onClick={() => setOpen((o) => !o)}
                 aria-haspopup="listbox" aria-expanded={open}
                 style={{
                     width: '100%', textAlign: 'left', background: '#fff',

@@ -141,3 +141,18 @@
 /* The phone timeline's done-step links: DoneActions wraps several in its own
    flex row, which should flow with the rest rather than nest a second row. */
 .m-timeline-links > div { display: contents; }
+/* The MPR form's own picker buttons (company, project, urgency) carry inline
+   desktop sizes; on a phone they match the other fields. */
+.m-ui .mpr-trigger { min-height: 52px !important; border-radius: 14px !important; font-size: 16px !important;
+                     background: #F8FAFC !important; padding-left: 16px !important; border-color: #CBD5E1 !important; }
+.m-ui .mpr-trigger span { font-size: 16px !important; }
+/* File inputs: the browser's grey button reads as broken next to the design's fields. */
+.m-ui input[type="file"] { padding: 10px 12px; font-size: 14px; color: #475569; min-height: 52px; }
+.m-ui input[type="file"]::file-selector-button {
+    border: 0; background: #E0E7FF; color: #3730A3; border-radius: 10px; padding: 8px 14px;
+    margin-right: 12px; font: inherit; font-weight: 600; cursor: pointer;
+}
+/* A section's own small action ("+ Add") stays small beside its title. */
+.m-ui .m-section-action { min-height: 34px; border-radius: 10px; font-size: 14px; padding: 0 14px; }
+.m-ui input[type="number"]::-webkit-inner-spin-button,
+.m-ui input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
