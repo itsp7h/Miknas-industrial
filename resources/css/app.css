@@ -159,3 +159,16 @@
 /* The older phone lists' plain search boxes, in the design's field. */
 .m-ui input[type="search"].border { height: 44px; border-radius: 12px; border-color: #E2E8F0; background: #FFFFFF;
                                     font-size: 16px; padding: 0 14px; }
+
+/* Opened from the home screen, SteelERP is an app, and an app's screen does
+   not stretch when you drag past its top or bottom. iOS rubber-bands the
+   whole page by default, pulling the layout down over a blank background.
+   Only in standalone: in a browser tab that pull is the browser's own
+   gesture (Android's pull-to-refresh) and stays. Vertical only, so the
+   horizontal edge swipe is left alone. */
+@media (display-mode: standalone) {
+    html,
+    body {
+        overscroll-behavior-y: none;
+    }
+}

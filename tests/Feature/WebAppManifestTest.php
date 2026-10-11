@@ -43,4 +43,18 @@ class WebAppManifestTest extends TestCase
             $this->assertFileExists(public_path(ltrim($icon['src'], '/')));
         }
     }
+
+    /**
+     * Without this, iOS rubber-bands the whole standalone app when it is
+     * dragged past its top, pulling the layout down over a blank background.
+     */
+    public function test_the_standalone_app_does_not_rubber_band(): void
+    {
+        $css = preg_replace('/\s+/', ' ', file_get_contents(resource_path('css/app.css')));
+
+        $this->assertMatchesRegularExpression(
+            '/@media \(display-mode: standalone\) \{ html, body \{ overscroll-behavior-y: none; \} \}/',
+            $css,
+        );
+    }
 }
