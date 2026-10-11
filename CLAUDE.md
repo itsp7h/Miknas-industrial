@@ -314,6 +314,8 @@ auth/shell.blade.php       all five auth screens, keyed by
                            `data-page`                            (auth.jsx)
 rfq/portal.blade.php       the public supplier quote portal,
                            token-based, no auth                   (rfq.jsx)
+partials/web-app-head      the home-screen web-app tags both
+                           host pages above include — see below
 
 ── Blade permanently ───────────────────────────────────────────────────────
 purchase/orders/print, purchase/orders/pdf      LPO documents (DomPDF)
@@ -321,6 +323,15 @@ purchase/requests/print                         MPR document
 inventory/items/pdf, purchase/suppliers/pdf     list exports
 mail/lpo-issued, mail/rfq-invitation            emails
 ```
+
+**Full screen on a phone = added to the home screen.** No page can hide
+Safari's address bar. The app and sign-in pages carry `partials/web-app-head`
+(`apple-mobile-web-app-capable`, `viewport-fit=cover`, `/manifest.json`,
+icons in `public/icons/`), so the site opens standalone once added from
+Share → Add to Home Screen; `components/mobile/InstallHint.jsx` tells an
+iPhone still in a Safari tab how, once. The RFQ portal deliberately has none
+of it — suppliers are not users. `tests/Feature/WebAppManifestTest.php`
+fails if a tag goes missing.
 
 ## Database — `database/`
 

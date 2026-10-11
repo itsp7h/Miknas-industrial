@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Icon from '../components/mobile/icons';
+import InstallHint from '../components/mobile/InstallHint';
 import { Hero, HeroSlotContext, TabBarSlotContext } from '../components/mobile/ui';
 import { C } from '../components/mobile/theme';
 import usePageTitle from './usePageTitle';
@@ -49,6 +50,9 @@ export default function MobileShell({ children, isAdmin, permissions = [] }) {
                 </main>
             </HeroSlotContext.Provider>
             </TabBarSlotContext.Provider>
+
+            {/* Above the tabs only: a page with its own bottom bar is mid-task. */}
+            {barClaims === 0 && <InstallHint />}
 
             {barClaims === 0 && (
                 <nav
