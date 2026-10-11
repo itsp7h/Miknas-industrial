@@ -78,36 +78,50 @@ export function DesktopAuthScreen({ title, subtitle, blurb, children }) {
     );
 }
 
+/**
+ * The phone sign-in frame from SteelERP-Mobile-Designs-V2: the brand on a
+ * dark field, the form on a white sheet that rises from the bottom. `m-ui`
+ * gives the fields and buttons inside it the design's touch sizes
+ * (resources/css/app.css).
+ */
 export function MobileAuthScreen({ title, subtitle, children }) {
     return (
-        <div style={{
-            minHeight: '100vh', background: '#f1f5f9',
-            display: 'flex', flexDirection: 'column',
+        <div className="m-ui" style={{
+            minHeight: '100vh', background: '#0F172A', display: 'flex', flexDirection: 'column',
+            position: 'relative', overflow: 'hidden', fontFamily: "'Inter', system-ui, sans-serif",
         }}>
+            <div aria-hidden="true" style={{
+                position: 'absolute', right: -90, top: -70, width: 280, height: 280,
+                borderRadius: '50%', background: '#1E293B',
+            }} />
+            <div aria-hidden="true" style={{
+                position: 'absolute', left: -60, top: 250, width: 200, height: 200,
+                borderRadius: '50%', background: '#1E3A8A', opacity: 0.55,
+            }} />
+
             <div style={{
-                position: 'relative', overflow: 'hidden',
-                padding: '38px 22px 30px', background: gradient, color: '#fff',
-                borderBottomLeftRadius: 22, borderBottomRightRadius: 22,
+                position: 'relative', padding: 'calc(env(safe-area-inset-top, 0px) + 56px) 28px 36px',
+                display: 'flex', flexDirection: 'column', gap: 18,
             }}>
-                <div style={{
-                    position: 'absolute', top: -44, right: -44, width: 150, height: 150,
-                    borderRadius: '9999px', background: 'rgba(255,255,255,.08)',
-                }} />
-                <div style={{ position: 'relative' }}>
-                    <div style={{ marginBottom: 14 }}><Mark size={40} /></div>
-                    <div style={{ fontSize: 21, fontWeight: 700 }}>{BRAND.name}</div>
-                    <div style={{ fontSize: 12.5, color: '#cbd5e1', marginTop: 3 }}>{BRAND.tagline}</div>
+                <Mark size={56} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 30, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                        {BRAND.name}
+                    </span>
+                    <span style={{ fontSize: 15, color: '#CBD5E1' }}>{BRAND.tagline}</span>
                 </div>
+                <span style={{ fontSize: 13, color: '#94A3B8', letterSpacing: '0.02em' }}>{BRAND.modules}</span>
             </div>
 
             <div style={{
-                flex: 1, display: 'flex', flexDirection: 'column',
-                padding: '24px 18px 22px', boxSizing: 'border-box',
+                position: 'relative', flex: 1, background: '#FFFFFF', borderRadius: '28px 28px 0 0',
+                padding: '32px 24px calc(env(safe-area-inset-bottom, 0px) + 28px)',
+                display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
             }}>
-                <h1 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
+                <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>
                     {title}
                 </h1>
-                <p style={{ fontSize: 13.5, color: '#64748b', margin: '0 0 20px' }}>{subtitle}</p>
+                <p style={{ margin: '0 0 22px', fontSize: 15, color: '#475569' }}>{subtitle}</p>
                 {children}
             </div>
         </div>

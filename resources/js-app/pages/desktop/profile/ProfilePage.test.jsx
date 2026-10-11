@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DesktopProfilePage from './ProfilePage';
 import MobileProfilePage from '../../mobile/profile/ProfilePage';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { PageTitleProvider } from '../../../layouts/PageTitleContext';
 import * as client from '../../../api/client';
@@ -12,7 +13,7 @@ vi.mock('../../../echo', () => ({
 
 const USER = { id: 1, name: 'Admin User', email: 'admin@erp.com', email_verified: true, roles: ['Admin'] };
 
-const wrap = (Page) => render(<PageTitleProvider><ToastProvider><Page /></ToastProvider></PageTitleProvider>);
+const wrap = (Page) => render(<PageTitleProvider><ToastProvider><MemoryRouter><Page /></MemoryRouter></ToastProvider></PageTitleProvider>);
 
 describe('ProfilePage', () => {
     beforeEach(() => {
@@ -136,9 +137,10 @@ describe('ProfilePage', () => {
     });
 
     it('mobile renders the same sections full width', async () => {
-        const { container } = wrap(MobileProfilePage);
+        wrap(MobileProfilePage);
 
         expect(await screen.findByText('Profile Information')).toBeInTheDocument();
-        expect(container.firstChild).toHaveStyle({ maxWidth: '100%' });
+        // The phone's header titles the page; the desktop heading is not repeated.
+        expect(screen.getAllByRole('heading', { name: 'Profile' })).toHaveLength(1);
     });
 });

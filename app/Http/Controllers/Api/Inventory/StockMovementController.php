@@ -51,6 +51,10 @@ class StockMovementController extends Controller
                 ->get(['id', 'item_code', 'item_name', 'unit_of_measure']),
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']),
             'types' => self::TYPES,
+            // What each item holds in each warehouse, so the phone's
+            // adjustment sheet can say "on hand 20" and "stock becomes 19"
+            // before anything is recorded.
+            'levels' => StockLevel::get(['item_id', 'warehouse_id', 'quantity']),
         ]);
     }
 

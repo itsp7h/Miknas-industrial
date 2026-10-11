@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import RequesterPage from './RequesterPage';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { AccessProvider } from '../../../layouts/AccessContext';
@@ -22,14 +23,16 @@ describe('mobile settings RequesterPage', () => {
         });
     });
 
-    it('renders the same list, and its Add person button, in the compact layout', async () => {
+    it('renders the list, its Add person button, and each person\'s actions', async () => {
         render(<ToastProvider><AccessProvider permissions={['requesters.view', 'requesters.create']}>
-            <RequesterPage />
+            <MemoryRouter><RequesterPage /></MemoryRouter>
         </AccessProvider></ToastProvider>);
 
         expect(await screen.findByText('Ali')).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Requested By' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '+ Add person' })).toBeEnabled();
-        expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+        expect(screen.getByRole('heading', { name: 'Requested by' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add person' })).toBeEnabled();
+        // Without requesters.edit the person's sheet offers Edit disabled, not missing.
+        fireEvent.click(screen.getByRole('button', { name: 'Options for Ali' }));
+        expect(screen.getByRole('button', { name: 'Edit person' })).toBeDisabled();
     });
 });

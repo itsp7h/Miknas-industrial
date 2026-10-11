@@ -43,7 +43,7 @@ export default function CompanyPicker({ companies, value, onChange }) {
                 Company <span className="text-red-500">*</span>
             </label>
             <button
-                type="button" id="mpr-company" onClick={() => { setOpen((o) => !o); setQuery(''); }}
+                type="button" id="mpr-company" className="mpr-trigger" onClick={() => { setOpen((o) => !o); setQuery(''); }}
                 aria-haspopup="listbox" aria-expanded={open}
                 style={{
                     width: '100%', textAlign: 'left', background: '#fff', border: '1px solid #d1d5db',

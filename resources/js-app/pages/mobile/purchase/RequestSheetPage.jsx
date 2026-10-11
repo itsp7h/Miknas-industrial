@@ -4,6 +4,8 @@ import RequestSheet from '../../../components/purchase/requests/RequestSheet';
 import useRequestSheet from '../../../components/purchase/requests/useRequestSheet';
 import { useRequestModal } from '../../../components/purchase/requests/RequestModalProvider';
 import { useSetPageTitle } from '../../../layouts/PageTitleContext';
+import { Hero, MobilePage } from '../../../components/mobile/ui';
+import { MONO } from '../../../components/mobile/theme';
 
 export default function RequestSheetPage() {
     const { id } = useParams();
@@ -14,12 +16,15 @@ export default function RequestSheetPage() {
     useSetPageTitle(request ? `MPR ${request.request_number}` : null);
 
     return (
-        <div>
-            <div style={{ marginBottom: 12 }}>
-                <Link to="/app/purchase/pipeline" style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none' }}>
-                    ← Purchase Requests
-                </Link>
-            </div>
+        <MobilePage>
+            <Hero
+                zone="purchase"
+                back={request ? { to: `/app/purchase/pipeline/${request.id}`, label: 'Pipeline' } : { to: '/app/purchase/pipeline', label: 'Pipeline' }}
+                title={request?.request_number ?? (sheet.loading ? 'Loading…' : 'Not found')}
+                titleStyle={{ fontFamily: MONO, fontSize: 22, fontWeight: 500 }}
+                subtitle="Material Purchase Request"
+            />
+            <div>
 
             {sheet.loading && <p style={{ fontSize: 14, color: '#64748b' }}>Loading…</p>}
             {!sheet.loading && !request && (
@@ -28,11 +33,6 @@ export default function RequestSheetPage() {
 
             {request && (
                 <>
-                    <div style={{ marginBottom: 14 }}>
-                        <h1 className="page-title">{request.request_number}</h1>
-                        <p className="page-subtitle">Material Purchase Request</p>
-                    </div>
-
                     {/* Stacked full-width actions rather than a wrapped row. */}
                     <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
                         <a
@@ -41,12 +41,6 @@ export default function RequestSheetPage() {
                         >
                             Print MPR Form
                         </a>
-                        <Link
-                            to={`/app/purchase/pipeline/${request.id}`} className="btn-secondary"
-                            style={{ justifyContent: 'center', textDecoration: 'none' }}
-                        >
-                            Back to Pipeline
-                        </Link>
                         {request.permissions.update && (
                             <button
                                 type="button" className="btn-secondary" style={{ justifyContent: 'center' }}
@@ -76,6 +70,7 @@ export default function RequestSheetPage() {
                     />
                 </>
             )}
-        </div>
+            </div>
+        </MobilePage>
     );
 }

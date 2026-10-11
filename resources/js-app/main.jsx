@@ -9,6 +9,7 @@ const container = document.getElementById('react-app');
 const currentUserId = Number(container.dataset.userId) || null;
 const userName = container.dataset.userName || 'User';
 const userEmail = container.dataset.userEmail || '';
+const userRole = container.dataset.userRole || '';
 const isAdmin = container.dataset.isAdmin === '1';
 const logoutUrl = container.dataset.logoutUrl || '/logout';
 const csrfToken = container.dataset.csrfToken || '';
@@ -37,6 +38,7 @@ createRoot(container).render(
                     currentUserId={currentUserId}
                     userName={userName}
                     userEmail={userEmail}
+                    userRole={userRole}
                     isAdmin={isAdmin}
                     permissions={permissions}
                     logoutUrl={logoutUrl}

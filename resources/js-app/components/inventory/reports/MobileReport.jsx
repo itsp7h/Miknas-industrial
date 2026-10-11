@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Hero, MobilePage } from '../../mobile/ui';
 
 /**
  * Mobile report frame: a card list instead of a wide table, with the same
@@ -8,6 +9,7 @@ import { useMemo, useState } from 'react';
 export default function MobileReport({
     title, subtitle, summary, rows, loading, searchKeys,
     renderCard, cardClassName, emptyMessage, children, emptyTone,
+    back = { to: '/app/more', label: 'More' },
 }) {
     const [query, setQuery] = useState('');
 
@@ -22,11 +24,9 @@ export default function MobileReport({
     const noun = title.toLowerCase();
 
     return (
-        <div>
-            <div style={{ marginBottom: 12 }}>
-                <h1 className="page-title">{title}</h1>
-                {subtitle && <p className="page-subtitle">{subtitle}</p>}
-            </div>
+        <MobilePage>
+            <Hero zone="inventory" back={back} title={title} subtitle={subtitle} />
+            <div>
 
             {children}
 
@@ -78,6 +78,7 @@ export default function MobileReport({
                     {renderCard(row)}
                 </div>
             ))}
-        </div>
+            </div>
+        </MobilePage>
     );
 }

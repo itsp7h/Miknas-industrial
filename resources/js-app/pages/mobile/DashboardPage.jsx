@@ -1,115 +1,268 @@
-import SmartLink from '../../components/dashboard/SmartLink';
-import { ChevronIcon } from '../../components/dashboard/icons';
-import { KPIS, QUICK_ACTIONS, MODULES, formatKpi } from '../../components/dashboard/data';
+import { Link } from 'react-router-dom';
+import NotificationBell from '../../components/NotificationBell';
+import Icon from '../../components/mobile/icons';
+import { Card, Hero, IconTile, ListRow, MobilePage, SectionLabel } from '../../components/mobile/ui';
+import { C, TONES, ZONES } from '../../components/mobile/theme';
+import { stageMeta } from '../../components/mobile/stages';
+import useOverview from '../../components/mobile/useOverview';
 import useDashboardSummary from '../../components/dashboard/useDashboardSummary';
+import { formatTopBarDate } from '../../layouts/TopBar';
 import { useAccess } from '../../layouts/AccessContext';
+import { money } from '../../currency';
 
-// Same palette and figures as desktop; the layout is what changes. KPIs go
-// two-up so all five stay visible without a long scroll, and each card drops
-// the caption line to keep the tile compact. Labels wrap rather than truncate:
-// at this width "Inventory Value" would clip to "INVENTORY VA…".
-const CARD = 'bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-start gap-3';
+// Home, from SteelERP-Mobile-Designs-V2: a greeting with the bell and the
+// account, two headline cards, the pipeline split by stage, four quick actions
+// and the things waiting on this person.
 
-function KpiBody({ kpi, summary }) {
-    const { Icon } = kpi;
+const QUICK_ACTIONS = [
+    {
+        label: 'New request', icon: 'plus', to: '/app/purchase/pipeline?new=1', solid: true,
+        permission: 'pipeline.create', denied: 'You do not have permission to create purchase requests',
+    },
+    {
+        label: 'Receive goods', icon: 'download', tone: 'green', to: '/app/purchase/grns?new=1',
+        permission: 'goods-receipts.create', denied: 'You do not have permission to receive goods',
+    },
+    {
+        label: 'Adjust stock', icon: 'swap', tone: 'teal', to: '/app/inventory/movements?new=1',
+        permission: 'stock-movements.create', denied: 'You do not have permission to adjust stock',
+    },
+    {
+        label: 'New LPO', icon: 'clipboard', tone: 'indigo', to: '/app/purchase/orders?new=1',
+        permission: 'purchase-orders.create', denied: 'You do not have permission to create purchase orders',
+    },
+];
 
-    return (
+function KpiCard({ to, icon, tone, label, value, caption }) {
+    const t = TONES[tone];
+    const body = (
         <>
-            <div className={`w-9 h-9 rounded-lg ${kpi.iconWrap} flex items-center justify-center flex-shrink-0`}>
-                <Icon className={`w-4 h-4 ${kpi.iconColor}`} />
-            </div>
-            <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider leading-tight">{kpi.label}</p>
-                <p className={`text-xl font-bold ${kpi.valueColor ?? 'text-slate-800'} mt-0.5 truncate`}>
-                    {summary ? formatKpi(summary[kpi.key], kpi.money) : '—'}
-                </p>
-            </div>
+            <span style={{
+                width: 36, height: 36, borderRadius: 11, background: t.bg, color: t.fg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                <Icon name={icon} size={20} />
+            </span>
+            <span style={{ fontSize: 13, color: C.muted }}>{label}</span>
+            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{value}</span>
+            <span style={{ fontSize: 12, color: C.faint }}>{caption}</span>
         </>
     );
+    const style = {
+        background: C.card, borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column',
+        gap: 10, textDecoration: 'none', color: C.text, minWidth: 0,
+    };
+
+    return to ? <Link to={to} style={style}>{body}</Link> : <div style={style}>{body}</div>;
+}
+
+function StageCard({ pipeline }) {
+    const stages = pipeline.stages.filter((s) => s.count > 0);
+
+    return (
+        <Link to="/app/purchase/pipeline" style={{
+            background: C.card, borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column',
+            gap: 14, textDecoration: 'none', color: C.text,
+        }}>
+            <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 16, fontWeight: 600 }}>Requests by stage</span>
+                <Icon name="chevronRight" size={18} strokeWidth={2} style={{ color: C.fainter }} />
+            </span>
+            {stages.length === 0 ? (
+                <span style={{ fontSize: 14, color: C.muted }}>No requests in progress.</span>
+            ) : (
+                <>
+                    <span style={{ display: 'flex', gap: 3, height: 10, borderRadius: 5, overflow: 'hidden' }}>
+                        {stages.map((s) => (
+                            <span key={s.key} style={{ flex: s.count, background: stageMeta(s.key).color }} />
+                        ))}
+                    </span>
+                    <span style={{
+                        display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', rowGap: 8, columnGap: 8,
+                        fontSize: 13, color: C.text2,
+                    }}>
+                        {stages.map((s) => (
+                            <span key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ width: 8, height: 8, flexShrink: 0, borderRadius: 4, background: stageMeta(s.key).color }} />
+                                {stageMeta(s.key).label} {s.count}
+                            </span>
+                        ))}
+                    </span>
+                </>
+            )}
+        </Link>
+    );
+}
+
+function QuickAction({ action, can }) {
+    const t = action.solid ? { bg: C.accent, fg: '#FFFFFF' } : TONES[action.tone];
+    const allowed = can(action.permission);
+    const body = (
+        <>
+            <span style={{
+                width: 60, height: 60, borderRadius: 18, background: t.bg, color: t.fg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                <Icon name={action.icon} size={24} strokeWidth={action.solid ? 2 : 1.8} />
+            </span>
+            {action.label}
+        </>
+    );
+    const style = {
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textDecoration: 'none',
+        color: C.text, fontSize: 12, fontWeight: 500, textAlign: 'center',
+    };
+
+    // Shown disabled with the reason, not hidden (CLAUDE.md #14).
+    if (!allowed) {
+        return (
+            <div aria-disabled="true" title={action.denied} style={{ ...style, opacity: 0.45, cursor: 'not-allowed' }}>
+                {body}
+            </div>
+        );
+    }
+
+    return <Link to={action.to} style={style}>{body}</Link>;
+}
+
+function actionRow(action, last) {
+    switch (action.kind) {
+        case 'gm_signature':
+            return (
+                <ListRow
+                    key={action.kind}
+                    to={`/app/purchase/pipeline/${action.request_id}`}
+                    leading={<IconTile icon="pen" tone="rose" />}
+                    title={action.count > 1 ? `${action.count} requests need your signature` : 'GM signature needed'}
+                    subtitle={[action.reference, action.detail].filter(Boolean).join(' · ')}
+                    last={last}
+                />
+            );
+        case 'draft_grns':
+            return (
+                <ListRow
+                    key={action.kind}
+                    to={action.count > 1 ? '/app/purchase/grns' : `/app/purchase/grns/${action.grn_id}`}
+                    leading={<IconTile icon="fileAlert" tone="amber" />}
+                    title={action.count > 1 ? `${action.count} draft GRNs to confirm` : 'A draft GRN to confirm'}
+                    subtitle={action.missing.length
+                        ? `${action.reference} is missing ${joinWords(action.missing)}`
+                        : `${action.reference} is ready to confirm`}
+                    last={last}
+                />
+            );
+        case 'unpaid_invoices':
+            return (
+                <ListRow
+                    key={action.kind}
+                    to="/app/purchase/invoices"
+                    leading={<IconTile icon="cash" tone="red" />}
+                    title={`${action.count} unpaid supplier invoice${action.count === 1 ? '' : 's'}`}
+                    subtitle={`${money(action.outstanding)} outstanding`}
+                    last={last}
+                />
+            );
+        default:
+            return null;
+    }
+}
+
+function joinWords(words) {
+    if (words.length < 2) return words.join('');
+
+    return `${words.slice(0, -1).join(', ')} & ${words[words.length - 1]}`;
+}
+
+function StockNote({ count }) {
+    const ok = count === 0;
+
+    const body = (
+        <>
+            <Icon name={ok ? 'checkCircle' : 'warning'} size={20} strokeWidth={2} />
+            {ok
+                ? 'All items are above minimum stock levels.'
+                : `${count} stock line${count === 1 ? ' is' : 's are'} below minimum.`}
+        </>
+    );
+    const style = {
+        display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 16,
+        background: ok ? '#DCFCE7' : '#FEF3C7', color: ok ? '#14532D' : '#78350F',
+        fontSize: 14, fontWeight: 500, textDecoration: 'none',
+    };
+
+    return ok ? <div style={style}>{body}</div> : <Link to="/app/inventory/reports/low-stock" style={style}>{body}</Link>;
 }
 
 export default function DashboardPage({ currentUserId, userName }) {
     const summary = useDashboardSummary(currentUserId);
+    const overview = useOverview();
     const { can } = useAccess();
+    const pipeline = overview?.pipeline;
+    const first = (userName || 'there').split(' ')[0];
 
     return (
-        <div>
-            <div className="mb-4">
-                <h1 className="text-xl font-bold text-slate-800">Dashboard</h1>
-                <p className="text-slate-500 text-sm mt-0.5">
-                    Welcome back, {userName ?? 'there'}.
-                </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-6">
-                {KPIS.map((kpi) => (kpi.to ? (
-                    <SmartLink key={kpi.key} to={kpi.to} className={CARD}>
-                        <KpiBody kpi={kpi} summary={summary} />
-                    </SmartLink>
-                ) : (
-                    <div key={kpi.key} className={CARD}>
-                        <KpiBody kpi={kpi} summary={summary} />
+        <MobilePage gap={22}>
+            <Hero
+                zone="home"
+                variant="root"
+                eyebrow={formatTopBarDate(new Date())}
+                title={`Welcome back, ${first}`}
+                titleStyle={{ fontSize: 26 }}
+                action={(
+                    <div style={{ display: 'flex', gap: 10, alignSelf: 'flex-start' }}>
+                        <NotificationBell currentUserId={currentUserId} variant="hero" />
+                        <Link
+                            to="/app/more"
+                            aria-label="Account"
+                            style={{
+                                width: 44, height: 44, borderRadius: 22, background: '#FFFFFF',
+                                color: ZONES.home.solid, fontWeight: 600, fontSize: 16, textDecoration: 'none',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                        >
+                            {(userName || 'U').charAt(0).toUpperCase()}
+                        </Link>
                     </div>
-                )))}
+                )}
+            >
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                    <KpiCard
+                        to={can('valuation.view') ? '/app/inventory/reports/valuation' : null}
+                        icon="box"
+                        tone="green"
+                        label="Inventory value"
+                        value={summary ? money(summary.inventory_value) : '—'}
+                        caption="All warehouses"
+                    />
+                    <KpiCard
+                        to={pipeline ? '/app/purchase/pipeline' : null}
+                        icon="clock"
+                        tone="amber"
+                        label="Purchase pipeline"
+                        value={pipeline ? `${pipeline.active} active` : (summary ? `${summary.purchase_pending} active` : '—')}
+                        caption={pipeline ? `${pipeline.completed} completed` : 'Requests in progress'}
+                    />
+                </div>
+            </Hero>
+
+            {pipeline && <StageCard pipeline={pipeline} />}
+
+            <SectionLabel zone="home">Quick actions</SectionLabel>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+                {QUICK_ACTIONS.map((action) => <QuickAction key={action.label} action={action} can={can} />)}
             </div>
 
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Quick Actions</h2>
-            <div className="grid grid-cols-1 gap-2 mb-6">
-                {QUICK_ACTIONS.map((action) => {
-                    const body = (
-                        <>
-                            <div className={`w-10 h-10 rounded-lg ${action.iconWrap} flex items-center justify-center flex-shrink-0`}>
-                                <action.Icon className={`w-5 h-5 ${action.iconColor}`} />
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-700">{action.label}</p>
-                                <p className="text-xs text-slate-400 mt-0.5">{action.caption}</p>
-                            </div>
-                        </>
-                    );
-                    const className = 'bg-white rounded-xl p-3 border border-slate-200 flex items-center gap-3';
-
-                    // Disabled with the reason, not hidden; see desktop.
-                    if (action.permission && !can(action.permission)) {
-                        return (
-                            <div
-                                key={action.label}
-                                aria-disabled="true"
-                                title={action.deniedReason}
-                                className={className}
-                                style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                            >
-                                {body}
-                            </div>
-                        );
-                    }
-
-                    return <SmartLink key={action.label} to={action.to} className={className}>{body}</SmartLink>;
-                })}
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-                {MODULES.map((module) => (
-                    <div key={module.title} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className={`${module.header} px-4 py-3`}>
-                            <h3 className="text-white font-semibold text-sm">{module.title}</h3>
-                            <p className={`${module.captionColor} text-xs mt-0.5`}>{module.caption}</p>
-                        </div>
-                        <div className="p-3">
-                            {module.links.map((link) => (
-                                <SmartLink
-                                    key={link.label}
-                                    to={link.to}
-                                    className="flex items-center justify-between py-2.5 text-sm text-slate-600 border-b border-slate-100 last:border-0"
-                                >
-                                    <span>{link.label}</span>
-                                    <ChevronIcon className="w-3.5 h-3.5 text-slate-300" />
-                                </SmartLink>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+            {overview && (overview.actions.length > 0 || overview.low_stock !== null) && (
+                <>
+                    <SectionLabel zone="home">Needs your action</SectionLabel>
+                    {overview.actions.length > 0 && (
+                        <Card style={{ borderRadius: 20 }}>
+                            {overview.actions.map((a, i) => actionRow(a, i === overview.actions.length - 1))}
+                        </Card>
+                    )}
+                    {overview.low_stock !== null && <StockNote count={overview.low_stock} />}
+                </>
+            )}
+        </MobilePage>
     );
 }

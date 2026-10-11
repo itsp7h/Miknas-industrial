@@ -1,12 +1,22 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import SupplierListPage from './SupplierListPage';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
     echo: { private: () => ({ listen: () => {}, stopListening: () => {} }) },
 }));
+
+const Page = () => (
+    <ToastProvider>
+        <AccessProvider isAdmin>
+            <MemoryRouter><SupplierListPage /></MemoryRouter>
+        </AccessProvider>
+    </ToastProvider>
+);
 
 describe('SupplierListPage (mobile)', () => {
     it('filters client-side with a live count and no extra request', async () => {
@@ -17,9 +27,8 @@ describe('SupplierListPage (mobile)', () => {
             ],
         });
 
-        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        render(<Page />);
         await waitFor(() => expect(screen.getByText('Acme Steel')).toBeInTheDocument());
-        expect(screen.getByText('2 suppliers')).toBeInTheDocument();
 
         const before = client.apiGet.mock.calls.length;
         fireEvent.change(screen.getByLabelText('Search suppliers'), { target: { value: 'zenith' } });
@@ -32,7 +41,7 @@ describe('SupplierListPage (mobile)', () => {
     it('renders suppliers as cards, not a table', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [{ id: 1, name: 'Acme Steel', category: 'Raw Material', is_active: true }] });
 
-        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        render(<Page />);
 
         await waitFor(() => expect(screen.getByText('Acme Steel')).toBeInTheDocument());
         expect(screen.queryByRole('table')).not.toBeInTheDocument();
@@ -41,7 +50,7 @@ describe('SupplierListPage (mobile)', () => {
     it('shows an error toast when the suppliers fail to load', async () => {
         vi.spyOn(client, 'apiGet').mockRejectedValue(new Error('network error'));
 
-        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        render(<Page />);
 
         await waitFor(() => expect(screen.getByText('Failed to load suppliers.')).toBeInTheDocument());
     });
@@ -50,30 +59,33 @@ describe('SupplierListPage (mobile)', () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [{ id: 1, name: 'Acme Steel', category: null, is_active: true }] });
         vi.spyOn(client, 'apiDelete').mockResolvedValue({});
 
-        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        render(<Page />);
         await waitFor(() => expect(screen.getByText('Acme Steel')).toBeInTheDocument());
 
-        fireEvent.click(screen.getByText('Delete'));
+        // A row opens the supplier's sheet; delete is in it.
+        fireEvent.click(screen.getByText('Acme Steel'));
+        fireEvent.click(screen.getByRole('button', { name: 'Delete supplier' }));
         fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
         await waitFor(() => expect(client.apiDelete).toHaveBeenCalledWith('/purchase/suppliers/1'));
         await waitFor(() => expect(screen.queryByText('Acme Steel')).not.toBeInTheDocument());
     });
 
-    it('renders template and PDF export as plain download links', async () => {
+    it('offers template and PDF export as plain download links from the tools sheet', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
 
-        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        render(<Page />);
 
-        expect(screen.getByText('Template').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/template');
-        expect(screen.getByText('Export PDF').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/export-pdf');
+        fireEvent.click(screen.getByRole('button', { name: 'Import or export' }));
+        expect(screen.getByText('Download import template').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/template');
+        expect(screen.getByText('Export as PDF').closest('a')).toHaveAttribute('href', '/api/v1/purchase/suppliers/export-pdf');
     });
 
     it('imports a file and shows a summary toast', async () => {
         vi.spyOn(client, 'apiGet').mockResolvedValue({ data: [] });
         const apiPostSpy = vi.spyOn(client, 'apiPostForm').mockResolvedValue({ imported: 2, updated: 1, skipped: 0 });
 
-        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        render(<Page />);
         const file = new File(['dummy'], 'suppliers.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         fireEvent.change(screen.getByLabelText('Import Excel'), { target: { files: [file] } });
 
@@ -88,7 +100,7 @@ describe('SupplierListPage (mobile)', () => {
         vi.spyOn(client, 'apiPostForm').mockResolvedValue({ imported: 1, updated: 0, skipped: 0 });
         apiGetSpy.mockClear();
 
-        render(<ToastProvider><SupplierListPage /></ToastProvider>);
+        render(<Page />);
         await waitFor(() => expect(apiGetSpy).toHaveBeenCalledTimes(1));
 
         const file = new File(['dummy'], 'suppliers.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import DesktopCompanyListPage from './CompanyListPage';
 import MobileCompanyListPage from '../../mobile/settings/CompanyListPage';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 import { AccessProvider } from '../../../layouts/AccessContext';
 import * as readImage from '../../../components/image/readImage';
@@ -164,13 +165,17 @@ describe('settings CompanyListPage', () => {
         expect(await screen.findByText('No companies yet. Add your first company above.')).toBeInTheDocument();
     });
 
-    it('mobile stacks the same cards behind a full-width add button', async () => {
-        wrap(MobileCompanyListPage);
+    it('mobile shows a card per company with its departments and an add-department row', async () => {
+        render(
+            <ToastProvider>
+                <AccessProvider isAdmin><MemoryRouter><MobileCompanyListPage /></MemoryRouter></AccessProvider>
+            </ToastProvider>
+        );
 
-        const button = await screen.findByText('+ Add Company');
-        expect(button).toHaveStyle({ width: '100%' });
-        expect(screen.getByText('Miknas Industrial')).toBeInTheDocument();
+        expect(await screen.findByText('Miknas Industrial')).toBeInTheDocument();
         expect(screen.getByText('Accounts')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add company' })).toBeEnabled();
+        expect(screen.getAllByRole('button', { name: 'Add department' }).length).toBeGreaterThan(0);
     });
 
     describe('logo and stamp', () => {
@@ -252,16 +257,21 @@ describe('settings CompanyListPage', () => {
         });
 
         // CLAUDE.md #14: on the page, disabled, with the reason — but viewing needs nothing more.
-        it('without companies.edit, disables Upload and Remove but still lets you view', async () => {
+        it('without companies.edit, the phone still lets you view an image but not change it', async () => {
             vi.spyOn(client, 'apiGet').mockResolvedValue({ ...PAYLOAD, data: [{ ...COMPANIES[0], stamp: PNG }] });
-            withAccess(['companies.view'], MobileCompanyListPage);
+            render(
+                <ToastProvider>
+                    <AccessProvider permissions={['companies.view']}><MemoryRouter><MobileCompanyListPage /></MemoryRouter></AccessProvider>
+                </ToastProvider>
+            );
+            await screen.findByText('Miknas Industrial');
 
-            const bar = await header('Miknas Industrial');
-            const upload = within(bar).getByRole('button', { name: 'Upload Stamp' });
-            expect(upload).toBeDisabled();
-            expect(upload).toHaveAttribute('title', "You do not have permission to change a company's stamp");
+            // No logo yet, and no right to add one: disabled, with the reason.
+            const logo = screen.getByRole('button', { name: '+ Logo' });
+            expect(logo).toBeDisabled();
+            expect(logo).toHaveAttribute('title', "You do not have permission to change a company's logo");
 
-            fireEvent.click(within(bar).getByRole('button', { name: 'View Stamp' }));
+            fireEvent.click(screen.getByRole('button', { name: '✓ Stamp' }));
             expect(screen.getByAltText('Miknas Industrial stamp')).toBeInTheDocument();
             expect(screen.getByRole('button', { name: 'Remove Stamp' })).toBeDisabled();
         });

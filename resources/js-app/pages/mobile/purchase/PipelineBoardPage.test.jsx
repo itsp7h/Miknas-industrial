@@ -172,7 +172,7 @@ describe('PipelineBoardPage (mobile): + New Request without pipeline.create', ()
         renderAs(['pipeline.view', 'pipeline.view-all', 'pipeline.approve']);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
-        const button = screen.getByRole('button', { name: '+ New Request' });
+        const button = screen.getByRole('button', { name: 'New purchase request' });
         expect(button).toBeDisabled();
         expect(button).toHaveAttribute('title', 'You do not have permission to create purchase requests');
     });
@@ -182,6 +182,6 @@ describe('PipelineBoardPage (mobile): + New Request without pipeline.create', ()
         renderAs(['pipeline.view', 'pipeline.create']);
         await waitFor(() => expect(client.apiGet).toHaveBeenCalled());
 
-        expect(screen.getByRole('button', { name: '+ New Request' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'New purchase request' })).toBeEnabled();
     });
 });

@@ -4,9 +4,10 @@ import { DevQuickLogin, LoginFields, RememberMe } from '../../../components/auth
 import useLogin from '../../../components/auth/useLogin';
 
 /**
- * Mobile sign-in: a gradient hero header, one field per row, and a full-width
- * primary action near the thumb rather than tucked to one side. Not the
- * desktop page at a narrower width (CLAUDE.md #12).
+ * Mobile sign-in, from SteelERP-Mobile-Designs-V2: the brand on a dark field,
+ * the form on a white sheet, remember-me and the reset link on one row, and
+ * the primary action at the foot of the sheet near the thumb. Not the desktop
+ * page at a narrower width (CLAUDE.md #12).
  */
 export default function LoginPage({ redirectTo = '/app', showDevLogin = false, navigate = null }) {
     const f = useLogin({ redirectTo, navigate });
@@ -26,14 +27,21 @@ export default function LoginPage({ redirectTo = '/app', showDevLogin = false, n
                     onChange={f.setField}
                     disabled={f.submitting}
                     autoFocus={false}
+                    revealable
                 />
 
-                <div style={{ marginBottom: 18 }}>
+                <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    minHeight: 44, gap: 12, marginBottom: 18,
+                }}>
                     <RememberMe
                         checked={f.values.remember}
                         onChange={f.setField}
                         disabled={f.submitting}
                     />
+                    <AuthLink href="/forgot-password" style={{ fontSize: 15, fontWeight: 500 }}>
+                        Forgot password?
+                    </AuthLink>
                 </div>
 
                 <MobileSpacer />
@@ -42,17 +50,10 @@ export default function LoginPage({ redirectTo = '/app', showDevLogin = false, n
                     type="submit"
                     className="btn btn-primary"
                     disabled={f.submitting}
-                    style={{ width: '100%', justifyContent: 'center', minHeight: 46 }}
+                    style={{ width: '100%', justifyContent: 'center' }}
                 >
                     {f.submitting ? 'Signing in…' : 'Log in'}
                 </button>
-
-                <AuthLink
-                    href="/forgot-password"
-                    style={{ display: 'block', textAlign: 'center', marginTop: 14, fontSize: 13.5 }}
-                >
-                    Forgot your password?
-                </AuthLink>
             </form>
 
             {showDevLogin && <DevQuickLogin onFill={f.fillDemo} disabled={f.submitting} />}

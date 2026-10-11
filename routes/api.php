@@ -60,6 +60,7 @@ Route::prefix('v1')->group(function () {
         Route::post('confirm-password', [AuthController::class, 'confirmPassword']);
         Route::post('dashboard/ping', [DashboardController::class, 'ping']);
         Route::get('dashboard/summary', [DashboardController::class, 'summary']);
+        Route::get('dashboard/overview', [DashboardController::class, 'overview']);
         Route::get('notifications/unread', [NotificationController::class, 'unread']);
         Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
 

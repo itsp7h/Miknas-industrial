@@ -86,9 +86,10 @@ import MobileRequesterPage from './pages/mobile/settings/RequesterPage';
 import MobileItemCategoryPage from './pages/mobile/settings/ItemCategoryPage';
 import DesktopProductionOutputListPage from './pages/desktop/production/ProductionOutputListPage';
 import MobileProductionOutputListPage from './pages/mobile/production/ProductionOutputListPage';
+import MobileMorePage from './pages/mobile/MorePage';
 
 export default function App({
-    currentUserId, userName, userEmail, isAdmin, permissions = [], logoutUrl, csrfToken,
+    currentUserId, userName, userEmail, userRole = '', isAdmin, permissions = [], logoutUrl, csrfToken,
     canViewAllPurchaseRequests, canViewActivePipeline, canViewOwnPurchaseRequests,
 }) {
     const viewport = useViewport();
@@ -139,6 +140,7 @@ export default function App({
             currentUserId={currentUserId}
             userName={userName}
             userEmail={userEmail}
+            userRole={userRole}
             isAdmin={isAdmin}
             permissions={permissions}
             logoutUrl={logoutUrl}
@@ -156,6 +158,12 @@ export default function App({
                 <RequirePermission isAdmin={isAdmin} permissions={permissions}>
                 <Routes>
                     <Route path="/app" element={<DashboardPage currentUserId={currentUserId} userName={userName} />} />
+                    {/* The phone's More tab. Desktop has the sidebar for this,
+                        so a desktop visit goes to the dashboard instead. */}
+                    <Route
+                        path="/app/more"
+                        element={viewport === 'mobile' ? <MobileMorePage /> : <Navigate to="/app" replace />}
+                    />
                     <Route path="/app/purchase/suppliers" element={<SupplierListPage />} />
                     <Route path="/app/purchase/pipeline" element={(
                         <PipelineBoardPage

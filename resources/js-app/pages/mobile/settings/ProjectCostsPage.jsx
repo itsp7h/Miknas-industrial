@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import useProjectCosts from '../../../components/settings/project/useProjectCosts';
 import { formatDate, qty } from '../../../components/purchase/grn/grnStyles';
 import { amount, money } from '../../../currency';
+import { Hero, MobilePage } from '../../../components/mobile/ui';
 
 export default function ProjectCostsPage() {
     const c = useProjectCosts();
@@ -10,18 +11,12 @@ export default function ProjectCostsPage() {
     if (!c.project) return <p style={{ fontSize: 14, color: '#64748b' }}>Project not found.</p>;
 
     return (
-        <div>
-            <Link to="/app/settings/projects" className="text-blue-600" style={{ fontSize: 13, display: 'inline-block', marginBottom: 8 }}>
-                ← Projects
-            </Link>
-
-            <div style={{ marginBottom: 12 }}>
-                <h1 className="page-title">{c.project.name}</h1>
-                <p className="page-subtitle">
-                    Project costs{c.project.company_name ? ` · ${c.project.company_name}` : ''}
-                    {!c.project.is_active ? ' · Inactive' : ''}
-                </p>
-            </div>
+        <MobilePage>
+            <Hero
+                zone="system" back={{ to: '/app/settings/projects', label: 'Projects' }} title={c.project.name}
+                subtitle={`Project costs${c.project.company_name ? ` · ${c.project.company_name}` : ''}${!c.project.is_active ? ' · Inactive' : ''}`}
+            />
+            <div>
 
             {/* The total is what the page is for, so it leads, full width. */}
             <div style={{
@@ -77,6 +72,7 @@ export default function ProjectCostsPage() {
                     </div>
                 </div>
             ))}
-        </div>
+            </div>
+        </MobilePage>
     );
 }

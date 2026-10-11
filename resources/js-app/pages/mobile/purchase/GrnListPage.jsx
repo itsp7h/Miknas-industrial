@@ -1,21 +1,35 @@
 import { useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import ConfirmGrnButton from '../../../components/purchase/grn/ConfirmGrnButton';
 import GrnModal from '../../../components/purchase/grn/GrnModal';
-import NeedsBadge from '../../../components/purchase/grn/NeedsBadge';
 import useGrnList from '../../../components/purchase/grn/useGrnList';
-import { STATUS_LABELS, badgeClassFor, formatDate } from '../../../components/purchase/grn/grnStyles';
+import { STATUS_LABELS, confirmBlockedReason, needsLabel } from '../../../components/purchase/grn/grnStyles';
+import { DocRow, PurchasingHeader, Warning } from '../../../components/purchase/mobile/Purchasing';
+import { Card, CountLine, EmptyState, MobilePage, SearchField } from '../../../components/mobile/ui';
+import { longDate } from '../../../components/mobile/format';
+import { useAccess } from '../../../layouts/AccessContext';
 
+// Purchasing → Receipts (SteelERP-Mobile-Designs-V2). A draft says what it
+// still needs, or offers Confirm once it needs nothing; deleting a draft is on
+// its own page.
 export default function GrnListPage() {
     const g = useGrnList();
+    const navigate = useNavigate();
+    const canCreate = useAccess().can('goods-receipts.create');
     const [params, setParams] = useSearchParams();
     const presetOrderId = params.get('purchase_order_id');
 
+    // A purchase order's "Create GRN" arrives with its id; Home's "Receive
+    // goods" with ?new=1.
     useEffect(() => {
-        if (presetOrderId) g.setModalOpen(true);
+        if (presetOrderId && canCreate) g.setModalOpen(true);
+        if (params.get('new') === '1') {
+            if (canCreate) g.setModalOpen(true);
+            params.delete('new');
+            setParams(params, { replace: true });
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [presetOrderId]);
+    }, [presetOrderId, params]);
 
     function closeModal() {
         g.setModalOpen(false);
@@ -25,70 +39,66 @@ export default function GrnListPage() {
         }
     }
 
+    const drafts = g.grns.filter((grn) => grn.status !== 'confirmed').length;
+
     return (
-        <div>
-            <div style={{ marginBottom: 12 }}>
-                <h1 className="page-title">Goods Receipt Notes</h1>
-                <p className="page-subtitle">Record goods received from suppliers</p>
-            </div>
+        <MobilePage gap={14}>
+            <PurchasingHeader
+                tab="grns"
+                action={{
+                    label: 'New goods receipt', short: 'GRN', onClick: () => g.setModalOpen(true), allowed: canCreate,
+                    denied: 'You do not have permission to receive goods',
+                }}
+            />
 
-            <button
-                type="button" onClick={() => g.setModalOpen(true)} className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
-            >
-                + New GRN
-            </button>
+            <SearchField value={g.query} onChange={g.setQuery} placeholder="Search receipts" />
+            <CountLine>
+                {g.query
+                    ? `${g.filtered.length} of ${g.grns.length} goods receipt notes`
+                    : `${g.grns.length} goods receipt note${g.grns.length === 1 ? '' : 's'}${drafts ? ` · ${drafts} draft${drafts === 1 ? '' : 's'}` : ''}`}
+            </CountLine>
 
-            <div style={{ marginBottom: 12 }}>
-                <input
-                    type="search"
-                    value={g.query}
-                    onChange={(e) => g.setQuery(e.target.value)}
-                    placeholder="Search GRN, PO, supplier, warehouse…"
-                    aria-label="Search GRNs"
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm w-full"
-                />
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    {g.query ? `${g.filtered.length} of ${g.grns.length} GRNs` : `${g.grns.length} GRNs`}
-                </div>
-            </div>
+            {g.filtered.length === 0 ? (
+                <EmptyState icon="download" title={g.query ? 'No receipts match that search' : 'No goods received yet'} />
+            ) : (
+                <Card>
+                    {g.filtered.map((grn, i) => {
+                        const draft = grn.status !== 'confirmed';
+                        const needs = needsLabel(grn);
+                        const ready = draft && !confirmBlockedReason(grn);
 
-            {g.filtered.length === 0 && (
-                <p style={{ fontSize: 14, color: '#64748b' }}>
-                    {g.query ? 'No GRNs match that search.' : 'No GRNs found.'}
-                </p>
+                        return (
+                            <DocRow
+                                key={grn.id}
+                                onClick={() => navigate(`/app/purchase/grns/${grn.id}`)}
+                                number={grn.grn_number}
+                                title={grn.supplier_name ?? '—'}
+                                sub={[grn.po_number, grn.warehouse_name, longDate(grn.received_date)].filter(Boolean).join(' · ')}
+                                status={STATUS_LABELS[grn.status] ?? grn.status}
+                                statusTone={draft ? 'slate' : 'green'}
+                                last={i === g.filtered.length - 1}
+                                footer={(needs || ready) && (
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                                        <Warning ok={!needs}>{needs ?? 'All documents attached'}</Warning>
+                                        {ready && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); g.setConfirming(grn); }}
+                                                style={{
+                                                    flexShrink: 0, fontSize: 14, fontWeight: 600, color: '#FFFFFF', background: '#15803D',
+                                                    padding: '7px 14px', borderRadius: 10, border: 0, font: 'inherit', cursor: 'pointer',
+                                                }}
+                                            >
+                                                Confirm
+                                            </button>
+                                        )}
+                                    </span>
+                                )}
+                            />
+                        );
+                    })}
+                </Card>
             )}
-
-            {/* A seven-column table does not fit a phone, so each GRN is a card. */}
-            {g.filtered.map((grn) => (
-                <div key={grn.id} style={{
-                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                    padding: 12, marginBottom: 8,
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                        <Link to={`/app/purchase/grns/${grn.id}`} className="font-mono" style={{ fontWeight: 600, color: '#2563eb', textDecoration: 'none' }}>
-                            {grn.grn_number}
-                        </Link>
-                        <span className={badgeClassFor(grn.status)} style={{ flexShrink: 0 }}>
-                            {STATUS_LABELS[grn.status] ?? grn.status}
-                        </span>
-                    </div>
-                    <NeedsBadge grn={grn} style={{ display: 'inline-block', marginTop: 4 }} />
-                    <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{grn.supplier_name ?? '—'}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                        <span className="font-mono">{grn.po_number}</span>
-                        {grn.warehouse_name && ` · ${grn.warehouse_name}`}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{formatDate(grn.received_date)}</div>
-
-                    {grn.status !== 'confirmed' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-                            <ConfirmGrnButton grn={grn} onClick={() => g.setConfirming(grn)} className="btn-success btn-sm" />
-                            <button type="button" onClick={() => g.setDeleting(grn)} className="btn-danger btn-sm">Delete</button>
-                        </div>
-                    )}
-                </div>
-            ))}
 
             {g.modalOpen && (
                 <GrnModal presetOrderId={presetOrderId} onSaved={g.handleSaved} onCancel={closeModal} />
@@ -102,13 +112,6 @@ export default function GrnListPage() {
                 onConfirm={g.handleConfirm}
                 onCancel={() => g.setConfirming(null)}
             />
-            <ConfirmModal
-                open={!!g.deleting}
-                title="Delete this GRN?"
-                body={g.deleting ? `${g.deleting.grn_number} will be permanently removed.` : ''}
-                onConfirm={g.handleDeleteConfirmed}
-                onCancel={() => g.setDeleting(null)}
-            />
-        </div>
+        </MobilePage>
     );
 }

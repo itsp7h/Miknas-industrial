@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DesktopProjectListPage from './ProjectListPage';
 import MobileProjectListPage from '../../mobile/settings/ProjectListPage';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
@@ -203,12 +205,16 @@ describe('settings ProjectListPage', () => {
         expect(await screen.findByText(/No projects yet/)).toBeInTheDocument();
     });
 
-    it('mobile stacks the actions and halves the stat grid', async () => {
-        wrap(MobileProjectListPage);
+    it('mobile puts import behind the bar and lists each project with its locations', async () => {
+        render(
+            <ToastProvider>
+                <AccessProvider isAdmin><MemoryRouter><MobileProjectListPage /></MemoryRouter></AccessProvider>
+            </ToastProvider>
+        );
 
-        const add = await screen.findByText('+ Add Project');
-        expect(add).toHaveStyle({ width: '100%' });
-        expect(screen.getByText('Import Excel')).toBeInTheDocument();
-        expect(screen.getByText('New Warehouse')).toBeInTheDocument();
+        expect(await screen.findByText(/New Warehouse/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add project' })).toBeEnabled();
+        fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+        expect(screen.getByRole('button', { name: 'Import from Excel' })).toBeEnabled();
     });
 });

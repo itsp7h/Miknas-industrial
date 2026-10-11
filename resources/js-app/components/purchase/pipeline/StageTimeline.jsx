@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDate } from './pipelineStyles';
 import { liveOrders, orderLabel } from './purchaseOrders';
@@ -14,18 +15,34 @@ const ACTION = {
 // The Blade page's read-only button: white, slate text, 1.5px border.
 const VIEW = { ...ACTION, background: '#fff', color: '#475569', border: '1.5px solid #e2e8f0' };
 
-const EyeIcon = () => (
-    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-    </svg>
-);
+/**
+ * The two button looks every stage action is drawn in. Desktop uses the ones
+ * above; the phone's pipeline page supplies its own (text links in the
+ * timeline, full-size buttons in its bottom bar) so it can reuse every action
+ * here — and every permission check on them — without a copy.
+ */
+export const TimelineStyleContext = createContext({ ACTION, VIEW, icons: true });
 
-const PenIcon = () => (
-    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-    </svg>
-);
+function EyeIcon() {
+    if (!useContext(TimelineStyleContext).icons) return null;
+
+    return (
+        <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+    );
+}
+
+function PenIcon() {
+    if (!useContext(TimelineStyleContext).icons) return null;
+
+    return (
+        <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+    );
+}
 
 /**
  * Actions that are modals rather than destinations. The timeline does not own
@@ -66,7 +83,7 @@ function Dot({ done, current }) {
  * stage (`@elseif($current)`). A completed stage that was skipped past with no
  * signature or no suppliers shows nothing at all.
  */
-function caption(stage, r, current) {
+export function caption(stage, r, current) {
     switch (stage) {
         // The date goes when the stage history has the time: the line below
         // the caption says it, to the minute.
@@ -112,6 +129,7 @@ function caption(stage, r, current) {
 
 /** Select / add suppliers, send the unsent invitations, see who is on it. */
 function SupplierActions({ r, on }) {
+    const { ACTION, VIEW } = useContext(TimelineStyleContext);
     return (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <ActionButton onClick={() => on('suppliers')} style={{ ...ACTION, background: '#2563eb', color: '#fff' }}>
@@ -138,6 +156,7 @@ function SupplierActions({ r, on }) {
  * its supplier; once every one is approved the request moves to Receiving.
  */
 function ApprovalActions({ r, on, onChanged }) {
+    const { ACTION, VIEW } = useContext(TimelineStyleContext);
     const orders = liveOrders(r);
     const waiting = orders.filter((po) => po.awaiting_approval);
     const single = orders.length === 1;
@@ -169,7 +188,8 @@ function ApprovalActions({ r, on, onChanged }) {
     );
 }
 
-function CurrentActions({ stage, r, on, onChanged }) {
+export function CurrentActions({ stage, r, on, onChanged }) {
+    const { ACTION, VIEW } = useContext(TimelineStyleContext);
     const p = r.permissions;
     const signLabel = r.signature ? 'View Signature' : 'Sign';
     const SignIcon = r.signature ? EyeIcon : PenIcon;
@@ -243,7 +263,8 @@ function CurrentActions({ stage, r, on, onChanged }) {
     }
 }
 
-function DoneActions({ stage, r, on }) {
+export function DoneActions({ stage, r, on }) {
+    const { ACTION, VIEW } = useContext(TimelineStyleContext);
     const p = r.permissions;
 
     switch (stage) {
@@ -322,13 +343,24 @@ function DoneActions({ stage, r, on }) {
 }
 
 /**
+ * The index of the step in progress — see the comment in StageTimeline.
+ * Shared so the phone's timeline marks the same step.
+ */
+export function stepCursor(request) {
+    const index = request.stage_index;
+    if (request.stage === 'draft') return index + 1;
+    if (request.stage === 'gm_approval' && request.signature) return index + 1;
+
+    return index;
+}
+
+/**
  * `onAction(kind)` opens the matching dialog; the page owns them. `onChanged`
  * refetches the request after an action the timeline carries out itself
  * (approving an LPO).
  */
 export default function StageTimeline({ request, compact = false, onAction = () => {}, onChanged = () => {} }) {
     const stages = request.stages;
-    const index = request.stage_index;
 
     // `stage` says where the request is; each stage's action is what moves it
     // on. Signing happens *at* 'draft' and advances to 'gm_approval'; selecting
@@ -340,12 +372,7 @@ export default function StageTimeline({ request, compact = false, onAction = () 
     // So the cursor passes a step once that step's work is done rather than
     // once the request has moved off it: the request exists, so Purchase
     // Request is done; the signature exists, so GM Signature is done.
-    let cursor = index;
-    if (request.stage === 'draft') {
-        cursor = index + 1;
-    } else if (request.stage === 'gm_approval' && request.signature) {
-        cursor = index + 1;
-    }
+    const cursor = stepCursor(request);
 
     return (
         <div style={{

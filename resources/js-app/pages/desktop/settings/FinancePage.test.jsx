@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DesktopFinancePage from './FinancePage';
 import MobileFinancePage from '../../mobile/settings/FinancePage';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
+import { AccessProvider } from '../../../layouts/AccessContext';
 import * as client from '../../../api/client';
 
 vi.mock('../../../echo', () => ({
@@ -87,10 +89,21 @@ describe('settings FinancePage', () => {
         expect(await screen.findByText('Currency saved.')).toBeInTheDocument();
     });
 
-    it('mobile gives the cards the full width', async () => {
-        const { container } = wrap(MobileFinancePage);
+    it('mobile steps the rate, previews it, and saves only what changed', async () => {
+        const put = vi.spyOn(client, 'apiPut').mockResolvedValue({ message: 'VAT rate saved.', vat_rate: 11 });
+        render(
+            <ToastProvider>
+                <AccessProvider isAdmin><MemoryRouter><MobileFinancePage /></MemoryRouter></AccessProvider>
+            </ToastProvider>
+        );
 
-        await screen.findByText('Finance');
-        expect(container.firstChild.lastChild).toHaveStyle({ maxWidth: '100%' });
+        expect(await screen.findByLabelText('VAT rate')).toHaveValue(10);
+        fireEvent.click(screen.getByRole('button', { name: 'Raise the VAT rate' }));
+        expect(screen.getByLabelText('VAT rate')).toHaveValue(11);
+        expect(screen.getByText('VAT 11%')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Save finance settings' }));
+        await waitFor(() => expect(put).toHaveBeenCalledWith('/settings/finance', { vat_rate: '11' }));
+        expect(put).toHaveBeenCalledTimes(1);
     });
 });

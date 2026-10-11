@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import LowStockPage from './LowStockPage';
 import ValuationPage from './ValuationPage';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../../components/ui/Toast';
 import * as client from '../../../../api/client';
 
@@ -9,7 +10,7 @@ vi.mock('../../../../echo', () => ({
     echo: { private: () => ({ listen: () => ({ listen: () => {} }) }), channel: () => ({ listen: () => {} }), leave: () => {} },
 }));
 
-const wrap = (ui) => render(<ToastProvider>{ui}</ToastProvider>);
+const wrap = (ui) => render(<ToastProvider><MemoryRouter>{ui}</MemoryRouter></ToastProvider>);
 
 // These three cover MobileReport itself — cards rather than a table, a live
 // count, a no-results message. The stock summary used to be the stand-in; it is

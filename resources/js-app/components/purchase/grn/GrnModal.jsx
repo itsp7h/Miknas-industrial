@@ -283,27 +283,40 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                     <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
                         All three are needed to confirm the GRN. Missing one? Save now and upload it later from the GRN&rsquo;s page.
                     </p>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: compact ? '1fr' : 'repeat(3,minmax(0,1fr))',
-                        gap: '1rem',
-                    }}>
-                        {DOCUMENTS.map((doc) => (
-                            <Field
-                                key={doc.name} idPrefix="grn" values={values} errors={errors} onChange={setField}
-                                label={doc.label} name={doc.name} required hint="PDF, JPG or PNG, up to 10 MB."
-                            >
-                                {/* Marked required, but not enforced here: the receipt can
-                                    be saved without it and completed once it is uploaded. */}
-                                <input
-                                    id={`grn-${doc.name}`} name={doc.name} type="file" accept={ACCEPT}
-                                    aria-invalid={errors[doc.name] ? true : undefined}
-                                    className={`form-input${errors[doc.name] ? ' form-input-error' : ''}`}
+                    {compact ? (
+                        // The phone's three tiles: tap one to scan or pick the
+                        // paper; it turns green once something is attached.
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+                            {DOCUMENTS.map((doc) => (
+                                <DocumentTile
+                                    key={doc.name} doc={doc} file={files[doc.name]} error={errors[doc.name]}
                                     onChange={(e) => setFile(doc.name, e.target.files?.[0], e.target)}
                                 />
-                            </Field>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: compact ? '1fr' : 'repeat(3,minmax(0,1fr))',
+                            gap: '1rem',
+                        }}>
+                            {DOCUMENTS.map((doc) => (
+                                <Field
+                                    key={doc.name} idPrefix="grn" values={values} errors={errors} onChange={setField}
+                                    label={doc.label} name={doc.name} required hint="PDF, JPG or PNG, up to 10 MB."
+                                >
+                                    {/* Marked required, but not enforced here: the receipt can
+                                        be saved without it and completed once it is uploaded. */}
+                                    <input
+                                        id={`grn-${doc.name}`} name={doc.name} type="file" accept={ACCEPT}
+                                        aria-invalid={errors[doc.name] ? true : undefined}
+                                        className={`form-input${errors[doc.name] ? ' form-input-error' : ''}`}
+                                        onChange={(e) => setFile(doc.name, e.target.files?.[0], e.target)}
+                                    />
+                                </Field>
+                            ))}
+                        </div>
+                    )}
 
                     <div style={{ marginTop: '1rem' }}>
                         <Field
@@ -327,5 +340,43 @@ export default function GrnModal({ presetOrderId, onSaved, onCancel }) {
                 </FormSection>
             </form>
         </FormModal>
+    );
+}
+
+function DocumentTile({ doc, file, error, onChange }) {
+    const attached = !!file;
+    const id = `grn-${doc.name}`;
+
+    return (
+        <label
+            htmlFor={id}
+            style={{
+                position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '14px 6px',
+                borderRadius: 16, background: '#FFFFFF', cursor: 'pointer', textAlign: 'center', minWidth: 0,
+                border: `1.5px solid ${error ? '#F87171' : (attached ? '#15803D' : '#E2E8F0')}`,
+            }}
+        >
+            <span style={{
+                width: 40, height: 40, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: attached ? '#15803D' : '#EFF6FF', color: attached ? '#FFFFFF' : '#2563EB',
+            }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    {attached
+                        ? <path d="m5 12 5 5 9-10" />
+                        : <><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></>}
+                </svg>
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>{doc.label}</span>
+            <span style={{ fontSize: 12, color: error ? '#DC2626' : '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                {error ?? (attached ? 'Attached' : 'Scan / upload')}
+            </span>
+            <input
+                id={id} name={doc.name} type="file" accept={ACCEPT}
+                aria-label={`${doc.label} document`}
+                aria-invalid={error ? true : undefined}
+                onChange={onChange}
+                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+            />
+        </label>
     );
 }

@@ -45,7 +45,7 @@ export default function ProjectPicker({ projects, disabled = false, value, onCha
         <div style={{ position: 'relative' }} ref={wrapper}>
             <label className="form-label" htmlFor="mpr-project">Project</label>
             <button
-                type="button" id="mpr-project" disabled={disabled}
+                type="button" id="mpr-project" className="mpr-trigger" disabled={disabled}
                 onClick={() => { setOpen((o) => !o); setQuery(''); }}
                 aria-haspopup="listbox" aria-expanded={open}
                 style={{

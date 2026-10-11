@@ -7,7 +7,8 @@ import { echo } from '../echo';
  * icon and red count badge, and a 320px dropdown headed "Notifications" with a
  * "Mark all read" control.
  */
-export default function NotificationBell({ currentUserId }) {
+export default function NotificationBell({ currentUserId, variant = 'topbar' }) {
+    const hero = variant === 'hero';
     const [notifications, setNotifications] = useState([]);
     const [open, setOpen] = useState(false);
     const [hover, setHover] = useState(false);
@@ -48,18 +49,35 @@ export default function NotificationBell({ currentUserId }) {
                 onClick={() => setOpen((v) => !v)}
                 onMouseEnter={() => setHover(true)}
                 onMouseLeave={() => setHover(false)}
-                style={{
+                style={hero ? {
+                    // The mobile Home hero's round white button.
+                    position: 'relative', width: 44, height: 44, borderRadius: 22,
+                    border: '1px solid #E2E8F0', background: '#FFFFFF', boxSizing: 'border-box',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#0F172A', flexShrink: 0,
+                } : {
                     position: 'relative', width: 34, height: 34, borderRadius: 9,
                     border: '1px solid #e2e8f0', background: hover ? '#f1f5f9' : '#fff',
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: '#64748b', transition: 'background .15s, color .15s', flexShrink: 0,
                 }}
             >
-                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
+                {hero ? (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z" /><path d="M10 20a2 2 0 0 0 4 0" />
+                    </svg>
+                ) : (
+                    <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                )}
                 {notifications.length > 0 && (
-                    <span style={{
+                    <span style={hero ? {
+                        position: 'absolute', top: -2, right: -4, background: '#DC2626', color: '#fff',
+                        fontSize: 11, fontWeight: 700, minWidth: 20, height: 20, borderRadius: 10,
+                        padding: '0 5px', boxSizing: 'border-box', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', border: '2px solid #1D4ED8',
+                    } : {
                         position: 'absolute', top: -4, right: -4, background: '#ef4444', color: '#fff',
                         fontSize: 10, fontWeight: 700, minWidth: 17, height: 17, borderRadius: 9,
                         padding: '0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -72,9 +90,14 @@ export default function NotificationBell({ currentUserId }) {
 
             {open && (
                 <div style={{
-                    position: 'absolute', top: 42, right: 0, background: '#fff',
+                    // The hero clips its overflow, so on Home the panel is
+                    // pinned to the viewport rather than hung off the button.
+                    ...(hero
+                        ? { position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 96px)', left: 12, right: 12 }
+                        : { position: 'absolute', top: 42, right: 0, width: 320 }),
+                    background: '#fff',
                     border: '1.5px solid #e2e8f0', borderRadius: 14,
-                    boxShadow: '0 12px 32px rgba(0,0,0,.12)', width: 320, zIndex: 9000, overflow: 'hidden',
+                    boxShadow: '0 12px 32px rgba(0,0,0,.12)', zIndex: 9000, overflow: 'hidden',
                 }}>
                     <div style={{
                         padding: '12px 16px', borderBottom: '1px solid #f1f5f9',
